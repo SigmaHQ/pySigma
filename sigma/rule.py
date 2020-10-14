@@ -4,6 +4,7 @@ from uuid import UUID
 from enum import Enum
 from datetime import date
 import yaml
+import sigma.exceptions as sigma_exceptions
 
 SigmaStatus = Enum("SigmaStatus", "stable experimental test")
 SigmaLevel = Enum("SigmaLevel", "low medium high critical")
@@ -28,7 +29,7 @@ class SigmaLogSource:
     def __post_init__(self):
         """Ensures that log source is not empty."""
         if self.category == None and self.product == None and self.service == None:
-            raise SigmaError("Sigma log source can't be empty")
+            raise sigma_exceptions.SigmaLogsourceError("Sigma log source can't be empty")
 
     @classmethod
     def from_dict(cls, logsource : dict) -> "SigmaLogSource":
@@ -103,7 +104,8 @@ class SigmaDetection:
     A detection can be defined by:
 
     1. a mapping between field/value pairs that all should appear in matched events.
-    2. a list of plain values or mappings defined and matched as in 1 where at least one of the items should appear in matched events.
+    2. a plain value
+    3. a list of plain values or mappings defined and matched as in 1 where at least one of the items should appear in matched events.
     """
     detection_items : List[Union[SigmaDetectionItem, "SigmaDetection"]]
 
@@ -116,7 +118,9 @@ class SigmaDetection:
                         SigmaDetectionItem.from_mapping(key, val)
                         for key, val in definition.items()
                         ])
-        elif isinstance(definition, Sequence):  # list of items (case 2)
+        elif isinstance(definition, (str, int)):    # plain value (case 2)
+            return cls(detection_items=[SigmaDetectionItem.from_value(definition)])
+        elif isinstance(definition, Sequence):  # list of items (case 3)
             return cls(
                     detection_items=[
                         SigmaDetectionItem.from_value(item) if isinstance(item, (str, int))     # SigmaDetectionItem in case of a plain value or a list of plain values
@@ -134,7 +138,7 @@ class SigmaDetections:
     def __post_init__(self):
         """Detections sanity checks"""
         if self.detections == dict():
-            raise SigmaError("No detections defined in Sigma rule")
+            raise sigma_exceptions.SigmaDetectionError("No detections defined in Sigma rule")
 
     @classmethod
     def from_dict(cls, detections : dict) -> "SigmaDetections":
@@ -144,7 +148,7 @@ class SigmaDetections:
             else:
                 condition = [ detections["condition"] ]
         except KeyError:
-            raise SigmaError("Sigma rule must contain at least one condition")
+            raise sigma_exceptions.SigmaConditionError("Sigma rule must contain at least one condition")
         del detections["condition"]
 
         return cls(
@@ -180,21 +184,23 @@ class SigmaRule:
             try:
                 rule_id = UUID(rule_id)
             except ValueError:
-                raise SigmaError("Sigma rule identifier must be an UUID")
+                raise sigma_exceptions.SigmaIdentifierError("Sigma rule identifier must be an UUID")
 
         # Rule level validation
         level = rule.get("level")
-        try:
-            level = SigmaLevel[level]
-        except KeyError:
-            raise SigmaError(f"'{ level }' is no valid Sigma rule level")
+        if level is not None:
+            try:
+                level = SigmaLevel[level]
+            except KeyError:
+                raise sigma_exceptions.SigmaLevelError(f"'{ level }' is no valid Sigma rule level")
 
         # Rule status validation
         status = rule.get("status")
-        try:
-            status = SigmaStatus[status]
-        except KeyError:
-            raise SigmaError(f"'{ status }' is no valid Sigma rule status")
+        if status is not None:
+            try:
+                status = SigmaStatus[status]
+            except KeyError:
+                raise sigma_exceptions.SigmaStatusError(f"'{ status }' is no valid Sigma rule status")
 
         # parse rule date if existing
         rule_date = rule.get("date")
@@ -205,19 +211,19 @@ class SigmaRule:
                 try:
                     rule_date = date(*(int(i) for i in rule_date.split("-")))
                 except ValueError:
-                    raise SigmaError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd")
+                    raise sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd")
 
         # parse log source
         try:
             logsource = SigmaLogSource.from_dict(rule["logsource"])
         except KeyError:
-            raise SigmaError("Sigma rule must have a log source")
+            raise sigma_exceptions.SigmaLogsourceError("Sigma rule must have a log source")
 
         # parse detections
         try:
             detections = SigmaDetections.from_dict(rule["detection"])
         except KeyError:
-            raise SigmaError("Sigma rule must have a detection definitions")
+            raise sigma_exceptions.SigmaDetectionError("Sigma rule must have a detection definitions")
 
         return cls(
                 title = rule["title"],
@@ -240,6 +246,3 @@ class SigmaRule:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.safe_load(rule)
         return cls.from_dict(parsed_rule)
-
-class SigmaError(ValueError):
-    pass

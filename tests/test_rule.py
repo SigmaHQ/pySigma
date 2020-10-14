@@ -1,7 +1,8 @@
 import pytest
 from datetime import date
 from uuid import UUID
-from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule, SigmaError
+from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
+import sigma.exceptions as sigma_exceptions
 
 ### SigmaRuleTag tests ###
 def test_sigmaruletag_fromstr():
@@ -46,7 +47,7 @@ def test_sigmalogsource_fromdict_no_service():
     assert logsource == SigmaLogSource("category-id", "product-id", None)
 
 def test_sigmalogsource_empty():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
         SigmaLogSource(None, None, None)
 
 # SigmaDetectionItem
@@ -98,6 +99,7 @@ def test_sigmadetections_fromdict():
                 "key1": "value1",
                 "key2": "value2",
             },
+        "single_keyword": "keyword",
         }
     condition = "1 of them"
     sigma_detections = SigmaDetections.from_dict({
@@ -118,43 +120,46 @@ def test_sigmadetections_fromdict():
                 "test_map": SigmaDetection([
                     SigmaDetectionItem("key1", [], [ "value1" ]),
                     SigmaDetectionItem("key2", [], [ "value2" ]),
-                ])
+                ]),
+                "single_keyword": SigmaDetection([
+                    SigmaDetectionItem(None, [], [ "keyword" ])
+                ]),
             },
             condition = [ condition ],
             )
 
 def test_sigmadetections_fromdict_no_detections():
-    with pytest.raises(SigmaError):
-        SigmaDetections.from_dict({ "condition": "selection" })
+    with pytest.raises(sigma_exceptions.SigmaDetectionError):
+        SigmaDetections.from_dict({ "condition": [ "selection" ] })
 
 def test_sigmadetections_fromdict_no_condition():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaConditionError):
         SigmaDetections.from_dict({ "selection": { "key": "value" }})
 
 ### SigmaRule tests ###
 
 def test_sigmarule_bad_uuid():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaIdentifierError):
         SigmaRule.from_dict({ "id": "no-uuid" })
 
 def test_sigmarule_bad_level():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaLevelError):
         SigmaRule.from_dict({ "level": "bad" })
 
 def test_sigmarule_bad_status():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaStatusError):
         SigmaRule.from_dict({ "status": "bad" })
 
 def test_sigmarule_bad_date():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaDateError):
         SigmaRule.from_dict({ "date": "bad" })
 
 def test_sigmarule_no_logsource():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
         SigmaRule.from_dict({})
 
 def test_sigmarule_no_detections():
-    with pytest.raises(SigmaError):
+    with pytest.raises(sigma_exceptions.SigmaDetectionError):
         SigmaRule.from_dict({ "logsource": { "category": "category-id" } })
 
 def test_sigmarule_fromyaml():

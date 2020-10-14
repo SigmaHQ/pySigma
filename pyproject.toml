@@ -3,6 +3,9 @@ name = "sigmatools"
 version = "1.0.0"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
+packages = [
+    { include = "sigma" }
+]
 
 [tool.poetry.dependencies]
 python = "^3.8"

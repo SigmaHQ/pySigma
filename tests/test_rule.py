@@ -51,6 +51,25 @@ def test_sigmalogsource_empty():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError):
         SigmaLogSource(None, None, None)
 
+def test_sigmalogsource_eq():
+    assert SigmaLogSource("category", "product", "service") == SigmaLogSource("category", "product", "service")
+
+def test_sigmalogsource_neq():
+    assert SigmaLogSource("category", "product", None) != SigmaLogSource("category", "product", "service")
+
+def test_sigmalogsource_in_eq():
+    assert SigmaLogSource("category", "product", "service") in SigmaLogSource("category", "product", "service")
+
+def test_sigmalogsource_in():
+    assert SigmaLogSource("category", "product", "service") in SigmaLogSource("category", "product", None)
+
+def test_sigmalogsource_not_in():
+    assert SigmaLogSource("category", None, "service") not in SigmaLogSource(None, "product", "service")
+
+def test_sigmalogsource_in_invalid():
+    with pytest.raises(TypeError):
+        assert 123 in SigmaLogSource("category", "product", "service")
+
 # SigmaDetectionItem
 def test_sigmadetectionitem_keyword_single():
     """Single keyword detection."""

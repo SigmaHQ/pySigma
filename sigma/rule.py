@@ -41,6 +41,23 @@ class SigmaLogSource:
                 logsource.get("service"),
                 )
 
+    def __contains__(self, other : "SigmaLogSource") -> bool:
+        """
+        Matching of log source specifications. A log source contains another one if:
+
+        * Both log sources are equal
+        * The log source specifies less attributes than the other and the specified attributes are equal
+        """
+        if not isinstance(other, self.__class__):
+            raise TypeError("Containment check only allowed between log sources")
+
+        if self == other:
+            return True
+
+        return (self.category is None or self.category == other.category) and \
+               (self.product  is None or self.product  == other.product ) and \
+               (self.service  is None or self.service  == other.service )
+
 @dataclass
 class SigmaDetectionItem:
     """

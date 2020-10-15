@@ -21,3 +21,12 @@ class SigmaStatusError(SigmaError):
 
 class SigmaLevelError(SigmaError):
     pass
+
+class SigmaModifierError(SigmaError):
+    pass
+
+class SigmaValueError(SigmaError):
+    pass
+
+class SigmaRegularExpressionError(SigmaValueError):
+    pass

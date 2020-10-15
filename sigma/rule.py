@@ -4,6 +4,7 @@ from uuid import UUID
 from enum import Enum
 from datetime import date
 import yaml
+from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
 import sigma.exceptions as sigma_exceptions
 
 SigmaStatus = Enum("SigmaStatus", "stable experimental test")
@@ -52,7 +53,11 @@ class SigmaDetectionItem:
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[str]
-    value : List[Union[int, str]]
+    value : List[Union[SigmaString, SigmaNumber, SigmaRegularExpression]]
+
+    def __post_init__(self):
+        if "re" in self.modifiers:       # re modifier is already consumed when created from mapping and doesn't appears in modifier chain
+            raise sigma_exceptions.SigmaModifierError("Modifier 're' can only be used as single modifier")
 
     @classmethod
     def from_mapping(
@@ -81,6 +86,19 @@ class SigmaDetectionItem:
 
         if isinstance(val, (int, str)):     # value is plain, convert into single element list
             val = [val]
+
+        if len(modifiers) == 1 and modifiers[0] == "re":      # Regular expressions
+            modifiers = []
+            val = [
+                SigmaRegularExpression(str(v))
+                for v in val
+            ]
+        else:                                               # Map Python types to Sigma typing classes
+            val = [
+                SigmaNumber(v) if isinstance(v, int)
+                else SigmaString(v)
+                for v in val
+            ]
 
         return cls(field, modifiers, val)
 

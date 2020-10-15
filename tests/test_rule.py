@@ -2,6 +2,7 @@ import pytest
 from datetime import date
 from uuid import UUID
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
+from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
 import sigma.exceptions as sigma_exceptions
 
 ### SigmaRuleTag tests ###
@@ -53,30 +54,43 @@ def test_sigmalogsource_empty():
 # SigmaDetectionItem
 def test_sigmadetectionitem_keyword_single():
     """Single keyword detection."""
-    assert SigmaDetectionItem.from_mapping(None, "value") == SigmaDetectionItem(None, [], ["value"])
+    assert SigmaDetectionItem.from_mapping(None, "value") == SigmaDetectionItem(None, [], [SigmaString("value")])
 
 def test_sigmadetectionitem_keyword_list():
     """Keyword list detection."""
-    assert SigmaDetectionItem.from_mapping(None, ["value1", "value2"]) == SigmaDetectionItem(None, [], ["value1", "value2"])
+    assert SigmaDetectionItem.from_mapping(None, ["string", 123]) == SigmaDetectionItem(None, [], [SigmaString("string"), SigmaNumber(123)])
 
 def test_sigmadetectionitem_keyword_modifiers():
     """Keyword detection with modifier chain."""
-    assert SigmaDetectionItem.from_mapping("|mod1|mod2", "value") == SigmaDetectionItem(None, ["mod1", "mod2"], ["value"])
+    assert SigmaDetectionItem.from_mapping("|mod1|mod2", "value") == SigmaDetectionItem(None, ["mod1", "mod2"], [SigmaString("value")])
 
-def test_sigmadetectionitem_key_value_single():
+def test_sigmadetectionitem_key_value_single_string():
     """Key-value detection with one value."""
-    assert SigmaDetectionItem.from_mapping("key", "value") == SigmaDetectionItem("key", [], ["value"])
+    assert SigmaDetectionItem.from_mapping("key", "value") == SigmaDetectionItem("key", [], [SigmaString("value")])
+
+def test_sigmadetectionitem_key_value_single_regexp():
+    """Key-value detection with one value."""
+    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp") == SigmaDetectionItem("key", [], [SigmaRegularExpression("reg.*exp")])
+
+def test_sigmadetectionitem_key_value_single_number():
+    """Key-value detection with one value."""
+    assert SigmaDetectionItem.from_mapping("key", 123) == SigmaDetectionItem("key", [], [SigmaNumber(123)])
 
 def test_sigmadetectionitem_key_value_list():
     """Key-value detection with value list."""
-    assert SigmaDetectionItem.from_mapping("key", ["value1", "value2"]) == SigmaDetectionItem("key", [], ["value1", "value2"])
+    assert SigmaDetectionItem.from_mapping("key", ["string", 123]) == SigmaDetectionItem("key", [], [SigmaString("string"), SigmaNumber(123)])
 
 def test_sigmadetectionitem_key_value_modifiers():
     """Key-value detection with modifier chain."""
-    assert SigmaDetectionItem.from_mapping("key|mod1|mod2", "value") == SigmaDetectionItem("key", ["mod1", "mod2"], ["value"])
+    assert SigmaDetectionItem.from_mapping("key|mod1|mod2", "value") == SigmaDetectionItem("key", ["mod1", "mod2"], [SigmaString("value")])
+
+def test_sigmadetectionitem_key_value_modifiers_invalid_re():
+    """Key-value detection with modifier chain."""
+    with pytest.raises(sigma_exceptions.SigmaModifierError):
+        SigmaDetectionItem.from_mapping("key|mod1|re|mod2", "value")
 
 def test_sigmadetectionitem_fromvalue():
-    SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], "test")
+    SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
 
 ### SigmaDetections tests ###
 
@@ -85,19 +99,19 @@ def test_sigmadetections_fromdict():
         "keyword_list": [
             "keyword_1",
             "keyword_2",
-            "keyword_3",
+            3,
             ],
         "test_list_of_maps": [
                 {
                     "key1": "value1"
                 },
                 {
-                    "key2": "value2"
+                    "key2": 2
                 },
             ],
         "test_map": {
                 "key1": "value1",
-                "key2": "value2",
+                "key2": 2,
             },
         "single_keyword": "keyword",
         }
@@ -109,20 +123,20 @@ def test_sigmadetections_fromdict():
     assert sigma_detections == SigmaDetections(
             detections = {
                 "keyword_list": SigmaDetection([
-                    SigmaDetectionItem(None, [], [ "keyword_1" ]),
-                    SigmaDetectionItem(None, [], [ "keyword_2" ]),
-                    SigmaDetectionItem(None, [], [ "keyword_3" ]),
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword_1") ]),
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword_2") ]),
+                    SigmaDetectionItem(None, [], [ SigmaNumber(3) ]),
                 ]),
                 "test_list_of_maps": SigmaDetection([
-                    SigmaDetection([SigmaDetectionItem("key1", [], [ "value1" ])]),
-                    SigmaDetection([SigmaDetectionItem("key2", [], [ "value2" ])]),
+                    SigmaDetection([SigmaDetectionItem("key1", [], [ SigmaString("value1") ])]),
+                    SigmaDetection([SigmaDetectionItem("key2", [], [ SigmaNumber(2) ])]),
                 ]),
                 "test_map": SigmaDetection([
-                    SigmaDetectionItem("key1", [], [ "value1" ]),
-                    SigmaDetectionItem("key2", [], [ "value2" ]),
+                    SigmaDetectionItem("key1", [], [ SigmaString("value1") ]),
+                    SigmaDetectionItem("key2", [], [ SigmaNumber(2) ]),
                 ]),
                 "single_keyword": SigmaDetection([
-                    SigmaDetectionItem(None, [], [ "keyword" ])
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword") ])
                 ]),
             },
             condition = [ condition ],

@@ -4,7 +4,7 @@ from uuid import UUID
 from enum import Enum
 from datetime import date
 import yaml
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.types import SigmaType, SigmaString, SigmaNumber, SigmaRegularExpression
 import sigma.exceptions as sigma_exceptions
 
 SigmaStatus = Enum("SigmaStatus", "stable experimental test")
@@ -70,7 +70,7 @@ class SigmaDetectionItem:
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[str]
-    value : List[Union[SigmaString, SigmaNumber, SigmaRegularExpression]]
+    value : List[Union[SigmaType]]
 
     def __post_init__(self):
         if "re" in self.modifiers:       # re modifier is already consumed when created from mapping and doesn't appears in modifier chain

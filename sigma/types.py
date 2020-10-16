@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from typing import Union, Tuple
+from abc import ABC
 from dataclasses import dataclass
 import re
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError
@@ -19,7 +20,11 @@ special_char_mapping = {
     for k, v in char_mapping.items()
 }
 
-class SigmaString(object):
+class SigmaType(ABC):
+    """Base class for Sigma value types"""
+    pass
+
+class SigmaString(SigmaType):
     """
     Strings in Sigma detection values containing wildcards.
     """
@@ -76,7 +81,7 @@ class SigmaString(object):
         )
 
 @dataclass
-class SigmaNumber:
+class SigmaNumber(SigmaType):
     """Numeric value type"""
     number : int
 
@@ -93,7 +98,7 @@ class SigmaNumber:
             return self.number == other.number
 
 @dataclass
-class SigmaRegularExpression:
+class SigmaRegularExpression(SigmaType):
     regexp : str
 
     def __post_init__(self):

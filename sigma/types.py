@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union, Tuple
+from typing import Union, Tuple, Optional
 from abc import ABC
 from dataclasses import dataclass
 import re
@@ -30,7 +30,7 @@ class SigmaString(SigmaType):
     """
     s : Tuple[Union[str, SpecialChars]]      # the string is represented as sequence of strings and characters with special meaning
 
-    def __init__(self, s : str):
+    def __init__(self, s : Optional[str] = None):
         """
         Initializes SigmaString instance from raw string by parsing it:
 
@@ -38,6 +38,8 @@ class SigmaString(SigmaType):
         * escape_char disables special character mapping in the next character
         * if escaping character is followed by a character without special meaning the escaping character is used as plain character
         """
+        if s is None:
+            s = ""
         r = list()
         acc = ""            # string accumulation until special character appears
         escaped = False     # escape mode flag: characters in this mode are always accumulated
@@ -64,7 +66,25 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
         self.protected = True
-    
+
+    def __add__(self, other: Union["SigmaString", str, SpecialChars]) -> "SigmaString":
+        s = self.__class__()
+        if isinstance(other, self.__class__):
+            s.s = self.s + other.s
+        elif isinstance(other, (str, SpecialChars)):
+            s.s = self.s + (other,)
+        else:
+            return NotImplemented
+        return s
+
+    def __radd__(self, other: Union[str, SpecialChars]) -> "SigmaString":
+        if isinstance(other, (str, SpecialChars)):
+            s = self.__class__()
+            s.s = (other,) + self.s
+            return s
+        else:
+            return NotImplemented
+
     def __eq__(self, other : Union["SigmaString", str]) -> bool:
         if isinstance(other, str):
             return self == self.__class__(other)
@@ -72,13 +92,31 @@ class SigmaString(SigmaType):
             return self.s == other.s
         else:
             raise NotImplementedError("SigmaString can only be compared with a string or another SigmaString")
-    
+
     def __str__(self) -> str:
         return "".join(
             s if isinstance(s, str)
             else special_char_mapping[s]
             for s in self.s
         )
+
+    def startswith(self, val : Union[str, SpecialChars]) -> bool:
+        c = self.s[0]
+        if not isinstance(val, type(c)):    # can't match if types differ
+            return False
+        elif isinstance(c, str):            # pass startswith invocation to string objects
+            return c.startswith(val)
+        else:                               # direct comparison of SpecialChars
+            return c == val
+
+    def endswith(self, val : Union[str, SpecialChars]) -> bool:
+        c = self.s[-1]
+        if not isinstance(val, type(c)):    # can't match if types differ
+            return False
+        elif isinstance(c, str):            # pass endswith invocation to string objects
+            return c.endswith(val)
+        else:                               # direct comparison of SpecialChars
+            return c == val
 
 @dataclass
 class SigmaNumber(SigmaType):

@@ -34,6 +34,10 @@ class SigmaModifierError(SigmaError):
     """Error in Sigma rule value modifier specification"""
     pass
 
+class SigmaTypeError(SigmaModifierError):
+    """Sigma modifier not applicable on value type"""
+    pass
+
 class SigmaValueError(SigmaError):
     """Error in Sigma rule value"""
     pass

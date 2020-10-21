@@ -54,6 +54,12 @@ def test_strings_endswith_special():
 def test_strings_endswith_difftypes():
     assert not SigmaString("foobar*").endswith("bar")
 
+def test_strings_contains_special():
+    assert SigmaString("foo*bar").contains_special()
+
+def test_strings_not_contains_special():
+    assert not SigmaString("foobar").contains_special()
+
 def test_strings_add_sigmastring():
     assert SigmaString("*foo?") + SigmaString("bar*") == SigmaString("*foo?bar*")
 
@@ -77,8 +83,14 @@ def test_strings_add_lspecial():
 def test_strings_add_rspecial():
     assert SigmaString("*foo") + SpecialChars.WILDCARD_MULTI == SigmaString("*foo*")
 
-def test_strings_stringable():
+def test_strings_to_string():
     assert str(SigmaString("test*?")) == "test*?"
+
+def test_strings_to_bytes():
+    assert bytes(SigmaString("test*?")) == b"test*?"
+
+def test_strings_len():
+    assert len(SigmaString("foo*bar?")) == 8
 
 def test_number_equal():
     assert SigmaNumber(123) == SigmaNumber(123)

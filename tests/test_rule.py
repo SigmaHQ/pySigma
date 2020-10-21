@@ -232,7 +232,7 @@ def test_sigmarule_fromyaml():
     sigmarule = SigmaRule(
         title = "Test",
         id = UUID("9a6cafa7-1481-4e64-89a1-1f69ed08618c"),
-        status = SigmaStatus["test"],
+        status = SigmaStatus.TEST,
         description = "This is a test",
         references = [
             "ref1",
@@ -272,6 +272,6 @@ def test_sigmarule_fromyaml():
         falsepositives = [
             "Everything",
         ],
-        level = SigmaLevel["low"],
+        level = SigmaLevel.LOW,
     )
     assert sigmarule_from_yaml == sigmarule

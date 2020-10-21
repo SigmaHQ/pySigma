@@ -100,7 +100,14 @@ class SigmaString(SigmaType):
             for s in self.s
         )
 
+    def __bytes__(self) -> bytes:
+        return str(self).encode()
+
+    def __len__(self) -> int:
+        return len(str(self))
+
     def startswith(self, val : Union[str, SpecialChars]) -> bool:
+        """Check if string starts with a given string or special character."""
         c = self.s[0]
         if not isinstance(val, type(c)):    # can't match if types differ
             return False
@@ -110,6 +117,7 @@ class SigmaString(SigmaType):
             return c == val
 
     def endswith(self, val : Union[str, SpecialChars]) -> bool:
+        """Check if string ends with a given string or special character."""
         c = self.s[-1]
         if not isinstance(val, type(c)):    # can't match if types differ
             return False
@@ -117,6 +125,13 @@ class SigmaString(SigmaType):
             return c.endswith(val)
         else:                               # direct comparison of SpecialChars
             return c == val
+
+    def contains_special(self) -> bool:
+        """Check if string contains special characters."""
+        return any([
+            isinstance(item, SpecialChars)
+            for item in self.s
+        ])
 
 @dataclass
 class SigmaNumber(SigmaType):

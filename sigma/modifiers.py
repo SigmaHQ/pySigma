@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
 from typing import Union, List, Sequence, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
+from base64 import b64encode
 from sigma.types import SigmaType, SigmaString, SpecialChars
-from sigma.exceptions import SigmaTypeError
+from sigma.exceptions import SigmaTypeError, SigmaValueError
 
 ### Base Classes ###
 class SigmaModifier(ABC):
@@ -62,3 +63,65 @@ class SigmaContainsModifier(SigmaValueModifier):
         if not val.endswith(SpecialChars.WILDCARD_MULTI):
             val += SpecialChars.WILDCARD_MULTI
         return val
+
+class SigmaStartswithModifier(SigmaValueModifier):
+    def modify(self, val : SigmaString) -> SigmaString:
+        if not val.endswith(SpecialChars.WILDCARD_MULTI):
+            val += SpecialChars.WILDCARD_MULTI
+        return val
+
+class SigmaEndswithModifier(SigmaValueModifier):
+    def modify(self, val : SigmaString) -> SigmaString:
+        if not val.startswith(SpecialChars.WILDCARD_MULTI):
+            val = SpecialChars.WILDCARD_MULTI + val
+        return val
+
+class SigmaBase64Modifier(SigmaValueModifier):
+    def modify(self, val : SigmaString) -> SigmaString:
+        if val.contains_special():
+            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed")
+        return SigmaString(b64encode(bytes(val)).decode())
+
+class SigmaBase64OffsetModifier(SigmaValueModifier):
+    start_offsets = (0, 2, 3)
+    end_offsets = (None, -3, -2)
+
+    def modify(self, val : SigmaString) -> Sequence[SigmaString]:
+        if val.contains_special():
+            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed")
+        return [
+            SigmaString(b64encode(
+                i * b' ' + bytes(val)
+                )[
+                    self.start_offsets[i]:
+                    self.end_offsets[(len(val) + i) % 3]
+                ].decode()
+            )
+            for i in range(3)
+            ]
+
+class SigmaWideModifier(SigmaValueModifier):
+    def modify(self, val : SigmaString):
+        r = list()
+        for item in val.s:
+            if isinstance(item, str):       # put 0x00 after each character by encoding it to utf-16le and decoding it as utf-8
+                try:
+                    r.append(item.encode("utf-16le").decode("utf-8"))
+                except UnicodeDecodeError as e:         # this method only works for ascii characters
+                    raise SigmaValueError(f"Wide modifier only allowed for ascii strings, input string '{str(val)}' isn't one")
+            else:                           # just append special characters without further handling
+                r.append(item)
+
+        s = SigmaString()
+        s.s = tuple(r)
+        return(s)
+
+# Mapping from modifier identifier strings to modifier classes
+modifier_mapping = {
+    "contains"     : SigmaContainsModifier,
+    "startswith"   : SigmaStartswithModifier,
+    "endswith"     : SigmaEndswithModifier,
+    "base64"       : SigmaBase64Modifier,
+    "base64offset" : SigmaBase64OffsetModifier,
+    "wide"         : SigmaWideModifier,
+}

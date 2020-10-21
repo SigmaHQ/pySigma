@@ -1,14 +1,26 @@
 from dataclasses import dataclass
 from typing import Optional, Union, Sequence, List, Mapping, TypeVar, Type
 from uuid import UUID
-from enum import Enum
+from enum import Enum, auto
 from datetime import date
 import yaml
 from sigma.types import SigmaType, SigmaString, SigmaNumber, SigmaRegularExpression
 import sigma.exceptions as sigma_exceptions
 
-SigmaStatus = Enum("SigmaStatus", "stable experimental test")
-SigmaLevel = Enum("SigmaLevel", "low medium high critical")
+class SigmaStatus(Enum):
+    STABLE       = auto()
+    EXPERIMENTAL = auto()
+    TEST         = auto()
+
+class SigmaLevel(Enum):
+    LOW      = auto()
+    MEDIUM   = auto()
+    HIGH     = auto()
+    CRITICAL = auto()
+
+class SigmaConditionOperator(Enum):
+    OR  = auto()
+    AND = auto()
 
 @dataclass
 class SigmaRuleTag:
@@ -62,15 +74,18 @@ class SigmaLogSource:
 class SigmaDetectionItem:
     """
     Single Sigma detection definition
-    
+
     A detection consists of:
     * an optional field name
     * a list of value modifiers that can also be empty
     * the mandatory value or a list of values (internally it's always a list of values)
+
+    By default all values are OR-linked but the 'all' modifier can be used to override this behavior.
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[str]
     value : List[Union[SigmaType]]
+    value_linking : SigmaConditionOperator = SigmaConditionOperator.OR
 
     def __post_init__(self):
         if "re" in self.modifiers:       # re modifier is already consumed when created from mapping and doesn't appears in modifier chain
@@ -225,7 +240,7 @@ class SigmaRule:
         level = rule.get("level")
         if level is not None:
             try:
-                level = SigmaLevel[level]
+                level = SigmaLevel[level.upper()]
             except KeyError:
                 raise sigma_exceptions.SigmaLevelError(f"'{ level }' is no valid Sigma rule level")
 
@@ -233,7 +248,7 @@ class SigmaRule:
         status = rule.get("status")
         if status is not None:
             try:
-                status = SigmaStatus[status]
+                status = SigmaStatus[status.upper()]
             except KeyError:
                 raise sigma_exceptions.SigmaStatusError(f"'{ status }' is no valid Sigma rule status")
 

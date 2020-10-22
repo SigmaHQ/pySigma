@@ -3,6 +3,8 @@ from datetime import date
 from uuid import UUID
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
 from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
+from sigma.conditions import SigmaConditionOperator
 import sigma.exceptions as sigma_exceptions
 
 ### SigmaRuleTag tests ###
@@ -81,7 +83,12 @@ def test_sigmadetectionitem_keyword_list():
 
 def test_sigmadetectionitem_keyword_modifiers():
     """Keyword detection with modifier chain."""
-    assert SigmaDetectionItem.from_mapping("|mod1|mod2", "value") == SigmaDetectionItem(None, ["mod1", "mod2"], [SigmaString("value")])
+    assert SigmaDetectionItem.from_mapping("|base64|contains", "foobar") == SigmaDetectionItem(None, [SigmaBase64Modifier, SigmaContainsModifier], [SigmaString("*Zm9vYmFy*")])
+
+def test_sigmadetectionitem_unknown_modifier():
+    """Keyword detection with modifier chain."""
+    with pytest.raises(sigma_exceptions.SigmaModifierError):
+        SigmaDetectionItem.from_mapping("|foobar", "foobar")
 
 def test_sigmadetectionitem_key_value_single_string():
     """Key-value detection with one value."""
@@ -89,7 +96,7 @@ def test_sigmadetectionitem_key_value_single_string():
 
 def test_sigmadetectionitem_key_value_single_regexp():
     """Key-value detection with one value."""
-    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp") == SigmaDetectionItem("key", [], [SigmaRegularExpression("reg.*exp")])
+    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp") == SigmaDetectionItem("key", [SigmaRegularExpressionModifier], [SigmaRegularExpression("reg.*exp")])
 
 def test_sigmadetectionitem_key_value_single_number():
     """Key-value detection with one value."""
@@ -100,13 +107,22 @@ def test_sigmadetectionitem_key_value_list():
     assert SigmaDetectionItem.from_mapping("key", ["string", 123]) == SigmaDetectionItem("key", [], [SigmaString("string"), SigmaNumber(123)])
 
 def test_sigmadetectionitem_key_value_modifiers():
-    """Key-value detection with modifier chain."""
-    assert SigmaDetectionItem.from_mapping("key|mod1|mod2", "value") == SigmaDetectionItem("key", ["mod1", "mod2"], [SigmaString("value")])
+    """Key-value detection with modifier chain with first modifier expanding value to multiple values"""
+    assert SigmaDetectionItem.from_mapping("key|base64offset|contains|all", "foobar") == SigmaDetectionItem(
+        "key",
+        [SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaAllModifier],
+        [
+            SigmaString("*Zm9vYmFy*"),
+            SigmaString("*Zvb2Jhc*"),
+            SigmaString("*mb29iYX*"),
+        ],
+        SigmaConditionOperator.AND
+        )
 
 def test_sigmadetectionitem_key_value_modifiers_invalid_re():
-    """Key-value detection with modifier chain."""
-    with pytest.raises(sigma_exceptions.SigmaModifierError):
-        SigmaDetectionItem.from_mapping("key|mod1|re|mod2", "value")
+    """Invalid regular expression modifier chain."""
+    with pytest.raises(sigma_exceptions.SigmaValueError):
+        SigmaDetectionItem.from_mapping("key|base64|re", "value")
 
 def test_sigmadetectionitem_fromvalue():
     SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
@@ -252,11 +268,11 @@ def test_sigmarule_fromyaml():
         detection = SigmaDetections(
             detections = {
                 "selection_1": SigmaDetection([
-                        SigmaDetectionItem("CommandLine", ["contains"], [ "test.exe" ])
+                        SigmaDetectionItem("CommandLine", [SigmaContainsModifier], [ SigmaString("*test.exe*") ])
                     ]),
                 "selection_2": SigmaDetection([
-                        SigmaDetection([SigmaDetectionItem("CommandLine", ["contains"], [ "test.exe" ])]),
-                        SigmaDetection([SigmaDetectionItem("CommandLine", ["contains"], [ "cmd.exe" ])]),
+                        SigmaDetection([SigmaDetectionItem("CommandLine", [SigmaContainsModifier], [ "*test.exe*" ])]),
+                        SigmaDetection([SigmaDetectionItem("CommandLine", [SigmaContainsModifier], [ "*cmd.exe*" ])]),
                     ]),
                 "selection_3": SigmaDetection([
                     SigmaDetectionItem(None, [], [ "keyword_1" ]),

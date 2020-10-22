@@ -1,13 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import Union, List, Sequence, get_origin, get_args, get_type_hints
+from typing import Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SpecialChars
+from sigma.types import SigmaType, SigmaString, SpecialChars, SigmaRegularExpression
+from sigma.conditions import SigmaConditionOperator
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
 ### Base Classes ###
 class SigmaModifier(ABC):
     """Base class for all Sigma modifiers"""
+    detection_item : "SigmaDetectionItem"
+    applied_modifiers : List["SigmaModifier"]
+
+    def __init__(self, detection_item : "SigmaDetectionItem", applied_modifiers : List["SigmaModifier"]):
+        self.detection_item = detection_item
+        self.applied_modifiers = applied_modifiers
+
     def type_check(self, val : Union[SigmaType, Sequence[SigmaType]], explicit_type=None) -> bool:
         th = explicit_type or get_type_hints(self.modify)["val"]      # get type annotation from val parameter of apply method or explicit_type parameter
         to = get_origin(th)                         # get possible generic type of type hint
@@ -101,13 +109,13 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
             ]
 
 class SigmaWideModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString):
+    def modify(self, val : SigmaString) -> SigmaString:
         r = list()
         for item in val.s:
             if isinstance(item, str):       # put 0x00 after each character by encoding it to utf-16le and decoding it as utf-8
                 try:
                     r.append(item.encode("utf-16le").decode("utf-8"))
-                except UnicodeDecodeError as e:         # this method only works for ascii characters
+                except UnicodeDecodeError:         # this method only works for ascii characters
                     raise SigmaValueError(f"Wide modifier only allowed for ascii strings, input string '{str(val)}' isn't one")
             else:                           # just append special characters without further handling
                 r.append(item)
@@ -116,12 +124,25 @@ class SigmaWideModifier(SigmaValueModifier):
         s.s = tuple(r)
         return(s)
 
+class SigmaRegularExpressionModifier(SigmaValueModifier):
+    def modify(self, val : SigmaString) -> SigmaRegularExpression:
+        if len(self.applied_modifiers) > 0:
+            raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
+        return SigmaRegularExpression(str(val))
+
+class SigmaAllModifier(SigmaListModifier):
+    def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:
+        self.detection_item.value_linking = SigmaConditionOperator.AND
+        return val
+
 # Mapping from modifier identifier strings to modifier classes
-modifier_mapping = {
+modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "contains"     : SigmaContainsModifier,
     "startswith"   : SigmaStartswithModifier,
     "endswith"     : SigmaEndswithModifier,
     "base64"       : SigmaBase64Modifier,
     "base64offset" : SigmaBase64OffsetModifier,
     "wide"         : SigmaWideModifier,
+    "re"           : SigmaRegularExpressionModifier,
+    "all"          : SigmaAllModifier,
 }

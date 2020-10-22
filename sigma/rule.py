@@ -1,10 +1,12 @@
 from dataclasses import dataclass
-from typing import Optional, Union, Sequence, List, Mapping, TypeVar, Type
+from typing import Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
 import yaml
 from sigma.types import SigmaType, SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
+from sigma.conditions import SigmaConditionOperator
 import sigma.exceptions as sigma_exceptions
 
 class SigmaStatus(Enum):
@@ -17,10 +19,6 @@ class SigmaLevel(Enum):
     MEDIUM   = auto()
     HIGH     = auto()
     CRITICAL = auto()
-
-class SigmaConditionOperator(Enum):
-    OR  = auto()
-    AND = auto()
 
 @dataclass
 class SigmaRuleTag:
@@ -83,13 +81,28 @@ class SigmaDetectionItem:
     By default all values are OR-linked but the 'all' modifier can be used to override this behavior.
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
-    modifiers : List[str]
+    modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : SigmaConditionOperator = SigmaConditionOperator.OR
 
-    def __post_init__(self):
-        if "re" in self.modifiers:       # re modifier is already consumed when created from mapping and doesn't appears in modifier chain
-            raise sigma_exceptions.SigmaModifierError("Modifier 're' can only be used as single modifier")
+    def apply_modifiers(self):
+        """
+        Applies modifiers to detection and values
+        """
+        applied_modifiers = list()
+        for modifier in self.modifiers:
+            modifier_instance = modifier(self, applied_modifiers)
+            if isinstance(modifier_instance, SigmaValueModifier):        # Value modifiers are applied to each value separately
+                self.value = [
+                    item
+                    for val in self.value
+                    for item in modifier_instance.apply(val)
+                ]
+            elif isinstance(modifier_instance, SigmaListModifier):       # List modifiers are applied to the whole value list at once
+                self.value = modifier_instance.apply(self.value)
+            else:       # pragma: no cover
+                raise TypeError("Instance of SigmaValueModifier or SigmaListModifier was expected")     # This should only happen if wrong mapping is defined, therefore no test for this case
+            applied_modifiers.append(modifier)
 
     @classmethod
     def from_mapping(
@@ -110,29 +123,33 @@ class SigmaDetectionItem:
         """
         if key is None:     # no key at all means pure keyword detection without value modifiers
             field = None
-            modifiers = list()
+            modifier_ids = list()
         else:               # key-value detection
-            field, *modifiers = key.split("|")
+            field, *modifier_ids = key.split("|")
             if field == "":
                 field = None
+
+        try:
+            modifiers = [
+                modifier_mapping[mod_id]
+                for mod_id in modifier_ids
+            ]
+        except KeyError as e:
+            raise sigma_exceptions.SigmaModifierError(f"Unknown modifier {str(e)}")
 
         if isinstance(val, (int, str)):     # value is plain, convert into single element list
             val = [val]
 
-        if len(modifiers) == 1 and modifiers[0] == "re":      # Regular expressions
-            modifiers = []
-            val = [
-                SigmaRegularExpression(str(v))
-                for v in val
-            ]
-        else:                                               # Map Python types to Sigma typing classes
-            val = [
-                SigmaNumber(v) if isinstance(v, int)
-                else SigmaString(v)
-                for v in val
-            ]
+        # Map Python types to Sigma typing classes
+        val = [
+            SigmaNumber(v) if isinstance(v, int)
+            else SigmaString(v)
+            for v in val
+        ]
 
-        return cls(field, modifiers, val)
+        detection_item = cls(field, modifiers, val)
+        detection_item.apply_modifiers()
+        return detection_item
 
     @classmethod
     def from_value(

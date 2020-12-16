@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaString, SpecialChars, SigmaNumber, SigmaRegularExpression
+from sigma.types import SigmaString, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, sigma_type
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -108,3 +108,21 @@ def test_re_ok():
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaRegularExpression("(test.*")
+
+def test_null_equality():
+    assert SigmaNull() == SigmaNull("foo")
+
+def test_null_inequality():
+    assert SigmaNull() != SigmaString("foo")
+
+def test_conversion_str():
+    assert sigma_type("Test") == SigmaString("Test")
+
+def test_conversion_int():
+    assert sigma_type(123) == SigmaNumber(123)
+
+def test_conversion_float():
+    assert sigma_type(12.34) == SigmaNumber(12.34)
+
+def test_conversion_none():
+    assert sigma_type(None) == SigmaNull()

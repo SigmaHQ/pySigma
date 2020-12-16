@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union, Tuple, Optional
+from typing import Union, Tuple, Optional, Any
 from abc import ABC
 from dataclasses import dataclass
 import re
@@ -23,6 +23,14 @@ special_char_mapping = {
 class SigmaType(ABC):
     """Base class for Sigma value types"""
     pass
+
+class SigmaNull(SigmaType):
+    """Empty/none/null value"""
+    def __init__(self, dummy : Optional[Any] = None):
+        pass
+
+    def __eq__(self, other : "SigmaNull") -> bool:
+        return isinstance(other, self.__class__)
 
 class SigmaString(SigmaType):
     """
@@ -136,7 +144,7 @@ class SigmaString(SigmaType):
 @dataclass
 class SigmaNumber(SigmaType):
     """Numeric value type"""
-    number : int
+    number : Union[int, float]
 
     def __post_init__(self):
         try:
@@ -160,3 +168,16 @@ class SigmaRegularExpression(SigmaType):
             re.compile(self.regexp)
         except re.error as e:
             raise SigmaRegularExpressionError("Invalid regular expression") from e
+
+type_map = {
+    int         : SigmaNumber,
+    float       : SigmaNumber,
+    str         : SigmaString,
+    type(None)  : SigmaNull,
+}
+
+def sigma_type(v : Optional[Union[int, float, str]]):
+    """Return Sigma type from Python value"""
+    for t, st in type_map.items():
+        if isinstance(v, t):
+            return st(v)

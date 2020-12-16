@@ -3,7 +3,7 @@ from typing import Union, Sequence, List
 from sigma.modifiers import SigmaModifier, SigmaContainsModifier, SigmaStartswithModifier, SigmaEndswithModifier, SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaWideModifier, SigmaRegularExpressionModifier, SigmaAllModifier
 from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
-from sigma.conditions import SigmaConditionOperator
+from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
 @pytest.fixture
@@ -122,4 +122,4 @@ def test_all(dummy_detection_item):
         SigmaNumber(123),
         SigmaRegularExpression(".*foobar.*")
         ]
-    assert SigmaAllModifier(dummy_detection_item, []).modify(values) == values and dummy_detection_item.value_linking == SigmaConditionOperator.AND
+    assert SigmaAllModifier(dummy_detection_item, []).modify(values) == values and dummy_detection_item.value_linking == ConditionAND

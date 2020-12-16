@@ -4,7 +4,7 @@ from uuid import UUID
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
 from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
-from sigma.conditions import SigmaConditionOperator
+from sigma.conditions import ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
 
 ### SigmaRuleTag tests ###
@@ -116,7 +116,7 @@ def test_sigmadetectionitem_key_value_modifiers():
             SigmaString("*Zvb2Jhc*"),
             SigmaString("*mb29iYX*"),
         ],
-        SigmaConditionOperator.AND
+        ConditionAND
         )
 
 def test_sigmadetectionitem_key_value_modifiers_invalid_re():
@@ -126,6 +126,27 @@ def test_sigmadetectionitem_key_value_modifiers_invalid_re():
 
 def test_sigmadetectionitem_fromvalue():
     SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
+
+### SigmaDetection tests ###
+
+def test_sigmadetection_items():
+    assert SigmaDetection([
+        SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ]),
+        SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ]),
+    ]).item_linking == ConditionAND
+
+def test_sigmadetection_detections():
+    assert SigmaDetection([
+        SigmaDetection([ SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ])]),
+        SigmaDetection([ SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ])]),
+    ]).item_linking == ConditionOR
+
+def test_sigmadetection_mixed():
+    with pytest.raises(sigma_exceptions.SigmaTypeError):
+        SigmaDetection([
+            SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ]),
+            SigmaDetection([ SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ])]),
+        ])
 
 ### SigmaDetections tests ###
 
@@ -158,9 +179,7 @@ def test_sigmadetections_fromdict():
     assert sigma_detections == SigmaDetections(
             detections = {
                 "keyword_list": SigmaDetection([
-                    SigmaDetectionItem(None, [], [ SigmaString("keyword_1") ]),
-                    SigmaDetectionItem(None, [], [ SigmaString("keyword_2") ]),
-                    SigmaDetectionItem(None, [], [ SigmaNumber(3) ]),
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword_1"), SigmaString("keyword_2"), SigmaNumber(3) ]),
                 ]),
                 "test_list_of_maps": SigmaDetection([
                     SigmaDetection([SigmaDetectionItem("key1", [], [ SigmaString("value1") ])]),
@@ -176,6 +195,21 @@ def test_sigmadetections_fromdict():
             },
             condition = [ condition ],
             )
+
+def test_sigmadetections_index():
+    assert SigmaDetections(
+        detections = {
+            "foo": SigmaDetection([
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword_1") ]),
+            ]),
+            "bar": SigmaDetection([
+                    SigmaDetectionItem(None, [], [ SigmaString("keyword_2") ]),
+            ]),
+        },
+        condition = [ "1 of them" ]
+    )["foo"] == SigmaDetection([
+            SigmaDetectionItem(None, [], [ SigmaString("keyword_1") ]),
+    ])
 
 def test_sigmadetections_fromdict_no_detections():
     with pytest.raises(sigma_exceptions.SigmaDetectionError):
@@ -275,8 +309,7 @@ def test_sigmarule_fromyaml():
                         SigmaDetection([SigmaDetectionItem("CommandLine", [SigmaContainsModifier], [ "*cmd.exe*" ])]),
                     ]),
                 "selection_3": SigmaDetection([
-                    SigmaDetectionItem(None, [], [ "keyword_1" ]),
-                    SigmaDetectionItem(None, [], [ "keyword_2" ]),
+                    SigmaDetectionItem(None, [], [ "keyword_1", "keyword_2" ]),
                 ]),
             },
             condition = [ "1 of them" ],
@@ -291,3 +324,8 @@ def test_sigmarule_fromyaml():
         level = SigmaLevel.LOW,
     )
     assert sigmarule_from_yaml == sigmarule
+
+
+def test_empty_detection():
+    with pytest.raises(sigma_exceptions.SigmaDetectionError):
+        SigmaDetection([])

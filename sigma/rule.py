@@ -1,12 +1,12 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
 import yaml
-from sigma.types import SigmaType, SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
-from sigma.conditions import SigmaConditionOperator
+from sigma.conditions import ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
 import sigma.exceptions as sigma_exceptions
 
 class SigmaStatus(Enum):
@@ -83,7 +83,7 @@ class SigmaDetectionItem:
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
-    value_linking : SigmaConditionOperator = SigmaConditionOperator.OR
+    value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
 
     def apply_modifiers(self):
         """
@@ -141,9 +141,9 @@ class SigmaDetectionItem:
             val = [val]
 
         # Map Python types to Sigma typing classes
+        # TODO: also map None values to SigmaNull
         val = [
-            SigmaNumber(v) if isinstance(v, int)
-            else SigmaString(v)
+            sigma_type(v)
             for v in val
         ]
 
@@ -162,6 +162,44 @@ class SigmaDetectionItem:
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val)
 
+    def postprocess(self, detections : "SigmaDetections") -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
+        if len(self.value) == 0:    # no value: map to none type
+            if self.field is None:
+                raise sigma_exceptions.SigmaConditionError("Null value must be bound to a field")
+            else:
+                return ConditionFieldEqualsValueExpression(self.field, SigmaNull())
+        if len(self.value) == 1:        # single value: return key/value or value-only expression
+            if self.field is None:
+                return ConditionValueExpression(self.value[0])
+            else:
+                return ConditionFieldEqualsValueExpression(self.field, self.value[0])
+        else:     # more than one value, return logically linked values or an "in" expression
+            # special case: "in" expression
+            # field must be present and values must all be basic types without any special characters (e.g. wildcards)
+            # to result in an "in" expression. Reason is, that most backend only support plain values in "in" expressions.
+            if self.field is not None \
+                and all([
+                    isinstance(v, ( SigmaString, SigmaNumber ))
+                    for v in self.value
+                ]) \
+                and not any([
+                    v.contains_special()
+                    for v in self.value
+                    if isinstance(v, SigmaString)
+                ]):
+                return ConditionFieldValueInExpression(self.field, self.value)
+            else:       # default case: AND/OR linked expressions
+                if self.field is None:      # no field - only values
+                    return self.value_linking([
+                        ConditionValueExpression(v)
+                        for v in self.value
+                    ])
+                else:                       # with field - field/value pairs
+                    return self.value_linking([
+                        ConditionFieldEqualsValueExpression(self.field, v)
+                        for v in self.value
+                    ])
+
 @dataclass
 class SigmaDetection:
     """
@@ -175,6 +213,20 @@ class SigmaDetection:
     3. a list of plain values or mappings defined and matched as in 1 where at least one of the items should appear in matched events.
     """
     detection_items : List[Union[SigmaDetectionItem, "SigmaDetection"]]
+    item_linking : Union[Type[ConditionAND], Type[ConditionOR]] = field(init=False)
+
+    def __post_init__(self):
+        """Check detection validity."""
+        if len(self.detection_items) == 0:
+            raise sigma_exceptions.SigmaDetectionError("Detection is empty")
+
+        type_set = { type(item) for item in self.detection_items }
+        if len(type_set) > 1:
+            raise sigma_exceptions.SigmaTypeError("Sigma detection can't contain different typed items")
+        if type_set == { SigmaDetectionItem }:
+            self.item_linking = ConditionAND
+        else:
+            self.item_linking = ConditionOR
 
     @classmethod
     def from_definition(cls, definition : Union[Mapping, Sequence]) -> "SigmaDetection":
@@ -188,13 +240,30 @@ class SigmaDetection:
         elif isinstance(definition, (str, int)):    # plain value (case 2)
             return cls(detection_items=[SigmaDetectionItem.from_value(definition)])
         elif isinstance(definition, Sequence):  # list of items (case 3)
-            return cls(
+            if { type(item) for item in definition }.issubset({ str, int }):    # list of values: create one detection item containing all values
+                return cls(
                     detection_items=[
-                        SigmaDetectionItem.from_value(item) if isinstance(item, (str, int))     # SigmaDetectionItem in case of a plain value or a list of plain values
-                        else SigmaDetection.from_definition(item)                               # nested SigmaDetection in other cases
-                        for item in definition
-                        ]
-                    )
+                        SigmaDetectionItem.from_value(definition)
+                    ]
+                )
+            else:
+                return cls(
+                        detection_items=[
+                            SigmaDetection.from_definition(item)                               # nested SigmaDetection in other cases
+                            for item in definition
+                            ]
+                        )
+
+    def postprocess(self, detections : "SigmaDetections") -> Union[ConditionAND, ConditionOR]:
+        """Convert detection item into condition tree element"""
+        items = [
+            detection_item.postprocess(detections)
+            for detection_item in self.detection_items
+        ]
+        if len(items) == 1:     # no boolean linking required, directly return single element
+            return items[0]
+        elif len(items) > 1:
+            return self.item_linking(items)
 
 @dataclass
 class SigmaDetections:
@@ -225,6 +294,10 @@ class SigmaDetections:
                     },
                 condition=condition,
                 )
+
+    def __getitem__(self, key : str) -> SigmaDetection:
+        """Get detection by name"""
+        return self.detections[key]
 
 @dataclass
 class SigmaRule:

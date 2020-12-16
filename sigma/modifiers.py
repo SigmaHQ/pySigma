@@ -3,7 +3,7 @@ from typing import Union, List, Sequence, Dict, Type, get_origin, get_args, get_
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
 from sigma.types import SigmaType, SigmaString, SpecialChars, SigmaRegularExpression
-from sigma.conditions import SigmaConditionOperator
+from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
 ### Base Classes ###
@@ -132,7 +132,7 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
 
 class SigmaAllModifier(SigmaListModifier):
     def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:
-        self.detection_item.value_linking = SigmaConditionOperator.AND
+        self.detection_item.value_linking = ConditionAND
         return val
 
 # Mapping from modifier identifier strings to modifier classes

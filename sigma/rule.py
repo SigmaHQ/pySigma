@@ -6,7 +6,7 @@ from datetime import date
 import yaml
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
-from sigma.conditions import ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
+from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
 import sigma.exceptions as sigma_exceptions
 
 class SigmaStatus(Enum):
@@ -275,6 +275,10 @@ class SigmaDetections:
         """Detections sanity checks"""
         if self.detections == dict():
             raise sigma_exceptions.SigmaDetectionError("No detections defined in Sigma rule")
+        self.parsed_condition = [
+            SigmaCondition(cond, self)
+            for cond in self.condition
+        ]
 
     @classmethod
     def from_dict(cls, detections : dict) -> "SigmaDetections":

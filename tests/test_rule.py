@@ -4,7 +4,7 @@ from uuid import UUID
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
 from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
-from sigma.conditions import ConditionAND, ConditionOR
+from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
 
 ### SigmaRuleTag tests ###
@@ -195,6 +195,7 @@ def test_sigmadetections_fromdict():
             },
             condition = [ condition ],
             )
+    assert isinstance(sigma_detections.parsed_condition[0], SigmaCondition)
 
 def test_sigmadetections_index():
     assert SigmaDetections(

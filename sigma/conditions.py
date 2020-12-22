@@ -135,7 +135,7 @@ condition = infixNotation(
 @dataclass
 class SigmaCondition:
     condition : str
-    detections : "SigmaDetections"
+    detections : "sigma.rule.SigmaDetections"
 
     def __post_init__(self):
         parsed = condition.parseString(self.condition)[0]

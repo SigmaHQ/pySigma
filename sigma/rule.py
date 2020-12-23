@@ -312,7 +312,7 @@ class SigmaRule:
     references : List[str]
     tags : Optional[List[SigmaRuleTag]]
     author : Optional[str]
-    date : date
+    date : Optional[date]
     logsource : SigmaLogSource
     detection : SigmaDetections
     fields : Optional[List[str]]

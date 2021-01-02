@@ -45,3 +45,7 @@ class SigmaValueError(SigmaError):
 class SigmaRegularExpressionError(SigmaValueError):
     """Error in regular expression contained in Sigma rule"""
     pass
+
+class SigmaCollectionError(SigmaError):
+    """Error in Sigma collection, e.g. unknown action"""
+    pass

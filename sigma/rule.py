@@ -33,9 +33,9 @@ class SigmaRuleTag:
 
 @dataclass
 class SigmaLogSource:
-    category : Optional[str]
-    product : Optional[str]
-    service : Optional[str]
+    category : Optional[str] = field(default=None)
+    product : Optional[str] = field(default=None)
+    service : Optional[str] = field(default=None)
 
     def __post_init__(self):
         """Ensures that log source is not empty."""
@@ -289,12 +289,12 @@ class SigmaDetections:
                 condition = [ detections["condition"] ]
         except KeyError:
             raise sigma_exceptions.SigmaConditionError("Sigma rule must contain at least one condition")
-        del detections["condition"]
 
         return cls(
                 detections={
                     name: SigmaDetection.from_definition(definition)
                     for name, definition in detections.items()
+                    if name != "condition"
                     },
                 condition=condition,
                 )

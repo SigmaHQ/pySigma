@@ -15,11 +15,11 @@ def test_field_mapping(dummy_pipeline):
             "category": "test"
         },
         "detection": {
-            "test": {
+            "test": [{
                 "field1": "value1",
                 "field2": "value2",
                 "field3": "value3",
-            },
+            }],
             "condition": "test",
         }
     })
@@ -29,10 +29,12 @@ def test_field_mapping(dummy_pipeline):
     })
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection([
-        SigmaDetectionItem("fieldA", [], [ SigmaString("value1") ]),
-        SigmaDetectionItem("field2", [], [ SigmaString("value2") ]),
-        SigmaDetection([
-            SigmaDetectionItem("fieldC", [], [ SigmaString("value3") ]),
-            SigmaDetectionItem("fieldD", [], [ SigmaString("value3") ]),
+            SigmaDetection([
+            SigmaDetectionItem("fieldA", [], [ SigmaString("value1") ]),
+            SigmaDetectionItem("field2", [], [ SigmaString("value2") ]),
+            SigmaDetection([
+                SigmaDetectionItem("fieldC", [], [ SigmaString("value3") ]),
+                SigmaDetectionItem("fieldD", [], [ SigmaString("value3") ]),
+            ])
         ])
     ])

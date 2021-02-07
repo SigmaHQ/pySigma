@@ -49,3 +49,7 @@ class SigmaRegularExpressionError(SigmaValueError):
 class SigmaCollectionError(SigmaError):
     """Error in Sigma collection, e.g. unknown action"""
     pass
+
+class SigmaConfigurationError(SigmaError):
+    """Error in configuration of a Sigma processing pipeline"""
+    pass

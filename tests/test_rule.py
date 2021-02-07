@@ -142,11 +142,10 @@ def test_sigmadetection_detections():
     ]).item_linking == ConditionOR
 
 def test_sigmadetection_mixed():
-    with pytest.raises(sigma_exceptions.SigmaTypeError):
-        SigmaDetection([
-            SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ]),
-            SigmaDetection([ SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ])]),
-        ])
+    assert SigmaDetection([
+        SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ]),
+        SigmaDetection([ SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ])]),
+    ]).item_linking == ConditionAND
 
 ### SigmaDetections tests ###
 

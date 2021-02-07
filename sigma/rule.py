@@ -221,9 +221,7 @@ class SigmaDetection:
             raise sigma_exceptions.SigmaDetectionError("Detection is empty")
 
         type_set = { type(item) for item in self.detection_items }
-        if len(type_set) > 1:
-            raise sigma_exceptions.SigmaTypeError("Sigma detection can't contain different typed items")
-        if type_set == { SigmaDetectionItem }:
+        if SigmaDetectionItem in type_set:
             self.item_linking = ConditionAND
         else:
             self.item_linking = ConditionOR

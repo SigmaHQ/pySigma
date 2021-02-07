@@ -36,7 +36,7 @@ class SigmaCollection:
             if not base_path.is_dir():
                 raise SigmaCollectionError(f"Provided base path '{ base_path_name }' is not a directory.")
 
-        for i, rule in zip(range(1, len(rules) + 1), rules):
+        for i, rule in enumerate(rules):
             if rule.get("action", "") == "include":
                 # Security checks against path traversal: include action in a collection can only reference rule files in the same path as the collection
                 if base_path_name is None:

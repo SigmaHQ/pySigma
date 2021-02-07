@@ -27,7 +27,7 @@ class ProcessingItem:
         # Condition
         conds = list()
         cond_defs = d.get("conditions", list())
-        for i, cond_def in zip(range(len(cond_defs)), cond_defs):
+        for i, cond_def in enumerate(cond_defs):
             try:
                 cond_type = cond_def["type"]
             except KeyError:
@@ -113,7 +113,7 @@ class ProcessingPipeline:
         vars = d.get("vars", dict())        # default: no variables
         items = d.get("transformations", list())      # default: no transformation
         processing_items = list()
-        for i, item in zip(range(len(items)), items):
+        for i, item in enumerate(items):
             try:
                 processing_items.append(ProcessingItem.from_dict(item))
             except SigmaConfigurationError as e:

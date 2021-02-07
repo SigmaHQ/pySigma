@@ -1,8 +1,5 @@
 test:
-	python -m pytest --cov=sigma -vv
-
-covreport:
-	python -m pytest --cov=sigma --cov-report xml:cov.xml
+	python -m pytest -vv
 
 build:
 	poetry build

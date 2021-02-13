@@ -131,3 +131,12 @@ class ProcessingPipeline:
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)
         return rule
+
+    def __add__(self, other : "ProcessingPipeline") -> "ProcessingPipeline":
+        """Concatenate two processing pipelines and merge their variables."""
+        if not isinstance(other, self.__class__):
+            raise TypeError("Processing pipeline must be merged with another one.")
+        return self.__class__(
+            items=self.items + other.items,
+            vars = { **self.vars, **other.vars }
+        )

@@ -309,3 +309,57 @@ def test_processingpipeline_apply_partial(sigma_rule):
     assert result_rule.title == "TestAppended" \
         and pipeline.applied == [False, True] \
         and pipeline.applied_ids == { "append" }
+
+def test_processingpipeline_concatenation():
+    p1 = ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=TransformationPrepend(s="Pre"),
+                identifier="pre",
+            ),
+        ],
+        vars={
+            "a": 1,
+            "b": 2,
+        }
+    )
+    p2 = ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=TransformationAppend(s="Append"),
+                identifier="append",
+            ),
+        ],
+        vars={
+            "b": 3,
+            "c": 4,
+        }
+    )
+    assert p1 + p2 == ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=TransformationPrepend(s="Pre"),
+                identifier="pre",
+            ),
+            ProcessingItem(
+                transformation=TransformationAppend(s="Append"),
+                identifier="append",
+            ),
+        ],
+        vars={
+            "a": 1,
+            "b": 3,
+            "c": 4,
+        }
+    )
+
+def test_processingpipeline_invalid_concatenation():
+    with pytest.raises(TypeError):
+        ProcessingPipeline(
+            items=[
+                ProcessingItem(
+                    transformation=TransformationAppend(s="Append"),
+                    identifier="append",
+                ),
+            ],
+        ) + 3

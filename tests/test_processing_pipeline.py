@@ -1,6 +1,7 @@
 import pytest
 from dataclasses import dataclass
 import re
+from textwrap import dedent
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import conditions, ProcessingCondition
 from sigma.processing.transformations import transformations, Transformation
@@ -274,6 +275,26 @@ def test_processingpipeline_fromdict(processing_item_dict, processing_item, proc
         "transformations": [ processing_item_dict ],
         "vars": processing_pipeline_vars,
     }) == ProcessingPipeline(
+        items=[ processing_item ],
+        vars=processing_pipeline_vars,
+    )
+
+def test_processingpipeline_fromyaml(processing_item_dict, processing_item, processing_pipeline_vars):
+    assert ProcessingPipeline.from_yaml("""
+        transformations:
+            - id: test
+              conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              cond_op: or
+              type: append
+              s: Test
+        vars:
+            test_string: abc
+            test_number: 123
+    """) == ProcessingPipeline(
         items=[ processing_item ],
         vars=processing_pipeline_vars,
     )

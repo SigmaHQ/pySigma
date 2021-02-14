@@ -4,6 +4,7 @@ from sigma.rule import SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import conditions, ProcessingCondition
 from sigma.exceptions import SigmaConfigurationError
+import yaml
 
 @dataclass
 class ProcessingItem:
@@ -120,6 +121,12 @@ class ProcessingPipeline:
                 raise SigmaConfigurationError(f"Error in processing rule { i + 1 }: { str(e) }") from e
 
         return cls(processing_items, vars)
+
+    @classmethod
+    def from_yaml(cls, processing_pipeline : str) -> "ProcessingPipeline":
+        """Convert YAML input string into processing pipeline."""
+        parsed_pipeline = yaml.safe_load(processing_pipeline)
+        return cls.from_dict(parsed_pipeline)
 
     def apply(self, rule : SigmaRule) -> SigmaRule:
         """Apply processing pipeline on Sigma rule."""

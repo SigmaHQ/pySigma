@@ -92,6 +92,20 @@ def test_strings_to_bytes():
 def test_strings_len():
     assert len(SigmaString("foo*bar?")) == 8
 
+def test_strings_iter():
+    assert list(SigmaString("foo*bar")) == ["f", "o", "o", SpecialChars.WILDCARD_MULTI, "b", "a", "r"]
+
+def test_strings_convert():
+    assert SigmaString("foo?\\*bar*").convert(add_escaped="f", filter_chars="o") == "\\f?\\*bar*"
+
+def test_strings_convert_no_multiwildcard():
+    with pytest.raises(SigmaValueError, match="Multi-character wildcard"):
+        SigmaString("foo*bar").convert(wildcard_multi=None)
+
+def test_strings_convert_no_singlewildcard():
+    with pytest.raises(SigmaValueError, match="Single-character wildcard"):
+        SigmaString("foo?bar").convert(wildcard_single=None)
+
 def test_number_equal():
     assert SigmaNumber(123) == SigmaNumber(123)
 
@@ -108,6 +122,9 @@ def test_re_ok():
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaRegularExpression("(test.*")
+
+def test_re_escape():
+    assert SigmaRegularExpression("foo\\d+bar-test").escape(("foo", "-", "t"), "\\") == "\\foo\\\\d+bar\\-\\tes\\t"
 
 def test_null_equality():
     assert SigmaNull() == SigmaNull("foo")

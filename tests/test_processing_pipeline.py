@@ -243,8 +243,8 @@ def test_processingitem_fromdict_unknown_transformation_parameter():
         })
 
 def test_processingitem_apply(processing_item, dummy_processing_pipeline, sigma_rule):
-    result_rule, applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
-    assert applied and result_rule.title == "TestTest"
+    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    assert applied and sigma_rule.title == "TestTest"
 
 def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
@@ -255,8 +255,8 @@ def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipelin
             ConditionFalse(dummy="test-false"),
         ],
     )
-    result_rule, applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
-    assert not applied and result_rule.title == "Test"
+    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    assert not applied and sigma_rule.title == "Test"
 
 def test_processingitem_apply_notapplied_any_without_true(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
@@ -267,8 +267,8 @@ def test_processingitem_apply_notapplied_any_without_true(dummy_processing_pipel
             ConditionFalse(dummy="test-false"),
         ],
     )
-    result_rule, applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
-    assert not applied and result_rule.title == "Test"
+    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    assert not applied and sigma_rule.title == "Test"
 
 def test_processingpipeline_fromdict(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_dict({
@@ -302,6 +302,16 @@ def test_processingpipeline_fromyaml(processing_item_dict, processing_item, proc
 def test_processingpipeline_fromdict_error(processing_item_dict_with_error):
     with pytest.raises(SigmaConfigurationError, match="Error in processing rule 1:.*2"):
         ProcessingPipeline.from_dict({ "transformations": [ processing_item_dict_with_error ], })
+
+def test_processingpipeline_error_direct_transofrmations(sigma_rule):
+    """Common error: passing transformations directly instead wrapped in ProcessingItem objects. This should raise an error."""
+    with pytest.raises(TypeError, match="must be a ProcessingItem"):
+        ProcessingPipeline(
+            items=[
+                TransformationPrepend(s="Pre"),
+                TransformationAppend(s="Appended"),
+            ]
+        )
 
 def test_processingpipeline_apply(sigma_rule):
     pipeline = ProcessingPipeline(

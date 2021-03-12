@@ -209,8 +209,8 @@ def test_empty_field_detection(sigma_detections):
 
 def test_undefined_identifier(sigma_simple_detections):
     with pytest.raises(SigmaConditionError):
-        SigmaCondition("detection", sigma_simple_detections)
+        SigmaCondition("detection", sigma_simple_detections).parsed
 
 def test_null_keyword(sigma_invalid_detections):
     with pytest.raises(SigmaConditionError):
-        SigmaCondition("null-keyword", sigma_invalid_detections)
+        SigmaCondition("null-keyword", sigma_invalid_detections).parsed

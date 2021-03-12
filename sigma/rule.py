@@ -111,6 +111,7 @@ class SigmaDetectionItem:
             val : Union[
                 List[Union[int, str]],
                 Union[int, str],
+                None,
                 ]
             ) -> "SigmaDetectionItem":
         """
@@ -139,6 +140,8 @@ class SigmaDetectionItem:
 
         if isinstance(val, (int, str)):     # value is plain, convert into single element list
             val = [val]
+        elif val is None:
+            val = [None]
 
         # Map Python types to Sigma typing classes
         # TODO: also map None values to SigmaNull

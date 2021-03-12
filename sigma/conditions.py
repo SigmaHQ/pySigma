@@ -137,6 +137,24 @@ class SigmaCondition:
     condition : str
     detections : "sigma.rule.SigmaDetections"
 
-    def __post_init__(self):
+    @property
+    def parsed(self):
+        """
+        Parse on first access on parsed condition tree.
+
+        The main reason for this behavior is that rule processing occurrs after rule-parsing time. Therefore,
+        the condition parsing has to be delayed after the processing, as field name or value changes have to be
+        reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
+        state of the rule.
+        """
         parsed = condition.parseString(self.condition)[0]
-        self.parsed = parsed.postprocess(self.detections)
+        return parsed.postprocess(self.detections)
+
+ConditionType = Union[
+    ConditionOR,
+    ConditionAND,
+    ConditionNOT,
+    ConditionFieldEqualsValueExpression,
+    ConditionFieldValueInExpression,
+    ConditionValueExpression,
+]

@@ -2,7 +2,7 @@ import pytest
 from datetime import date
 from uuid import UUID
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
@@ -94,13 +94,17 @@ def test_sigmadetectionitem_key_value_single_string():
     """Key-value detection with one value."""
     assert SigmaDetectionItem.from_mapping("key", "value") == SigmaDetectionItem("key", [], [SigmaString("value")])
 
-def test_sigmadetectionitem_key_value_single_regexp():
-    """Key-value detection with one value."""
-    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp") == SigmaDetectionItem("key", [SigmaRegularExpressionModifier], [SigmaRegularExpression("reg.*exp")])
-
 def test_sigmadetectionitem_key_value_single_number():
     """Key-value detection with one value."""
     assert SigmaDetectionItem.from_mapping("key", 123) == SigmaDetectionItem("key", [], [SigmaNumber(123)])
+
+def test_sigmadetectionitem_key_value_none():
+    """Key-value detection with none value."""
+    assert SigmaDetectionItem.from_mapping("key", None) == SigmaDetectionItem("key", [], [SigmaNull()])
+
+def test_sigmadetectionitem_key_value_single_regexp():
+    """Key-value detection with one value."""
+    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp") == SigmaDetectionItem("key", [SigmaRegularExpressionModifier], [SigmaRegularExpression("reg.*exp")])
 
 def test_sigmadetectionitem_key_value_list():
     """Key-value detection with value list."""

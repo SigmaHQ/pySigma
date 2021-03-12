@@ -14,7 +14,7 @@ class Transformation(ABC):
         return cls(**d)
 
     @abstractmethod
-    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> SigmaRule:
+    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         """Apply transformation on Sigma rule."""
 
 class DetectionItemTransformation(Transformation):
@@ -37,7 +37,7 @@ class DetectionItemTransformation(Transformation):
                 if (r := self.apply_detection_item(detection_item)) is not None:
                     detection.detection_items[i] = r
 
-    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> SigmaRule:
+    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         for detection in rule.detection.detections.values():
             self.apply_detection(detection)
 

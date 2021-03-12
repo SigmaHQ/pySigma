@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union, Tuple, Optional, Any
+from typing import Union, Tuple, Optional, Any, Iterable
 from abc import ABC
 from dataclasses import dataclass
 import re
@@ -141,6 +141,56 @@ class SigmaString(SigmaType):
             for item in self.s
         ])
 
+    def __iter__(self) -> Iterable[Union[str, SpecialChars]]:
+        for item in self.s:
+            if isinstance(item, str):       # yield single characters of string parts
+                for char in item:
+                    yield char
+            else:
+                yield item
+
+    def convert(
+            self,
+            escape_char : Optional[str] = "\\",
+            wildcard_multi : Optional[str] = "*",
+            wildcard_single : Optional[str] = "?",
+            add_escaped : str = "",
+            filter_chars : str = "",
+        ) -> str:
+        """
+        Convert SigmaString into a query string or pattern. The following parameters allow to change the behavior:
+
+        * escape_char: the character used to escape special characters. By default these are only the wildcard characters.
+        * wildcard_multi and wildcard_single: strings that should be output as wildcards for multiple and single characters.
+        * add_escaped: characters which are escaped in addition to the wildcards
+        * filter_chars: characters that are filtered out.
+
+        Setting one of the wildcard or multiple parameters to None indicates that this feature is not supported. Appearance
+        of these characters in a string will raise a SigmaValueError.
+        """
+        s = ""
+        escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
+
+        for c in self:
+            if isinstance(c, str):      # c is plain character
+                if c in filter_chars:   # Skip filtered characters
+                    continue
+                if c in escaped_chars:
+                    s += escape_char
+                s += c
+            else:                       # special handling for special characters
+                if c == SpecialChars.WILDCARD_MULTI:
+                    if wildcard_multi is not None:
+                        s += wildcard_multi
+                    else:
+                        raise SigmaValueError("Multi-character wildcard not specified for conversion")
+                elif c == SpecialChars.WILDCARD_SINGLE:
+                    if wildcard_single is not None:
+                        s += wildcard_single
+                    else:
+                        raise SigmaValueError("Single-character wildcard not specified for conversion")
+        return s
+
 @dataclass
 class SigmaNumber(SigmaType):
     """Numeric value type"""
@@ -151,6 +201,9 @@ class SigmaNumber(SigmaType):
             self.number = int(self.number)
         except ValueError as e:
             raise SigmaValueError("Invalid number") from e
+
+    def __str__(self):
+        return str(self.number)
 
     def __eq__(self, other : Union["SigmaNumber", int]) -> bool:
         if isinstance(other, int):
@@ -168,6 +221,20 @@ class SigmaRegularExpression(SigmaType):
             re.compile(self.regexp)
         except re.error as e:
             raise SigmaRegularExpressionError("Invalid regular expression") from e
+
+    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\") -> str:
+        """Escape strings from escaped tuple as well as escape_char itself with escape_char."""
+        r = "|".join([ re.escape(e) for e in [*escaped, escape_char]])      # Generate regulear expressions from sequences that should be escaped and the escape char itself
+        pos = [     # determine positions of matches in regular expression
+            m.start()
+            for m in re.finditer(r, self.regexp)
+        ]
+        ranges = zip([None, *pos], [*pos, None])    # string chunk ranges with escapes in between
+        ranges = list(ranges)
+        return escape_char.join([
+            self.regexp[i:j]
+            for i,j in ranges
+        ])
 
 type_map = {
     int         : SigmaNumber,

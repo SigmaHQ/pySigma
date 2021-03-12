@@ -87,9 +87,10 @@ class ProcessingItem:
                 condition.match(pipeline, rule)
                 for condition in self.conditions
             ]):     # apply transformation if conditions match or no condition defined
-            return self.transformation.apply(pipeline, rule), True
+            self.transformation.apply(pipeline, rule)
+            return True
         else:       # just pass rule through
-            return rule, False
+            return False
 
 @dataclass
 class ProcessingPipeline:
@@ -105,8 +106,12 @@ class ProcessingPipeline:
     appearance in a rule file or include order. Further, processing pipelines can be chained and contain
     variables that can be used from processing items.
     """
-    items : List[ProcessingItem]
+    items : List[ProcessingItem] = field(default_factory=list)
     vars  : Dict[str, Any] = field(default_factory=dict)
+
+    def __post_init__(self):
+        if not all((isinstance(item, ProcessingItem) for item in self.items)):
+            raise TypeError("Each item in a processing pipeline must be a ProcessingItem - don't use processing classes directly!")
 
     @classmethod
     def from_dict(cls, d : dict) -> "ProcessingPipeline":
@@ -133,7 +138,7 @@ class ProcessingPipeline:
         self.applied = list()
         self.applied_ids = set()
         for item in self.items:
-            rule, applied = item.apply(self, rule)
+            applied = item.apply(self, rule)
             self.applied.append(applied)
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)

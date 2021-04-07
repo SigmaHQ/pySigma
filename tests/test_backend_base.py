@@ -29,7 +29,9 @@ class TextQueryTestBackend(TextQueryBackend):
     field_in_list_expression : ClassVar[str] = "{field} in ({list})"
     list_separator : ClassVar[str] = ", "
 
-    unbound_value_expression : ClassVar[str] = '_="{value}"'
+    unbound_value_str_expression : ClassVar[str] = '_="{value}"'
+    unbound_value_num_expression : ClassVar[str] = '_={value}'
+    unbound_value_re_expression : ClassVar[str] = '_=/{value}/'
 
     backend_processing_pipeline = ProcessingPipeline([
         ProcessingItem(FieldMappingTransformation({
@@ -119,7 +121,22 @@ def test_convert_value_regex(test_backend):
                     fieldA|re: pat.*tern/foobar
                 condition: sel
         """)
-    ) == ['mappedA=/pat.*tern\/foo\\bar/']
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/']
+
+def test_convert_value_regex_unbound(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|re": pat.*tern/foobar
+                condition: sel
+        """)
+    ) == ['_=/pat.*tern\\/foo\\bar/']
 
 def test_convert_value_in_list(test_backend):
     assert test_backend.convert(
@@ -151,10 +168,10 @@ def test_convert_unbound_values(test_backend):
                 sel:
                     - value1
                     - value2
-                    - value3
+                    - 123
                 condition: sel
         """)
-    ) == ['_="value1" or _="value2" or _="value3"']
+    ) == ['_="value1" or _="value2" or _=123']
 
 def test_convert_and(test_backend):
     assert test_backend.convert(

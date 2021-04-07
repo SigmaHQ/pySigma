@@ -217,7 +217,9 @@ class TextQueryBackend(Backend):
     list_separator : ClassVar[Optional[str]] = None     # List element separator
 
     # Value not bound to a field
-    unbound_value_expression : ClassVar[Optional[str]] = None   # Expression for value not bound to a field as format string with placeholder {value}
+    unbound_value_str_expression : ClassVar[Optional[str]] = None   # Expression for string value not bound to a field as format string with placeholder {value}
+    unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
+    unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
         """
@@ -319,6 +321,25 @@ class TextQueryBackend(Backend):
             ]),
         )
 
+    def convert_condition_val_str(self, cond : ConditionValueExpression) -> str:
+        """Conversion of value-only strings."""
+        return self.unbound_value_str_expression.format(value=self.convert_value_str(cond.value))
+
+    def convert_condition_val_num(self, cond : ConditionValueExpression) -> str:
+        """Conversion of value-only strings."""
+        return self.unbound_value_num_expression.format(value=cond.value)
+
+    def convert_condition_val_re(self, cond : ConditionValueExpression) -> str:
+        """Conversion of value-only strings."""
+        return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
+
     def convert_condition_val(self, cond : ConditionValueExpression) -> str:
         """Conversion of value-only conditions."""
-        return self.unbound_value_expression.format(value=cond.value)
+        if isinstance(cond.value, SigmaString):
+            return self.convert_condition_val_str(cond)
+        elif isinstance(cond.value, SigmaNumber):
+            return self.convert_condition_val_num(cond)
+        elif isinstance(cond.value, SigmaRegularExpression):
+            return self.convert_condition_val_re(cond)
+        else:       # pragma: no cover
+            raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)

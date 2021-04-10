@@ -2,7 +2,9 @@ from sigma.collection import SigmaCollection
 from sigma.backends.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation
-from typing import ClassVar
+from sigma.types import SigmaCompareExpression
+from sigma.exceptions import SigmaTypeError
+from typing import ClassVar, Dict
 import pytest
 
 class TextQueryTestBackend(TextQueryBackend):
@@ -23,6 +25,14 @@ class TextQueryTestBackend(TextQueryBackend):
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[str] = ("/", "bar")
+
+    compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
+    compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
+        SigmaCompareExpression.CompareOperators.LT  : "<",
+        SigmaCompareExpression.CompareOperators.LTE : "<=",
+        SigmaCompareExpression.CompareOperators.GT  : ">",
+        SigmaCompareExpression.CompareOperators.GTE : ">=",
+    }
 
     field_null_expression : ClassVar[str] = "{field} is null"
 
@@ -137,6 +147,39 @@ def test_convert_value_regex_unbound(test_backend):
                 condition: sel
         """)
     ) == ['_=/pat.*tern\\/foo\\bar/']
+
+def test_convert_compare(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|lt: 123
+                    fieldB|lte: 123
+                    fieldC|gt: 123
+                    fieldD|gte: 123
+                condition: sel
+        """)
+    ) == ['mappedA<123 and mappedB<=123 and fieldC>123 and fieldD>=123']
+
+def test_convert_compare_str(test_backend):
+    with pytest.raises(SigmaTypeError, match="incompatible to value type"):
+        test_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|lt: test
+                    condition: sel
+            """))
 
 def test_convert_value_in_list(test_backend):
     assert test_backend.convert(

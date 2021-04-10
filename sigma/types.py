@@ -2,8 +2,9 @@ from enum import Enum, auto
 from typing import Union, Tuple, Optional, Any, Iterable
 from abc import ABC
 from dataclasses import dataclass
+from enum import Enum, auto
 import re
-from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError
+from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
 
 class SpecialChars(Enum):
     """Enumeration of supported special characters"""
@@ -213,6 +214,7 @@ class SigmaNumber(SigmaType):
 
 @dataclass
 class SigmaRegularExpression(SigmaType):
+    """Regular expression type"""
     regexp : str
 
     def __post_init__(self):
@@ -235,6 +237,21 @@ class SigmaRegularExpression(SigmaType):
             self.regexp[i:j]
             for i,j in ranges
         ])
+
+@dataclass
+class SigmaCompareExpression(SigmaType):
+    class CompareOperators(Enum):
+        LT  = auto()    # <
+        LTE = auto()    # <=
+        GT  = auto()    # >
+        GTE = auto()    # >=
+
+    number : SigmaNumber
+    op : CompareOperators
+
+    def __post_init__(self):
+        if not isinstance(self.number, SigmaNumber):
+            raise SigmaTypeError("Compare operator expects number")
 
 type_map = {
     int         : SigmaNumber,

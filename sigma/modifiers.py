@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
-from typing import Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
+from typing import ClassVar, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SpecialChars, SigmaRegularExpression
+from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -135,14 +135,37 @@ class SigmaAllModifier(SigmaListModifier):
         self.detection_item.value_linking = ConditionAND
         return val
 
+class SigmaCompareModifier(SigmaValueModifier):
+    """Base class for numeric comparison operator modifiers."""
+    op : ClassVar[SigmaCompareExpression.CompareOperators]
+
+    def modify(self, val : SigmaNumber) -> SigmaCompareExpression:
+        return SigmaCompareExpression(val, self.op)
+
+class SigmaLessThanModifier(SigmaCompareModifier):
+    op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.LT
+
+class SigmaLessThanEqualModifier(SigmaCompareModifier):
+    op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.LTE
+
+class SigmaGreaterThanModifier(SigmaCompareModifier):
+    op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GT
+
+class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
+    op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GTE
+
 # Mapping from modifier identifier strings to modifier classes
 modifier_mapping : Dict[str, Type[SigmaModifier]] = {
-    "contains"     : SigmaContainsModifier,
-    "startswith"   : SigmaStartswithModifier,
-    "endswith"     : SigmaEndswithModifier,
-    "base64"       : SigmaBase64Modifier,
-    "base64offset" : SigmaBase64OffsetModifier,
-    "wide"         : SigmaWideModifier,
-    "re"           : SigmaRegularExpressionModifier,
-    "all"          : SigmaAllModifier,
+    "contains"      : SigmaContainsModifier,
+    "startswith"    : SigmaStartswithModifier,
+    "endswith"      : SigmaEndswithModifier,
+    "base64"        : SigmaBase64Modifier,
+    "base64offset"  : SigmaBase64OffsetModifier,
+    "wide"          : SigmaWideModifier,
+    "re"            : SigmaRegularExpressionModifier,
+    "all"           : SigmaAllModifier,
+    "lt"            : SigmaLessThanModifier,
+    "lte"           : SigmaLessThanEqualModifier,
+    "gt"            : SigmaGreaterThanModifier,
+    "gte"           : SigmaGreaterThanEqualModifier,
 }

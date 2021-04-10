@@ -1,8 +1,21 @@
 import pytest
 from typing import Union, Sequence, List
-from sigma.modifiers import SigmaModifier, SigmaContainsModifier, SigmaStartswithModifier, SigmaEndswithModifier, SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaWideModifier, SigmaRegularExpressionModifier, SigmaAllModifier
+from sigma.modifiers import \
+    SigmaModifier, \
+    SigmaContainsModifier, \
+    SigmaStartswithModifier, \
+    SigmaEndswithModifier, \
+    SigmaBase64Modifier, \
+    SigmaBase64OffsetModifier, \
+    SigmaWideModifier, \
+    SigmaRegularExpressionModifier, \
+    SigmaAllModifier, \
+    SigmaLessThanModifier, \
+    SigmaLessThanEqualModifier, \
+    SigmaGreaterThanModifier, \
+    SigmaGreaterThanEqualModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression
+from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -123,3 +136,19 @@ def test_all(dummy_detection_item):
         SigmaRegularExpression(".*foobar.*")
         ]
     assert SigmaAllModifier(dummy_detection_item, []).modify(values) == values and dummy_detection_item.value_linking == ConditionAND
+
+def test_lt(dummy_detection_item):
+    assert SigmaLessThanModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.LT)
+
+def test_lte(dummy_detection_item):
+    assert SigmaLessThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.LTE)
+
+def test_gt(dummy_detection_item):
+    assert SigmaGreaterThanModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GT)
+
+def test_gte(dummy_detection_item):
+    assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
+
+def test_compare_string(dummy_detection_item):
+    with pytest.raises(SigmaTypeError, match="expects number"):
+        SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaString("123"))

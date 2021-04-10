@@ -4,7 +4,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaNull
+from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull
 
 class Backend(ABC):
     """
@@ -111,6 +111,10 @@ class Backend(ABC):
         """Conversion of field matches regular expression value expressions"""
 
     @abstractmethod
+    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+        """Conversion of field matches regular expression value expressions"""
+
+    @abstractmethod
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression) -> Any:
         """Conversion of field is null expression value expressions"""
 
@@ -122,6 +126,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_num(cond)
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_field_eq_val_re(cond)
+        elif isinstance(cond.value, SigmaCompareExpression):
+            return self.convert_condition_field_compare_op_val(cond)
         elif isinstance(cond.value, SigmaNull):
             return self.convert_condition_field_eq_val_null(cond)
         else:       # pragma: no cover
@@ -208,6 +214,10 @@ class TextQueryBackend(Backend):
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
+
+    # Numeric comparison operators
+    compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
+    compare_operators : ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = None       # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
 
     # Null/None expressions
     field_null_expression : ClassVar[Optional[str]] = None          # Expression for field has null value as format string with {field} placeholder for field name
@@ -300,10 +310,17 @@ class TextQueryBackend(Backend):
         return r.escape(self.re_escape, self.re_escape_char)
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression) -> str:
-        """Conversion of field matches regular expression value expressions"""
+        """Conversion of field matches regular expression value expressions."""
         return self.re_expression.format(
             field=cond.field,
             regex=self.convert_value_re(cond.value),
+        )
+    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> str:
+        """Conversion of numeric comparison operations into queries."""
+        return self.compare_op_expression.format(
+            field=cond.field,
+            operator=self.compare_operators[cond.value.op],
+            value=cond.value.number,
         )
 
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression) -> str:
@@ -326,11 +343,11 @@ class TextQueryBackend(Backend):
         return self.unbound_value_str_expression.format(value=self.convert_value_str(cond.value))
 
     def convert_condition_val_num(self, cond : ConditionValueExpression) -> str:
-        """Conversion of value-only strings."""
+        """Conversion of value-only numbers."""
         return self.unbound_value_num_expression.format(value=cond.value)
 
     def convert_condition_val_re(self, cond : ConditionValueExpression) -> str:
-        """Conversion of value-only strings."""
+        """Conversion of value-only regular expressions."""
         return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
 
     def convert_condition_val(self, cond : ConditionValueExpression) -> str:

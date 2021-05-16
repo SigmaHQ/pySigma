@@ -94,7 +94,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
     start_offsets = (0, 2, 3)
     end_offsets = (None, -3, -2)
 
-    def modify(self, val : SigmaString) -> Sequence[SigmaString]:
+    def modify(self, val : SigmaString) -> List[SigmaString]:
         if val.contains_special():
             raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed")
         return [
@@ -154,6 +154,15 @@ class SigmaGreaterThanModifier(SigmaCompareModifier):
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GTE
 
+class SigmaExpandModifier(SigmaValueModifier):
+    """
+    Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
+    with stub objects that are later expanded to one or multiple strings or replaced with some SIEM
+    specific list item or lookup by the processing pipeline.
+    """
+    def modify(self, val : SigmaString) -> SigmaString:
+        return val.insert_placeholders()
+
 # Mapping from modifier identifier strings to modifier classes
 modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "contains"      : SigmaContainsModifier,
@@ -168,4 +177,5 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "lte"           : SigmaLessThanEqualModifier,
     "gt"            : SigmaGreaterThanModifier,
     "gte"           : SigmaGreaterThanEqualModifier,
+    "expand"        : SigmaExpandModifier,
 }

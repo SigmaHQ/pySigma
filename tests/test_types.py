@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaString, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, sigma_type
+from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, sigma_type
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -7,6 +7,21 @@ def test_strings_empty():
 
 def test_strings_plain():
     assert SigmaString("plain").s == ( "plain", )
+
+def test_strings_merge():
+    s = SigmaString()
+    s.s = (SpecialChars.WILDCARD_MULTI, "te", "st", SpecialChars.WILDCARD_MULTI)
+    assert s._merge_strs().s == (SpecialChars.WILDCARD_MULTI, "test", SpecialChars.WILDCARD_MULTI)
+
+def test_strings_merge_end():
+    s = SigmaString()
+    s.s = (SpecialChars.WILDCARD_MULTI, "test", SpecialChars.WILDCARD_MULTI, "te", "st", "test")
+    assert s._merge_strs().s == (SpecialChars.WILDCARD_MULTI, "test", SpecialChars.WILDCARD_MULTI, "testtest")
+
+def test_strings_merge_start():
+    s = SigmaString()
+    s.s = ("te", "st", "test", SpecialChars.WILDCARD_MULTI, "test", SpecialChars.WILDCARD_MULTI)
+    assert s._merge_strs().s == ("testtest", SpecialChars.WILDCARD_MULTI, "test", SpecialChars.WILDCARD_MULTI)
 
 def test_strings_wildcards():
     assert SigmaString("wild*cards?contained").s == ( "wild", SpecialChars.WILDCARD_MULTI, "cards", SpecialChars.WILDCARD_SINGLE, "contained" )
@@ -19,6 +34,29 @@ def test_strings_escaping_nonspecial():
 
 def test_strings_escaping_end():
     assert SigmaString("finalescape\\").s == ( "finalescape\\", )
+
+def test_string_placeholders_single():
+    assert SigmaString("test1%var%test2").insert_placeholders().s == ("test1", Placeholder("var"), "test2")
+
+def test_string_placeholders_multi():
+    assert SigmaString("%start%te*st1%middle%te?st2%end%").insert_placeholders().s == (Placeholder("start"), "te", SpecialChars.WILDCARD_MULTI, "st1", Placeholder("middle"), "te", SpecialChars.WILDCARD_SINGLE, "st2", Placeholder("end"))
+
+def test_string_placeholders_replace():
+    def callback(p):
+        yield from ["A", SpecialChars.WILDCARD_MULTI]
+
+    assert SigmaString("test%var1%something%var2%end").insert_placeholders().replace_placeholders(callback) == [
+        SigmaString("testAsomethingAend"),
+        SigmaString("testAsomething*end"),
+        SigmaString("test*somethingAend"),
+        SigmaString("test*something*end"),
+    ]
+
+def test_string_placeholders_escape():
+    assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == ("%test1%test2%", Placeholder("var"), "%test3%")
+
+def test_string_placeholders_contains():
+    assert SigmaString("test1%var%test2").insert_placeholders().contains_placeholder()
 
 def test_strings_equal():
     assert SigmaString("test*string") == SigmaString("test*string")

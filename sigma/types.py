@@ -1,7 +1,7 @@
 from enum import Enum, auto
-from typing import Union, Tuple, Optional, Any, Iterable
+from typing import Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum, auto
 import re
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
@@ -10,6 +10,14 @@ class SpecialChars(Enum):
     """Enumeration of supported special characters"""
     WILDCARD_MULTI = auto()
     WILDCARD_SINGLE = auto()
+
+@dataclass
+class Placeholder:
+    """
+    Placeholder class used as stub in a SigmaString to be later replaced by a value contained in a string or
+    receives some configuration-specific special treatmeant, e.g. replacement with a SIEM specific list item.
+    """
+    name : str
 
 escape_char = "\\"
 char_mapping = {
@@ -37,7 +45,7 @@ class SigmaString(SigmaType):
     """
     Strings in Sigma detection values containing wildcards.
     """
-    s : Tuple[Union[str, SpecialChars]]      # the string is represented as sequence of strings and characters with special meaning
+    s : Tuple[Union[str, SpecialChars, Placeholder]]      # the string is represented as sequence of strings and characters with special meaning
 
     def __init__(self, s : Optional[str] = None):
         """
@@ -74,23 +82,63 @@ class SigmaString(SigmaType):
         if acc != "":                   # append accumulated remainder
             r.append(acc)
         self.s = tuple(r)
-        self.protected = True
 
-    def __add__(self, other: Union["SigmaString", str, SpecialChars]) -> "SigmaString":
+    def insert_placeholders(self) -> "SigmaString":
+        """
+        Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
+        pipeline. This implements the expand modifier.
+        """
+        res = []
+        for part in self.s:     # iterate over all parts and...
+            if isinstance(part, str):       # ...search in strings...
+                lastpos = 0
+                for m in re.finditer("(?<!\\\\)%(?P<name>\\w+)%", part): # ...for placeholders
+                    s = part[lastpos:m.start()].replace("\\%", "%")
+                    if s != "":
+                        res.append(s)         # append everything until placeholder (if not empty) as string part to new string
+                    res.append(Placeholder(m["name"]))          # insert placeholder stub at position of placeholder
+                    lastpos = m.end()
+                s = part[lastpos:].replace("\\%", "%")
+                if s != "":
+                    res.append(s)   # append everything from end of last placeholder until end of string (if not empty) to result string
+            else:               # special characters are passed to the result
+                res.append(part)
+        self.s = tuple(res)     # finally replace the string with the result
+
+        return self
+
+    def _merge_strs(self) -> "SigmaString":
+        """Merge consecutive plain strings in self.s."""
+        src = list(reversed(self.s))
+        res = []
+        while src:
+            item = src.pop()
+            try:
+                if isinstance(res[-1], str) and isinstance(item, str):  # append current item to last result element if both are strings
+                    res[-1] += item
+                else:
+                    res.append(item)
+            except IndexError:  # first element
+                res.append(item)
+
+        self.s = tuple(res)
+        return self
+
+    def __add__(self, other: Union["SigmaString", str, SpecialChars, Placeholder]) -> "SigmaString":
         s = self.__class__()
         if isinstance(other, self.__class__):
             s.s = self.s + other.s
-        elif isinstance(other, (str, SpecialChars)):
+        elif isinstance(other, (str, SpecialChars, Placeholder)):
             s.s = self.s + (other,)
         else:
             return NotImplemented
-        return s
+        return s._merge_strs()
 
-    def __radd__(self, other: Union[str, SpecialChars]) -> "SigmaString":
-        if isinstance(other, (str, SpecialChars)):
+    def __radd__(self, other: Union[str, SpecialChars, Placeholder]) -> "SigmaString":
+        if isinstance(other, (str, SpecialChars, Placeholder)):
             s = self.__class__()
             s.s = (other,) + self.s
-            return s
+            return s._merge_strs()
         else:
             return NotImplemented
 
@@ -141,6 +189,43 @@ class SigmaString(SigmaType):
             isinstance(item, SpecialChars)
             for item in self.s
         ])
+
+    def contains_placeholder(self) -> bool:
+        """Check if string contains placeholders."""
+        return any([
+            isinstance(item, Placeholder)
+            for item in self.s
+        ])
+
+    def replace_placeholders(self, callback : Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]) -> List["SigmaString"]:
+        """
+        Iterate over all placeholders and call the callback for each one. The callback is called with the placeholder instance
+        as argument and yields replacement values (plain strings or SpecialChars instances). Each yielded replacement value
+        is concatenated to the SigmaString prefix before the placeholder and the method is called recursively with the suffix
+        after the placeholder. All placeholder replacements are combined with all returned SigmaString suffixes. Therefore,
+        the callback could be called multiple times with the same placeholder instance and should return the same results to ensure
+        a consistent result.
+
+        The callback can return a plain string, a SpecialChars instance (for insertion of wildcards) or a Placeholder (e.g. to keep
+        the placeholder for later processing pipeline items).
+        """
+        if not self.contains_placeholder():     # return unchanged string in a list if it doesn't contains placeholders
+            return [ self ]
+
+        s = self.s
+        for i in range(len(s)):
+            if isinstance(s[i], Placeholder):   # Placeholder instance at index, do replacement
+                prefix = SigmaString()
+                prefix.s = s[:i]
+                placeholder = s[i]
+                suffix = SigmaString()
+                suffix.s = s[i+1:]
+                return [
+                    prefix + replacement + result_suffix
+                    for replacement in callback(placeholder)                        # iterate over all callback result values
+                    for result_suffix in suffix.replace_placeholders(callback)      # iterate over all result values of calling this method with the SigmaString remainder
+                ]
+
 
     def __iter__(self) -> Iterable[Union[str, SpecialChars]]:
         for item in self.s:

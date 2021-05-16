@@ -13,9 +13,10 @@ from sigma.modifiers import \
     SigmaLessThanModifier, \
     SigmaLessThanEqualModifier, \
     SigmaGreaterThanModifier, \
-    SigmaGreaterThanEqualModifier
+    SigmaGreaterThanEqualModifier, \
+    SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -152,3 +153,6 @@ def test_gte(dummy_detection_item):
 def test_compare_string(dummy_detection_item):
     with pytest.raises(SigmaTypeError, match="expects number"):
         SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaString("123"))
+
+def test_expand(dummy_detection_item):
+    assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == ("test", Placeholder("var"), "test")

@@ -206,11 +206,31 @@ class WildcardPlaceholderTransformation(BasePlaceholderTransformation):
     be replaced with something meaningful to make conversion of rules possible without defining the
     placeholders content.
     """
-    def placeholder_replacements(self, p: Placeholder) -> Iterator[SpecialChars]:
+    def placeholder_replacements(self, p : Placeholder) -> Iterator[SpecialChars]:
         return [ SpecialChars.WILDCARD_MULTI ]
+
+@dataclass
+class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
+    """
+    Replaces placeholders with values contained in variables defined in the configuration.
+    """
+    def placeholder_replacements(self, p : Placeholder) -> Iterator[SpecialChars]:
+        try:
+            values = self.pipeline.vars[p.name]
+        except KeyError:
+            raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
+
+        if not isinstance(values, List):
+            values = [ values ]
+
+        if { isinstance(item, (str, int, float)) for item in values } != { True }:
+            raise SigmaValueError(f"Replacement variable '{ p.name }' contains value which is not a string or number.")
+
+        return [ str(v) for v in values ]
 
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
     "wildcard_placeholders": WildcardPlaceholderTransformation,
+    "value_placeholders": ValueListPlaceholderTransformation,
 }

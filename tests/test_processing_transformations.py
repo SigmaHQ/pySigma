@@ -1,5 +1,5 @@
 import pytest
-from sigma.processing.transformations import FieldMappingTransformation, AddFieldnameSuffixTransformation, WildcardPlaceholderTransformation
+from sigma.processing.transformations import FieldMappingTransformation, AddFieldnameSuffixTransformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaString, SpecialChars
@@ -39,6 +39,21 @@ def sigma_rule_placeholders():
                 "field1|expand": "value%var1%test",
                 "field2|expand": "value%var2%test%var3%",
                 "field3|expand": "value%var1%test%var2%test%var3%test",
+            }],
+            "condition": "test",
+        }
+    })
+
+@pytest.fixture
+def sigma_rule_placeholders_simple():
+    return SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {
+            "category": "test"
+        },
+        "detection": {
+            "test": [{
+                "field|expand": "value%var1%test%var2%end",
             }],
             "condition": "test",
         }
@@ -146,3 +161,28 @@ def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule :
             SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
         ])
     ])
+
+def test_valuelist_placeholders(sigma_rule_placeholders_simple : SigmaRule):
+    transformation = ValueListPlaceholderTransformation()
+    pipeline = ProcessingPipeline([], { "var1": ["val1", 123], "var2": "val3"})
+    transformation.apply(pipeline, sigma_rule_placeholders_simple)
+    assert sigma_rule_placeholders_simple.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field", [SigmaExpandModifier], [
+                SigmaString("valueval1testval3end"),
+                SigmaString("value123testval3end"),
+            ]),
+        ])
+    ])
+
+def test_valuelist_placeholders_missing(sigma_rule_placeholders_simple : SigmaRule):
+    transformation = ValueListPlaceholderTransformation()
+    pipeline = ProcessingPipeline([], { "var1": "val1" })
+    with pytest.raises(SigmaValueError, match="doesn't exist"):
+        transformation.apply(pipeline, sigma_rule_placeholders_simple)
+
+def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple : SigmaRule):
+    transformation = ValueListPlaceholderTransformation()
+    pipeline = ProcessingPipeline([], { "var1": None })
+    with pytest.raises(SigmaValueError, match="not a string or number"):
+        transformation.apply(pipeline, sigma_rule_placeholders_simple)

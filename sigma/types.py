@@ -338,6 +338,22 @@ class SigmaCompareExpression(SigmaType):
         if not isinstance(self.number, SigmaNumber):
             raise SigmaTypeError("Compare operator expects number")
 
+@dataclass
+class SigmaQueryExpression(SigmaType):
+    """
+    Special purpose type for passing a query part (e.g. list lookups in placeholders) directly into the generated
+    query without any further processing. Because this is very specific to the target language, it has to be used
+    in late stages of the conversion process by backend-specific processing pipelines or the backend itself.
+    """
+    expr : str
+
+    def __post_init__(self):
+        if not isinstance(self.expr, str):
+            raise SigmaTypeError("SigmaQueryExpression must be a string")
+
+    def __str__(self):
+        return self.expr
+
 type_map = {
     int         : SigmaNumber,
     float       : SigmaNumber,

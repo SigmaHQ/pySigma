@@ -1,8 +1,8 @@
 import pytest
-from sigma.processing.transformations import FieldMappingTransformation, AddFieldnameSuffixTransformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation
+from sigma.processing.transformations import FieldMappingTransformation, AddFieldnameSuffixTransformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
-from sigma.types import Placeholder, SigmaString, SpecialChars
+from sigma.types import Placeholder, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
 from sigma.exceptions import SigmaConfigurationError, SigmaValueError
 
@@ -54,6 +54,23 @@ def sigma_rule_placeholders_simple():
         "detection": {
             "test": [{
                 "field|expand": "value%var1%test%var2%end",
+            }],
+            "condition": "test",
+        }
+    })
+
+@pytest.fixture
+def sigma_rule_placeholders_only():
+    return SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {
+            "category": "test"
+        },
+        "detection": {
+            "test": [{
+                "field1|expand": "%var1%",
+                "field2|expand": "%var2%",
+                "field3|expand": "%var3%",
             }],
             "condition": "test",
         }
@@ -131,7 +148,7 @@ def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders : SigmaRu
         ])
     ])
 
-def test_wildcard_placeholder_include_and_exclude_error():
+def test_wildcard_placeholders_include_and_exclude_error():
     with pytest.raises(SigmaConfigurationError, match="exclusively"):
         WildcardPlaceholderTransformation(include=["included_field"], exclude=["excluded_field"])
 
@@ -186,3 +203,39 @@ def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple : Sigm
     pipeline = ProcessingPipeline([], { "var1": None })
     with pytest.raises(SigmaValueError, match="not a string or number"):
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
+
+def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only : SigmaRule):
+    transformation = QueryExpressionPlaceholderTransformation(
+        expression="{field} lookup {id}",
+        mapping={
+            "var2": "placeholder2"
+        }
+    )
+    transformation.apply(dummy_pipeline, sigma_rule_placeholders_only)
+    assert sigma_rule_placeholders_only.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [SigmaExpandModifier], [ SigmaQueryExpression("field1 lookup var1") ]),
+            SigmaDetectionItem("field2", [SigmaExpandModifier], [ SigmaQueryExpression("field2 lookup placeholder2") ]),
+            SigmaDetectionItem("field3", [SigmaExpandModifier], [ SigmaQueryExpression("field3 lookup var3") ]),
+        ])
+    ])
+
+def test_queryexpr_placeholders_without_placeholders(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = QueryExpressionPlaceholderTransformation(
+        expression="{field} lookup {id}",
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("value1") ]),
+            SigmaDetectionItem("field2", [], [ SigmaString("value2") ]),
+            SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
+        ])
+    ])
+
+def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placeholders : SigmaRule):
+    transformation = QueryExpressionPlaceholderTransformation(
+        expression="{field} lookup {id}",
+    )
+    with pytest.raises(SigmaValueError, match="only allows placeholder-only strings"):
+        transformation.apply(dummy_pipeline, sigma_rule_placeholders)

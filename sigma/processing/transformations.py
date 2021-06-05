@@ -5,7 +5,7 @@ import dataclasses
 import re
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaValueError, SigmaConfigurationError
-from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars
+from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
 
 @dataclass
 class Transformation(ABC):
@@ -54,7 +54,7 @@ class ValueTransformation(DetectionItemTransformation):
     def __post_init__(self):
         argtypes = list(self.apply_value.__annotations__.values())      # get type annotations of apply_value method
         try:        # try to extract type annotation of first argument and derive accepted types
-            argtype = argtypes[0]
+            argtype = argtypes[1]
             if hasattr(argtype, "__origin__") and argtype.__origin__ is Union:      # if annotation is an union the list of types is contained in __args__
                 self.value_types = argtype.__args__
             else:
@@ -67,10 +67,10 @@ class ValueTransformation(DetectionItemTransformation):
         results = []
         for value in detection_item.value:
             if self.value_types is None or isinstance(value, self.value_types):     # run replacement if no type annotation is defined or matching to type of value
-                res = self.apply_value(value)
+                res = self.apply_value(detection_item.field, value)
                 if value is None:       # no value returned: drop value
                     pass
-                elif isinstance(value, Iterable):
+                elif isinstance(res, Iterable):
                     results.extend(res)
                 else:
                     results.append(res)
@@ -79,7 +79,7 @@ class ValueTransformation(DetectionItemTransformation):
         detection_item.value = results
 
     @abstractmethod
-    def apply_value(self, val : SigmaType) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
+    def apply_value(self, field : str, val : SigmaType) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
         """
         Perform a value transformation. This method can return:
 
@@ -155,12 +155,7 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
                     continue
 
 @dataclass
-class BasePlaceholderTransformation(ValueTransformation):
-    """
-    Placeholder base transformation. The parameters include and exclude can contain variable names that
-    are handled by this transformation. Unhandled placeholders are left as they are and must be handled by
-    later transformations.
-    """
+class PlaceholderIncludeExcludeMixin:
     include : List[str] = field(default_factory=list)
     exclude : List[str] = field(default_factory=list)
 
@@ -169,7 +164,22 @@ class BasePlaceholderTransformation(ValueTransformation):
         if len(self.include) > 0 and len(self.exclude) > 0:
             raise SigmaConfigurationError("Placeholder transformation include and exclude lists can only be used exclusively!")
 
-    def apply_value(self, val: SigmaString) -> Union[SigmaString, Iterable[SigmaString]]:
+    def is_handled_placeholder(self, p : Placeholder) -> bool:
+        return  (len(self.include) == 0 and len(self.exclude) == 0) or \
+            (len(self.include) > 0 and p.name in self.include) or \
+            (len(self.exclude) > 0 and p.name not in self.exclude)
+
+@dataclass
+class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
+    """
+    Placeholder base transformation. The parameters include and exclude can contain variable names that
+    are handled by this transformation. Unhandled placeholders are left as they are and must be handled by
+    later transformations.
+    """
+    def __post_init__(self):
+        super().__post_init__()
+
+    def apply_value(self, field : str, val: SigmaString) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder():
             return val.replace_placeholders(self.placeholder_replacements_base)
         else:
@@ -180,9 +190,7 @@ class BasePlaceholderTransformation(ValueTransformation):
         Base placeholder replacement callback. Calls real callback if placeholder is included or not excluded,
         else it passes the placeholder back to caller.
         """
-        if  (len(self.include) == 0 and len(self.exclude) == 0) or \
-            (len(self.include) > 0 and p.name in self.include) or \
-            (len(self.exclude) > 0 and p.name not in self.exclude):
+        if self.is_handled_placeholder(p):
             yield from self.placeholder_replacements(p)
         else:
             yield p
@@ -228,9 +236,36 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
 
         return [ str(v) for v in values ]
 
+@dataclass
+class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
+    """
+    Replaces a placeholder with a plain query containing the placeholder or an identifier
+    mapped from the placeholder name. The main purpose is the generation of arbitrary
+    list lookup expressions which are passed to the resulting query.
+
+    Parameters:
+    * expression: string that contains query expression with {field} and {id} placeholder
+      where placeholder identifier or a mapped identifier is inserted.
+    * mapping: Mapping between placeholders and identifiers that should be used in the expression.
+      If no mapping is provided the placeholder name is used.
+    """
+    expression : str = ""
+    mapping : Dict[str, str] = field(default_factory=dict)
+
+    def apply_value(self, field : str, val: SigmaString) -> Union[SigmaString, Iterable[SigmaString]]:
+        if val.contains_placeholder():
+            if len(val.s) == 1:     # Sigma string must only contain placeholder, nothing else.
+                p = val.s[0]
+                if self.is_handled_placeholder(p):
+                    return SigmaQueryExpression(self.expression.format(field=field, id=self.mapping.get(p.name) or p.name))
+            else:       # SigmaString contains placeholder as well as other parts
+                raise SigmaValueError(f"Placeholder query expression transformation only allows placeholder-only strings.")
+        return [ val ]
+
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
     "wildcard_placeholders": WildcardPlaceholderTransformation,
     "value_placeholders": ValueListPlaceholderTransformation,
+    "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
 }

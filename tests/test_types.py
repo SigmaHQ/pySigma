@@ -1,6 +1,6 @@
 import pytest
-from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, sigma_type
-from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError
+from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type
+from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
     assert SigmaString().s == tuple()
@@ -181,3 +181,10 @@ def test_conversion_float():
 
 def test_conversion_none():
     assert sigma_type(None) == SigmaNull()
+
+def test_query_expression():
+    assert str(SigmaQueryExpression("test\\test*test?test[]")) == "test\\test*test?test[]"
+
+def test_query_expression_wrong_type():
+    with pytest.raises(SigmaTypeError, match="must be a string"):
+        SigmaQueryExpression(123)

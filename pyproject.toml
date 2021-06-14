@@ -1,0 +1,27 @@
+[tool.poetry]
+name = "sigmatools"
+version = "1.0.0"
+description = "Sigma rule processing and conversion tools"
+authors = ["Thomas Patzke <thomas@patzke.org>"]
+packages = [
+    { include = "sigma" }
+]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+pyyaml = "^5.3.1"
+pyparsing = "^2.4.7"
+
+[tool.poetry.dev-dependencies]
+pytest = "^6.2.2"
+pytest-cov = "^2.11.1"
+pytest-mypy = "^0.6.2"
+pylint = "^2.6.0"
+rope = "^0.18.0"
+
+[build-system]
+requires = ["poetry>=1.1.2"]
+build-backend = "poetry.masonry.api"
+
+[tool.pytest.ini_options]
+addopts = "--cov=sigma --cov-report term --cov-report xml:cov.xml -vv"

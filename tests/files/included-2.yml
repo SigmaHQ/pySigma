@@ -1,0 +1,7 @@
+title: Test 2
+logsource:
+  category: test
+detection:
+  test:
+    field: value
+  condition: test

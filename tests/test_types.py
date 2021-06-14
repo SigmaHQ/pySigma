@@ -185,6 +185,13 @@ def test_conversion_none():
 def test_query_expression():
     assert str(SigmaQueryExpression("test\\test*test?test[]")) == "test\\test*test?test[]"
 
+def test_query_expression_finalize():
+    assert SigmaQueryExpression("xxx{field}zzz").finalize("yyy") == "xxxyyyzzz"
+
+def test_query_expression_finalize_nofield_error():
+    with pytest.raises(SigmaValueError, match="no field was given"):
+        SigmaQueryExpression("xxx{field}zzz").finalize()
+
 def test_query_expression_wrong_type():
     with pytest.raises(SigmaTypeError, match="must be a string"):
         SigmaQueryExpression(123)

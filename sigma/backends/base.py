@@ -4,7 +4,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull
+from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression
 
 class Backend(ABC):
     """
@@ -118,6 +118,10 @@ class Backend(ABC):
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression) -> Any:
         """Conversion of field is null expression value expressions"""
 
+    @abstractmethod
+    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+        """Conversion of query expressions bound to a field."""
+
     def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
         if isinstance(cond.value, SigmaString):
@@ -130,6 +134,8 @@ class Backend(ABC):
             return self.convert_condition_field_compare_op_val(cond)
         elif isinstance(cond.value, SigmaNull):
             return self.convert_condition_field_eq_val_null(cond)
+        elif isinstance(cond.value, SigmaQueryExpression):
+            return self.convert_condition_field_eq_query_expr(cond)
         else:       # pragma: no cover
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
@@ -143,8 +149,33 @@ class Backend(ABC):
         """
 
     @abstractmethod
-    def convert_condition_val(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_val_str(self, cond : ConditionValueExpression) -> Any:
+        """Conversion of string-only conditions."""
+
+    @abstractmethod
+    def convert_condition_val_num(self, cond : ConditionValueExpression) -> Any:
+        """Conversion of number-only conditions."""
+
+    @abstractmethod
+    def convert_condition_val_re(self, cond : ConditionValueExpression) -> Any:
+        """Conversion of regexp-only conditions."""
+
+    @abstractmethod
+    def convert_condition_query_expr(self, cond : ConditionValueExpression) -> Any:
+        """Conversion of query expressions without field association."""
+
+    def convert_condition_val(self, cond : ConditionValueExpression) -> str:
         """Conversion of value-only conditions."""
+        if isinstance(cond.value, SigmaString):
+            return self.convert_condition_val_str(cond)
+        elif isinstance(cond.value, SigmaNumber):
+            return self.convert_condition_val_num(cond)
+        elif isinstance(cond.value, SigmaRegularExpression):
+            return self.convert_condition_val_re(cond)
+        elif isinstance(cond.value, SigmaQueryExpression):
+            return self.convert_condition_query_expr(cond)
+        else:       # pragma: no cover
+            raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
     def convert_condition(
         self,
@@ -327,6 +358,10 @@ class TextQueryBackend(Backend):
         """Conversion of field is null expression value expressions"""
         return self.field_null_expression.format(field=cond.field)
 
+    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression) -> str:
+        """Conversion of field is null expression value expressions"""
+        return cond.value.finalize(field=cond.field)
+
     def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression) -> str:
         """Conversion of field in value list conditions."""
         return self.field_in_list_expression.format(
@@ -350,13 +385,6 @@ class TextQueryBackend(Backend):
         """Conversion of value-only regular expressions."""
         return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
 
-    def convert_condition_val(self, cond : ConditionValueExpression) -> str:
-        """Conversion of value-only conditions."""
-        if isinstance(cond.value, SigmaString):
-            return self.convert_condition_val_str(cond)
-        elif isinstance(cond.value, SigmaNumber):
-            return self.convert_condition_val_num(cond)
-        elif isinstance(cond.value, SigmaRegularExpression):
-            return self.convert_condition_val_re(cond)
-        else:       # pragma: no cover
-            raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
+    def convert_condition_query_expr(self, cond : ConditionValueExpression) -> str:
+        """Conversion of value-only regular expressions."""
+        return cond.value.finalize()

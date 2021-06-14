@@ -342,8 +342,11 @@ class SigmaCompareExpression(SigmaType):
 class SigmaQueryExpression(SigmaType):
     """
     Special purpose type for passing a query part (e.g. list lookups in placeholders) directly into the generated
-    query without any further processing. Because this is very specific to the target language, it has to be used
-    in late stages of the conversion process by backend-specific processing pipelines or the backend itself.
+    query. The query string may contain a {field} placeholder, which is replaced with the field name contained in
+    the detection item containing the query expression. This is done by the finalize method.
+
+    Because this is very specific to the target language, it has to be used in late stages of the conversion
+    process by backend-specific processing pipelines or the backend itself.
     """
     expr : str
 
@@ -353,6 +356,14 @@ class SigmaQueryExpression(SigmaType):
 
     def __str__(self):
         return self.expr
+
+    def has_field_placeholder(self) -> bool:
+        return "{field}" in self.expr
+
+    def finalize(self, field : Optional[str] = None) -> str:
+        if field is None and self.has_field_placeholder():
+            raise SigmaValueError(f"Query expression '{ self.expr }' has a field placeholder but no field was given in finalization")
+        return self.expr.format(field=field)
 
 type_map = {
     int         : SigmaNumber,

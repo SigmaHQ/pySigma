@@ -1,7 +1,7 @@
 from sigma.collection import SigmaCollection
 from sigma.backends.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation
+from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError
 from typing import ClassVar, Dict
@@ -117,6 +117,44 @@ def test_convert_value_null(test_backend):
                 condition: sel
         """)
     ) == ['mappedA is null']
+
+def test_convert_query_expr():
+    pipeline = ProcessingPipeline([
+        ProcessingItem(QueryExpressionPlaceholderTransformation(expression="{field} in list({id})"))
+    ])
+    backend = TextQueryTestBackend(pipeline)
+    assert backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|expand: "%test%"
+                condition: sel
+        """)
+    ) == ['mappedA in list(test)']
+
+def test_convert_query_expr_unbound():
+    pipeline = ProcessingPipeline([
+        ProcessingItem(QueryExpressionPlaceholderTransformation(expression="_ in list({id})"))
+    ])
+    backend = TextQueryTestBackend(pipeline)
+    assert backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|expand": "%test%"
+                condition: sel
+        """)
+    ) == ['_ in list(test)']
 
 def test_convert_value_regex(test_backend):
     assert test_backend.convert(

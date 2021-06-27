@@ -9,6 +9,7 @@ from sigma.modifiers import \
     SigmaBase64OffsetModifier, \
     SigmaWideModifier, \
     SigmaRegularExpressionModifier, \
+    SigmaCidrv4ExpressionModifier, \
     SigmaAllModifier, \
     SigmaLessThanModifier, \
     SigmaLessThanEqualModifier, \
@@ -16,7 +17,7 @@ from sigma.modifiers import \
     SigmaGreaterThanEqualModifier, \
     SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCidrv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -125,6 +126,12 @@ def test_wide_noascii(dummy_detection_item):
 
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
+
+def test_cidrv4(dummy_detection_item):
+    assert SigmaCidrv4ExpressionModifier(dummy_detection_item, []).modify(SigmaString("192.168.10.0/24"),False) == [ SigmaString("192.168.10.0/24") ]
+
+def test_cidrv4_with_asterisk(dummy_detection_item):
+    assert SigmaCidrv4ExpressionModifier(dummy_detection_item, []).modify(SigmaString("192.168.10.0/24"),True) == [ SigmaString("192.168.10.*") ]
 
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError):

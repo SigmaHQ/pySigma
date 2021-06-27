@@ -324,6 +324,20 @@ class SigmaRegularExpression(SigmaType):
         ])
 
 @dataclass
+class SigmaCidrv4Expression(SigmaType):
+    """Regular expression type"""
+    cidr : str
+
+    def __post_init__(self):
+        """Verify if cidr is valid by re"""
+        reg = re.compile(r'^\d+\.\d+\.\d+\.\d+/\d+$')
+        if reg.match(self.cidr) :
+            pass 
+        else:
+            raise SigmaTypeError("Invalid IP v4 cidr expression")
+
+
+@dataclass
 class SigmaCompareExpression(SigmaType):
     class CompareOperators(Enum):
         LT  = auto()    # <

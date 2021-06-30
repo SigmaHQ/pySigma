@@ -5,6 +5,7 @@ from dataclasses import dataclass, replace
 from enum import Enum, auto
 import re
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
+from ipaddress import ip_network
 
 class SpecialChars(Enum):
     """Enumeration of supported special characters"""
@@ -325,16 +326,52 @@ class SigmaRegularExpression(SigmaType):
 
 @dataclass
 class SigmaCidrv4Expression(SigmaType):
-    """Regular expression type"""
+    """Cidrv4 expression type"""
     cidr : str
 
     def __post_init__(self):
         """Verify if cidr is valid by re"""
-        reg = re.compile(r'^\d+\.\d+\.\d+\.\d+/\d+$')
+        reg = re.compile(r'[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}')
         if reg.match(self.cidr) :
             pass 
         else:
             raise SigmaTypeError("Invalid IP v4 cidr expression")
+
+    def convert(
+            self,
+            wildcard : Optional[str] = "*",
+        ) -> str:
+        """
+        Convert SigmaString into a query string or pattern. The following parameters allow to change the behavior:
+
+        * wildcard: strings that should be output as wildcards .
+
+        Setting wildcard to None indicates that this feature is not need.
+        """
+        if wildcard == None:
+            return [self]
+        else:
+            subnet = int (str(val).split('/')[1])
+            if subnet <= 8 :
+                new_sub = 8
+                remp_old = '0/8'
+                remp_new = '*'
+            elif subnet <= 16:
+                new_sub = 16
+                remp_old = '0/16'
+                remp_new = '*'
+            elif subnet <= 24:
+                new_sub = 24
+                remp_old = '0/24'
+                remp_new = '*'
+            elif subnet <= 32:
+                new_sub = 32
+                remp_old = '/32'
+                remp_new = ''
+            ip_range = list(ip_network(str(val)).subnets(new_prefix=new_sub))
+            list_ip = [str(ip_sub).replace(remp_old,remp_new) for ip_sub in ip_range]
+            return list_ip
+
 
 
 @dataclass

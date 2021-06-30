@@ -9,7 +9,7 @@ from sigma.modifiers import \
     SigmaBase64OffsetModifier, \
     SigmaWideModifier, \
     SigmaRegularExpressionModifier, \
-    SigmaCidrv4ExpressionModifier, \
+    SigmaCIDRv4Modifier, \
     SigmaAllModifier, \
     SigmaLessThanModifier, \
     SigmaLessThanEqualModifier, \
@@ -17,7 +17,7 @@ from sigma.modifiers import \
     SigmaGreaterThanEqualModifier, \
     SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCidrv4Expression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -128,7 +128,7 @@ def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
 def test_re_with_other(dummy_detection_item):
-    with pytest.raises(SigmaValueError):
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
 
 def test_all(dummy_detection_item):
@@ -157,3 +157,14 @@ def test_compare_string(dummy_detection_item):
 
 def test_expand(dummy_detection_item):
     assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == ("test", Placeholder("var"), "test")
+
+def test_cidrv4(dummy_detection_item):
+    assert SigmaCIDRv4Modifier(dummy_detection_item, []).modify(SigmaString("192.168.1.0/24")) == SigmaCIDRv4Expression("192.168.1.0/24")
+
+def test_cidrv4_with_other(dummy_detection_item):
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
+        SigmaCIDRv4Modifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("192.168.1.0/24"))
+
+def test_cidrv4_invalid(dummy_detection_item):
+    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
+        SigmaCIDRv4Modifier(dummy_detection_item, []).modify(SigmaString("192.168.1.1/24"))

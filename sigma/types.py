@@ -1,11 +1,11 @@
 from enum import Enum, auto
 from typing import Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
-from dataclasses import dataclass, replace
+from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 import re
 from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
-from ipaddress import ip_network
+from ipaddress import IPv4Network
 
 class SpecialChars(Enum):
     """Enumeration of supported special characters"""
@@ -325,28 +325,28 @@ class SigmaRegularExpression(SigmaType):
         ])
 
 @dataclass
-class SigmaCidrv4Expression(SigmaType):
-    """Cidrv4 expression type"""
-    cidr : str
+class SigmaCIDRv4Expression(SigmaType):
+    """CIDRv4 expression type"""
+    cidr    : str
+    network : IPv4Network = field(init=False, compare=False)
 
     def __post_init__(self):
         """Verify if cidr is valid by re"""
-        reg = re.compile(r'[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}/[0-9]{1,2}')
-        if reg.match(self.cidr) :
-            pass 
-        else:
-            raise SigmaTypeError("Invalid IP v4 cidr expression")
+        try:
+            self.network = IPv4Network(self.cidr)
+        except ValueError as e:
+            raise SigmaTypeError("Invalid IPv4 CIDR expression: " + str(e))
 
-    def convert(
+    def expand(
             self,
             wildcard : Optional[str] = "*",
-        ) -> str:
+        ) -> List[str]:
         """
-        Convert SigmaString into a query string or pattern. The following parameters allow to change the behavior:
+        Convert CIDR range into a list of wildcard patterns or plain CIDR notation. The following parameters allow to change the behavior:
 
-        * wildcard: strings that should be output as wildcards .
+        * wildcard: string that should be output as wildcard.
 
-        Setting wildcard to None indicates that this feature is not need.
+        Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
         if wildcard == None:
             return [self.cidr]
@@ -354,11 +354,11 @@ class SigmaCidrv4Expression(SigmaType):
             subnet = int (str(self.cidr).split('/')[1])
             if subnet <= 8 :
                 new_sub = 8
-                remp_old = '0/8'
+                remp_old = '0.0.0/8'
                 remp_new = wildcard
             elif subnet <= 16:
                 new_sub = 16
-                remp_old = '0/16'
+                remp_old = '0.0/16'
                 remp_new = wildcard
             elif subnet <= 24:
                 new_sub = 24
@@ -368,11 +368,28 @@ class SigmaCidrv4Expression(SigmaType):
                 new_sub = 32
                 remp_old = '/32'
                 remp_new = ''
-            ip_range = list(ip_network(str(self.cidr)).subnets(new_prefix=new_sub))
-            list_ip = [str(ip_sub).replace(remp_old,remp_new) for ip_sub in ip_range]
-            return list_ip
+            subnets = self.network.subnets(new_prefix=new_sub)
+            wildcarded_subnets = [str(ip_sub).replace(remp_old, remp_new) for ip_sub in subnets]
+            return wildcarded_subnets
 
+    def convert(
+            self,
+            join_expr : str,
+            template  : str = "{network}",
+            wildcard : Optional[str] = "*",
+        ) -> str:
+        """
+        Convert a network into a query expression. This is controlled by the following parameters:
 
+        * join_expr: string used to join multiple network wildcard patterns, e.g. logical linking with OR.
+        * template: resulting pattern is embedded with {network} placeholder in this template. By default the pattern is passed.
+          This can be used to add some annotation/function required by the target query language to handle it as CIDR network.
+        * wildcard: string used as wildcard character or None if query language can handle CIDRv4 properly.
+        """
+        return join_expr.join((
+            template.format(network=network)
+            for network in self.expand(wildcard)
+        ))
 
 @dataclass
 class SigmaCompareExpression(SigmaType):

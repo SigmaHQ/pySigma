@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import ClassVar, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCidrv4Expression
+from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -130,12 +130,12 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
         return SigmaRegularExpression(str(val))
-            
-class SigmaCidrv4ExpressionModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString) -> SigmaCidrv4Expression:
+
+class SigmaCIDRv4Modifier(SigmaValueModifier):
+    def modify(self, val : SigmaString) -> SigmaCIDRv4Expression:
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("CIDRv4 expression modifier only applicable to unmodified values")
-        return SigmaCidrv4Expression(str(val))
+        return SigmaCIDRv4Expression(str(val))
 
 class SigmaAllModifier(SigmaListModifier):
     def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:
@@ -179,7 +179,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "base64offset"  : SigmaBase64OffsetModifier,
     "wide"          : SigmaWideModifier,
     "re"            : SigmaRegularExpressionModifier,
-    "cidrv4"        : SigmaCidrv4ExpressionModifier,
+    "cidrv4"        : SigmaCIDRv4Modifier,
     "all"           : SigmaAllModifier,
     "lt"            : SigmaLessThanModifier,
     "lte"           : SigmaLessThanEqualModifier,

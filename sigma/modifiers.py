@@ -2,11 +2,10 @@ from abc import ABC, abstractmethod
 from typing import ClassVar, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression
+from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCidrv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
-from ipaddress import ip_network
 
 ### Base Classes ###
 class SigmaModifier(ABC):
@@ -131,32 +130,12 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
         return SigmaRegularExpression(str(val))
-
+            
 class SigmaCidrv4ExpressionModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString, use_asterisk : bool) -> List[SigmaType]:
-        if use_asterisk :
-            subnet = int (str(val).split('/')[1])
-            if subnet <= 8 :
-                new_sub = 8
-                remp_old = '0/8'
-                remp_new = '*'
-            elif subnet <= 16:
-                new_sub = 16
-                remp_old = '0/16'
-                remp_new = '*'
-            elif subnet <= 24:
-                new_sub = 24
-                remp_old = '0/24'
-                remp_new = '*'
-            elif subnet <= 32:
-                new_sub = 32
-                remp_old = '/32'
-                remp_new = ''
-            ip_range = list(ip_network(str(val)).subnets(new_prefix=new_sub))
-            list_ip = [str(ip_sub).replace(remp_old,remp_new) for ip_sub in ip_range]
-            return list_ip
-        else:
-            return [str(val)]
+    def modify(self, val : SigmaString) -> SigmaCidrv4Expression:
+        if len(self.applied_modifiers) > 0:
+            raise SigmaValueError("CIDRv4 expression modifier only applicable to unmodified values")
+        return SigmaCidrv4Expression(str(val))
 
 class SigmaAllModifier(SigmaListModifier):
     def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:

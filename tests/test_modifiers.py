@@ -127,12 +127,6 @@ def test_wide_noascii(dummy_detection_item):
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
-def test_cidrv4(dummy_detection_item):
-    assert SigmaCidrv4ExpressionModifier(dummy_detection_item, []).modify(SigmaString("192.168.10.0/24"),False) == [ SigmaString("192.168.10.0/24") ]
-
-def test_cidrv4_with_asterisk(dummy_detection_item):
-    assert SigmaCidrv4ExpressionModifier(dummy_detection_item, []).modify(SigmaString("192.168.10.0/24"),True) == [ SigmaString("192.168.10.*") ]
-
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))

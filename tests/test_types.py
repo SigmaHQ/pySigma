@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type
+from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCidrv4Expression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -195,3 +195,19 @@ def test_query_expression_finalize_nofield_error():
 def test_query_expression_wrong_type():
     with pytest.raises(SigmaTypeError, match="must be a string"):
         SigmaQueryExpression(123)
+
+def test_cidrv4_ok():
+    assert SigmaCidrv4Expression("192.168.1.0/24")
+    
+def test_cidrv4_invalid():
+    with pytest.raises(SigmaTypeError, match="Invalid IP v4 cidr expression"):
+        SigmaCidrv4Expression("::1/128")
+        
+def test_cidrv4_convert_no_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/31").convert(wildcard=None) == ['192.168.1.0/31']
+
+def test_cidrv4_convert_ip_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/31").convert(wildcard='*') == ['192.168.1.0', '192.168.1.1']
+    
+def test_cidrv4_convert_lan_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/24").convert(wildcard='*') == ['192.168.1.*']

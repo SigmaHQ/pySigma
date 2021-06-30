@@ -202,3 +202,12 @@ def test_cidrv4_ok():
 def test_cidrv4_invalid():
     with pytest.raises(SigmaTypeError, match="Invalid IP v4 cidr expression"):
         SigmaCidrv4Expression("::1/128")
+        
+def test_cidrv4_convert_no_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/31").convert(wildcard=None) == ['192.168.1.0/31']
+
+def test_cidrv4_convert_ip_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/31").convert(wildcard='*') == ['192.168.1.0', '192.168.1.1']
+    
+def test_cidrv4_convert_lan_wildcard():
+    assert SigmaCidrv4Expression("192.168.1.0/24").convert(wildcard='*') == ['192.168.1.*']

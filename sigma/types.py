@@ -349,26 +349,26 @@ class SigmaCidrv4Expression(SigmaType):
         Setting wildcard to None indicates that this feature is not need.
         """
         if wildcard == None:
-            return [self]
+            return [self.cidr]
         else:
-            subnet = int (str(val).split('/')[1])
+            subnet = int (str(self.cidr).split('/')[1])
             if subnet <= 8 :
                 new_sub = 8
                 remp_old = '0/8'
-                remp_new = '*'
+                remp_new = wildcard
             elif subnet <= 16:
                 new_sub = 16
                 remp_old = '0/16'
-                remp_new = '*'
+                remp_new = wildcard
             elif subnet <= 24:
                 new_sub = 24
                 remp_old = '0/24'
-                remp_new = '*'
+                remp_new = wildcard
             elif subnet <= 32:
                 new_sub = 32
                 remp_old = '/32'
                 remp_new = ''
-            ip_range = list(ip_network(str(val)).subnets(new_prefix=new_sub))
+            ip_range = list(ip_network(str(self.cidr)).subnets(new_prefix=new_sub))
             list_ip = [str(ip_sub).replace(remp_old,remp_new) for ip_sub in ip_range]
             return list_ip
 

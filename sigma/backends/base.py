@@ -111,6 +111,10 @@ class Backend(ABC):
         """Conversion of field matches regular expression value expressions"""
 
     @abstractmethod
+    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+        """Conversion of field matches cidrv4 expression value expressions"""
+
+    @abstractmethod
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> Any:
         """Conversion of field matches regular expression value expressions"""
 
@@ -130,6 +134,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_num(cond)
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_field_eq_val_re(cond)
+        elif isinstance(cond.value, SigmaCIDRv4Expression):
+            return self.convert_condition_field_eq_val_cidrv4(cond)
         elif isinstance(cond.value, SigmaCompareExpression):
             return self.convert_condition_field_compare_op_val(cond)
         elif isinstance(cond.value, SigmaNull):
@@ -159,6 +165,10 @@ class Backend(ABC):
     @abstractmethod
     def convert_condition_val_re(self, cond : ConditionValueExpression) -> Any:
         """Conversion of regexp-only conditions."""
+    
+    @abstractmethod
+    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression) -> Any:
+        """Conversion of cidrv4-only conditions."""
 
     @abstractmethod
     def convert_condition_query_expr(self, cond : ConditionValueExpression) -> Any:
@@ -172,6 +182,8 @@ class Backend(ABC):
             return self.convert_condition_val_num(cond)
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_val_re(cond)
+        elif isinstance(cond.value, SigmaCIDRv4Expression):
+            return self.convert_condition_val_cidrv4(cond)
         elif isinstance(cond.value, SigmaQueryExpression):
             return self.convert_condition_query_expr(cond)
         else:       # pragma: no cover
@@ -246,6 +258,10 @@ class TextQueryBackend(Backend):
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
 
+    # cidr expressions
+    cidrv4_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} and {cidr}
+    cidrv4_wildcard : ClassVar[Optional[str]] = None    # Character used as single wildcard
+    
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
     compare_operators : ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = None       # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
@@ -340,12 +356,24 @@ class TextQueryBackend(Backend):
         """Convert regular expression into string representation used in query."""
         return r.escape(self.re_escape, self.re_escape_char)
 
+    def convert_value_cidr(self, ip : SigmaCIDRv4Expression) -> str:
+        """Convert regular expression into string representation used in query."""
+        return ip.convert(join_expr=self.or_token,wildcard=self.cidrv4_wildcard)
+
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression) -> str:
         """Conversion of field matches regular expression value expressions."""
         return self.re_expression.format(
             field=cond.field,
             regex=self.convert_value_re(cond.value),
         )
+    
+    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression) -> str:
+        """Conversion of field matches regular expression value expressions."""
+        return self.cidrv4_expression.format(
+            field=cond.field,
+            value=self.convert_value_cidr(cond.value),
+        )
+    
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> str:
         """Conversion of numeric comparison operations into queries."""
         return self.compare_op_expression.format(
@@ -385,6 +413,9 @@ class TextQueryBackend(Backend):
         """Conversion of value-only regular expressions."""
         return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
 
+    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression) -> str:
+        pass
+        
     def convert_condition_query_expr(self, cond : ConditionValueExpression) -> str:
         """Conversion of value-only regular expressions."""
         return cond.value.finalize()

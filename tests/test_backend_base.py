@@ -342,3 +342,18 @@ def test_convert_multi_conditions(test_backend):
                     - sel3
         """)
     ) == ['mappedA="value1"', 'fieldC="value3"']
+
+def test_convert_value_cidr(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 123.123.123.0/24
+                condition: sel
+        """)
+    ) == ['mappedA=123.123.123.0/24']

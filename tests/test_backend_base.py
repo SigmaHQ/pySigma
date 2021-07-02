@@ -28,6 +28,7 @@ class TextQueryTestBackend(TextQueryBackend):
 
     cidrv4_expression : ClassVar[str] = "{field}={value}"
     cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
+    cidrv4_str_quote : ClassVar[str] = None
     cidrv4_wildcard : ClassVar[str] = None
     
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
@@ -209,6 +210,7 @@ def test_convert_value_cidr_wildcard_none(test_backend):
 def test_convert_value_cidr_wildcard_asterisk(test_backend):
     my_backend = test_backend
     my_backend.cidrv4_wildcard = "*"
+    my_backend.cidrv4_str_quote = '"'
     assert my_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -221,7 +223,7 @@ def test_convert_value_cidr_wildcard_asterisk(test_backend):
                     fieldA|cidrv4: 192.168.0.0/14
                 condition: sel
         """)
-    ) == ['mappedA in (192.168.*, 192.169.*, 192.170.*, 192.171.*)']
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
 
 def test_convert_compare(test_backend):
     assert test_backend.convert(
@@ -400,6 +402,7 @@ def test_convert_list_cidr_wildcard_none(test_backend):
 def test_convert_list_cidr_wildcard_asterisk(test_backend):
     my_backend = test_backend
     my_backend.cidrv4_wildcard = "*"
+    my_backend.cidrv4_str_quote = '"'
     assert my_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -414,4 +417,4 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend):
                         - 10.10.10.0/24
                 condition: sel
         """)
-    ) == ['mappedA in (192.168.*, 192.169.*, 192.170.*, 192.171.*) or mappedA=10.10.10.*']   
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']   

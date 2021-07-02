@@ -27,6 +27,7 @@ class TextQueryTestBackend(TextQueryBackend):
     re_escape : ClassVar[str] = ("/", "bar")
 
     cidrv4_expression : ClassVar[str] = "{field}={value}"
+    cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
     cidrv4_wildcard : ClassVar[str] = None
     
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
@@ -220,7 +221,7 @@ def test_convert_value_cidr_wildcard_asterisk(test_backend):
                     fieldA|cidrv4: 192.168.0.0/14
                 condition: sel
         """)
-    ) == ['mappedA=192.168.* or 192.169.* or 192.170.* or 192.171.*']
+    ) == ['mappedA in (192.168.*, 192.169.*, 192.170.*, 192.171.*)']
 
 def test_convert_compare(test_backend):
     assert test_backend.convert(
@@ -379,3 +380,38 @@ def test_convert_multi_conditions(test_backend):
         """)
     ) == ['mappedA="value1"', 'fieldC="value3"']
 
+def test_convert_list_cidr_wildcard_none(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 
+                        - 192.168.0.0/14
+                        - 10.10.10.0/24
+                condition: sel
+        """)
+    ) == ['mappedA=192.168.0.0/14 or mappedA=10.10.10.0/24']
+
+def test_convert_list_cidr_wildcard_asterisk(test_backend):
+    my_backend = test_backend
+    my_backend.cidrv4_wildcard = "*"
+    assert my_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 
+                        - 192.168.0.0/14
+                        - 10.10.10.0/24
+                condition: sel
+        """)
+    ) == ['mappedA in (192.168.*, 192.169.*, 192.170.*, 192.171.*) or mappedA=10.10.10.*']   

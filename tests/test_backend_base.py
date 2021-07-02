@@ -26,6 +26,9 @@ class TextQueryTestBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[str] = ("/", "bar")
 
+    cidrv4_expression : ClassVar[str] = "{field}={value}"
+    cidrv4_wildcard : ClassVar[str] = None
+    
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
         SigmaCompareExpression.CompareOperators.LT  : "<",
@@ -186,6 +189,39 @@ def test_convert_value_regex_unbound(test_backend):
         """)
     ) == ['_=/pat.*tern\\/foo\\bar/']
 
+def test_convert_value_cidr_wildcard_none(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['mappedA=192.168.0.0/14']
+
+
+def test_convert_value_cidr_wildcard_asterisk(test_backend):
+    my_backend = test_backend
+    my_backend.cidrv4_wildcard = "*"
+    assert my_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['mappedA=192.168.* or 192.169.* or 192.170.* or 192.171.*']
+
 def test_convert_compare(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -343,17 +379,3 @@ def test_convert_multi_conditions(test_backend):
         """)
     ) == ['mappedA="value1"', 'fieldC="value3"']
 
-def test_convert_value_cidr(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidrv4: 123.123.123.0/24
-                condition: sel
-        """)
-    ) == ['mappedA=123.123.123.0/24']

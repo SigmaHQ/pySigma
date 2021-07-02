@@ -386,6 +386,11 @@ class SigmaCIDRv4Expression(SigmaType):
           This can be used to add some annotation/function required by the target query language to handle it as CIDR network.
         * wildcard: string used as wildcard character or None if query language can handle CIDRv4 properly.
         """
+        if not join_expr[0] == ' ':
+            join_expr = ' ' + join_expr
+        if not join_expr[-1] == ' ':
+            join_expr = join_expr + ' '
+            
         return join_expr.join((
             template.format(network=network)
             for network in self.expand(wildcard)

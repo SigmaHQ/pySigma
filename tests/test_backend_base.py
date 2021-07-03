@@ -26,6 +26,10 @@ class TextQueryTestBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[str] = ("/", "bar")
 
+    cidrv4_expression : ClassVar[str] = "{field}={value}"
+    cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
+    cidrv4_wildcard : ClassVar[str] = None
+    
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
         SigmaCompareExpression.CompareOperators.LT  : "<",
@@ -42,6 +46,8 @@ class TextQueryTestBackend(TextQueryBackend):
     unbound_value_str_expression : ClassVar[str] = '_="{value}"'
     unbound_value_num_expression : ClassVar[str] = '_={value}'
     unbound_value_re_expression : ClassVar[str] = '_=/{value}/'
+    unbound_value_cidrv4_expression : ClassVar[str] = '_={value}'
+    unbound_list_cidrv4_expression : ClassVar[str] = "_ in ({list})"
 
     backend_processing_pipeline = ProcessingPipeline([
         ProcessingItem(FieldMappingTransformation({
@@ -185,6 +191,71 @@ def test_convert_value_regex_unbound(test_backend):
                 condition: sel
         """)
     ) == ['_=/pat.*tern\\/foo\\bar/']
+
+def test_convert_value_cidr_wildcard_none(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['mappedA=192.168.0.0/14']
+
+
+def test_convert_value_cidr_wildcard_asterisk(test_backend):
+    my_backend = test_backend
+    my_backend.cidrv4_wildcard = "*"
+    assert my_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
+
+def test_convert_value_cidr_wildcard_none_unbound(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|cidrv4": 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['_=192.168.0.0/14']
+
+def test_convert_value_cidr_wildcard_asterisk_unbound(test_backend):
+    my_backend = test_backend
+    my_backend.cidrv4_wildcard = "*"
+    assert my_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|cidrv4": 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ['_ in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
 
 def test_convert_compare(test_backend):
     assert test_backend.convert(
@@ -342,3 +413,39 @@ def test_convert_multi_conditions(test_backend):
                     - sel3
         """)
     ) == ['mappedA="value1"', 'fieldC="value3"']
+
+def test_convert_list_cidr_wildcard_none(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 
+                        - 192.168.0.0/14
+                        - 10.10.10.0/24
+                condition: sel
+        """)
+    ) == ['mappedA=192.168.0.0/14 or mappedA=10.10.10.0/24']
+
+def test_convert_list_cidr_wildcard_asterisk(test_backend):
+    my_backend = test_backend
+    my_backend.cidrv4_wildcard = "*"
+    assert my_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidrv4: 
+                        - 192.168.0.0/14
+                        - 10.10.10.0/24
+                condition: sel
+        """)
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']   

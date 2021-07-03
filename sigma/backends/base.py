@@ -259,12 +259,10 @@ class TextQueryBackend(Backend):
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
 
     # cidr expressions
-    cidrv4_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = {value}
-    cidrv4_in_list_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = in({value})
-    cidrv4_str_quote : ClassVar[Optional[str]] = None    # Character used as single wildcard
     cidrv4_wildcard : ClassVar[Optional[str]] = None    # Character used as single wildcard
-    
-    
+    cidrv4_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = {value}
+    cidrv4_in_list_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = in({list})
+   
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
     compare_operators : ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = None       # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
@@ -280,6 +278,9 @@ class TextQueryBackend(Backend):
     unbound_value_str_expression : ClassVar[Optional[str]] = None   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
+    unbound_value_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {value}
+    unbound_list_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {list}
+    
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
         """
@@ -375,18 +376,18 @@ class TextQueryBackend(Backend):
         convert_str = self.convert_value_cidr(cond.value)
         if self.or_token in convert_str:
             list_ip = convert_str.split(self.or_token)
-            if self.cidrv4_str_quote == None:
-                            return self.cidrv4_in_list_expression.format(
-                    field=cond.field,
-                    list=self.list_separator.join([str(v) for v in list_ip])
-                )
+            if self.cidrv4_wildcard == None:
+                    return self.cidrv4_in_list_expression.format(
+                        field=cond.field,
+                        list=self.list_separator.join([str(v) for v in list_ip])
+                    )
             else:
                 return self.cidrv4_in_list_expression.format(
                     field=cond.field,
-                    list=self.list_separator.join([ self.cidrv4_str_quote + str(v) + self.cidrv4_str_quote for v in list_ip])
+                    list=self.list_separator.join([ self.str_quote + str(v) + self.str_quote for v in list_ip])
                 )
         else:
-            if self.cidrv4_str_quote == None:
+            if self.cidrv4_wildcard == None:
                 return self.cidrv4_expression.format(
                     field=cond.field,
                     value=convert_str,
@@ -394,7 +395,7 @@ class TextQueryBackend(Backend):
             else:
                 return self.cidrv4_expression.format(
                     field=cond.field,
-                    value=self.cidrv4_str_quote+convert_str+self.cidrv4_str_quote,
+                    value=self.str_quote+convert_str+self.str_quote,
                 )            
     
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> str:
@@ -437,7 +438,30 @@ class TextQueryBackend(Backend):
         return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
 
     def convert_condition_val_cidrv4(self, cond : ConditionValueExpression) -> str:
-        pass
+        """Conversion of value-only cidrv4 expressions."""
+        convert_str = self.convert_value_cidr(cond.value)
+        if self.or_token in convert_str:
+            list_ip = convert_str.split(self.or_token)
+            if self.cidrv4_wildcard == None:
+                    return self.unbound_list_cidrv4_expression.format(
+                        list=self.list_separator.join([str(v) for v in list_ip])
+                    )
+            else:
+                return self.unbound_list_cidrv4_expression.format(
+                    list=self.list_separator.join([ self.str_quote + str(v) + self.str_quote for v in list_ip])
+                )
+        else:
+            if self.cidrv4_wildcard == None:
+                return self.unbound_value_cidrv4_expression.format(
+                    value=convert_str,
+                )
+            else:
+                return self.unbound_value_cidrv4_expression.format(
+                    value=self.str_quote+convert_str+self.str_quote,
+                )        
+
+
+
         
     def convert_condition_query_expr(self, cond : ConditionValueExpression) -> str:
         """Conversion of value-only regular expressions."""

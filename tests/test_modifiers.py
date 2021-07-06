@@ -9,6 +9,7 @@ from sigma.modifiers import \
     SigmaBase64OffsetModifier, \
     SigmaWideModifier, \
     SigmaRegularExpressionModifier, \
+    SigmaPartialRegularExpressionModifier, \
     SigmaCIDRv4Modifier, \
     SigmaAllModifier, \
     SigmaLessThanModifier, \
@@ -17,7 +18,7 @@ from sigma.modifiers import \
     SigmaGreaterThanEqualModifier, \
     SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -127,9 +128,16 @@ def test_wide_noascii(dummy_detection_item):
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
+def test_re_contains(dummy_detection_item):
+    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaPartialRegularExpression(".*foo?bar.*")
+
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
+
+def test_re_contains_with_other(dummy_detection_item):
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
+        SigmaPartialRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
 
 def test_all(dummy_detection_item):
     values = [

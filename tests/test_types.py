@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression
+from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression, SigmaPartialRegularExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -156,10 +156,20 @@ def test_number_invalid():
 
 def test_re_ok():
     assert SigmaRegularExpression("test.*")
-
+    
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaRegularExpression("(test.*")
+
+def test_re_partial_ok():
+    assert SigmaPartialRegularExpression("test.*")
+
+def test_re_partial_valid():
+    assert SigmaPartialRegularExpression("test.*") == SigmaPartialRegularExpression(".*test.*")
+    
+def test_re_partial_invalid():
+    with pytest.raises(SigmaRegularExpressionError):
+        SigmaPartialRegularExpression("(test.*")
 
 def test_re_escape():
     assert SigmaRegularExpression("foo\\d+bar-test").escape(("foo", "-", "t"), "\\") == "\\foo\\\\d+bar\\-\\tes\\t"

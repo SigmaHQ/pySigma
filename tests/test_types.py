@@ -156,17 +156,20 @@ def test_number_invalid():
 
 def test_re_ok():
     assert SigmaRegularExpression("test.*")
-    
+
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaRegularExpression("(test.*")
 
-def test_re_partial_ok():
-    assert SigmaPartialRegularExpression("test.*")
+def test_re_partial_none():
+    assert SigmaPartialRegularExpression("test") == SigmaPartialRegularExpression(".*test.*")
 
-def test_re_partial_valid():
+def test_re_partial_left():
+    assert SigmaPartialRegularExpression(".*test") == SigmaPartialRegularExpression(".*test.*")
+
+def test_re_partial_right():
     assert SigmaPartialRegularExpression("test.*") == SigmaPartialRegularExpression(".*test.*")
-    
+
 def test_re_partial_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaPartialRegularExpression("(test.*")

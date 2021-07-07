@@ -325,6 +325,37 @@ class SigmaRegularExpression(SigmaType):
         ])
 
 @dataclass
+class SigmaPartialRegularExpression(SigmaType):
+    """Regular expression type"""
+    regexp : str
+
+    def __post_init__(self):
+        """Verify if regular expression is valid by compiling it"""
+        if not self.regexp[:2] == '.*':
+            self.regexp = '.*' + self.regexp
+        if not self.regexp[-2:] == '.*':
+            self.regexp = self.regexp + '.*'
+        try:
+            re.compile(self.regexp)
+        except re.error as e:
+            raise SigmaRegularExpressionError("Invalid regular expression") from e
+
+    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\") -> str:
+        """Escape strings from escaped tuple as well as escape_char itself with escape_char."""
+        r = "|".join([ re.escape(e) for e in [*escaped, escape_char]])      # Generate regulear expressions from sequences that should be escaped and the escape char itself
+        pos = [     # determine positions of matches in regular expression
+            m.start()
+            for m in re.finditer(r, self.regexp)
+        ]
+        ranges = zip([None, *pos], [*pos, None])    # string chunk ranges with escapes in between
+        ranges = list(ranges)
+        return escape_char.join([
+            self.regexp[i:j]
+            for i,j in ranges
+        ])
+
+
+@dataclass
 class SigmaCIDRv4Expression(SigmaType):
     """CIDRv4 expression type"""
     cidr    : str

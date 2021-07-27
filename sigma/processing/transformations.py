@@ -10,6 +10,8 @@ from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, Sigma
 @dataclass
 class Transformation(ABC):
     """Base class for processing steps used in pipelines."""
+    processing_item : Optional["sigma.processing.pipeline.ProcessingItem"] = field(init=False, compare=False, default=None)
+
     @classmethod
     def from_dict(cls, d : dict) -> "Transformation":
         return cls(**d)
@@ -19,16 +21,24 @@ class Transformation(ABC):
         """Apply transformation on Sigma rule."""
         self.pipeline = pipeline        # make pipeline accessible from all further options in class property
 
+    def set_processing_item(self, processing_item : "sigma.processing.pipeline.ProcessingItem"):
+        self.processing_item = processing_item
+
 class DetectionItemTransformation(Transformation):
     """
     Iterates over all detection items of a Sigma rule and calls the apply_detection_item method
     for each of them. It also takes care to recurse into detections nested into detections.
 
     The apply_detection_item method can directly change the detection or return a replacement
-    object, which can be a SigmaDetection, a SigmaDetectionItem or a list of SigmaDetectionItems.
+    object, which can be a SigmaDetection or a SigmaDetectionItem.
+
+    The processing item is automatically added to the applied items of the detection items if a
+    replacement value was returned. In the other case the apply_detection_item method must take
+    care of this to make conditional decisions in the processing pipeline working. This can be
+    done with the detection_item_applied() method.
     """
     @abstractmethod
-    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+    def apply_detection_item(self, detection_item : SigmaDetectionItem) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply transformation on detection item."""
 
     def apply_detection(self, detection : SigmaDetection):
@@ -38,6 +48,11 @@ class DetectionItemTransformation(Transformation):
             else:
                 if (r := self.apply_detection_item(detection_item)) is not None:
                     detection.detection_items[i] = r
+                    self.processing_item_applied(r)
+
+    def processing_item_applied(self, d : Union[SigmaDetection, SigmaDetectionItem ]):
+        """Mark detection item or detection as applied."""
+        d.add_applied_processing_item(self.processing_item)
 
     def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         super().apply(pipeline, rule)
@@ -76,7 +91,9 @@ class ValueTransformation(DetectionItemTransformation):
                     results.append(res)
             else:       # pass original value if type doesn't matches to apply_value argument type annotation
                 results.append(value)
-        detection_item.value = results
+        if results is not detection_item.value:
+            detection_item.value = results
+            self.processing_item_applied(detection_item)
 
     @abstractmethod
     def apply_value(self, field : str, val : SigmaType) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
@@ -101,6 +118,7 @@ class FieldMappingTransformation(DetectionItemTransformation):
             mapping = self.mapping[field_name]
             if isinstance(mapping, str):    # 1:1 mapping, map field name of detection item directly
                 detection_item.field = self.mapping[field_name]
+                self.processing_item_applied(detection_item)
             else:
                 return SigmaDetection([
                     dataclasses.replace(detection_item, field=field)
@@ -152,6 +170,7 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
             if isinstance(pattern, Pattern) and pattern.match(detection_item.field) or \
                isinstance(pattern, str) and pattern == detection_item.field:
                     detection_item.field += self.suffix
+                    self.processing_item_applied(detection_item)
                     continue
 
 @dataclass

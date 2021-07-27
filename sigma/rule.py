@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Union, Sequence, List, Mapping, Type
+from typing import Optional, Union, Sequence, List, Set, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
@@ -84,6 +84,7 @@ class SigmaDetectionItem:
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
+    applied_processing_items : Set[str] = field(init=False, compare=False, default_factory=set)
 
     def apply_modifiers(self):
         """
@@ -203,6 +204,15 @@ class SigmaDetectionItem:
                         for v in self.value
                     ])
 
+    def add_applied_processing_item(self, processing_item : Optional["sigma.processing.pipeline.ProcessingItem"]):
+        """Add identifier of processing item to set of applied processing items."""
+        if processing_item is not None and processing_item.identifier is not None:
+            self.applied_processing_items.add(processing_item.identifier)
+
+    def was_processed_by(self, processing_item_id : str) -> bool:
+        """Determines if detection item was processed by a processing item with the given id."""
+        return processing_item_id in self.applied_processing_items
+
 @dataclass
 class SigmaDetection:
     """
@@ -265,6 +275,11 @@ class SigmaDetection:
             return items[0]
         elif len(items) > 1:
             return self.item_linking(items)
+
+    def add_applied_processing_item(self, processing_item : Optional["sigma.processing.pipeline.ProcessingItem"]):
+        """Propagate processing item to all contained detection items."""
+        for detection_item in self.detection_items:
+            detection_item.add_applied_processing_item(processing_item)
 
 @dataclass
 class SigmaDetections:

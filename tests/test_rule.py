@@ -6,6 +6,7 @@ from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpress
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
+from tests.test_processing_pipeline import processing_item
 
 ### SigmaRuleTag tests ###
 def test_sigmaruletag_fromstr():
@@ -131,6 +132,12 @@ def test_sigmadetectionitem_key_value_modifiers_invalid_re():
 def test_sigmadetectionitem_fromvalue():
     SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
 
+def test_sigmadetectionitem_processing_item_tracking(processing_item):
+    """Key-value detection with one value."""
+    detection_item = SigmaDetectionItem.from_mapping("key", "value")
+    detection_item.add_applied_processing_item(processing_item)
+    assert detection_item.was_processed_by("test")
+
 ### SigmaDetection tests ###
 
 def test_sigmadetection_items():
@@ -222,6 +229,27 @@ def test_sigmadetections_fromdict_no_detections():
 def test_sigmadetections_fromdict_no_condition():
     with pytest.raises(sigma_exceptions.SigmaConditionError):
         SigmaDetections.from_dict({ "selection": { "key": "value" }})
+
+def test_sigmadetection_processing_item_tracking(processing_item):
+    """Key-value detection with one value."""
+    detection = SigmaDetection([
+        SigmaDetectionItem("field1", [], SigmaString("value1")),
+        SigmaDetectionItem("field2", [], SigmaString("value2")),
+        SigmaDetection([
+            SigmaDetectionItem("field3", [], SigmaString("value3")),
+            SigmaDetectionItem("field4", [], SigmaString("value4")),
+        ])
+    ])
+    detection.add_applied_processing_item(processing_item)
+    assert all([
+        detection_item.was_processed_by("test")
+        if isinstance(detection_item, SigmaDetectionItem)
+        else all([
+            sub_detection_item.was_processed_by("test")
+            for sub_detection_item in detection_item.detection_items
+        ])
+        for detection_item in detection.detection_items
+    ])
 
 ### SigmaRule tests ###
 

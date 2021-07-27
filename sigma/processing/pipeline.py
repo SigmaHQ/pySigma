@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Any, Callable, Iterable, Dict, Tuple, Optional
+from typing import List, Set, Any, Callable, Iterable, Dict, Tuple, Optional
 from sigma.rule import SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import conditions, ProcessingCondition
@@ -77,6 +77,9 @@ class ProcessingItem:
 
         return cls(transformation, condition_linking, conds, identifier)
 
+    def __post_init__(self):
+        self.transformation.set_processing_item(self)   # set processing item in transformation object after it is instantiated
+
     def apply(self, pipeline : "ProcessingPipeline", rule : SigmaRule) -> Tuple[SigmaRule, bool]:
         """
         Matches condition against rule and performs transformation if condition is true or not present.
@@ -108,6 +111,8 @@ class ProcessingPipeline:
     """
     items : List[ProcessingItem] = field(default_factory=list)
     vars  : Dict[str, Any] = field(default_factory=dict)
+    applied : List[bool] = field(init=False, compare=False)     # list of applied items as booleans. If True, the corresponding item at the same position was applied
+    applied_ids : Set[str] = field(init=False, compare=False)   # set of identifiers of applied items, doesn't contains items without identifier
 
     def __post_init__(self):
         if not all((isinstance(item, ProcessingItem) for item in self.items)):

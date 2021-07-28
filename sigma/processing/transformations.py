@@ -27,7 +27,8 @@ class Transformation(ABC):
 class DetectionItemTransformation(Transformation):
     """
     Iterates over all detection items of a Sigma rule and calls the apply_detection_item method
-    for each of them. It also takes care to recurse into detections nested into detections.
+    for each of them if the detection item condition associated with the processing item evaluates
+    to true. It also takes care to recurse into detections nested into detections.
 
     The apply_detection_item method can directly change the detection or return a replacement
     object, which can be a SigmaDetection or a SigmaDetectionItem.
@@ -46,7 +47,10 @@ class DetectionItemTransformation(Transformation):
             if isinstance(detection_item, SigmaDetection):        # recurse into nested detection items
                 self.apply_detection(detection_item)
             else:
-                if (r := self.apply_detection_item(detection_item)) is not None:
+                if (
+                    self.processing_item is None or
+                    self.processing_item.match_detection_item(self.pipeline, detection_item)
+                 ) and (r := self.apply_detection_item(detection_item)) is not None:
                     detection.detection_items[i] = r
                     self.processing_item_applied(r)
 

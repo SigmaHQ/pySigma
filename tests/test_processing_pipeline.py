@@ -3,23 +3,37 @@ from dataclasses import dataclass
 import re
 from textwrap import dedent
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.conditions import conditions, ProcessingCondition
+from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
 from sigma.processing.transformations import transformations, Transformation
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError
 
 @dataclass
-class ConditionTrue(ProcessingCondition):
+class RuleConditionTrue(RuleProcessingCondition):
     dummy : str
 
     def match(self, pipeline : ProcessingPipeline, rule : SigmaRule) -> bool:
         return True
 
 @dataclass
-class ConditionFalse(ProcessingCondition):
+class RuleConditionFalse(RuleProcessingCondition):
     dummy : str
 
     def match(self, pipeline : ProcessingPipeline, rule : SigmaRule) -> bool:
+        return False
+
+@dataclass
+class DetectionItemConditionTrue(DetectionItemProcessingCondition):
+    dummy : str
+
+    def match(self, pipeline : ProcessingPipeline, detection_item : SigmaDetectionItem) -> bool:
+        return True
+
+@dataclass
+class DetectionItemConditionFalse(DetectionItemProcessingCondition):
+    dummy : str
+
+    def match(self, pipeline : ProcessingPipeline, detection_item : SigmaDetectionItem) -> bool:
         return False
 
 @dataclass
@@ -40,8 +54,10 @@ class TransformationAppend(Transformation):
 
 @pytest.fixture(autouse=True)
 def inject_test_classes(monkeypatch):
-    monkeypatch.setitem(conditions, "true", ConditionTrue)
-    monkeypatch.setitem(conditions, "false", ConditionFalse)
+    monkeypatch.setitem(rule_conditions, "true", RuleConditionTrue)
+    monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
+    monkeypatch.setitem(detection_item_conditions, "true", DetectionItemConditionTrue)
+    monkeypatch.setitem(detection_item_conditions, "false", DetectionItemConditionFalse)
     monkeypatch.setitem(transformations, "prepend", TransformationPrepend)
     monkeypatch.setitem(transformations, "append", TransformationAppend)
 
@@ -61,10 +77,14 @@ def sigma_rule():
     })
 
 @pytest.fixture
+def detection_item():
+    return SigmaDetectionItem("field", [], "value")
+
+@pytest.fixture
 def processing_item_dict():
     return {
         "id": "test",
-        "conditions": [
+        "rule_conditions": [
             {
                 "type": "true",
                 "dummy": "test-true"
@@ -74,7 +94,18 @@ def processing_item_dict():
                 "dummy": "test-false"
             },
         ],
-        "cond_op": "or",
+        "rule_cond_op": "or",
+        "detection_item_conditions": [
+            {
+                "type": "true",
+                "dummy": "test-true"
+            },
+            {
+                "type": "false",
+                "dummy": "test-false"
+            },
+        ],
+        "detection_item_cond_op": "or",
         "type": "append",
         "s": "Test",
     }
@@ -83,7 +114,7 @@ def processing_item_dict():
 def processing_item_dict_with_error():
     return {
         "id": "test",
-        "conditions": [
+        "rule_conditions": [
             {
                 "type": "true",
                 "dummy": "test-true"
@@ -92,7 +123,7 @@ def processing_item_dict_with_error():
                 "dummy": "test-false"
             },
         ],
-        "cond_op": "or",
+        "rule_cond_op": "or",
         "type": "append",
         "s": "Test",
     }
@@ -101,10 +132,15 @@ def processing_item_dict_with_error():
 def processing_item():
     return ProcessingItem(
         transformation=TransformationAppend(s="Test"),
-        condition_linking=any,
-        conditions=[
-            ConditionTrue(dummy="test-true"),
-            ConditionFalse(dummy="test-false"),
+        rule_condition_linking=any,
+        rule_conditions=[
+            RuleConditionTrue(dummy="test-true"),
+            RuleConditionFalse(dummy="test-false"),
+        ],
+        detection_item_condition_linking=any,
+        detection_item_conditions=[
+            DetectionItemConditionTrue(dummy="test-true"),
+            DetectionItemConditionFalse(dummy="test-false"),
         ],
         identifier="test",
     )
@@ -127,7 +163,7 @@ def test_processingitem_fromdict_missing_condition_type():
     with pytest.raises(SigmaConfigurationError, match="Missing condition type.*2"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -136,7 +172,7 @@ def test_processingitem_fromdict_missing_condition_type():
                     "dummy": "test-missing"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "type": "append",
             "s": "Test",
         })
@@ -145,7 +181,7 @@ def test_processingitem_fromdict_unknown_condition_type():
     with pytest.raises(SigmaConfigurationError, match="Unknown condition type.*2"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -155,7 +191,7 @@ def test_processingitem_fromdict_unknown_condition_type():
                     "dummy": "test-false"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "type": "append",
             "s": "Test",
         })
@@ -164,7 +200,7 @@ def test_processingitem_fromdict_unknown_parameter():
     with pytest.raises(SigmaConfigurationError, match="Error in condition.*2"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -174,15 +210,15 @@ def test_processingitem_fromdict_unknown_parameter():
                     "unknown": "test-false"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "type": "append",
             "s": "Test",
         }) == ProcessingItem(
-            conditions=[
-                ConditionTrue(dummy="test-true"),
-                ConditionFalse(dummy="test-false"),
+            rule_conditions=[
+                RuleConditionTrue(dummy="test-true"),
+                RuleConditionFalse(dummy="test-false"),
             ],
-            condition_linking=any,
+            rule_condition_linking=any,
             transformation=TransformationAppend(s="Test")
         )
 
@@ -190,7 +226,7 @@ def test_processingitem_fromdict_missing_transformation_type():
     with pytest.raises(SigmaConfigurationError, match="Missing transformation type"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -200,7 +236,7 @@ def test_processingitem_fromdict_missing_transformation_type():
                     "dummy": "test-false"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "s": "Test",
         })
 
@@ -208,7 +244,7 @@ def test_processingitem_fromdict_unknown_transformation_type():
     with pytest.raises(SigmaConfigurationError, match="Unknown transformation type"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -218,7 +254,7 @@ def test_processingitem_fromdict_unknown_transformation_type():
                     "dummy": "test-false"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "type": "unknown",
             "s": "Test",
         })
@@ -227,7 +263,7 @@ def test_processingitem_fromdict_unknown_transformation_parameter():
     with pytest.raises(SigmaConfigurationError, match="Error in transformation"):
         ProcessingItem.from_dict({
             "id": "test",
-            "conditions": [
+            "rule_conditions": [
                 {
                     "type": "true",
                     "dummy": "test-true"
@@ -237,7 +273,7 @@ def test_processingitem_fromdict_unknown_transformation_parameter():
                     "dummy": "test-false"
                 },
             ],
-            "cond_op": "or",
+            "rule_cond_op": "or",
             "type": "append",
             "unknown": "Test",
         })
@@ -249,10 +285,10 @@ def test_processingitem_apply(processing_item, dummy_processing_pipeline, sigma_
 def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
-        condition_linking=all,
-        conditions=[
-            ConditionTrue(dummy="test-true"),
-            ConditionFalse(dummy="test-false"),
+        rule_condition_linking=all,
+        rule_conditions=[
+            RuleConditionTrue(dummy="test-true"),
+            RuleConditionFalse(dummy="test-false"),
         ],
     )
     applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
@@ -261,14 +297,47 @@ def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipelin
 def test_processingitem_apply_notapplied_any_without_true(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
-        condition_linking=any,
-        conditions=[
-            ConditionFalse(dummy="test-true"),
-            ConditionFalse(dummy="test-false"),
+        rule_condition_linking=any,
+        rule_conditions=[
+            RuleConditionFalse(dummy="test-true"),
+            RuleConditionFalse(dummy="test-false"),
         ],
     )
     applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
     assert not applied and sigma_rule.title == "Test"
+
+def test_processingitem_match_detection_item(dummy_processing_pipeline, detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_condition_linking=any,
+        detection_item_conditions=[
+            DetectionItemConditionTrue(dummy="test-true"),
+            DetectionItemConditionFalse(dummy="test-false"),
+        ],
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == True
+
+def test_processingitem_match_detection_item_all_with_false(dummy_processing_pipeline, detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_condition_linking=all,
+        detection_item_conditions=[
+            DetectionItemConditionTrue(dummy="test-true"),
+            DetectionItemConditionFalse(dummy="test-false"),
+        ],
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
+
+def test_processingitem_match_detection_item_any_without_true(dummy_processing_pipeline, detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_condition_linking=any,
+        detection_item_conditions=[
+            DetectionItemConditionFalse(dummy="test-true"),
+            DetectionItemConditionFalse(dummy="test-false"),
+        ],
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
 
 def test_processingpipeline_fromdict(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_dict({
@@ -283,12 +352,18 @@ def test_processingpipeline_fromyaml(processing_item_dict, processing_item, proc
     assert ProcessingPipeline.from_yaml("""
         transformations:
             - id: test
-              conditions:
+              rule_conditions:
                   - type: "true"
                     dummy: test-true
                   - type: "false"
                     dummy: test-false
-              cond_op: or
+              rule_cond_op: or
+              detection_item_conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              detection_item_cond_op: or
               type: append
               s: Test
         vars:
@@ -330,7 +405,7 @@ def test_processingpipeline_apply_partial(sigma_rule):
         items=[
             ProcessingItem(
                 transformation=TransformationPrepend(s="Pre"),
-                conditions=[ConditionFalse(dummy="test")],
+                rule_conditions=[RuleConditionFalse(dummy="test")],
                 identifier="pre"
                 ),
             ProcessingItem(transformation=TransformationAppend(s="Appended"), identifier="append"),

@@ -1,8 +1,8 @@
 from dataclasses import dataclass, field
 from typing import List, Set, Any, Callable, Iterable, Dict, Tuple, Optional
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
-from sigma.processing.conditions import conditions, ProcessingCondition
+from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
 from sigma.exceptions import SigmaConfigurationError
 import yaml
 
@@ -16,8 +16,10 @@ class ProcessingItem:
     converted by a backend.
     """
     transformation : Transformation
-    condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
-    conditions : List[ProcessingCondition] = field(default_factory=list)
+    rule_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
+    rule_conditions : List[RuleProcessingCondition] = field(default_factory=list)
+    detection_item_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
+    detection_item_conditions : List[DetectionItemProcessingCondition] = field(default_factory=list)
     identifier : Optional[str] = None
 
     @classmethod
@@ -25,34 +27,48 @@ class ProcessingItem:
         """Instantiate processing item from parsed definition and variables."""
         # Identifier
         identifier = d.get("id")
-        # Condition
-        conds = list()
-        cond_defs = d.get("conditions", list())
-        for i, cond_def in enumerate(cond_defs):
-            try:
-                cond_type = cond_def["type"]
-            except KeyError:
-                raise SigmaConfigurationError(f"Missing condition type defined in condition { i + 1 }")
 
-            try:
-                cond_class = conditions[cond_type]
-            except KeyError:
-                raise SigmaConfigurationError(f"Unknown condition type '{ cond_type }' in condition { i + 1 }")
+        # Rule and detection item conditions
+        # Do the same initialization for rule and detection item conditions
+        for condition_class_mapping, cond_defs, conds in (
+            (                                       # Condition item processing items are defined as follows:
+                rule_conditions,                    # Dict containing mapping between names used in configuration and classes.
+                d.get("rule_conditions", list()),   # List of conditions in configuration dict
+                rule_conds := list(),               # List where condition classes for ProcessingItem initialization are collected
+            ),
+            (
+                detection_item_conditions,
+                d.get("detection_item_conditions", list()),
+                detection_item_conds := list()
+            ),
+        ):
+            for i, cond_def in enumerate(cond_defs):
+                try:
+                    cond_type = cond_def["type"]
+                except KeyError:
+                    raise SigmaConfigurationError(f"Missing condition type defined in condition { i + 1 }")
 
-            cond_params = {
-                k: v
-                for k, v in cond_def.items()
-                if k != "type"
-            }
-            try:
-                conds.append(cond_class(**cond_params))
-            except (SigmaConfigurationError, TypeError) as e:
-                raise SigmaConfigurationError(f"Error in condition { i + 1 }: { str(e) }") from e
+                try:
+                    cond_class = condition_class_mapping[cond_type]
+                except KeyError:
+                    raise SigmaConfigurationError(f"Unknown condition type '{ cond_type }' in condition { i + 1 }")
+
+                cond_params = {
+                    k: v
+                    for k, v in cond_def.items()
+                    if k != "type"
+                }
+                try:
+                    conds.append(cond_class(**cond_params))
+                except (SigmaConfigurationError, TypeError) as e:
+                    raise SigmaConfigurationError(f"Error in condition { i + 1 }: { str(e) }") from e
 
         condition_linking = {
             "or": any,
             "and": all,
-        }[d.get("cond_op", "and")]   # default: conditions are linked with and operator
+        }
+        rule_condition_linking = condition_linking[d.get("rule_cond_op", "and")]   # default: conditions are linked with and operator
+        detection_item_condition_linking = condition_linking[d.get("detection_item_cond_op", "and")]   # same for detection item conditions
 
         # Transformation
         try:
@@ -68,14 +84,14 @@ class ProcessingItem:
         params = {
             k: v
             for k, v in d.items()
-            if k not in {"conditions", "cond_op", "type", "id"}
+            if k not in {"rule_conditions", "rule_cond_op", "detection_item_conditions", "detection_item_cond_op", "type", "id"}
         }
         try:
             transformation = transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
-        return cls(transformation, condition_linking, conds, identifier)
+        return cls(transformation, rule_condition_linking, rule_conds, detection_item_condition_linking, detection_item_conds, identifier)
 
     def __post_init__(self):
         self.transformation.set_processing_item(self)   # set processing item in transformation object after it is instantiated
@@ -85,15 +101,23 @@ class ProcessingItem:
         Matches condition against rule and performs transformation if condition is true or not present.
         Returns Sigma rule and bool if transformation was applied.
         """
-        if not self.conditions or \
-            self.condition_linking([
+        if not self.rule_conditions or \
+            self.rule_condition_linking([
                 condition.match(pipeline, rule)
-                for condition in self.conditions
+                for condition in self.rule_conditions
             ]):     # apply transformation if conditions match or no condition defined
             self.transformation.apply(pipeline, rule)
             return True
         else:       # just pass rule through
             return False
+
+    def match_detection_item(self, pipeline : "ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
+        """Evalutates detection item conditions from processing item to detection item and returns result."""
+        return not self.detection_item_conditions or \
+            self.detection_item_condition_linking([
+                condition.match(pipeline, detection_item)
+                for condition in self.detection_item_conditions
+            ])
 
 @dataclass
 class ProcessingPipeline:

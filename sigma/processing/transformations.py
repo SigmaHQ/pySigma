@@ -135,7 +135,6 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
     Add field name suffix to fields matching one of the given names or regular expressions.
     """
     suffix : str
-    fields : List[Union[str, Pattern[str]]]
 
     @classmethod
     def from_dict(cls, d : dict) -> "AddFieldnameSuffixTransformation":

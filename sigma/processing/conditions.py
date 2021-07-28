@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List
+from typing import Dict, List, Pattern, Literal
+import re
 from sigma.rule import SigmaRule, SigmaDetectionItem
+from sigma.exceptions import SigmaConfigurationError
 
 ### Base Classes ###
 
@@ -28,11 +30,36 @@ class DetectionItemProcessingCondition(ABC):
 ### Detection Item Condition Classes ###
 @dataclass
 class IncludeFieldCondition(DetectionItemProcessingCondition):
-    """Matches on field name if it is contained in fields list."""
+    """
+    Matches on field name if it is contained in fields list. The parameter 'type' determines if field names are matched as
+    plain string ("plain") or regular expressions ("re").
+    """
     fields : List[str]
+    type : Literal["plain", "re"] = field(default="plain")
+    patterns : List[Pattern] = field(init=False, repr=False, default_factory=list)
+
+    def __post_init__(self):
+        """
+        Check if type is known and pre-compile regular expressions.
+        """
+        if self.type == "plain":
+            pass
+        elif self.type == "re":
+            self.patterns = [
+                re.compile(field)
+                for field in self.fields
+            ]
+        else:
+            raise SigmaConfigurationError(f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'.")
 
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
-        return detection_item.field in self.fields
+        if self.type == "plain":
+            return detection_item.field in self.fields
+        else:   # regular expression matching
+            return any((
+                pattern.match(detection_item.field)
+                for pattern in self.patterns
+             ))
 
 @dataclass
 class ExcludeFieldCondition(IncludeFieldCondition):

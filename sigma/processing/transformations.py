@@ -132,49 +132,24 @@ class FieldMappingTransformation(DetectionItemTransformation):
 @dataclass
 class AddFieldnameSuffixTransformation(DetectionItemTransformation):
     """
-    Add field name suffix to fields matching one of the given names or regular expressions.
+    Add field name suffix.
     """
     suffix : str
 
-    @classmethod
-    def from_dict(cls, d : dict) -> "AddFieldnameSuffixTransformation":
-        """
-        Create transform instance from dict with following field semantics:
-        * type: plain or re, determines if given values are treated as plain strings or regular expressions.
-        * fields: if this is a single value it is converted into a list. All values are converted into strings.
-        """
-        suffix = d.get("suffix", "")
-        pattern_type = d.get("type", "re")
-        fields = d.get("fields", [ ".*" ] if pattern_type == "re" else [])
-        if isinstance(fields, str):
-            fields = [ fields ]
+    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+        detection_item.field += self.suffix
+        self.processing_item_applied(detection_item)
 
-        if pattern_type == "plain":
-            return cls(
-                suffix=suffix,
-                fields=[
-                    str(pattern)
-                    for pattern in fields
-                ],
-            )
-        elif pattern_type == "re":
-            return cls(
-                suffix=suffix,
-                fields=[
-                    re.compile(pattern)
-                    for pattern in fields
-                ],
-            )
-        else:
-            raise SigmaValueError(f"Transformation expects plain or re as type, not '{ pattern_type }'")
+@dataclass
+class AddFieldnamePrefixTransformation(DetectionItemTransformation):
+    """
+    Add field name prefix.
+    """
+    prefix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        for pattern in self.fields:
-            if isinstance(pattern, Pattern) and pattern.match(detection_item.field) or \
-               isinstance(pattern, str) and pattern == detection_item.field:
-                    detection_item.field += self.suffix
-                    self.processing_item_applied(detection_item)
-                    continue
+        detection_item.field = self.prefix + detection_item.field
+        self.processing_item_applied(detection_item)
 
 @dataclass
 class PlaceholderIncludeExcludeMixin:
@@ -287,6 +262,7 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
+    "field_name_prefix": AddFieldnamePrefixTransformation,
     "wildcard_placeholders": WildcardPlaceholderTransformation,
     "value_placeholders": ValueListPlaceholderTransformation,
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,

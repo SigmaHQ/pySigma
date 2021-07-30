@@ -191,12 +191,22 @@ class SigmaString(SigmaType):
             for item in self.s
         ])
 
-    def contains_placeholder(self) -> bool:
-        """Check if string contains placeholders."""
-        return any([
-            isinstance(item, Placeholder)
+    def contains_placeholder(self, include : Optional[List[str]] = None, exclude : Optional[List[str]] = None) -> bool:
+        """
+        Check if string contains placeholders and if any placeholder name is
+
+        * contained on the include list (if there is one)
+        * not contained on the include list (if there is one)
+
+        It is sufficient that one placeholder matches these conditions. The purpose of this method is to
+        determine if there are placeholders for further processing.
+        """
+        return any((
+            isinstance(item, Placeholder) and
+            (include is None or item.name in include) and
+            (exclude is None or item.name not in exclude)
             for item in self.s
-        ])
+         ))
 
     def replace_placeholders(self, callback : Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]) -> List["SigmaString"]:
         """

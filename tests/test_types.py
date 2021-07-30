@@ -55,8 +55,23 @@ def test_string_placeholders_replace():
 def test_string_placeholders_escape():
     assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == ("%test1%test2%", Placeholder("var"), "%test3%")
 
-def test_string_placeholders_contains():
+def test_string_contains_placeholders():
     assert SigmaString("test1%var%test2").insert_placeholders().contains_placeholder()
+
+def test_string_contains_placeholders_none():
+    assert SigmaString("test1test2").insert_placeholders().contains_placeholder() == False
+
+def test_string_contains_placeholders_included():
+    assert SigmaString("test1%var%test2%test%").insert_placeholders().contains_placeholder(include=["var"])
+
+def test_string_contains_placeholders_no_included():
+    assert SigmaString("test1%var%test2%test%").insert_placeholders().contains_placeholder(include=["other"]) == False
+
+def test_string_contains_placeholders_one_excluded():
+    assert SigmaString("test1%var%test2%test%").insert_placeholders().contains_placeholder(exclude=["var"])
+
+def test_string_contains_placeholders_all_excluded():
+    assert SigmaString("test1%var%test2%test%").insert_placeholders().contains_placeholder(exclude=["var", "test"]) == False
 
 def test_strings_equal():
     assert SigmaString("test*string") == SigmaString("test*string")

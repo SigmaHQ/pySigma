@@ -239,10 +239,16 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders 
         detection_items[1].value[0].s == ("value", Placeholder("var2"), "test", Placeholder("var3")) and \
         detection_items[1].was_processed_by("test") == False and \
         detection_items[2].value[0].s == ("value", SpecialChars.WILDCARD_MULTI, "test", Placeholder("var2"), "test", Placeholder("var3"), "test") and \
-        detection_items[2].was_processed_by("test") == False
+        detection_items[2].was_processed_by("test") == True
 
 def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders : SigmaRule):
     transformation = WildcardPlaceholderTransformation(exclude=["var2", "var3"])
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
     transformation.apply(dummy_pipeline, sigma_rule_placeholders)
     detection_items = sigma_rule_placeholders.detection.detections["test"].detection_items[0].detection_items
     assert detection_items[0].value[0] == SigmaString("value*test") and \
@@ -250,7 +256,7 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders 
         detection_items[1].value[0].s == ("value", Placeholder("var2"), "test", Placeholder("var3")) and \
         detection_items[1].was_processed_by("test") == False and \
         detection_items[2].value[0].s == ("value", SpecialChars.WILDCARD_MULTI, "test", Placeholder("var2"), "test", Placeholder("var3"), "test") and \
-        detection_items[2].was_processed_by("test") == False
+        detection_items[2].was_processed_by("test") == True
 
 def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = WildcardPlaceholderTransformation()

@@ -28,3 +28,14 @@ jobs:
         run: poetry install --no-root
       - name: Run tests
         run: poetry run pytest
+      - name: Store coverage for badge
+        run: echo COVERAGE=$(poetry run python print-coverage.py) >> $GITHUB_ENV
+      - name: Create coverage badge
+        uses: schneegans/dynamic-badges-action@v1.1.0
+        with:
+          auth: ${{ secrets.GIST_SECRET }}
+          gistID: 11b31b4f709b6dc54a30d5203e8fe0ee
+          filename: SigmaHQ-sigmatools-coverage.json
+          label: Coverage
+          message: ${{ env.COVERAGE }}
+          color: green

@@ -1,5 +1,5 @@
 from sigma.collection import SigmaCollection
-from sigma.backends.base import TextQueryBackend
+from sigma.conversion.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation
 from sigma.types import SigmaCompareExpression
@@ -29,7 +29,7 @@ class TextQueryTestBackend(TextQueryBackend):
     cidrv4_expression : ClassVar[str] = "{field}={value}"
     cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
     cidrv4_wildcard : ClassVar[str] = None
-    
+
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
         SigmaCompareExpression.CompareOperators.LT  : "<",
@@ -48,6 +48,9 @@ class TextQueryTestBackend(TextQueryBackend):
     unbound_value_re_expression : ClassVar[str] = '_=/{value}/'
     unbound_value_cidrv4_expression : ClassVar[str] = '_={value}'
     unbound_list_cidrv4_expression : ClassVar[str] = "_ in ({list})"
+
+    deferred_start : ClassVar[str] = "\n"
+    deferred_separator : ClassVar[str] = "\n| "
 
     backend_processing_pipeline = ProcessingPipeline([
         ProcessingItem(FieldMappingTransformation({
@@ -439,7 +442,7 @@ def test_convert_list_cidr_wildcard_none(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4: 
+                    fieldA|cidrv4:
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel
@@ -458,9 +461,9 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4: 
+                    fieldA|cidrv4:
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel
         """)
-    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']   
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']

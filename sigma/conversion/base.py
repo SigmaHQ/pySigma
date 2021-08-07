@@ -1,10 +1,12 @@
 from abc import ABC, abstractmethod
+from sigma.conversion.deferred import DeferredQueryExpression
 from typing import ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
 from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
     """
@@ -76,82 +78,83 @@ class Backend(ABC):
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
+        state = ConversionState()
         self.processing_pipeline.apply(rule)        # 1. Apply transformations
         queries = [                                 # 2. Convert condition
-            self.convert_condition(cond.parsed)
+            self.convert_condition(cond.parsed, state)
             for cond in rule.detection.parsed_condition
         ]
         return [                                    # 3. Postprocess generated query
-            self.finalize_query(rule, query)
+            self.finalize_query(rule, query, state)
             for query in queries
         ]
 
     @abstractmethod
-    def convert_condition_or(self, cond : ConditionOR) -> Any:
+    def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> Any:
         """Conversion of OR conditions."""
 
     @abstractmethod
-    def convert_condition_and(self, cond : ConditionAND) -> Any:
+    def convert_condition_and(self, cond : ConditionAND, state : ConversionState) -> Any:
         """Conversion of AND conditions."""
 
     @abstractmethod
-    def convert_condition_not(self, cond : ConditionNOT) -> Any:
+    def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> Any:
         """Conversion of NOT conditions."""
 
     @abstractmethod
-    def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field = string value expressions"""
 
     @abstractmethod
-    def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field = number value expressions"""
 
     @abstractmethod
-    def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches regular expression value expressions"""
-    
+
     @abstractmethod
-    def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches regular expression value expressions"""
     @abstractmethod
-    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches cidrv4 expression value expressions"""
 
     @abstractmethod
-    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches regular expression value expressions"""
 
     @abstractmethod
-    def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field is null expression value expressions"""
 
     @abstractmethod
-    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions bound to a field."""
 
-    def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression) -> Any:
+    def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
         if isinstance(cond.value, SigmaString):
-            return self.convert_condition_field_eq_val_str(cond)
+            return self.convert_condition_field_eq_val_str(cond, state)
         elif isinstance(cond.value, SigmaNumber):
-            return self.convert_condition_field_eq_val_num(cond)
+            return self.convert_condition_field_eq_val_num(cond, state)
         elif isinstance(cond.value, SigmaRegularExpression):
-            return self.convert_condition_field_eq_val_re(cond)
+            return self.convert_condition_field_eq_val_re(cond, state)
         elif isinstance(cond.value, SigmaPartialRegularExpression):
-            return self.convert_condition_field_eq_val_re_contains(cond)    
+            return self.convert_condition_field_eq_val_re_contains(cond, state)
         elif isinstance(cond.value, SigmaCIDRv4Expression):
-            return self.convert_condition_field_eq_val_cidrv4(cond)
+            return self.convert_condition_field_eq_val_cidrv4(cond, state)
         elif isinstance(cond.value, SigmaCompareExpression):
-            return self.convert_condition_field_compare_op_val(cond)
+            return self.convert_condition_field_compare_op_val(cond, state)
         elif isinstance(cond.value, SigmaNull):
-            return self.convert_condition_field_eq_val_null(cond)
+            return self.convert_condition_field_eq_val_null(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
-            return self.convert_condition_field_eq_query_expr(cond)
+            return self.convert_condition_field_eq_query_expr(cond, state)
         else:       # pragma: no cover
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
     @abstractmethod
-    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression) -> Any:
+    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression, state : ConversionState) -> Any:
         """
         Conversion of field in value conditions.
 
@@ -160,65 +163,72 @@ class Backend(ABC):
         """
 
     @abstractmethod
-    def convert_condition_val_str(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_val_str(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of string-only conditions."""
 
     @abstractmethod
-    def convert_condition_val_num(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_val_num(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of number-only conditions."""
 
     @abstractmethod
-    def convert_condition_val_re(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_val_re(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of regexp-only conditions."""
-    
+
     @abstractmethod
-    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of cidrv4-only conditions."""
 
     @abstractmethod
-    def convert_condition_query_expr(self, cond : ConditionValueExpression) -> Any:
+    def convert_condition_query_expr(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions without field association."""
 
-    def convert_condition_val(self, cond : ConditionValueExpression) -> str:
+    def convert_condition_val(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only conditions."""
         if isinstance(cond.value, SigmaString):
-            return self.convert_condition_val_str(cond)
+            return self.convert_condition_val_str(cond, state)
         elif isinstance(cond.value, SigmaNumber):
-            return self.convert_condition_val_num(cond)
+            return self.convert_condition_val_num(cond, state)
         elif isinstance(cond.value, SigmaRegularExpression):
-            return self.convert_condition_val_re(cond)
+            return self.convert_condition_val_re(cond, state)
         elif isinstance(cond.value, SigmaCIDRv4Expression):
-            return self.convert_condition_val_cidrv4(cond)
+            return self.convert_condition_val_cidrv4(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
-            return self.convert_condition_query_expr(cond)
+            return self.convert_condition_query_expr(cond, state)
         else:       # pragma: no cover
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
     def convert_condition(
         self,
-        cond : ConditionType) -> Any:
+        cond : ConditionType,
+        state : ConversionState) -> Any:
         """
         Convert query of Sigma rule into target data structure (usually query, see above).
         Dispatches to methods (see above) specialized on specific condition parse tree node objects.
+
+        The state mainly contains the deferred list, which is used to collect query parts that are not
+        directly integrated into the generated query, but added at a postponed stage of the conversion
+        process after the conversion of the condition to a query is finished. This is done in the
+        finalize_query method and must be implemented individually.
         """
         if isinstance(cond, ConditionOR):
-            return self.convert_condition_or(cond)
+            return self.convert_condition_or(cond, state)
         elif isinstance(cond, ConditionAND):
-            return self.convert_condition_and(cond)
+            return self.convert_condition_and(cond, state)
         elif isinstance(cond, ConditionNOT):
-            return self.convert_condition_not(cond)
+            return self.convert_condition_not(cond, state)
         elif isinstance(cond, ConditionFieldEqualsValueExpression):
-            return self.convert_condition_field_eq_val(cond)
+            return self.convert_condition_field_eq_val(cond, state)
         elif isinstance(cond, ConditionFieldValueInExpression):
-            return self.convert_condition_field_in_vals(cond)
+            return self.convert_condition_field_in_vals(cond, state)
         elif isinstance(cond, ConditionValueExpression):
-            return self.convert_condition_val(cond)
+            return self.convert_condition_val(cond, state)
         else:       # pragma: no cover
             raise TypeError("Unexpected data type in condition parse tree: " + cond.__class__.__name__)
 
-    def finalize_query(self, rule : SigmaRule, query : Any) -> Any:
+    def finalize_query(self, rule : SigmaRule, query : Any, state : ConversionState) -> Any:
         """
-        Finalize conversion result of a query.
+        Finalize conversion result of a query. Handling of deferred query parts must be implemented by overriding
+        this method.
         """
         return query
 
@@ -267,7 +277,7 @@ class TextQueryBackend(Backend):
     cidrv4_wildcard : ClassVar[Optional[str]] = None    # Character used as single wildcard
     cidrv4_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = {value}
     cidrv4_in_list_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = in({list})
-   
+
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
     compare_operators : ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = None       # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
@@ -285,7 +295,11 @@ class TextQueryBackend(Backend):
     unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
     unbound_value_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {value}
     unbound_list_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {list}
-    
+
+    # Query finalization: appending and concatenating deferred query party
+    deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
+    deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
+
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
         """
@@ -300,44 +314,48 @@ class TextQueryBackend(Backend):
 
         return idx_inner <= self.precedence.index(outer)
 
-    def convert_condition_group(self, cond : ConditionItem) -> str:
+    def convert_condition_group(self, cond : ConditionItem, state : ConversionState) -> str:
         """Group condition item."""
-        return self.group_expression.format(expr=self.convert_condition(cond))
+        return self.group_expression.format(expr=self.convert_condition(cond, state))
 
-    def convert_condition_or(self, cond : ConditionOR) -> str:
+    def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> str:
         """Conversion of OR conditions."""
         try:
             return (self.token_separator + self.or_token + self.token_separator).join([
-                self.convert_condition(arg) if self.compare_precedence(ConditionOR, arg.__class__)
-                else self.convert_condition_group(arg)
+                self.convert_condition(arg, state) if self.compare_precedence(ConditionOR, arg.__class__)
+                else self.convert_condition_group(arg, state)
                 for arg in cond.args
+                if arg is not None and not isinstance(arg, DeferredQueryExpression)
                 ])
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Operator 'or' not supported by the backend")
 
-    def convert_condition_and(self, cond : ConditionAND) -> str:
+    def convert_condition_and(self, cond : ConditionAND, state : ConversionState) -> str:
         """Conversion of AND conditions."""
         try:
             return (self.token_separator + self.and_token + self.token_separator).join([
-                self.convert_condition(arg) if self.compare_precedence(ConditionAND, arg.__class__)
-                else self.convert_condition_group(arg)
+                self.convert_condition(arg, state) if self.compare_precedence(ConditionAND, arg.__class__)
+                else self.convert_condition_group(arg, state)
                 for arg in cond.args
+                if arg is not None and not isinstance(arg, DeferredQueryExpression)
                 ])
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Operator 'and' not supported by the backend")
 
-    def convert_condition_not(self, cond : ConditionNOT) -> str:
+    def convert_condition_not(self, cond : ConditionNOT, state : ConversionState) -> str:
         """Conversion of NOT conditions."""
         arg = cond.args[0]
         try:
             if arg.__class__ in self.precedence:        # group if AND or OR condition is negated
-                return self.not_token + self.token_separator + self.convert_condition_group(arg)
+                return self.not_token + self.token_separator + self.convert_condition_group(arg, state)
+            elif isinstance(arg, DeferredQueryExpression):      # negate deferred expression and pass it to parent
+                return arg.negate()
             else:
-                return self.not_token + self.token_separator + self.convert_condition(arg)
+                return self.not_token + self.token_separator + self.convert_condition(arg, state)
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Operator 'not' not supported by the backend")
 
-    def convert_value_str(self, s : SigmaString) -> str:
+    def convert_value_str(self, s : SigmaString, state : ConversionState) -> str:
         """Convert a SigmaString into a plain string which can be used in query."""
         return s.convert(
             self.escape_char,
@@ -347,45 +365,45 @@ class TextQueryBackend(Backend):
             self.filter_chars,
         )
 
-    def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field = string value expressions"""
         try:
-            return cond.field + self.eq_token + self.str_quote + self.convert_value_str(cond.value) + self.str_quote
+            return cond.field + self.eq_token + self.str_quote + self.convert_value_str(cond.value, state) + self.str_quote
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
 
-    def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field = number value expressions"""
         try:
             return cond.field + self.eq_token + str(cond.value)
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 
-    def convert_value_re(self, r : SigmaRegularExpression) -> str:
+    def convert_value_re(self, r : SigmaRegularExpression, state : ConversionState) -> str:
         """Convert regular expression into string representation used in query."""
         return r.escape(self.re_escape, self.re_escape_char)
 
-    def convert_value_cidr(self, ip : SigmaCIDRv4Expression) -> str:
+    def convert_value_cidr(self, ip : SigmaCIDRv4Expression, state : ConversionState) -> str:
         """Convert regular expression into string representation used in query."""
         return ip.convert(join_expr=self.or_token,wildcard=self.cidrv4_wildcard)
 
-    def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field matches regular expression value expressions."""
         return self.re_expression.format(
             field=cond.field,
-            regex=self.convert_value_re(cond.value),
+            regex=self.convert_value_re(cond.value, state),
         )
 
-    def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of value-only regular expressions."""
         return self.re_expression.format(
             field=cond.field,
-            regex=self.convert_value_re(cond.value),
+            regex=self.convert_value_re(cond.value, state),
         )
-    
-    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression) -> str:
+
+    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field matches regular expression value expressions."""
-        convert_str = self.convert_value_cidr(cond.value)
+        convert_str = self.convert_value_cidr(cond.value, state)
         if self.or_token in convert_str:
             list_ip = convert_str.split(self.or_token)
             if self.cidrv4_wildcard == None:
@@ -407,10 +425,10 @@ class TextQueryBackend(Backend):
             else:
                 return self.cidrv4_expression.format(
                     field=cond.field,
-                    value=self.str_quote+convert_str+self.str_quote,
-                )            
-    
-    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression) -> str:
+                    value=self.str_quote + convert_str + self.str_quote,
+                )
+
+    def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of numeric comparison operations into queries."""
         return self.compare_op_expression.format(
             field=cond.field,
@@ -418,40 +436,40 @@ class TextQueryBackend(Backend):
             value=cond.value.number,
         )
 
-    def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field is null expression value expressions"""
         return self.field_null_expression.format(field=cond.field)
 
-    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression) -> str:
+    def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> str:
         """Conversion of field is null expression value expressions"""
         return cond.value.finalize(field=cond.field)
 
-    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression) -> str:
+    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression, state : ConversionState) -> str:
         """Conversion of field in value list conditions."""
         return self.field_in_list_expression.format(
             field=cond.field,
             list=self.list_separator.join([
-                self.str_quote + self.convert_value_str(v) + self.str_quote if isinstance(v, SigmaString)   # string escaping and qouting
+                self.str_quote + self.convert_value_str(v, state) + self.str_quote if isinstance(v, SigmaString)   # string escaping and qouting
                 else v       # value is number
                 for v in cond.value
             ]),
         )
 
-    def convert_condition_val_str(self, cond : ConditionValueExpression) -> str:
+    def convert_condition_val_str(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only strings."""
-        return self.unbound_value_str_expression.format(value=self.convert_value_str(cond.value))
+        return self.unbound_value_str_expression.format(value=self.convert_value_str(cond.value, state))
 
-    def convert_condition_val_num(self, cond : ConditionValueExpression) -> str:
+    def convert_condition_val_num(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only numbers."""
         return self.unbound_value_num_expression.format(value=cond.value)
 
-    def convert_condition_val_re(self, cond : ConditionValueExpression) -> str:
+    def convert_condition_val_re(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only regular expressions."""
-        return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value))
+        return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value, state))
 
-    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression) -> str:
+    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only cidrv4 expressions."""
-        convert_str = self.convert_value_cidr(cond.value)
+        convert_str = self.convert_value_cidr(cond.value, state)
         if self.or_token in convert_str:
             list_ip = convert_str.split(self.or_token)
             if self.cidrv4_wildcard == None:
@@ -469,10 +487,19 @@ class TextQueryBackend(Backend):
                 )
             else:
                 return self.unbound_value_cidrv4_expression.format(
-                    value=self.str_quote+convert_str+self.str_quote,
-                )        
-     
-    def convert_condition_query_expr(self, cond : ConditionValueExpression) -> str:
+                    value=self.str_quote + convert_str + self.str_quote,
+                )
+
+    def convert_condition_query_expr(self, cond : ConditionValueExpression, state : ConversionState) -> str:
         """Conversion of value-only regular expressions."""
         return cond.value.finalize()
-        
+
+    def finalize_query(self, rule : SigmaRule, query : str, state : ConversionState) -> str:
+        """
+        Finalize query by appending deferred query parts to the main conversion result as specified
+        with deferred_start and deferred_separator.
+        """
+        if state.has_deferred():
+            return query + self.deferred_start + self.deferred_separator.join(state.deferred)
+        else:
+            return query

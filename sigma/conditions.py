@@ -6,12 +6,13 @@ from pyparsing import Word, alphanums, Keyword, infixNotation, opAssoc, ParseRes
 from typing import ClassVar, List, Union
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError
+import sigma
 
 @dataclass
 class ConditionItem(ABC):
     arg_count : ClassVar[int]
     token_list : ClassVar[bool] = False     # determines if the value passed as tokenized is a ParseResult or a simple list object
-    args : List[Union["ConditionItem", "ConditionFieldEqualsValue", "ConditionFieldValueIn", "ConditionValue"]]
+    args : List[Union["ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionFieldValueInExpression", "ConditionValueExpression"]]
 
     @classmethod
     def from_parsed(cls, s : str, l : int, t : Union[ParseResults, list]) -> "ConditionItem":

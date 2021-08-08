@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict
+from typing import Any, ClassVar, Dict, Optional
 import sigma
 
 @dataclass
@@ -58,10 +58,16 @@ class DeferredTextQueryExpression(DeferredQueryExpression):
   * operators: a dict containing a mapping from the two boolean states to operators inserted in the
     generated queries.
   """
-  field : str
+  field : Optional[str]
   value : str
   template : ClassVar[str]
   operators : ClassVar[Dict[bool, str]]
+  default_field : ClassVar[Optional[str]]
+
+  def __post_init__(self):
+    super().__post_init__()
+    if self.field is None and self.default_field is not None:
+      self.field = self.default_field
 
   def finalize_expression(self) -> str:
     return self.template.format(field=self.field, op=self.operators[self.negated], value=self.value)

@@ -16,16 +16,24 @@ class DeferredTestExpression(DeferredTextQueryExpression):
         True: "!=",
         False: "=",
     }
+    default_field = "_"
 
 @pytest.fixture
 def deferred_expression(conversion_state):
     return DeferredTestExpression(conversion_state, "field", "value")
+
+@pytest.fixture
+def deferred_expression_nofield(conversion_state):
+    return DeferredTestExpression(conversion_state, None, "value")
 
 def test_deferred_expression(deferred_expression):
     assert deferred_expression.finalize_expression() == 'field="value"'
 
 def test_deferred_expression_negation(deferred_expression):
     assert deferred_expression.negate().finalize_expression() == 'field!="value"'
+
+def test_deferred_default_field(deferred_expression_nofield):
+    assert deferred_expression_nofield.finalize_expression() == '_="value"'
 
 ### Conversion Tests ###
 class DeferredTextQueryTestBackend(TextQueryTestBackend):

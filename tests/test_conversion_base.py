@@ -4,7 +4,7 @@ from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError
-from typing import ClassVar, Dict
+from typing import ClassVar, Dict, Tuple
 import pytest
 
 class TextQueryTestBackend(TextQueryBackend):
@@ -24,7 +24,7 @@ class TextQueryTestBackend(TextQueryBackend):
 
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
-    re_escape : ClassVar[str] = ("/", "bar")
+    re_escape : ClassVar[Tuple[str]] = ("/", "bar")
 
     cidrv4_expression : ClassVar[str] = "{field}={value}"
     cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
@@ -49,8 +49,8 @@ class TextQueryTestBackend(TextQueryBackend):
     unbound_value_cidrv4_expression : ClassVar[str] = '_={value}'
     unbound_list_cidrv4_expression : ClassVar[str] = "_ in ({list})"
 
-    deferred_start : ClassVar[str] = "\n"
-    deferred_separator : ClassVar[str] = "\n| "
+    deferred_start : ClassVar[str] = " | "
+    deferred_separator : ClassVar[str] = " | "
 
     backend_processing_pipeline = ProcessingPipeline([
         ProcessingItem(FieldMappingTransformation({
@@ -76,6 +76,14 @@ def test_init_processing_pipeline(test_backend):
         })),
         ProcessingItem(FieldMappingTransformation({
             "fieldB": "mappedB",
+        })),
+    ])
+
+def test_only_backend_pipeline():
+    test_backend = TextQueryTestBackend()
+    assert test_backend.processing_pipeline == ProcessingPipeline([
+        ProcessingItem(FieldMappingTransformation({
+            "fieldA": "mappedA",
         })),
     ])
 

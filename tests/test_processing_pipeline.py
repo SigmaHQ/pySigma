@@ -459,6 +459,21 @@ def test_processingpipeline_concatenation():
         }
     )
 
+def test_processingpipeline_null_concatenation():
+    p = ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=TransformationPrepend(s="Pre"),
+                identifier="pre",
+            ),
+        ],
+        vars={
+            "a": 1,
+            "b": 2,
+        }
+    )
+    assert p + None == p
+
 def test_processingpipeline_invalid_concatenation():
     with pytest.raises(TypeError):
         ProcessingPipeline(

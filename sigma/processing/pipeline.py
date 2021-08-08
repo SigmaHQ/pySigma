@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Set, Any, Callable, Iterable, Dict, Tuple, Optional
+from typing import List, Set, Any, Callable, Iterable, Dict, Tuple, Optional, Union
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
@@ -173,8 +173,10 @@ class ProcessingPipeline:
                 self.applied_ids.add(itid)
         return rule
 
-    def __add__(self, other : "ProcessingPipeline") -> "ProcessingPipeline":
+    def __add__(self, other : Optional["ProcessingPipeline"]) -> "ProcessingPipeline":
         """Concatenate two processing pipelines and merge their variables."""
+        if other is None:
+            return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
         return self.__class__(

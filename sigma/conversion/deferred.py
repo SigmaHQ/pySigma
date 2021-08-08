@@ -32,6 +32,10 @@ class DeferredQueryExpression(ABC):
     conversion_state : "sigma.backends.state.ConversionState"
     negated : bool = field(init=False, default=False)
 
+    def __post_init__(self):
+       """Deferred expression automatically adds itself to conversion state."""
+       self.conversion_state.add_deferred_expression(self)
+
     def negate(self) -> "DeferredQueryExpression":
         """Toggle negation state of deferred expression."""
         self.negated = not self.negated
@@ -40,16 +44,6 @@ class DeferredQueryExpression(ABC):
     @abstractmethod
     def finalize_expression(self) -> Any:
         """Generate query from information stored in the deferred query and the conversion state object."""
-
-    def defer_conversion(convert_method):
-        """
-        Decorator that change
-        """
-        def convert(self, cond : "sigma.conditions.ConditionItem", state : "sigma.conversion.state.ConversionState") -> "DeferredQueryExpression":
-            deferred = convert_method(cond, state)
-            state.add_deferred_expression(deferred)
-            return deferred
-        return convert
 
 @dataclass
 class DeferredTextQueryExpression(DeferredQueryExpression):

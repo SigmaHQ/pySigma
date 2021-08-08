@@ -321,7 +321,12 @@ class TextQueryBackend(Backend):
     def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of OR conditions."""
         try:
-            return (self.token_separator + self.or_token + self.token_separator).join((
+            if self.token_separator == self.or_token:   # don't repeat the same thing triple times if separator equals or token
+                joiner = self.or_token
+            else:
+                joiner = self.token_separator + self.or_token + self.token_separator
+
+            return joiner.join((
                     converted
                     for converted in (
                         self.convert_condition(arg, state) if self.compare_precedence(ConditionOR, arg.__class__)
@@ -336,7 +341,12 @@ class TextQueryBackend(Backend):
     def convert_condition_and(self, cond : ConditionAND, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of AND conditions."""
         try:
-            return (self.token_separator + self.and_token + self.token_separator).join((
+            if self.token_separator == self.and_token:   # don't repeat the same thing triple times if separator equals and token
+                joiner = self.and_token
+            else:
+                joiner = self.token_separator + self.and_token + self.token_separator
+
+            return joiner.join((
                     converted
                     for converted in (
                         self.convert_condition(arg, state) if self.compare_precedence(ConditionAND, arg.__class__)

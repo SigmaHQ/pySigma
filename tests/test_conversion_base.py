@@ -368,6 +368,46 @@ def test_convert_and(test_backend):
         """)
     ) == ['mappedA="value1" and fieldC="value3"']
 
+class TextQueryTestBackendEmptyAND(TextQueryTestBackend):
+    and_token = " "
+
+def test_convert_and_emptytoken():
+    assert TextQueryTestBackendEmptyAND().convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel3:
+                    fieldC: value3
+                condition: sel1 and sel3
+        """)
+    ) == ['mappedA="value1" fieldC="value3"']
+
+class TextQueryTestBackendEmptyOR(TextQueryTestBackend):
+    or_token = " "
+
+def test_convert_or_emptytoken():
+    assert TextQueryTestBackendEmptyOR().convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel3:
+                    fieldC: value3
+                condition: sel1 or sel3
+        """)
+    ) == ['mappedA="value1" fieldC="value3"']
+
 def test_convert_or(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

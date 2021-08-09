@@ -29,8 +29,10 @@ jobs:
       - name: Run tests
         run: poetry run pytest
       - name: Store coverage for badge
+        if: ${{ runner.os == 'Linux' }}
         run: echo COVERAGE=$(poetry run python print-coverage.py) >> $GITHUB_ENV
       - name: Create coverage badge
+        if: ${{ runner.os == 'Linux' }}
         uses: schneegans/dynamic-badges-action@v1.1.0
         with:
           auth: ${{ secrets.GIST_SECRET }}

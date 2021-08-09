@@ -30,7 +30,7 @@ jobs:
         run: poetry run pytest
       - name: Store coverage for badge
         if: ${{ runner.os == 'Linux' }}
-        run: echo COVERAGE=$(poetry run python print-coverage.py) >> $GITHUB_ENV
+        run: poetry run python print-coverage.py >> $GITHUB_ENV
       - name: Create coverage badge
         if: ${{ runner.os == 'Linux' }}
         uses: schneegans/dynamic-badges-action@v1.1.0
@@ -40,4 +40,4 @@ jobs:
           filename: SigmaHQ-sigmatools-coverage.json
           label: Coverage
           message: ${{ env.COVERAGE }}
-          color: green
+          color: ${{ env.COVERAGE_COLOR }}

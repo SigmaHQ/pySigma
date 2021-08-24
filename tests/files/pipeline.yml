@@ -1,0 +1,6 @@
+name: Test
+priority: 10
+transformations:
+  - id: test
+    type: field_name_suffix
+    suffix: .test

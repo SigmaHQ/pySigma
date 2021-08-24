@@ -159,6 +159,11 @@ def dummy_processing_pipeline():
 def test_processingitem_fromdict(processing_item_dict, processing_item):
     assert ProcessingItem.from_dict(processing_item_dict) == processing_item
 
+def test_processingitem_fromdict_without_id(processing_item_dict, processing_item):
+    del processing_item_dict["id"]
+    processing_item.identifier = None
+    assert ProcessingItem.from_dict(processing_item_dict) == processing_item
+
 def test_processingitem_fromdict_missing_condition_type():
     with pytest.raises(SigmaConfigurationError, match="Missing condition type.*2"):
         ProcessingItem.from_dict({
@@ -341,15 +346,21 @@ def test_processingitem_match_detection_item_any_without_true(dummy_processing_p
 
 def test_processingpipeline_fromdict(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_dict({
+        "name": "Test",
+        "priority": 10,
         "transformations": [ processing_item_dict ],
         "vars": processing_pipeline_vars,
     }) == ProcessingPipeline(
+        name="Test",
+        priority=10,
         items=[ processing_item ],
         vars=processing_pipeline_vars,
     )
 
 def test_processingpipeline_fromyaml(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_yaml("""
+        name: Test
+        priority: 10
         transformations:
             - id: test
               rule_conditions:
@@ -370,6 +381,8 @@ def test_processingpipeline_fromyaml(processing_item_dict, processing_item, proc
             test_string: abc
             test_number: 123
     """) == ProcessingPipeline(
+        name="Test",
+        priority=10,
         items=[ processing_item ],
         vars=processing_pipeline_vars,
     )
@@ -456,6 +469,68 @@ def test_processingpipeline_concatenation():
             "a": 1,
             "b": 3,
             "c": 4,
+        }
+    )
+
+def test_processingpipeline_sum():
+    ps = [
+        ProcessingPipeline(
+            items=[
+                ProcessingItem(
+                    transformation=TransformationPrepend(s="Pre"),
+                    identifier="pre",
+                ),
+            ],
+            vars={
+                "a": 1,
+                "b": 2,
+            }
+        ),
+        ProcessingPipeline(
+            items=[
+                ProcessingItem(
+                    transformation=TransformationAppend(s="Append"),
+                    identifier="append",
+                ),
+            ],
+            vars={
+                "b": 3,
+                "c": 4,
+            }
+        ),
+        ProcessingPipeline(
+            items=[
+                ProcessingItem(
+                    transformation=TransformationAppend(s="AppendAnother"),
+                    identifier="append_another",
+                ),
+            ],
+            vars={
+                "c": 5,
+                "d": 6
+            }
+        ),
+    ]
+    assert sum(ps) == ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=TransformationPrepend(s="Pre"),
+                identifier="pre",
+            ),
+            ProcessingItem(
+                transformation=TransformationAppend(s="Append"),
+                identifier="append",
+            ),
+            ProcessingItem(
+                transformation=TransformationAppend(s="AppendAnother"),
+                identifier="append_another",
+            ),
+        ],
+        vars={
+            "a": 1,
+            "b": 3,
+            "c": 5,
+            "d": 6,
         }
     )
 

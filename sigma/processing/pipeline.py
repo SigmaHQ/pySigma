@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Set, Any, Callable, Iterable, Dict, Tuple, Optional, Union
+from typing import List, Literal, Set, Any, Callable, Iterable, Dict, Tuple, Optional, Union
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
@@ -26,7 +26,7 @@ class ProcessingItem:
     def from_dict(cls, d : dict):
         """Instantiate processing item from parsed definition and variables."""
         # Identifier
-        identifier = d.get("id")
+        identifier = d.get("id", None)
 
         # Rule and detection item conditions
         # Do the same initialization for rule and detection item conditions
@@ -135,12 +135,16 @@ class ProcessingPipeline:
     """
     items : List[ProcessingItem] = field(default_factory=list)
     vars  : Dict[str, Any] = field(default_factory=dict)
+    priority : int = field(default=0)
+    name : Optional[str] = field(default=None)
     applied : List[bool] = field(init=False, compare=False)     # list of applied items as booleans. If True, the corresponding item at the same position was applied
     applied_ids : Set[str] = field(init=False, compare=False)   # set of identifiers of applied items, doesn't contains items without identifier
 
     def __post_init__(self):
         if not all((isinstance(item, ProcessingItem) for item in self.items)):
             raise TypeError("Each item in a processing pipeline must be a ProcessingItem - don't use processing classes directly!")
+        self.applied = list()
+        self.applied_ids = set()
 
     @classmethod
     def from_dict(cls, d : dict) -> "ProcessingPipeline":
@@ -153,8 +157,10 @@ class ProcessingPipeline:
                 processing_items.append(ProcessingItem.from_dict(item))
             except SigmaConfigurationError as e:
                 raise SigmaConfigurationError(f"Error in processing rule { i + 1 }: { str(e) }") from e
+        priority = d.get("priority", 0)
+        name = d.get("name", None)
 
-        return cls(processing_items, vars)
+        return cls(processing_items, vars, priority, name)
 
     @classmethod
     def from_yaml(cls, processing_pipeline : str) -> "ProcessingPipeline":
@@ -183,3 +189,10 @@ class ProcessingPipeline:
             items=self.items + other.items,
             vars = { **self.vars, **other.vars }
         )
+
+    def __radd__(self, other : Literal[0]) -> "ProcessingPipeline":
+        """Ignore integer 0 on addition to make sum of list of ProcessingPipelines working."""
+        if other == 0:
+            return self
+        else:
+            return NotImplemented

@@ -28,15 +28,6 @@ pipenv install git+https://github.com/SigmaHQ/sigmatools.git#main
 
 `sigmatools` brings a number of additional features over `sigmac`, as well as some changes.
 
-### Rule Inclusions
-
-Rules can now include other rules using the `action: include` directive. An example is shown below.
-
-```yaml
-action: include
-filename: include-1.yml
-```
-
 ## Testing
 
 To run the pytest suite for `sigmatools`, run the following command:

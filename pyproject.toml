@@ -1,11 +1,17 @@
 [tool.poetry]
 name = "sigmatools"
 version = "1.0.0"
+license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
+readme = "README.md"
+repository = "https://github.com/SigmaHQ/sigmatools"
 packages = [
     { include = "sigma" }
 ]
+
+[tool.poetry.scripts]
+sigma-converter = "sigma.tools.converter:main"
 
 [tool.poetry.dependencies]
 python = "^3.8"

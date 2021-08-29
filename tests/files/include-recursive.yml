@@ -1,5 +1,0 @@
-action: include
-filename: include-1.yml
----
-action: include
-filename: include-2.yml

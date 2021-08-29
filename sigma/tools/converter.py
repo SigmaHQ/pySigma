@@ -35,7 +35,7 @@ def resolve_files(filespecs : List[str], file_pattern : str) -> List[Path]:
     traversed recursively and all files matching the file-pattern argument are used.
     """
     return [
-        SigmaCollection.from_yaml(item.open().read())
+        (item, SigmaCollection.from_yaml(item.open().read()))
         for sublist in [
             path.glob(f"**/{ file_pattern }")
             if path.is_dir()
@@ -53,7 +53,8 @@ def convert(args):
     pipeline = ProcessingPipelineResolver().resolve(args.config)
     backend_class = backends[args.backend][0]
     backend : TextQueryBackend = backend_class(pipeline)
-    for sigma_rule in sigma_rules:
+    for path, sigma_rule in sigma_rules:
+        print(f"=== Sigma Rule: { path } ===")
         print("\n".join(backend.convert(sigma_rule)))
 
 def main():

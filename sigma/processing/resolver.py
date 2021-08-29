@@ -50,4 +50,4 @@ class ProcessingPipelineResolver:
                 ],
                 key=lambda p: p.priority
             )
-        )
+        ) or ProcessingPipeline()

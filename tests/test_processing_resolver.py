@@ -72,3 +72,6 @@ def test_resolver_add_class_unnamed():
     pipeline = ProcessingPipeline([])
     with pytest.raises(ValueError, match="must be named"):
         resolver.add_pipeline_class(pipeline)
+
+def test_resolver_nothing(processing_pipeline_resolver : ProcessingPipelineResolver):
+    assert processing_pipeline_resolver.resolve([]) == ProcessingPipeline()

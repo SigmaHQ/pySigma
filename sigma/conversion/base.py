@@ -468,7 +468,7 @@ class TextQueryBackend(Backend):
             field=cond.field,
             list=self.list_separator.join([
                 self.str_quote + self.convert_value_str(v, state) + self.str_quote if isinstance(v, SigmaString)   # string escaping and qouting
-                else v       # value is number
+                else str(v)       # value is number
                 for v in cond.value
             ]),
         )

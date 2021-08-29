@@ -334,6 +334,24 @@ def test_convert_value_in_list(test_backend):
         """)
     ) == ['mappedA in ("value1", "value2", "value3")']
 
+def test_convert_value_in_list_numbers(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - 1
+                        - 2
+                        - 3
+                condition: sel
+        """)
+    ) == ['mappedA in (1, 2, 3)']
+
 def test_convert_unbound_values(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

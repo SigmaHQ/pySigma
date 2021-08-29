@@ -20,66 +20,6 @@ def test_single_rule():
 
     assert SigmaCollection.from_dicts([ rule ]) == SigmaCollection([ SigmaRule.from_dict(rule) ])
 
-def test_include_without_base_path():
-    with pytest.raises(SigmaCollectionError, match="base path"):
-        SigmaCollection.from_dicts([
-            {
-                "action": "include",
-                "filename": "dummy.yml",
-            }
-        ])
-
-def test_include_base_path_invalid():
-    with pytest.raises(SigmaCollectionError, match="not a directory"):
-        SigmaCollection.from_dicts([
-            {
-                "action": "include",
-                "filename": "dummy.yml",
-            }
-        ],
-        base_path_name="invalid")
-
-def test_include_without_filename():
-    with pytest.raises(SigmaCollectionError, match="filename"):
-        SigmaCollection.from_dicts([
-            {
-                "action": "include",
-            }
-        ],
-        base_path_name="tests/files")
-
-def test_include_absolute():
-    with pytest.raises(SigmaCollectionError, match="outside"):
-        SigmaCollection.from_dicts([
-            {
-                "action": "include",
-                "filename": "/etc/passwd"
-            }
-        ],
-        base_path_name="tests/files")
-
-def test_include_traverse():
-    with pytest.raises(SigmaCollectionError, match="outside"):
-        SigmaCollection.from_dicts([
-            {
-                "action": "include",
-                "filename": "../outside/base/rule.yml"
-            }
-        ],
-        base_path_name="tests/files")
-
-def test_include_recursion_limit():
-    with pytest.raises(SigmaCollectionError, match="recursion"):
-        SigmaCollection.from_yaml_path("tests/files/include_recursion_limit.yml")
-
-def test_include():
-    c = SigmaCollection.from_yaml_path("tests/files/include.yml")
-    assert len(c) == 2 and [ r.title for r in c ] == [ "Test 1", "Test 2" ]
-
-def test_include_recursive():
-    c = SigmaCollection.from_yaml_path("tests/files/include-recursive.yml")
-    assert len(c) == 2 and [ r.title for r in c ] == [ "Test 1", "Test 2" ]
-
 def test_deep_dict_update_disjunct():
     assert deep_dict_update(
         {

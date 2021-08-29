@@ -29,37 +29,15 @@ class SigmaCollection:
         if recursion > max_recursion:
             raise SigmaCollectionError("Too many recursions while resolving rule file inclusions.")
 
-        # First step: scan rules input for include actions, recursively create a collection and append it at the location of the include action document
-        all_rules = list()
-        if base_path_name is not None:
-            base_path = Path(base_path_name)
-            if not base_path.is_dir():
-                raise SigmaCollectionError(f"Provided base path '{ base_path_name }' is not a directory.")
-
-        for i, rule in enumerate(rules):
-            if rule.get("action", "") == "include":
-                # Security checks against path traversal: include action in a collection can only reference rule files in the same path as the collection
-                if base_path_name is None:
-                    raise SigmaCollectionError("Inclusions are not allowed without specification of a base path")
-                try:
-                    target_path = (base_path / rule["filename"]).resolve()      # raises KeyError if filename is missing
-                    target_path.relative_to(base_path.resolve())    # raises ValueError if referenced file is not in base path
-                except KeyError:
-                    raise SigmaCollectionError(f"Include rule { i } without filename")
-                except ValueError:
-                    raise SigmaCollectionError(f"Include rule { i } attempt to include file outside of its own path")
-
-                included_rules = cls.from_yaml_path(str(target_path), recursion + 1)
-                all_rules.extend(included_rules.rules)
-            else:
-                all_rules.append(rule)
+        # Removed Sigma Inclusion as per #6
+        # https://github.com/sifex/sigmatools/commit/c50fff921fbb4252ad06817dc99e4e981b66e4a2
 
         # Second step: resolve collection actions to Sigma rules
         parsed_rules = list()
         prev_rule = None
         global_rule = dict()
 
-        for i, rule in zip(range(1, len(all_rules) + 1), all_rules):
+        for i, rule in zip(range(1, len(rules) + 1), rules):
             if isinstance(rule, SigmaRule):     # Included rules are already parsed, skip collection action processing
                 parsed_rules.append(rule)
             else:

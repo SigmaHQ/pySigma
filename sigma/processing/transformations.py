@@ -223,7 +223,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
     """
     Replaces placeholders with values contained in variables defined in the configuration.
     """
-    def placeholder_replacements(self, p : Placeholder) -> Iterator[SpecialChars]:
+    def placeholder_replacements(self, p : Placeholder) -> List[str]:
         try:
             values = self.pipeline.vars[p.name]
         except KeyError:

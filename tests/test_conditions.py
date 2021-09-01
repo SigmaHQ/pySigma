@@ -16,7 +16,7 @@ def sigma_simple_detections():
         "detection3": SigmaDetection([
             SigmaDetectionItem(None, [], [SigmaString("val3")]),
         ]),
-        "detection4": SigmaDetection([
+        "detection_4": SigmaDetection([
             SigmaDetectionItem(None, [], [SigmaString("val4")]),
         ]),
         "other": SigmaDetection([
@@ -106,7 +106,7 @@ def test_3or(sigma_simple_detections):
     ])
 
 def test_precedence(sigma_simple_detections):
-    assert SigmaCondition("detection1 and not detection2 or not detection3 and detection4", sigma_simple_detections).parsed == ConditionOR([
+    assert SigmaCondition("detection1 and not detection2 or not detection3 and detection_4", sigma_simple_detections).parsed == ConditionOR([
         ConditionAND([
             ConditionValueExpression(SigmaString("val1")),
             ConditionNOT([ConditionValueExpression(SigmaString("val2"))]),
@@ -118,7 +118,7 @@ def test_precedence(sigma_simple_detections):
     ])
 
 def test_precedence_parenthesis(sigma_simple_detections):
-    assert SigmaCondition("(detection1 or not detection2) and not (detection3 or detection4)", sigma_simple_detections).parsed == ConditionAND([
+    assert SigmaCondition("(detection1 or not detection2) and not (detection3 or detection_4)", sigma_simple_detections).parsed == ConditionAND([
         ConditionOR([
             ConditionValueExpression(SigmaString("val1")),
             ConditionNOT([ConditionValueExpression(SigmaString("val2"))]),

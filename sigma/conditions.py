@@ -119,7 +119,7 @@ identifier = Word(alphanums + "_-")
 identifier.setParseAction(ConditionIdentifier.from_parsed)
 
 quantifier = Keyword("1") | Keyword("any") | Keyword("all")
-identifier_pattern = Word(alphanums + "*")
+identifier_pattern = Word(alphanums + "*_")
 selector = quantifier + Keyword("of") + identifier_pattern
 selector.setParseAction(ConditionSelector.from_parsed)
 

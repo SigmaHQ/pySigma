@@ -182,3 +182,10 @@ def test_action_unknown():
                 "action": "invalid",
             }
         ])
+
+def test_action_unknown_collect_errors():
+    assert len(SigmaCollection.from_dicts([
+        {
+            "action": "invalid",
+        }
+    ], collect_errors=True).errors) > 0

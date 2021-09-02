@@ -2,7 +2,7 @@ import argparse
 from argparse import ArgumentParser
 from pathlib import Path
 
-from typing import List, Optional, IO
+from typing import Iterable, List, Optional, IO
 from sigma.collection import SigmaCollection
 from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.conversion.backends.splunk import SplunkBackend
@@ -29,13 +29,13 @@ class SigmaConverterArgumentParser(ArgumentParser):
         super().print_help(file=file)
         self.list_backends(file)
 
-def resolve_files(filespecs : List[str], file_pattern : str) -> List[Path]:
+def parse_rules(filespecs : List[str], file_pattern : str, collect_errors : bool) -> Iterable[SigmaCollection]:
     """
     Resolve mixed files and directories to list of pathlib Path objects. Directories are
     traversed recursively and all files matching the file-pattern argument are used.
     """
-    return [
-        (item, SigmaCollection.from_yaml(item.open().read()))
+    return (
+        (item, SigmaCollection.from_yaml(item.open().read(), collect_errors=collect_errors))
         for sublist in [
             path.glob(f"**/{ file_pattern }")
             if path.is_dir()
@@ -46,16 +46,21 @@ def resolve_files(filespecs : List[str], file_pattern : str) -> List[Path]:
             )
         ]
         for item in sublist
-    ]
+     )
 
 def convert(args):
-    sigma_rules = resolve_files(args.file, args.file_pattern)
+    sigma_rules = parse_rules(args.file, args.file_pattern, args.collect_errors)
     pipeline = ProcessingPipelineResolver().resolve(args.config)
     backend_class = backends[args.backend][0]
     backend : TextQueryBackend = backend_class(pipeline)
     for path, sigma_rule in sigma_rules:
         print(f"=== Sigma Rule: { path } ===")
-        print("\n".join(backend.convert(sigma_rule)))
+        if sigma_rule.errors:
+            print("Rule has errors:")
+            for error in sigma_rule.errors:
+                print(str(error))
+        else:
+            print("\n".join(backend.convert(sigma_rule)))
 
 def main():
     argparser = SigmaConverterArgumentParser(
@@ -65,6 +70,7 @@ def main():
     argparser.add_argument("--backend", "-b", choices=backends.keys(), help="Conversion backend")
     argparser.add_argument("--config", "-c", action="append", default=[], help="Processing pipeline configuration files. Mandatory for some backends.")
     argparser.add_argument("--file-pattern", "-P", default="*.yml", help="File pattern that must match for traversal of directories. (default: %(default)s)")
+    argparser.add_argument("--collect-errors", "-n", action="store_true", help="Collect and show errors instead of failing.")
     argparser.add_argument("file", nargs="+", help="Sigma rules or directories containing Sigma rules.")
     args = argparser.parse_args()
 

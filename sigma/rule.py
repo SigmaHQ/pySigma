@@ -335,16 +335,24 @@ class SigmaRule:
     falsepositives : Optional[List[str]]
     level : Optional[SigmaLevel]
 
+    errors : List[sigma_exceptions.SigmaError] = field(default_factory=list)
+
     @classmethod
-    def from_dict(cls, rule : dict) -> "SigmaRule":
-        """Convert Sigma rule parsed in dict structure into SigmaRule object."""
+    def from_dict(cls, rule : dict, collect_errors : bool = False) -> "SigmaRule":
+        """
+        Convert Sigma rule parsed in dict structure into SigmaRule object.
+
+        if collect_errors is set to False exceptions are collected in the errors property of the resulting
+        SigmaRule object. Else the first recognized error is raised as exception.
+        """
+        errors = []
         # Rule identifier may be empty or must be valid UUID
         rule_id = rule.get("id")
         if rule_id is not None:
             try:
                 rule_id = UUID(rule_id)
             except ValueError:
-                raise sigma_exceptions.SigmaIdentifierError("Sigma rule identifier must be an UUID")
+                errors.append(sigma_exceptions.SigmaIdentifierError("Sigma rule identifier must be an UUID"))
 
         # Rule level validation
         level = rule.get("level")
@@ -352,7 +360,7 @@ class SigmaRule:
             try:
                 level = SigmaLevel[level.upper()]
             except KeyError:
-                raise sigma_exceptions.SigmaLevelError(f"'{ level }' is no valid Sigma rule level")
+                errors.append(sigma_exceptions.SigmaLevelError(f"'{ level }' is no valid Sigma rule level"))
 
         # Rule status validation
         status = rule.get("status")
@@ -360,7 +368,7 @@ class SigmaRule:
             try:
                 status = SigmaStatus[status.upper()]
             except KeyError:
-                raise sigma_exceptions.SigmaStatusError(f"'{ status }' is no valid Sigma rule status")
+                errors.append(sigma_exceptions.SigmaStatusError(f"'{ status }' is no valid Sigma rule status"))
 
         # parse rule date if existing
         rule_date = rule.get("date")
@@ -371,22 +379,27 @@ class SigmaRule:
                 try:
                     rule_date = date(*(int(i) for i in rule_date.split("-")))
                 except ValueError:
-                    raise sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd")
+                    errors.append(sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd"))
 
         # parse log source
         try:
             logsource = SigmaLogSource.from_dict(rule["logsource"])
         except KeyError:
-            raise sigma_exceptions.SigmaLogsourceError("Sigma rule must have a log source")
+            errors.append(sigma_exceptions.SigmaLogsourceError("Sigma rule must have a log source"))
+            logsource = None
 
         # parse detections
         try:
             detections = SigmaDetections.from_dict(rule["detection"])
         except KeyError:
-            raise sigma_exceptions.SigmaDetectionError("Sigma rule must have a detection definitions")
+            errors.append(sigma_exceptions.SigmaDetectionError("Sigma rule must have a detection definitions"))
+            detections = None
+
+        if not collect_errors and errors:
+            raise errors[0]
 
         return cls(
-                title = rule["title"],
+                title = rule.get("title", ""),
                 id = rule_id,
                 level = level,
                 status = status,
@@ -399,10 +412,11 @@ class SigmaRule:
                 detection = detections,
                 fields = rule.get("fields"),
                 falsepositives = rule.get("falsepositives"),
+                errors = errors,
                 )
 
     @classmethod
-    def from_yaml(cls, rule : str) -> "SigmaRule":
+    def from_yaml(cls, rule : str, collect_errors : bool = False) -> "SigmaRule":
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.safe_load(rule)
-        return cls.from_dict(parsed_rule)
+        return cls.from_dict(parsed_rule, collect_errors)

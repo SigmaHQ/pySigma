@@ -269,6 +269,9 @@ def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError):
         SigmaRule.from_dict({ "date": "bad" })
 
+def test_sigmarule_bad_date_collect_errors():
+    assert len(SigmaRule.from_dict({ "date": "bad" }, collect_errors=True).errors) > 0
+
 def test_sigmarule_no_logsource():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError):
         SigmaRule.from_dict({})

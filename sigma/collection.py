@@ -1,11 +1,8 @@
 from dataclasses import dataclass
-from typing import List, Union, Optional, IO
+from typing import List, Union, IO
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError
-from pathlib import Path
 import yaml
-
-max_recursion : int = 10
 
 @dataclass
 class SigmaCollection:
@@ -16,22 +13,10 @@ class SigmaCollection:
     def from_dicts(
         cls,
         rules : List[dict],
-        base_path_name : Optional[Union[str, Path]] = None,
-        recursion : int = 0,
         ) -> "SigmaCollection":
         """
         Generate rule from list of dicts containing parsed YAML content.
-
-        Include actions load files relative to the base_path. They are not allowed
-        for security reasons if base_path is not provided.
         """
-        # Check: abort if too many recursion levels are reached
-        if recursion > max_recursion:
-            raise SigmaCollectionError("Too many recursions while resolving rule file inclusions.")
-
-        # Removed Sigma Inclusion as per #6
-        # https://github.com/sifex/sigmatools/commit/c50fff921fbb4252ad06817dc99e4e981b66e4a2
-
         # Second step: resolve collection actions to Sigma rules
         parsed_rules = list()
         prev_rule = None
@@ -63,19 +48,8 @@ class SigmaCollection:
     def from_yaml(
         cls,
         yaml_str : Union[bytes, str, IO],
-        base_path_name : Optional[Union[str, Path]] = None,
-        recursion : int = 0,
         ) -> "SigmaCollection":
-        return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), base_path_name, recursion)
-
-    @classmethod
-    def from_yaml_path(
-        cls,
-        yaml_path : Union[str, Path],
-        recursion : int = 0,
-        ) -> "SigmaCollection":
-        f = open(yaml_path)
-        return cls.from_yaml(f, Path(f.name).parent, recursion)
+        return cls.from_dicts(list(yaml.safe_load_all(yaml_str)))
 
     def __iter__(self):
         return iter(self.rules)

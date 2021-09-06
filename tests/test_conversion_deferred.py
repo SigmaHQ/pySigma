@@ -100,3 +100,18 @@ def test_deferred_conversion_not(test_backend : TextQueryTestBackend):
                 condition: sel1 and not sel2
         """)
     ) == ['fieldB="foo" and fieldC="bar" | mappedA!="foo.*bar"']
+
+def test_deferred_only_conversion(test_backend : TextQueryTestBackend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re: foo.*bar
+                condition: sel
+        """)
+    ) == ['* | mappedA="foo.*bar"']

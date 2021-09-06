@@ -23,6 +23,21 @@ def test_splunk_regex_query(splunk_backend : SplunkBackend):
         """)
     ) == ["fieldB=\"foo\" fieldC=\"bar\"\n| regex fieldA=\"foo.*bar\""]
 
+def test_splunk_single_regex_query(splunk_backend : SplunkBackend):
+    assert splunk_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re: foo.*bar
+                condition: sel
+        """)
+    ) == ["*\n| regex fieldA=\"foo.*bar\""]
+
 def test_splunk_cidr_query(splunk_backend : SplunkBackend):
     assert splunk_backend.convert(
         SigmaCollection.from_yaml("""

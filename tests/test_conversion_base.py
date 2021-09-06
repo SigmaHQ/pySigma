@@ -51,6 +51,7 @@ class TextQueryTestBackend(TextQueryBackend):
 
     deferred_start : ClassVar[str] = " | "
     deferred_separator : ClassVar[str] = " | "
+    deferred_only_query : ClassVar[str] = "*"
 
     backend_processing_pipeline = ProcessingPipeline([
         ProcessingItem(FieldMappingTransformation({

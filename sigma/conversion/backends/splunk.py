@@ -59,6 +59,7 @@ class SplunkBackend(TextQueryBackend):
 
     deferred_start : ClassVar[str] = "\n| "
     deferred_separator : ClassVar[str] = "\n| "
+    deferred_only_query : ClassVar[str] = "*"
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : "sigma.conversion.state.ConversionState") -> SplunkDeferredRegularExpression:
         """Defer regular expression matching to pipelined regex command after main search expression."""

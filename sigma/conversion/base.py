@@ -299,7 +299,7 @@ class TextQueryBackend(Backend):
     # Query finalization: appending and concatenating deferred query party
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
     deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
-
+    deferred_only_query : ClassVar[Optional[str]] = None            # String used as query if final query only contains deferred expression
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
         """
@@ -512,12 +512,14 @@ class TextQueryBackend(Backend):
         """Conversion of value-only regular expressions."""
         return cond.value.finalize()
 
-    def finalize_query(self, rule : SigmaRule, query : str, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+    def finalize_query(self, rule : SigmaRule, query : Union[str, DeferredQueryExpression], state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """
         Finalize query by appending deferred query parts to the main conversion result as specified
         with deferred_start and deferred_separator.
         """
         if state.has_deferred():
+            if isinstance(query, DeferredQueryExpression):
+                query = self.deferred_only_query
             return query + self.deferred_start + self.deferred_separator.join((
                 deferred_expression.finalize_expression()
                 for deferred_expression in state.deferred

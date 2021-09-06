@@ -318,7 +318,7 @@ class SigmaRegularExpression(SigmaType):
         try:
             re.compile(self.regexp)
         except re.error as e:
-            raise SigmaRegularExpressionError("Invalid regular expression") from e
+            raise SigmaRegularExpressionError(f"Regular expression '{self.regexp}' is invalid: {str(e)}") from e
 
     def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\") -> str:
         """Escape strings from escaped tuple as well as escape_char itself with escape_char."""

@@ -29,13 +29,13 @@ class SigmaConverterArgumentParser(ArgumentParser):
         super().print_help(file=file)
         self.list_backends(file)
 
-def parse_rules(filespecs : List[str], file_pattern : str, collect_errors : bool) -> Iterable[SigmaCollection]:
+def iterate_rules(filespecs : List[str], file_pattern : str) -> Iterable[SigmaCollection]:
     """
     Resolve mixed files and directories to list of pathlib Path objects. Directories are
     traversed recursively and all files matching the file-pattern argument are used.
     """
     return (
-        (item, SigmaCollection.from_yaml(item.open().read(), collect_errors=collect_errors))
+        (item, item.open().read())
         for sublist in [
             path.glob(f"**/{ file_pattern }")
             if path.is_dir()
@@ -49,12 +49,13 @@ def parse_rules(filespecs : List[str], file_pattern : str, collect_errors : bool
      )
 
 def convert(args):
-    sigma_rules = parse_rules(args.file, args.file_pattern, args.collect_errors)
+    sigma_rules = iterate_rules(args.file, args.file_pattern)
     pipeline = ProcessingPipelineResolver().resolve(args.config)
     backend_class = backends[args.backend][0]
     backend : TextQueryBackend = backend_class(pipeline)
-    for path, sigma_rule in sigma_rules:
+    for path, sigma_yaml in sigma_rules:
         print(f"=== Sigma Rule: { path } ===")
+        sigma_rule = SigmaCollection.from_yaml(sigma_yaml, collect_errors=args.collect_errors)
         if sigma_rule.errors:
             print("Rule has errors:")
             for error in sigma_rule.errors:

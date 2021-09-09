@@ -1,5 +1,5 @@
 import pytest
-from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionNOT, ConditionIdentifier, ConditionSelector, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
+from sigma.conditions import ConditionItem, SigmaCondition, ConditionAND, ConditionOR, ConditionNOT, ConditionIdentifier, ConditionSelector, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
 from sigma.rule import SigmaDetections, SigmaDetection, SigmaDetectionItem
 from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.exceptions import SigmaConditionError
@@ -117,6 +117,15 @@ def test_precedence(sigma_simple_detections):
         ])
     ])
 
+def test_precedence_parent_chain_condition_classes(sigma_simple_detections):
+    parsed : ConditionItem = SigmaCondition("detection1 and not detection2 or not detection3 and detection_4", sigma_simple_detections).parsed
+    assert (
+        parsed.args[0].args[0].parent_chain_condition_classes() == [ConditionAND, ConditionOR] and                               # detection1
+        parsed.args[0].args[1].args[0].parent_chain_condition_classes() == [ConditionNOT, ConditionAND, ConditionOR] and         # detection2
+        parsed.args[1].args[0].args[0].parent_chain_condition_classes() == [ConditionNOT, ConditionAND, ConditionOR] and         # detection3
+        parsed.args[1].args[1].parent_chain_condition_classes() == [ConditionAND, ConditionOR]                                   # detection_4
+    )
+
 def test_precedence_parenthesis(sigma_simple_detections):
     assert SigmaCondition("(detection1 or not detection2) and not (detection3 or detection_4)", sigma_simple_detections).parsed == ConditionAND([
         ConditionOR([
@@ -131,6 +140,10 @@ def test_precedence_parenthesis(sigma_simple_detections):
         ])
     ])
 
+def test_precedence_parenthesis_parent_chain_condition_classes(sigma_simple_detections):
+    assert SigmaCondition("(detection1 or not detection2) and not (detection3 or detection_4)", sigma_simple_detections) \
+        .parsed.args[1].args[0].args[0].parent_chain_condition_classes() == [ConditionOR, ConditionNOT, ConditionAND]
+
 def test_selector_1(sigma_simple_detections):
     assert SigmaCondition("1 of detection*", sigma_simple_detections).parsed == ConditionOR([
         ConditionValueExpression(SigmaString("val1")),
@@ -138,6 +151,10 @@ def test_selector_1(sigma_simple_detections):
         ConditionValueExpression(SigmaString("val3")),
         ConditionValueExpression(SigmaString("val4")),
     ])
+
+def test_selector_1_parent_chain_classes(sigma_simple_detections):
+    assert SigmaCondition("1 of detection*", sigma_simple_detections) \
+        .parsed.args[0].parent_chain_classes() == [SigmaDetectionItem, SigmaDetection, ConditionIdentifier, ConditionOR]
 
 def test_selector_any(sigma_simple_detections):
     assert SigmaCondition("any of detection*", sigma_simple_detections).parsed == ConditionOR([

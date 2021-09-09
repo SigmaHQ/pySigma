@@ -6,7 +6,7 @@ from datetime import date
 import yaml
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
-from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
+from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ParentChainMixin
 import sigma.exceptions as sigma_exceptions
 
 class SigmaStatus(Enum):
@@ -69,7 +69,7 @@ class SigmaLogSource:
                (self.service  is None or self.service  == other.service )
 
 @dataclass
-class SigmaDetectionItem:
+class SigmaDetectionItem(ParentChainMixin):
     """
     Single Sigma detection definition
 
@@ -84,6 +84,7 @@ class SigmaDetectionItem:
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
+    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
     applied_processing_items : Set[str] = field(init=False, compare=False, default_factory=set)
 
     def apply_modifiers(self):
@@ -166,17 +167,18 @@ class SigmaDetectionItem:
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val)
 
-    def postprocess(self, detections : "SigmaDetections") -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
+    def postprocess(self, detections : "SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
+        self.parent = parent
         if len(self.value) == 0:    # no value: map to none type
             if self.field is None:
                 raise sigma_exceptions.SigmaConditionError("Null value must be bound to a field")
             else:
-                return ConditionFieldEqualsValueExpression(self.field, SigmaNull())
+                return ConditionFieldEqualsValueExpression(self.field, SigmaNull(), self)
         if len(self.value) == 1:        # single value: return key/value or value-only expression
             if self.field is None:
-                return ConditionValueExpression(self.value[0])
+                return ConditionValueExpression(self.value[0], self)
             else:
-                return ConditionFieldEqualsValueExpression(self.field, self.value[0])
+                return ConditionFieldEqualsValueExpression(self.field, self.value[0], self)
         else:     # more than one value, return logically linked values or an "in" expression
             # special case: "in" expression
             # field must be present and values must all be basic types without any special characters (e.g. wildcards)
@@ -191,16 +193,16 @@ class SigmaDetectionItem:
                     for v in self.value
                     if isinstance(v, SigmaString)
                 ]):
-                return ConditionFieldValueInExpression(self.field, self.value)
+                return ConditionFieldValueInExpression(self.field, self.value, self)
             else:       # default case: AND/OR linked expressions
                 if self.field is None:      # no field - only values
                     return self.value_linking([
-                        ConditionValueExpression(v)
+                        ConditionValueExpression(v, self)
                         for v in self.value
                     ])
                 else:                       # with field - field/value pairs
                     return self.value_linking([
-                        ConditionFieldEqualsValueExpression(self.field, v)
+                        ConditionFieldEqualsValueExpression(self.field, v, self)
                         for v in self.value
                     ])
 
@@ -214,7 +216,7 @@ class SigmaDetectionItem:
         return processing_item_id in self.applied_processing_items
 
 @dataclass
-class SigmaDetection:
+class SigmaDetection(ParentChainMixin):
     """
     A detection is a set of atomic event defitionions represented by SigmaDetectionItem instances. SigmaDetectionItems
     of a SigmaDetection are OR-linked.
@@ -227,6 +229,7 @@ class SigmaDetection:
     """
     detection_items : List[Union[SigmaDetectionItem, "SigmaDetection"]]
     item_linking : Union[Type[ConditionAND], Type[ConditionOR]] = field(init=False)
+    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
 
     def __post_init__(self):
         """Check detection validity."""
@@ -265,10 +268,11 @@ class SigmaDetection:
                             ]
                         )
 
-    def postprocess(self, detections : "SigmaDetections") -> Union[ConditionAND, ConditionOR]:
+    def postprocess(self, detections : "SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
         """Convert detection item into condition tree element"""
+        self.parent = parent
         items = [
-            detection_item.postprocess(detections)
+            detection_item.postprocess(detections, self)
             for detection_item in self.detection_items
         ]
         if len(items) == 1:     # no boolean linking required, directly return single element

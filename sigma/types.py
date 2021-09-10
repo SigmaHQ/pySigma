@@ -309,6 +309,20 @@ class SigmaNumber(SigmaType):
             return self.number == other.number
 
 @dataclass
+class SigmaBool(SigmaType):
+    """boolean value type"""
+    boolean : bool
+
+    def __post_init__(self):
+        if not isinstance(self.boolean, bool):
+            raise SigmaTypeError("SigmaBool must be a boolean")
+
+    def __str__(self):
+        return str(self.boolean)
+
+
+
+@dataclass
 class SigmaRegularExpression(SigmaType):
     """Regular expression type"""
     regexp : str

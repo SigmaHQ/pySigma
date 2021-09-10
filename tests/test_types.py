@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaBool, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression, SigmaPartialRegularExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -192,6 +192,13 @@ def test_re_partial_invalid():
 def test_re_escape():
     assert SigmaRegularExpression("foo\\d+bar-test").escape(("foo", "-", "t"), "\\") == "\\foo\\\\d+bar\\-\\tes\\t"
 
+def test_bool():
+    assert SigmaBool(True).boolean == True
+
+def test_bool_invalid():
+    with pytest.raises(SigmaTypeError, match="must be a boolean"):
+        SigmaBool(123)
+
 def test_null_equality():
     assert SigmaNull() == SigmaNull("foo")
 
@@ -206,6 +213,9 @@ def test_conversion_int():
 
 def test_conversion_float():
     assert sigma_type(12.34) == SigmaNumber(12.34)
+
+def test_conversion_bool():
+    assert sigma_type(True) == SigmaBool(True)
 
 def test_conversion_none():
     assert sigma_type(None) == SigmaNull()

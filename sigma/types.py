@@ -310,7 +310,7 @@ class SigmaNumber(SigmaType):
 
 @dataclass
 class SigmaBool(SigmaType):
-    """boolean value type"""
+    """Boolean value type"""
     boolean : bool
 
     def __post_init__(self):
@@ -319,8 +319,6 @@ class SigmaBool(SigmaType):
 
     def __str__(self):
         return str(self.boolean)
-
-
 
 @dataclass
 class SigmaRegularExpression(SigmaType):
@@ -489,6 +487,7 @@ class SigmaQueryExpression(SigmaType):
         return self.expr.format(field=field)
 
 type_map = {
+    bool        : SigmaBool,
     int         : SigmaNumber,
     float       : SigmaNumber,
     str         : SigmaString,

@@ -30,6 +30,7 @@ class DeferredQueryExpression(ABC):
     The method finalize_expression must implement the generation of the query expression.
     """
     conversion_state : "sigma.backends.state.ConversionState"
+    parent : Optional["sigma.conditions.ConditionItem"]
     negated : bool = field(init=False, default=False)
 
     def __post_init__(self):

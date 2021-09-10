@@ -20,11 +20,11 @@ class DeferredTestExpression(DeferredTextQueryExpression):
 
 @pytest.fixture
 def deferred_expression(conversion_state):
-    return DeferredTestExpression(conversion_state, "field", "value")
+    return DeferredTestExpression(conversion_state, None, "field", "value")
 
 @pytest.fixture
 def deferred_expression_nofield(conversion_state):
-    return DeferredTestExpression(conversion_state, None, "value")
+    return DeferredTestExpression(conversion_state, None, None, "value")
 
 def test_deferred_expression(deferred_expression):
     assert deferred_expression.finalize_expression() == 'field="value"'
@@ -41,7 +41,7 @@ class DeferredTextQueryTestBackend(TextQueryTestBackend):
     re_escape = tuple()
 
     def convert_condition_field_eq_val_re(self, cond: ConditionFieldEqualsValueExpression, state: ConversionState) -> DeferredTestExpression:
-        return DeferredTestExpression(state, cond.field, super().convert_condition_field_eq_val_re(cond, state))
+        return DeferredTestExpression(state, None, cond.field, super().convert_condition_field_eq_val_re(cond, state))
 
 @pytest.fixture
 def test_backend():

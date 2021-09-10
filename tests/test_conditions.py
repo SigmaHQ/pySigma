@@ -221,6 +221,10 @@ def test_field_valuelist_with_regex_detection(sigma_detections):
         ConditionFieldEqualsValueExpression("field", SigmaRegularExpression("reg.*ex")),
     ])
 
+def test_field_valuelist_with_regex_detection_parent_condition_chain(sigma_detections):
+    assert SigmaCondition("field-valuelist-regex", sigma_detections). \
+        parsed.args[0].parent_chain_classes() == [ConditionOR, SigmaDetection, ConditionIdentifier]
+
 def test_empty_field_detection(sigma_detections):
     assert SigmaCondition("empty-field", sigma_detections).parsed == ConditionFieldEqualsValueExpression("field", SigmaNull())
 

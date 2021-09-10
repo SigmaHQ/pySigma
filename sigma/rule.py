@@ -196,15 +196,17 @@ class SigmaDetectionItem(ParentChainMixin):
                 return ConditionFieldValueInExpression(self.field, self.value, self)
             else:       # default case: AND/OR linked expressions
                 if self.field is None:      # no field - only values
-                    return self.value_linking([
+                    cond = self.value_linking([
                         ConditionValueExpression(v, self)
                         for v in self.value
                     ])
                 else:                       # with field - field/value pairs
-                    return self.value_linking([
+                    cond = self.value_linking([
                         ConditionFieldEqualsValueExpression(self.field, v, self)
                         for v in self.value
                     ])
+                cond.postprocess(detections, parent)
+                return cond
 
     def add_applied_processing_item(self, processing_item : Optional["sigma.processing.pipeline.ProcessingItem"]):
         """Add identifier of processing item to set of applied processing items."""

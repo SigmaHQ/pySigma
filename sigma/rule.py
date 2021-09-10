@@ -84,7 +84,6 @@ class SigmaDetectionItem(ParentChainMixin):
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
-    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
     applied_processing_items : Set[str] = field(init=False, compare=False, default_factory=set)
 
     def apply_modifiers(self):
@@ -173,12 +172,12 @@ class SigmaDetectionItem(ParentChainMixin):
             if self.field is None:
                 raise sigma_exceptions.SigmaConditionError("Null value must be bound to a field")
             else:
-                return ConditionFieldEqualsValueExpression(self.field, SigmaNull(), self)
+                return ConditionFieldEqualsValueExpression(self.field, SigmaNull()).postprocess(detections, self)
         if len(self.value) == 1:        # single value: return key/value or value-only expression
             if self.field is None:
-                return ConditionValueExpression(self.value[0], self)
+                return ConditionValueExpression(self.value[0]).postprocess(detections, self)
             else:
-                return ConditionFieldEqualsValueExpression(self.field, self.value[0], self)
+                return ConditionFieldEqualsValueExpression(self.field, self.value[0]).postprocess(detections, self)
         else:     # more than one value, return logically linked values or an "in" expression
             # special case: "in" expression
             # field must be present and values must all be basic types without any special characters (e.g. wildcards)
@@ -193,16 +192,16 @@ class SigmaDetectionItem(ParentChainMixin):
                     for v in self.value
                     if isinstance(v, SigmaString)
                 ]):
-                return ConditionFieldValueInExpression(self.field, self.value, self)
+                return ConditionFieldValueInExpression(self.field, self.value).postprocess(detections, self)
             else:       # default case: AND/OR linked expressions
                 if self.field is None:      # no field - only values
                     cond = self.value_linking([
-                        ConditionValueExpression(v, self)
+                        ConditionValueExpression(v)
                         for v in self.value
                     ])
                 else:                       # with field - field/value pairs
                     cond = self.value_linking([
-                        ConditionFieldEqualsValueExpression(self.field, v, self)
+                        ConditionFieldEqualsValueExpression(self.field, v)
                         for v in self.value
                     ])
                 cond.postprocess(detections, parent)
@@ -231,7 +230,6 @@ class SigmaDetection(ParentChainMixin):
     """
     detection_items : List[Union[SigmaDetectionItem, "SigmaDetection"]]
     item_linking : Union[Type[ConditionAND], Type[ConditionOR]] = field(init=False)
-    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
 
     def __post_init__(self):
         """Check detection validity."""

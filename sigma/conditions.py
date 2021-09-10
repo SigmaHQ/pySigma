@@ -8,8 +8,10 @@ from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError
 import sigma
 
+@dataclass
 class ParentChainMixin:
     """Class to resolve parent chains of condition objects."""
+    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
     operator : ClassVar[bool] = False       # is class a boolean operator?
 
     def parent_chain(self) -> List["ConditionType"]:
@@ -51,7 +53,6 @@ class ConditionItem(ParentChainMixin, ABC):
     arg_count : ClassVar[int]
     token_list : ClassVar[bool] = False     # determines if the value passed as tokenized is a ParseResult or a simple list object
     args : List[Union["ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionFieldValueInExpression", "ConditionValueExpression"]]
-    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
 
     @classmethod
     def from_parsed(cls, s : str, l : int, t : Union[ParseResults, list]) -> "ConditionItem":
@@ -104,7 +105,6 @@ class ConditionIdentifier(ConditionItem):
     arg_count : ClassVar[int] = 1
     token_list : ClassVar[bool] = True
     identifier : str = field(init=False)
-    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
 
     def __post_init__(self):
         self.identifier = self.args[0]
@@ -124,7 +124,6 @@ class ConditionSelector(ConditionItem):
     token_list : ClassVar[bool]  = True
     cond_class : Union[ConditionAND, ConditionOR] = field(init=False)
     pattern : str = field(init=False)
-    parent : Optional["ConditionItem"] = field(init=False, compare=False, default=None)      # Link to parent containing this condition
 
     def __post_init__(self):
         if self.args[0] in ["1", "any"]:
@@ -149,20 +148,17 @@ class ConditionFieldEqualsValueExpression(ParentChainMixin):
     """Field equals value"""
     field : str
     value : SigmaType
-    parent : Optional["ConditionItem"] = field(compare=False, default=None)      # Link to parent containing this condition
 
 @dataclass
 class ConditionFieldValueInExpression(ParentChainMixin):
     """Field has value contained in list"""
     field : str
     value : List[SigmaType]
-    parent : Optional["ConditionItem"] = field(compare=False, default=None)      # Link to parent containing this condition
 
 @dataclass
 class ConditionValueExpression(ParentChainMixin):
     """Match on value without field"""
     value : SigmaType
-    parent : Optional["ConditionItem"] = field(compare=False, default=None)      # Link to parent containing this condition
 
 identifier = Word(alphanums + "_-")
 identifier.setParseAction(ConditionIdentifier.from_parsed)

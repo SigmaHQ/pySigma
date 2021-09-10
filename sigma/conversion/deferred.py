@@ -1,10 +1,11 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
 from typing import Any, ClassVar, Dict, Optional
+from sigma.conditions import ParentChainMixin
 import sigma
 
 @dataclass
-class DeferredQueryExpression(ABC):
+class DeferredQueryExpression(ParentChainMixin, ABC):
     """
     This class is the base class for deferred query expressions, which are a method to postpone
     conversion of particular query parts to the finalization phase. The reason for this can be
@@ -30,7 +31,6 @@ class DeferredQueryExpression(ABC):
     The method finalize_expression must implement the generation of the query expression.
     """
     conversion_state : "sigma.backends.state.ConversionState"
-    parent : Optional["sigma.conditions.ConditionItem"]
     negated : bool = field(init=False, default=False)
 
     def __post_init__(self):

@@ -66,10 +66,10 @@ class SplunkBackend(TextQueryBackend):
         """Defer regular expression matching to pipelined regex command after main search expression."""
         if cond.parent_condition_chain_contains(ConditionOR):
             raise SigmaFeatureNotSupportedByBackendError("ORing regular expressions is not yet supported by Splunk backend")
-        return SplunkDeferredRegularExpression(state, cond, cond.field, super().convert_condition_field_eq_val_re(cond, state))
+        return SplunkDeferredRegularExpression(state, cond.field, super().convert_condition_field_eq_val_re(cond, state)).postprocess(None, cond)
 
     def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression, state : "sigma.conversion.state.ConversionState") -> SplunkDeferredCIDRExpression:
         """Defer CIDR network range matching to pipelined where cidrmatch command after main search expression."""
         if cond.parent_condition_chain_contains(ConditionOR):
             raise SigmaFeatureNotSupportedByBackendError("ORing CIDR matching is not yet supported by Splunk backend")
-        return SplunkDeferredCIDRExpression(state, cond, cond.field, super().convert_condition_field_eq_val_cidrv4(cond, state))
+        return SplunkDeferredCIDRExpression(state, cond.field, super().convert_condition_field_eq_val_cidrv4(cond, state)).postprocess(None, cond)

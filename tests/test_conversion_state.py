@@ -9,7 +9,7 @@ def conversion_state():
 
 @pytest.fixture
 def deferred_expression(conversion_state):
-    return DeferredTextQueryExpression(conversion_state, None, "field", "value")
+    return DeferredTextQueryExpression(conversion_state, "field", "value")
 
 def test_conversion_state_empty_has_deferred(conversion_state : ConversionState):
     assert conversion_state.has_deferred() == False

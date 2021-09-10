@@ -1,11 +1,12 @@
 from abc import ABC, abstractmethod
+from sigma.exceptions import SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Union, ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -110,6 +111,10 @@ class Backend(ABC):
         """Conversion of field = number value expressions"""
 
     @abstractmethod
+    def convert_condition_field_eq_val_bool(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field = boolean value expressions"""
+
+    @abstractmethod
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches regular expression value expressions"""
 
@@ -138,6 +143,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_str(cond, state)
         elif isinstance(cond.value, SigmaNumber):
             return self.convert_condition_field_eq_val_num(cond, state)
+        elif isinstance(cond.value, SigmaBool):
+            return self.convert_condition_field_eq_val_bool(cond, state)
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_field_eq_val_re(cond, state)
         elif isinstance(cond.value, SigmaPartialRegularExpression):
@@ -175,10 +182,6 @@ class Backend(ABC):
         """Conversion of regexp-only conditions."""
 
     @abstractmethod
-    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
-        """Conversion of cidrv4-only conditions."""
-
-    @abstractmethod
     def convert_condition_query_expr(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions without field association."""
 
@@ -188,10 +191,12 @@ class Backend(ABC):
             return self.convert_condition_val_str(cond, state)
         elif isinstance(cond.value, SigmaNumber):
             return self.convert_condition_val_num(cond, state)
+        elif isinstance(cond.value, SigmaBool):
+            raise SigmaValueError("Boolean values can't appear as standalone value without a field name.")
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_val_re(cond, state)
         elif isinstance(cond.value, SigmaCIDRv4Expression):
-            return self.convert_condition_val_cidrv4(cond, state)
+            raise SigmaValueError("CIDR values can't appear as standalone value without a field name.")
         elif isinstance(cond.value, SigmaQueryExpression):
             return self.convert_condition_query_expr(cond, state)
         else:       # pragma: no cover
@@ -267,6 +272,10 @@ class TextQueryBackend(Backend):
     wildcard_single : ClassVar[Optional[str]] = None    # Character used as single-character wildcard
     add_escaped     : ClassVar[str] = ""                # Characters quoted in addition to wildcards and string quote
     filter_chars    : ClassVar[str] = ""                # Characters filtered
+    bool_values     : ClassVar[Dict[bool, Optional[str]]] = {   # Values to which boolean values are mapped.
+        True: None,
+        False: None,
+    }
 
     # Regular expressions
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
@@ -293,8 +302,6 @@ class TextQueryBackend(Backend):
     unbound_value_str_expression : ClassVar[Optional[str]] = None   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
-    unbound_value_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {value}
-    unbound_list_cidrv4_expression : ClassVar[Optional[str]] = None   # Expression for cidrv4 expression not bound to a field as format string with placeholder {list}
 
     # Query finalization: appending and concatenating deferred query party
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
@@ -397,6 +404,13 @@ class TextQueryBackend(Backend):
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 
+    def convert_condition_field_eq_val_bool(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field = bool value expressions"""
+        try:
+            return cond.field + self.eq_token + self.bool_values[cond.value.boolean]
+        except TypeError:       # pragma: no cover
+            raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
+
     def convert_value_re(self, r : SigmaRegularExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Convert regular expression into string representation used in query."""
         return r.escape(self.re_escape, self.re_escape_char)
@@ -484,29 +498,6 @@ class TextQueryBackend(Backend):
     def convert_condition_val_re(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only regular expressions."""
         return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value, state))
-
-    def convert_condition_val_cidrv4(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Conversion of value-only cidrv4 expressions."""
-        convert_str = self.convert_value_cidr(cond.value, state)
-        if self.or_token in convert_str:
-            list_ip = convert_str.split(self.or_token)
-            if self.cidrv4_wildcard == None:
-                    return self.unbound_list_cidrv4_expression.format(
-                        list=self.list_separator.join([str(v) for v in list_ip])
-                    )
-            else:
-                return self.unbound_list_cidrv4_expression.format(
-                    list=self.list_separator.join([ self.str_quote + str(v) + self.str_quote for v in list_ip])
-                )
-        else:
-            if self.cidrv4_wildcard == None:
-                return self.unbound_value_cidrv4_expression.format(
-                    value=convert_str,
-                )
-            else:
-                return self.unbound_value_cidrv4_expression.format(
-                    value=self.str_quote + convert_str + self.str_quote,
-                )
 
     def convert_condition_query_expr(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only regular expressions."""

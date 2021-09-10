@@ -126,6 +126,14 @@ def test_precedence_parent_chain_condition_classes(sigma_simple_detections):
         parsed.args[1].args[1].parent_chain_condition_classes() == [ConditionAND, ConditionOR]                                   # detection_4
     )
 
+def test_precedence_parent_chain_condition_classes_contains(sigma_simple_detections):
+    assert SigmaCondition("detection1 and not detection2 or not detection3 and detection_4", sigma_simple_detections) \
+        .parsed.args[0].args[0].parent_condition_chain_contains(ConditionOR)
+
+def test_precedence_parent_chain_condition_classes_not_contains(sigma_simple_detections):
+    assert not SigmaCondition("detection1 and not detection2 or not detection3 and detection_4", sigma_simple_detections) \
+        .parsed.args[0].args[0].parent_condition_chain_contains(ConditionNOT)
+
 def test_precedence_parenthesis(sigma_simple_detections):
     assert SigmaCondition("(detection1 or not detection2) and not (detection3 or detection_4)", sigma_simple_detections).parsed == ConditionAND([
         ConditionOR([

@@ -1,3 +1,4 @@
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import pytest
 from sigma.conversion.backends.splunk import SplunkBackend
 from sigma.collection import SigmaCollection
@@ -22,6 +23,44 @@ def test_splunk_regex_query(splunk_backend : SplunkBackend):
                 condition: sel
         """)
     ) == ["fieldB=\"foo\" fieldC=\"bar\"\n| regex fieldA=\"foo.*bar\""]
+
+def test_splunk_regex_query_implicit_or(splunk_backend : SplunkBackend):
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ORing regular expressions"):
+        splunk_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|re:
+                            - foo.*bar
+                            - boo.*foo
+                        fieldB: foo
+                        fieldC: bar
+                    condition: sel
+            """)
+        )
+
+def test_splunk_regex_query_explicit_or(splunk_backend : SplunkBackend):
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ORing regular expressions"):
+        splunk_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel1:
+                        fieldA|re: foo.*bar
+                    sel2:
+                        fieldB|re: boo.*foo
+                    condition: sel1 or sel2
+            """)
+        )
 
 def test_splunk_single_regex_query(splunk_backend : SplunkBackend):
     assert splunk_backend.convert(

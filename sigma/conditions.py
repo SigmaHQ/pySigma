@@ -34,6 +34,18 @@ class ParentChainMixin:
             if item.operator
         ]
 
+    def parent_condition_chain_contains(self, cond_class : Type["ConditionType"]):
+        """Determines if the class cond_class is contained in parent condition class chain."""
+        return cond_class in self.parent_chain_condition_classes()
+
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None) -> "ConditionItem":
+        """
+        Minimal default postprocessing implementation for classes whcih don't bring their own postprocess method.
+        Just sets the parent property.
+        """
+        self.parent = parent
+        return self
+
 @dataclass
 class ConditionItem(ParentChainMixin, ABC):
     arg_count : ClassVar[int]

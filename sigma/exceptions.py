@@ -53,3 +53,7 @@ class SigmaCollectionError(SigmaError):
 class SigmaConfigurationError(SigmaError):
     """Error in configuration of a Sigma processing pipeline"""
     pass
+
+class SigmaFeatureNotSupportedByBackendError(SigmaError):
+    """Sigma feature is not supported by the backend."""
+    pass

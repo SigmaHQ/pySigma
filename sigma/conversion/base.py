@@ -71,11 +71,11 @@ class Backend(ABC):
         queries = [
             query
             for rule in rule_collection.rules
-            for query in self.convert_rule(rule)
+            for query in self.convert_rule(rule, output_format or self.default_format)
         ]
         return self.finalize(rule_collection, queries, output_format or self.default_format)
 
-    def convert_rule(self, rule : SigmaRule) -> List[Any]:
+    def convert_rule(self, rule : SigmaRule, output_format : Optional[str] = None) -> List[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
@@ -86,8 +86,8 @@ class Backend(ABC):
             for cond in rule.detection.parsed_condition
         ]
         return [                                    # 3. Postprocess generated query
-            self.finalize_query(rule, query, state)
-            for query in queries
+            self.finalize_query(rule, query, index, state, output_format)
+            for index, query in enumerate(queries)
         ]
 
     @abstractmethod
@@ -230,7 +230,17 @@ class Backend(ABC):
         else:       # pragma: no cover
             raise TypeError("Unexpected data type in condition parse tree: " + cond.__class__.__name__)
 
-    def finalize_query(self, rule : SigmaRule, query : Any, state : ConversionState) -> Any:
+    def finalize_query(self, rule : SigmaRule, query : Any, index : int, state : ConversionState, output_format : str):
+        """
+        Finalize query. Dispatches to format-specific method. The index parameter enumerates generated queries if the
+        conversion of a Sigma rule results in multiple queries.
+
+        This is the place where syntactic elements of the target format for the specific query are added,
+        e.g. adding query metadata.
+        """
+        return self.__getattribute__("finalize_query_" + output_format)(rule, query, index, state)
+
+    def finalize_query_default(self, rule : SigmaRule, query : Any, index : int, state : ConversionState) -> Any:
         """
         Finalize conversion result of a query. Handling of deferred query parts must be implemented by overriding
         this method.
@@ -243,7 +253,10 @@ class Backend(ABC):
 
     def finalize_output_default(self, rules : SigmaCollection, queries : List[Any]) -> Any:
         """
-        Default finalization
+        Default finalization.
+
+        This is the place where syntactic elements of the target format for the whole output are added,
+        e.g. putting individual queries into a XML file.
         """
         return queries
 
@@ -503,7 +516,7 @@ class TextQueryBackend(Backend):
         """Conversion of value-only regular expressions."""
         return cond.value.finalize()
 
-    def finalize_query(self, rule : SigmaRule, query : Union[str, DeferredQueryExpression], state : ConversionState) -> Union[str, DeferredQueryExpression]:
+    def finalize_query(self, rule : SigmaRule, query : Union[str, DeferredQueryExpression], index : int, state : ConversionState, output_format : str) -> Union[str, DeferredQueryExpression]:
         """
         Finalize query by appending deferred query parts to the main conversion result as specified
         with deferred_start and deferred_separator.
@@ -511,9 +524,13 @@ class TextQueryBackend(Backend):
         if state.has_deferred():
             if isinstance(query, DeferredQueryExpression):
                 query = self.deferred_only_query
-            return query + self.deferred_start + self.deferred_separator.join((
-                deferred_expression.finalize_expression()
-                for deferred_expression in state.deferred
-                ))
+            return super().finalize_query(rule,
+                query + self.deferred_start + self.deferred_separator.join((
+                    deferred_expression.finalize_expression()
+                    for deferred_expression in state.deferred
+                    )
+                ),
+                index, state, output_format
+            )
         else:
-            return query
+            return super().finalize_query(rule, query, index, state, output_format)

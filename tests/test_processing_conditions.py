@@ -1,8 +1,9 @@
+from sigma import processing
 from sigma.exceptions import SigmaConfigurationError
 import pytest
 from sigma.processing.pipeline import ProcessingPipeline
-from sigma.processing.conditions import IncludeFieldCondition, ExcludeFieldCondition
-from sigma.rule import SigmaDetectionItem
+from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition
+from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 
 @pytest.fixture
 def dummy_processing_pipeline():
@@ -11,6 +12,40 @@ def dummy_processing_pipeline():
 @pytest.fixture
 def detection_item():
     return SigmaDetectionItem("field", [], "value")
+
+def test_logsource_match(dummy_processing_pipeline, detection_item):
+    assert LogsourceCondition(category="test_category").match(
+        dummy_processing_pipeline,
+        SigmaRule.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """
+        )
+    )
+
+def test_logsource_no_match(dummy_processing_pipeline, detection_item):
+    assert not LogsourceCondition(category="test_category", product="other_product").match(
+        dummy_processing_pipeline,
+        SigmaRule.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """
+        )
+    )
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):
     assert IncludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, detection_item) == True

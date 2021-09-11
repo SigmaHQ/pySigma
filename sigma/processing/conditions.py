@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Dict, List, Pattern, Literal
+from typing import Dict, List, Pattern, Literal, Optional
 import re
-from sigma.rule import SigmaRule, SigmaDetectionItem
+from sigma.rule import SigmaRule, SigmaDetectionItem, SigmaLogSource
 from sigma.exceptions import SigmaConfigurationError
 
 ### Base Classes ###
@@ -26,6 +26,20 @@ class DetectionItemProcessingCondition(ABC):
         """Match condition on Sigma rule."""
 
 ### Rule Condition Classes ###
+@dataclass
+class LogsourceCondition(RuleProcessingCondition):
+    """
+    Matches log source on rule. Not specified log source fields are ignored.
+    """
+    category : Optional[str] = field(default=None)
+    product : Optional[str] = field(default=None)
+    service : Optional[str] = field(default=None)
+
+    def __post_init__(self):
+        self.logsource = SigmaLogSource(self.category, self.product, self.service)
+
+    def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
+        return rule.logsource in self.logsource
 
 ### Detection Item Condition Classes ###
 @dataclass
@@ -67,7 +81,11 @@ class ExcludeFieldCondition(IncludeFieldCondition):
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
         return not super().match(pipeline, detection_item)
 
-rule_conditions : Dict[str, RuleProcessingCondition] = {}
+### Condition mappings between rule identifier and class
+
+rule_conditions : Dict[str, RuleProcessingCondition] = {
+    "logsource": LogsourceCondition,
+}
 detection_item_conditions : Dict[str, DetectionItemProcessingCondition] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,

@@ -1,11 +1,19 @@
 [tool.poetry]
-name = "sigmatools"
-version = "1.0.0"
+name = "pySigma"
+version = "0.1.0"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
 readme = "README.md"
-repository = "https://github.com/SigmaHQ/sigmatools"
+repository = "https://github.com/SigmaHQ/pySigma"
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Topic :: Security"
+]
 packages = [
     { include = "sigma" }
 ]

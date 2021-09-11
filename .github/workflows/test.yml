@@ -37,7 +37,7 @@ jobs:
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 11b31b4f709b6dc54a30d5203e8fe0ee
-          filename: SigmaHQ-sigmatools-coverage.json
+          filename: SigmaHQ-pySigma-coverage.json
           label: Coverage
           message: ${{ env.COVERAGE }}
           color: ${{ env.COVERAGE_COLOR }}

@@ -534,3 +534,6 @@ class TextQueryBackend(Backend):
             )
         else:
             return super().finalize_query(rule, query, index, state, output_format)
+
+    def finalize_output_default(self, queries: List[str]) -> str:
+        return "\n".join(queries)

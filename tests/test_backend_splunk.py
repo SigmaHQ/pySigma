@@ -22,7 +22,7 @@ def test_splunk_regex_query(splunk_backend : SplunkBackend):
                     fieldC: bar
                 condition: sel
         """)
-    ) == ["fieldB=\"foo\" fieldC=\"bar\"\n| regex fieldA=\"foo.*bar\""]
+    ) == "fieldB=\"foo\" fieldC=\"bar\"\n| regex fieldA=\"foo.*bar\""
 
 def test_splunk_regex_query_implicit_or(splunk_backend : SplunkBackend):
     with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="ORing regular expressions"):
@@ -75,7 +75,7 @@ def test_splunk_single_regex_query(splunk_backend : SplunkBackend):
                     fieldA|re: foo.*bar
                 condition: sel
         """)
-    ) == ["*\n| regex fieldA=\"foo.*bar\""]
+    ) == "*\n| regex fieldA=\"foo.*bar\""
 
 def test_splunk_cidr_query(splunk_backend : SplunkBackend):
     assert splunk_backend.convert(
@@ -92,7 +92,7 @@ def test_splunk_cidr_query(splunk_backend : SplunkBackend):
                     fieldC: bar
                 condition: sel
         """)
-    ) == ["fieldB=\"foo\" fieldC=\"bar\"\n| where cidrmatch(\"192.168.0.0/16\", fieldA)"]
+    ) == "fieldB=\"foo\" fieldC=\"bar\"\n| where cidrmatch(\"192.168.0.0/16\", fieldA)"
 
 def test_splunk_savedsearch_output(splunk_backend : SplunkBackend):
     rules = """

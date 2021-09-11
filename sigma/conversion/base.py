@@ -73,7 +73,7 @@ class Backend(ABC):
             for rule in rule_collection.rules
             for query in self.convert_rule(rule, output_format or self.default_format)
         ]
-        return self.finalize(rule_collection, queries, output_format or self.default_format)
+        return self.finalize(queries, output_format or self.default_format)
 
     def convert_rule(self, rule : SigmaRule, output_format : Optional[str] = None) -> List[Any]:
         """
@@ -247,11 +247,11 @@ class Backend(ABC):
         """
         return query
 
-    def finalize(self, rules : SigmaCollection, queries : List[Any], output_format : str):
+    def finalize(self, queries : List[Any], output_format : str):
         """Finalize output. Dispatches to format-specific method."""
-        return self.__getattribute__("finalize_output_" + output_format)(rules, queries)
+        return self.__getattribute__("finalize_output_" + output_format)(queries)
 
-    def finalize_output_default(self, rules : SigmaCollection, queries : List[Any]) -> Any:
+    def finalize_output_default(self, queries : List[Any]) -> Any:
         """
         Default finalization.
 

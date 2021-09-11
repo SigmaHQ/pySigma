@@ -1,9 +1,11 @@
+from sigma.conversion.state import ConversionState
+from sigma.rule import SigmaRule
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.deferred import DeferredTextQueryExpression
 from sigma.conditions import ConditionFieldEqualsValueExpression, ConditionOR
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
-from typing import ClassVar, Dict, Tuple
+from typing import ClassVar, Dict, List, Tuple
 
 class SplunkDeferredRegularExpression(DeferredTextQueryExpression):
     template = 'regex {field}{op}"{value}"'
@@ -73,3 +75,17 @@ class SplunkBackend(TextQueryBackend):
         if cond.parent_condition_chain_contains(ConditionOR):
             raise SigmaFeatureNotSupportedByBackendError("ORing CIDR matching is not yet supported by Splunk backend")
         return SplunkDeferredCIDRExpression(state, cond.field, super().convert_condition_field_eq_val_cidrv4(cond, state)).postprocess(None, cond)
+
+    def finalize_query_savedsearches(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
+        clean_title = rule.title.translate({ord(c): None for c in "[]"})      # remove brackets from title
+        escaped_query = " \\\n".join(query.split("\n"))      # escape line ends for multiline queries
+        return f"""
+[{clean_title}]
+search = {escaped_query}"""
+
+    def finalize_output_savedsearches(self, queries: List[str]) -> str:
+        return """
+[default]
+dispatch.earliest_time = -30d
+dispatch.latest_time = now
+""" + "\n".join(queries)

@@ -93,3 +93,40 @@ def test_splunk_cidr_query(splunk_backend : SplunkBackend):
                 condition: sel
         """)
     ) == ["fieldB=\"foo\" fieldC=\"bar\"\n| where cidrmatch(\"192.168.0.0/16\", fieldA)"]
+
+def test_splunk_savedsearch_output(splunk_backend : SplunkBackend):
+    rules = """
+title: Test 1
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel:
+        fieldA|re: foo.*bar
+        fieldB: foo
+        fieldC: bar
+    condition: sel
+---
+title: Test 2
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel:
+        fieldA: foo
+        fieldB: bar
+    condition: sel
+    """
+    assert splunk_backend.convert(SigmaCollection.from_yaml(rules), "savedsearches") == """
+[default]
+dispatch.earliest_time = -30d
+dispatch.latest_time = now
+
+[Test 1]
+search = fieldB="foo" fieldC="bar" \\
+| regex fieldA="foo.*bar"
+
+[Test 2]
+search = fieldA="foo" fieldB="bar\""""

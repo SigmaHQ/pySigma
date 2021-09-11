@@ -20,6 +20,31 @@ def test_single_rule():
 
     assert SigmaCollection.from_dicts([ rule ]) == SigmaCollection([ SigmaRule.from_dict(rule) ])
 
+def test_merge():
+    rules = [
+        {
+            "title": "Test " + i,
+            "logsource": {
+                "category": "test"
+            },
+            "detection": {
+                "test": {
+                    "field" + i: "value" + i
+                },
+                "condition": "test",
+            }
+        }
+        for i in ["1", "2"]
+    ]
+
+    assert SigmaCollection.merge([
+        SigmaCollection.from_dicts([ rules[0] ]),
+        SigmaCollection.from_dicts([ rules[1] ]),
+    ]) == SigmaCollection([
+        SigmaRule.from_dict(rules[0]),
+        SigmaRule.from_dict(rules[1]),
+    ])
+
 def test_deep_dict_update_disjunct():
     assert deep_dict_update(
         {

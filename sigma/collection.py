@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Union, IO
+from typing import Iterable, List, Union, IO
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError, SigmaError
 import yaml
@@ -66,6 +66,15 @@ class SigmaCollection:
         in the errors property individually for each Sigma rule and the whole SigmaCollection.
         """
         return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), collect_errors)
+
+    @classmethod
+    def merge(cls, collections : Iterable["SigmaCollection"]) -> "SigmaCollection":
+        """Merge multiple SigmaCollection objects into one and return it."""
+        return cls([
+            rule
+            for collection in collections
+            for rule in collection
+        ])
 
     def __iter__(self):
         return iter(self.rules)

@@ -28,6 +28,26 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 
 `pySigma` brings a number of additional features over `sigmac`, as well as some changes.
 
+### Modifier compare from sigmac
+
+|Modified|Use|sigmac legacy|
+|--------|---|:-------------:|
+|contains|the value is matched anywhere in the field|X|
+|startswith|The value is expected at the beginning of the field's content|X|
+|endswith|The value is expected at the end of the field's content|X|
+|base64|The value is encoded with Base64|X|
+|base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
+|wide|transforms value to UTF16-LE encoding|X|
+|re|value is handled as regular expression by backends|X|
+|re_contains|value is handled as contains regular expression by backends||
+|cidrv4|value is handled as a IPv4 CIDR by backends||
+|all|This modifier changes OR logic to AND|X|
+|lt|Field is less than the value||
+|lte|Field is less or egal than the value||
+|gt|Field is Greater than the value||
+|gte|Field is Greater or egal than the value||
+|expand|Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)||
+
 ## Testing
 
 To run the pytest suite for `pySigma`, run the following command:

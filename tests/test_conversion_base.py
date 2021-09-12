@@ -371,6 +371,24 @@ def test_convert_invalid_unbound_bool(test_backend):
             """)
         )
 
+def test_convert_collect_error(test_backend):
+    test_backend.collect_errors = True
+    collection = SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel: true
+                condition: sel
+        """)
+    rule = collection.rules[0]
+
+    res = test_backend.convert(collection)
+    error = test_backend.errors[0]
+    assert res == [] and error[0] == rule and isinstance(error[1], SigmaValueError)
+
 def test_convert_invalid_unbound_cidr(test_backend):
     with pytest.raises(SigmaValueError, match="CIDR values can't appear as standalone"):
         test_backend.convert(

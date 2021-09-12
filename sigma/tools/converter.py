@@ -48,20 +48,37 @@ def iterate_rules(filespecs : List[str], file_pattern : str) -> Iterable[SigmaCo
         for item in sublist
      )
 
+def print_results(result):
+    if isinstance(result, list):
+        print("\n".join(result))
+    else:
+        print(result)
+
 def convert(args):
     sigma_rules = iterate_rules(args.file, args.file_pattern)
     pipeline = ProcessingPipelineResolver().resolve(args.config)
     backend_class = backends[args.backend][0]
-    backend : TextQueryBackend = backend_class(pipeline)
+    backend : TextQueryBackend = backend_class(pipeline, args.collect_errors)
+    collections = []
     for path, sigma_yaml in sigma_rules:
-        print(f"=== Sigma Rule: { path } ===")
-        sigma_rule = SigmaCollection.from_yaml(sigma_yaml, collect_errors=args.collect_errors)
-        if sigma_rule.errors:
-            print("Rule has errors:")
-            for error in sigma_rule.errors:
+        sigma_collection = SigmaCollection.from_yaml(sigma_yaml, collect_errors=args.collect_errors)
+        if sigma_collection.errors:
+            print(f"=== Sigma rule with parse errors: { path } ===")
+            for error in sigma_collection.errors:
                 print(str(error))
         else:
-            print("\n".join(backend.convert(sigma_rule)))
+            collections.append(sigma_collection)
+            if not args.merge:
+                print_results(backend.convert(sigma_collection, args.format))
+    if args.merge:
+        merged_collection = SigmaCollection.merge(collections)
+        print_results(backend.convert(merged_collection, args.format))
+
+    if errors := backend.errors:
+        print("=== Conversion Errors ===")
+        for rule, error in errors:
+            print(f"=== Rule Title: {rule.title} ===")
+            print(error)
 
 def main():
     argparser = SigmaConverterArgumentParser(
@@ -69,9 +86,11 @@ def main():
         fromfile_prefix_chars="@",
     )
     argparser.add_argument("--backend", "-b", choices=backends.keys(), help="Conversion backend")
+    argparser.add_argument("--format", "-f", help="Conversion backend output format")
     argparser.add_argument("--config", "-c", action="append", default=[], help="Processing pipeline configuration files. Mandatory for some backends.")
     argparser.add_argument("--file-pattern", "-P", default="*.yml", help="File pattern that must match for traversal of directories. (default: %(default)s)")
     argparser.add_argument("--collect-errors", "-n", action="store_true", help="Collect and show errors instead of failing.")
+    argparser.add_argument("--merge", "-m", action="store_true", help="Merge all files into one collection instead of converting each file separately.")
     argparser.add_argument("file", nargs="+", help="Sigma rules or directories containing Sigma rules.")
     args = argparser.parse_args()
 

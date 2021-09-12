@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from sigma.exceptions import SigmaValueError
+from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Union, ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
@@ -19,6 +19,8 @@ class Backend(ABC):
     * An additional processing pipeline can be passed to the constructor and is applied after
       the backend pipeline. This one is configured by the user to implement transformations
       required in the environment (e.g. field renaming).
+    * If collect_errors is set to True, exceptions will not be thrown, but collected in (sigma_rule, exception)
+      tuples in the errors property.
     * The method convert is the entry point for a conversion of a rule set. By default it converts
       each rule and invokes the finalization step for the whole set of converted rules. There are better
       locations to implement backend functionality.
@@ -57,9 +59,12 @@ class Backend(ABC):
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()
     config : Dict[str, Any]
     default_format : ClassVar[str] = "default"
+    collect_errors : bool = False
+    errors : List[Tuple[SigmaRule, SigmaError]] = list()
 
-    def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, **kwargs):
+    def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False, **kwargs):
         self.processing_pipeline = self.backend_processing_pipeline + processing_pipeline
+        self.collect_errors = collect_errors
         self.config = kwargs
 
     def convert(self, rule_collection : SigmaCollection, output_format : Optional[str] = None) -> Any:
@@ -80,15 +85,22 @@ class Backend(ABC):
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
         state = ConversionState()
-        self.processing_pipeline.apply(rule)        # 1. Apply transformations
-        queries = [                                 # 2. Convert condition
-            self.convert_condition(cond.parsed, state)
-            for cond in rule.detection.parsed_condition
-        ]
-        return [                                    # 3. Postprocess generated query
-            self.finalize_query(rule, query, index, state, output_format)
-            for index, query in enumerate(queries)
-        ]
+        try:
+            self.processing_pipeline.apply(rule)        # 1. Apply transformations
+            queries = [                                 # 2. Convert condition
+                self.convert_condition(cond.parsed, state)
+                for cond in rule.detection.parsed_condition
+            ]
+            return [                                    # 3. Postprocess generated query
+                self.finalize_query(rule, query, index, state, output_format)
+                for index, query in enumerate(queries)
+            ]
+        except SigmaError as e:
+            if self.collect_errors:
+                self.errors.append((rule, e))
+                return []
+            else:
+                raise e
 
     @abstractmethod
     def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> Any:

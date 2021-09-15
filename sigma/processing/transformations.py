@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
+from sigma.conditions import SigmaCondition
 from typing import Iterable, List, Dict, Optional, Union, Pattern, Iterator
 from dataclasses import dataclass, field
 import dataclasses
 import re
+import sigma
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaValueError, SigmaConfigurationError
 from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
 
+### Base Classes ###
 @dataclass
 class Transformation(ABC):
     """Base class for processing steps used in pipelines."""
@@ -23,6 +26,10 @@ class Transformation(ABC):
 
     def set_processing_item(self, processing_item : "sigma.processing.pipeline.ProcessingItem"):
         self.processing_item = processing_item
+
+    def processing_item_applied(self, d : Union[SigmaDetection, SigmaDetectionItem, SigmaCondition]):
+        """Mark detection item or detection as applied."""
+        d.add_applied_processing_item(self.processing_item)
 
 class DetectionItemTransformation(Transformation):
     """
@@ -53,10 +60,6 @@ class DetectionItemTransformation(Transformation):
                  ) and (r := self.apply_detection_item(detection_item)) is not None:
                     detection.detection_items[i] = r
                     self.processing_item_applied(r)
-
-    def processing_item_applied(self, d : Union[SigmaDetection, SigmaDetectionItem ]):
-        """Mark detection item or detection as applied."""
-        d.add_applied_processing_item(self.processing_item)
 
     def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         super().apply(pipeline, rule)
@@ -116,6 +119,26 @@ class ValueTransformation(DetectionItemTransformation):
         The type annotation of the val argument is used to skip incompatible values.
         """
 
+class ConditionTransformation(Transformation):
+    """
+    Iterates over all rule conditions and calls the apply_condition method for each condition. Automatically
+    takes care of marking condition as applied by processing item.
+    """
+    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        super().apply(pipeline, rule)
+        for i, condition in enumerate(rule.detection.parsed_condition):
+            condition_before = condition.condition
+            self.apply_condition(condition)
+            if condition.condition != condition_before:               # Condition was changed by transformation,
+                self.processing_item_applied(condition)     # mark as processed by processing item containing this transformation
+
+    @abstractmethod
+    def apply_condition(self, cond : SigmaCondition) -> None:
+        """
+        This method is invoked for each condition and can change it.
+        """
+
+### Transformations ###
 @dataclass
 class FieldMappingTransformation(DetectionItemTransformation):
     """Map a field name to one or multiple different."""

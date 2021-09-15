@@ -4,9 +4,11 @@ from uuid import UUID
 from enum import Enum, auto
 from datetime import date
 import yaml
+import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ParentChainMixin
+from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 
 class SigmaStatus(Enum):
@@ -69,7 +71,7 @@ class SigmaLogSource:
                (self.service  is None or self.service  == other.service )
 
 @dataclass
-class SigmaDetectionItem(ParentChainMixin):
+class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     """
     Single Sigma detection definition
 
@@ -84,7 +86,6 @@ class SigmaDetectionItem(ParentChainMixin):
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
-    applied_processing_items : Set[str] = field(init=False, compare=False, default_factory=set)
 
     def apply_modifiers(self):
         """
@@ -166,7 +167,7 @@ class SigmaDetectionItem(ParentChainMixin):
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val)
 
-    def postprocess(self, detections : "SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
+    def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
         self.parent = parent
         if len(self.value) == 0:    # no value: map to none type
             if self.field is None:
@@ -206,15 +207,6 @@ class SigmaDetectionItem(ParentChainMixin):
                     ])
                 cond.postprocess(detections, parent)
                 return cond
-
-    def add_applied_processing_item(self, processing_item : Optional["sigma.processing.pipeline.ProcessingItem"]):
-        """Add identifier of processing item to set of applied processing items."""
-        if processing_item is not None and processing_item.identifier is not None:
-            self.applied_processing_items.add(processing_item.identifier)
-
-    def was_processed_by(self, processing_item_id : str) -> bool:
-        """Determines if detection item was processed by a processing item with the given id."""
-        return processing_item_id in self.applied_processing_items
 
 @dataclass
 class SigmaDetection(ParentChainMixin):
@@ -268,7 +260,7 @@ class SigmaDetection(ParentChainMixin):
                             ]
                         )
 
-    def postprocess(self, detections : "SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
+    def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
         """Convert detection item into condition tree element"""
         self.parent = parent
         items = [

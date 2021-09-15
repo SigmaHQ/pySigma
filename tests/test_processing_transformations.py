@@ -1,6 +1,8 @@
+from dataclasses import dataclass
+from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
-from sigma.processing.transformations import FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing.transformations import ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -329,3 +331,35 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
     )
     with pytest.raises(SigmaValueError, match="only allows placeholder-only strings"):
         transformation.apply(dummy_pipeline, sigma_rule_placeholders)
+
+### ConditionTransformation ###
+@dataclass
+class DummyConditionTransformation(ConditionTransformation):
+    """A condition transformation that does absolutely nothing or appends something to the condition."""
+    do_something : bool
+
+    def apply_condition(self, cond: SigmaCondition) -> None:
+        if self.do_something:
+            cond.condition += " and test"
+
+def test_conditiontransformation_tracking_change(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = DummyConditionTransformation(True)
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.parsed_condition[0].was_processed_by("test")
+
+def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = DummyConditionTransformation(False)
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert not sigma_rule.detection.parsed_condition[0].was_processed_by("test")

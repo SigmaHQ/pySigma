@@ -1,9 +1,11 @@
 from abc import ABC, abstractmethod
+from sigma import conditions
 from sigma.conditions import SigmaCondition
 from typing import Iterable, List, Dict, Optional, Union, Pattern, Iterator
 from dataclasses import dataclass, field
 import dataclasses
-import re
+import random
+import string
 import sigma
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaValueError, SigmaConfigurationError
@@ -286,6 +288,26 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
                 raise SigmaValueError(f"Placeholder query expression transformation only allows placeholder-only strings.")
         return None
 
+@dataclass
+class AddConditionTransformation(ConditionTransformation):
+    """Add and condition expression to rule conditions."""
+    conditions : Dict[str, str] = field(default_factory=dict)
+    name : Optional[str] = None
+
+    def __post_init__(self):
+        if self.name is None:       # generate random detection item name if none is given
+            self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
+
+    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        rule.detection.detections[self.name] = [
+            SigmaDetection.from_definition(self.conditions)
+        ]
+        self.processing_item_applied(rule.detection.detections[self.name][0])
+        super().apply(pipeline, rule)
+
+    def apply_condition(self, cond: SigmaCondition) -> None:
+        cond.condition = f"{self.name} and ({cond.condition})"
+
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
@@ -293,4 +315,5 @@ transformations : Dict[str, Transformation] = {
     "wildcard_placeholders": WildcardPlaceholderTransformation,
     "value_placeholders": ValueListPlaceholderTransformation,
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
+    "add_condition": AddConditionTransformation,
 }

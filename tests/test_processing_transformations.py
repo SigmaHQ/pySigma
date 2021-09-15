@@ -2,11 +2,12 @@ from dataclasses import dataclass
 from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
-from sigma.processing.transformations import ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing import transformations
+from sigma.processing.transformations import AddConditionTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
-from sigma.types import Placeholder, SigmaQueryExpression, SigmaString, SpecialChars
+from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
 from sigma.exceptions import SigmaConfigurationError, SigmaValueError
 
@@ -363,3 +364,35 @@ def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule : 
     )
     transformation.apply(dummy_pipeline, sigma_rule)
     assert not sigma_rule.detection.parsed_condition[0].was_processed_by("test")
+
+### AddConditionTransformation ###
+def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = AddConditionTransformation({
+        "newfield1": "test",
+        "newfield2": 123,
+    }, "additional")
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert (
+        sigma_rule.detection.parsed_condition[0].condition == "additional and (test)"       # condition expression was added
+        and sigma_rule.detection.detections["additional"] == [                              # additional detection item referred by condition
+            SigmaDetection([
+                SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
+                SigmaDetectionItem("newfield2", [], [ SigmaNumber(123) ]),
+            ])
+        ]
+        and all(                                                                            # detection items are marked as processed by processing item
+            detection_item.was_processed_by("test")
+            for detection_item in sigma_rule.detection.detections["additional"][0].detection_items
+        )
+    )
+
+def test_addconditiontransformation_random_name():
+    transformation = AddConditionTransformation({})
+    name = transformation.name
+    assert len(name) > 6 and name.startswith("_cond_")

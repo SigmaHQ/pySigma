@@ -235,14 +235,14 @@ class SigmaDetection(ParentChainMixin):
             self.item_linking = ConditionOR
 
     @classmethod
-    def from_definition(cls, definition : Union[Mapping, Sequence]) -> "SigmaDetection":
+    def from_definition(cls, definition : Union[Mapping, Sequence, str, int]) -> "SigmaDetection":
         """Instantiate an appropriate SigmaDetection object from a parsed Sigma detection definition."""
         if isinstance(definition, Mapping):     # key-value-definition (case 1)
             return cls(
                     detection_items=[
                         SigmaDetectionItem.from_mapping(key, val)
                         for key, val in definition.items()
-                        ])
+                    ])
         elif isinstance(definition, (str, int)):    # plain value (case 2)
             return cls(detection_items=[SigmaDetectionItem.from_value(definition)])
         elif isinstance(definition, Sequence):  # list of items (case 3)

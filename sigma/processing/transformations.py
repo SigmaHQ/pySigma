@@ -7,7 +7,7 @@ import dataclasses
 import random
 import string
 import sigma
-from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
+from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaValueError, SigmaConfigurationError
 from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
 
@@ -308,6 +308,18 @@ class AddConditionTransformation(ConditionTransformation):
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = f"{self.name} and ({cond.condition})"
 
+@dataclass
+class ChangeLogsourceTransformation(Transformation):
+    """Replace log source as defined in transformation parameters."""
+    category : Optional[str] = field(default=None)
+    product : Optional[str] = field(default=None)
+    service : Optional[str] = field(default=None)
+
+    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        super().apply(pipeline, rule)
+        logsource = SigmaLogSource(self.category, self.product, self.service)
+        rule.logsource = logsource
+
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
@@ -316,4 +328,5 @@ transformations : Dict[str, Transformation] = {
     "value_placeholders": ValueListPlaceholderTransformation,
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
     "add_condition": AddConditionTransformation,
+    "change_logsource": ChangeLogsourceTransformation,
 }

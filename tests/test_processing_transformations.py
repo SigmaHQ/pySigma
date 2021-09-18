@@ -3,10 +3,10 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
-from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
+from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
 from sigma.exceptions import SigmaConfigurationError, SigmaValueError
@@ -396,3 +396,9 @@ def test_addconditiontransformation_random_name():
     transformation = AddConditionTransformation({})
     name = transformation.name
     assert len(name) > 6 and name.startswith("_cond_")
+
+### ChangeLogsourceTransformation ###
+def test_changelogsource(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = ChangeLogsourceTransformation("test_category", "test_product", "test_service")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.logsource == SigmaLogSource("test_category", "test_product", "test_service")

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Dict, Iterable, List
+from typing import Callable, Dict, Iterable, List, Union
 
 @dataclass
 class ProcessingPipelineResolver:
@@ -8,7 +8,7 @@ class ProcessingPipelineResolver:
     A processing pipeline resolver resolves a list of pipeline specifiers into one summarized processing pipeline.
     It takes care of sorting by priority and resolution of filenames as well as pipeline name identifiers.
     """
-    pipelines : Dict[str, ProcessingPipeline] = field(default_factory=dict)
+    pipelines : Dict[str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]] = field(default_factory=dict)
 
     def add_pipeline_class(self, pipeline : ProcessingPipeline) -> None:
         """Add named processing pipeline object to resolver. This pipeline can be resolved by the name."""
@@ -27,7 +27,11 @@ class ProcessingPipelineResolver:
     def resolve_pipeline(self, spec : str) -> ProcessingPipeline:
         """Resolve single processing pipeline."""
         try:
-            return self.pipelines[spec]
+            pipeline = self.pipelines[spec]
+            if isinstance(pipeline, Callable):
+                return pipeline()
+            else:
+                return pipeline
         except KeyError:        # identifier not found, try it as path
             try:
                 return ProcessingPipeline.from_yaml(open(spec, "r").read())

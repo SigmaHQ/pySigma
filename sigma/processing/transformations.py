@@ -299,10 +299,8 @@ class AddConditionTransformation(ConditionTransformation):
             self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
-        rule.detection.detections[self.name] = [
-            SigmaDetection.from_definition(self.conditions)
-        ]
-        self.processing_item_applied(rule.detection.detections[self.name][0])
+        rule.detection.detections[self.name] = SigmaDetection.from_definition(self.conditions)
+        self.processing_item_applied(rule.detection.detections[self.name])
         super().apply(pipeline, rule)
 
     def apply_condition(self, cond: SigmaCondition) -> None:

@@ -380,15 +380,13 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
     transformation.apply(dummy_pipeline, sigma_rule)
     assert (
         sigma_rule.detection.parsed_condition[0].condition == "additional and (test)"       # condition expression was added
-        and sigma_rule.detection.detections["additional"] == [                              # additional detection item referred by condition
-            SigmaDetection([
+        and sigma_rule.detection.detections["additional"] == SigmaDetection([               # additional detection item referred by condition
                 SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
                 SigmaDetectionItem("newfield2", [], [ SigmaNumber(123) ]),
-            ])
-        ]
+        ])
         and all(                                                                            # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")
-            for detection_item in sigma_rule.detection.detections["additional"][0].detection_items
+            for detection_item in sigma_rule.detection.detections["additional"].detection_items
         )
     )
 

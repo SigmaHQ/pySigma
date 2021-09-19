@@ -57,6 +57,22 @@ def test_resolve_file(processing_pipeline_resolver : ProcessingPipelineResolver)
         priority=10,
     )
 
+def test_resolve_callable():
+    pipeline = ProcessingPipeline([
+            ProcessingItem(
+                AddFieldnameSuffixTransformation(".item-1")
+            )
+        ],
+        name="test",
+        priority=10,
+    )
+    def pipeline_func():
+        return pipeline
+    resolver = ProcessingPipelineResolver({
+        "test": pipeline_func,
+    })
+    assert resolver.resolve_pipeline("test") == pipeline
+
 def test_resolve_failed(processing_pipeline_resolver : ProcessingPipelineResolver):
     with pytest.raises(ValueError, match="Failed to handle specifier"):
         processing_pipeline_resolver.resolve_pipeline("error")

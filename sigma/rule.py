@@ -280,7 +280,7 @@ class SigmaDetection(ParentChainMixin):
 @dataclass
 class SigmaDetections:
     """Sigma detection section including named detections and condition."""
-    detections : Mapping[str, List[SigmaDetection]]
+    detections : Mapping[str, SigmaDetection]
     condition : List[str]
 
     def __post_init__(self):

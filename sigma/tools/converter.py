@@ -4,7 +4,7 @@ from pathlib import Path
 
 from typing import Iterable, List, Optional, IO
 from sigma.collection import SigmaCollection
-from sigma.processing.resolver import ProcessingPipelineResolver
+from sigma.processing.pipelines.resolver import DefaultPipelineResolver
 from sigma.conversion.backends.splunk import SplunkBackend
 from sigma.conversion.base import TextQueryBackend
 
@@ -55,8 +55,8 @@ def print_results(result):
         print(result)
 
 def convert(args):
+    pipeline = DefaultPipelineResolver.resolve(args.config)
     sigma_rules = iterate_rules(args.file, args.file_pattern)
-    pipeline = ProcessingPipelineResolver().resolve(args.config)
     backend_class = backends[args.backend][0]
     backend : TextQueryBackend = backend_class(pipeline, args.collect_errors)
     collections = []

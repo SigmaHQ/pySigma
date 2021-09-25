@@ -1,8 +1,9 @@
+from sigma.types import SigmaNumber, SigmaString
 from sigma import processing
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 import pytest
 from sigma.processing.pipeline import ProcessingPipeline
-from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition
+from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, MatchStringCondition
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 
 @pytest.fixture
@@ -74,3 +75,24 @@ def test_exclude_field_condition_re_match(dummy_processing_pipeline, detection_i
 
 def test_exclude_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
     assert ExcludeFieldCondition(["o[0-9]+", "x.*"], "re").match(dummy_processing_pipeline, detection_item) == True
+
+@pytest.fixture
+def multivalued_detection_item():
+    return SigmaDetectionItem("field", [], [SigmaString("value"), SigmaNumber(123)])
+
+def test_match_string_condition_any(dummy_processing_pipeline, multivalued_detection_item : SigmaDetectionItem):
+    assert MatchStringCondition(pattern="^val.*", cond="any").match(dummy_processing_pipeline, multivalued_detection_item) == True
+
+def test_match_string_condition_all(dummy_processing_pipeline, multivalued_detection_item : SigmaDetectionItem):
+    assert MatchStringCondition(pattern="^val.*", cond="all").match(dummy_processing_pipeline, multivalued_detection_item) == False
+
+def test_match_string_condition_all_sametype(dummy_processing_pipeline):
+    assert MatchStringCondition(pattern="^val.*", cond="all").match(dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("val1"), SigmaString("val2")])) == True
+
+def test_match_string_condition_error_mode():
+    with pytest.raises(SigmaConfigurationError, match="parameter is invalid"):
+        MatchStringCondition(pattern="x", cond="test")
+
+def test_match_string_condition_error_mode():
+    with pytest.raises(SigmaRegularExpressionError, match="is invalid"):
+        MatchStringCondition(pattern="*", cond="any")

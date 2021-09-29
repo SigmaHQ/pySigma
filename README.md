@@ -52,11 +52,11 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 
 Conversion Overview
 
-![Conversion Graph](/screens/conversion.png)
+![Conversion Graph](/images/conversion.png)
 
 Pipelines
 
-![Conversion Graph](/screens/pipelines.png)
+![Conversion Graph](/images/pipelines.png)
 
 ## Testing
 

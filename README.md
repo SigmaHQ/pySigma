@@ -48,6 +48,16 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 |gte|Field is Greater or egal than the value||
 |expand|Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)||
 
+## Overview
+
+Conversion Overview
+
+![Conversion Graph](/screens/conversion.png)
+
+Pipelines
+
+![Conversion Graph](/screens/pipelines.png)
+
 ## Testing
 
 To run the pytest suite for `pySigma`, run the following command:

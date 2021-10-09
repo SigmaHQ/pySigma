@@ -10,7 +10,8 @@ It replaces a lot of the logic found in the `sigmac` tool, and brings it into a 
 
 ## Getting Started
 
-To start using `pySigma`, install it using your python package manager of choice.
+To start using `pySigma`, install it using your python package manager of choice. Documentation with
+some usage examples can be found [here](docs/Main.md).
 
 **Poetry:**
 
@@ -30,7 +31,7 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 
 ### Modifier compare from sigmac
 
-|Modified|Use|sigmac legacy|
+|Modifier|Use|sigmac legacy|
 |--------|---|:-------------:|
 |contains|the value is matched anywhere in the field|X|
 |startswith|The value is expected at the beginning of the field's content|X|
@@ -52,11 +53,13 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 
 Conversion Overview
 
-![Conversion Graph](/images/conversion.png)
+![Conversion Graph](/docs/images/conversion.png)
 
 Pipelines
 
-![Conversion Graph](/images/pipelines.png)
+![Conversion Graph](/docs/images/pipelines.png)
+
+More details are described in [the documentation](docs/Main.md).
 
 ## Testing
 

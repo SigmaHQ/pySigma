@@ -3,7 +3,7 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -400,3 +400,37 @@ def test_changelogsource(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = ChangeLogsourceTransformation("test_category", "test_product", "test_service")
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.logsource == SigmaLogSource("test_category", "test_product", "test_service")
+
+def test_replace_string_simple(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = ReplaceStringTransformation("value", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("test1") ]),
+            SigmaDetectionItem("field2", [], [ SigmaString("test2") ]),
+            SigmaDetectionItem("field3", [], [ SigmaString("test3") ]),
+        ])
+    ])
+
+def test_replace_string_wildcard(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {
+            "category": "test"
+        },
+        "detection": {
+            "test": [{
+                "field1": "*\\value",
+                "field2": 123,
+            }],
+            "condition": "test",
+        }
+    })
+    transformation = ReplaceStringTransformation("^.*\\\\(.*)$", "\\1")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("value") ]),
+            SigmaDetectionItem("field2", [], [ SigmaNumber(123) ]),
+        ])
+    ])

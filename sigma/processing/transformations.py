@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 import dataclasses
 import random
 import string
+import re
 import sigma
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaValueError, SigmaConfigurationError
@@ -96,7 +97,7 @@ class ValueTransformation(DetectionItemTransformation):
                 res = self.apply_value(detection_item.field, value)
                 if res is None:       # no value returned: drop value
                     results.append(value)
-                elif isinstance(res, Iterable):
+                elif isinstance(res, Iterable) and not isinstance(res, SigmaType):
                     results.extend(res)
                     modified = True
                 else:
@@ -318,6 +319,28 @@ class ChangeLogsourceTransformation(Transformation):
         logsource = SigmaLogSource(self.category, self.product, self.service)
         rule.logsource = logsource
 
+@dataclass
+class ReplaceStringTransformation(ValueTransformation):
+    """
+    Replace string part matched by regular expresssion with replacement string that can reference
+    capture groups. It operates on the plain string representation of the SigmaString value.
+
+    This is basically an interface to re.sub() and can use all features available there.
+    """
+    regex : str
+    replacement : str
+
+    def __post_init__(self):
+        super().__post_init__()
+        try:
+            self.re = re.compile(self.regex)
+        except re.error as e:
+            raise SigmaRegularExpressionError(f"Regular expression '{self.regexp}' is invalid: {str(e)}") from e
+
+    def apply_value(self, field: str, val: SigmaString) -> SigmaString:
+        if isinstance(val, SigmaString):
+            return SigmaString(self.re.sub(self.replacement, str(val)))
+
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
@@ -327,4 +350,5 @@ transformations : Dict[str, Transformation] = {
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
+    "replace_string": ReplaceStringTransformation,
 }

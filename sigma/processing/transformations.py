@@ -9,7 +9,7 @@ import string
 import re
 import sigma
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
-from sigma.exceptions import SigmaValueError, SigmaConfigurationError
+from sigma.exceptions import SigmaTransformationError, SigmaValueError, SigmaConfigurationError
 from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
 
 ### Base Classes ###
@@ -341,6 +341,18 @@ class ReplaceStringTransformation(ValueTransformation):
         if isinstance(val, SigmaString):
             return SigmaString(self.re.sub(self.replacement, str(val)))
 
+@dataclass
+class FailureTransformation(Transformation):
+    """
+    Raise a SigmaTransformationError with the provided message. This enables transformation
+    pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
+    is allowed because the target data model doesn't offers all possibilities.
+    """
+    message : str
+
+    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        raise SigmaTransformationError(self.message)
+
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
@@ -351,4 +363,5 @@ transformations : Dict[str, Transformation] = {
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
     "replace_string": ReplaceStringTransformation,
+    "failure": FailureTransformation,
 }

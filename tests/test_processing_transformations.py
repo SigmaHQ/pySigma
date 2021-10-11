@@ -3,13 +3,13 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
-from sigma.exceptions import SigmaConfigurationError, SigmaValueError
+from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError, SigmaValueError
 
 @pytest.fixture
 def dummy_pipeline():
@@ -434,3 +434,8 @@ def test_replace_string_wildcard(dummy_pipeline):
             SigmaDetectionItem("field2", [], [ SigmaNumber(123) ]),
         ])
     ])
+
+def test_failure_transformation(dummy_pipeline, sigma_rule):
+    transformation = FailureTransformation("Test")
+    with pytest.raises(SigmaTransformationError, match="^Test$"):
+        transformation.apply(dummy_pipeline, sigma_rule)

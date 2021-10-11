@@ -57,3 +57,6 @@ class SigmaConfigurationError(SigmaError):
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
     pass
+
+class SigmaTransformationError(SigmaError):
+    """Error while transformation. Can be raised intentionally by FailureTransformation."""

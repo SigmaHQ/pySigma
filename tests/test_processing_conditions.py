@@ -89,6 +89,9 @@ def test_match_string_condition_all(dummy_processing_pipeline, multivalued_detec
 def test_match_string_condition_all_sametype(dummy_processing_pipeline):
     assert MatchStringCondition(pattern="^val.*", cond="all").match(dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("val1"), SigmaString("val2")])) == True
 
+def test_match_string_condition_all_negated(dummy_processing_pipeline):
+    assert MatchStringCondition(pattern="^val.*", cond="all", negate=True).match(dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("val1"), SigmaString("val2")])) == False
+
 def test_match_string_condition_error_mode():
     with pytest.raises(SigmaConfigurationError, match="parameter is invalid"):
         MatchStringCondition(pattern="x", cond="test")

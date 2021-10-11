@@ -120,6 +120,7 @@ class MatchStringCondition(ValueProcessingCondition):
     false result in all match mode.
     """
     pattern : str
+    negate : bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -130,9 +131,14 @@ class MatchStringCondition(ValueProcessingCondition):
 
     def match_value(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
-            return self.re.match(str(value))
+            result = self.re.match(str(value))
         else:
-            return False
+            result = False
+
+        if self.negate:
+            return not result
+        else:
+            return result
 
 ### Condition mappings between rule identifier and class
 

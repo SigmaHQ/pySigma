@@ -17,10 +17,11 @@ class SigmaStatus(Enum):
     TEST         = auto()
 
 class SigmaLevel(Enum):
-    LOW      = auto()
-    MEDIUM   = auto()
-    HIGH     = auto()
-    CRITICAL = auto()
+    INFORMATIONAL = auto()
+    LOW           = auto()
+    MEDIUM        = auto()
+    HIGH          = auto()
+    CRITICAL      = auto()
 
 @dataclass
 class SigmaRuleTag:

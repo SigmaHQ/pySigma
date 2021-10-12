@@ -3,7 +3,7 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, FailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -435,7 +435,12 @@ def test_replace_string_wildcard(dummy_pipeline):
         ])
     ])
 
-def test_failure_transformation(dummy_pipeline, sigma_rule):
-    transformation = FailureTransformation("Test")
+def test_rule_failure_transformation(dummy_pipeline, sigma_rule):
+    transformation = RuleFailureTransformation("Test")
+    with pytest.raises(SigmaTransformationError, match="^Test$"):
+        transformation.apply(dummy_pipeline, sigma_rule)
+
+def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
+    transformation = DetectionItemFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
         transformation.apply(dummy_pipeline, sigma_rule)

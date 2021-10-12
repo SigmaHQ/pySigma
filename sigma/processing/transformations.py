@@ -9,7 +9,7 @@ import string
 import re
 import sigma
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
-from sigma.exceptions import SigmaTransformationError, SigmaValueError, SigmaConfigurationError
+from sigma.exceptions import SigmaRegularExpressionError, SigmaTransformationError, SigmaValueError, SigmaConfigurationError
 from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
 
 ### Base Classes ###
@@ -335,14 +335,14 @@ class ReplaceStringTransformation(ValueTransformation):
         try:
             self.re = re.compile(self.regex)
         except re.error as e:
-            raise SigmaRegularExpressionError(f"Regular expression '{self.regexp}' is invalid: {str(e)}") from e
+            raise SigmaRegularExpressionError(f"Regular expression '{self.regex}' is invalid: {str(e)}") from e
 
     def apply_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             return SigmaString(self.re.sub(self.replacement, str(val)))
 
 @dataclass
-class FailureTransformation(Transformation):
+class RuleFailureTransformation(Transformation):
     """
     Raise a SigmaTransformationError with the provided message. This enables transformation
     pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
@@ -351,6 +351,18 @@ class FailureTransformation(Transformation):
     message : str
 
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        raise SigmaTransformationError(self.message)
+
+@dataclass
+class DetectionItemFailureTransformation(DetectionItemTransformation):
+    """
+    Raise a SigmaTransformationError with the provided message. This enables transformation
+    pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
+    is allowed because the target data model doesn't offers all possibilities.
+    """
+    message : str
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> None:
         raise SigmaTransformationError(self.message)
 
 transformations : Dict[str, Transformation] = {
@@ -363,5 +375,6 @@ transformations : Dict[str, Transformation] = {
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
     "replace_string": ReplaceStringTransformation,
-    "failure": FailureTransformation,
+    "rule_failure": RuleFailureTransformation,
+    "detection_item_failure": DetectionItemFailureTransformation,
 }

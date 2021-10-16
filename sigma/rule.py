@@ -318,6 +318,9 @@ class SigmaDetections:
 
 @dataclass
 class SigmaRule:
+    """
+    A single Sigma rule.
+    """
     title : str
     id : Optional[UUID]
     status : Optional[SigmaStatus]

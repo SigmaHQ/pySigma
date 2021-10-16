@@ -3,3 +3,4 @@
 **/__pycache__
 cov.xml
 dist/
+docs/_build

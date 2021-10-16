@@ -15,7 +15,10 @@ from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, Sigma
 ### Base Classes ###
 @dataclass
 class Transformation(ABC):
-    """Base class for processing steps used in pipelines."""
+    """
+    Base class for processing steps used in pipelines. Override `apply` with transformation that is
+    applied to the whole rule.
+    """
     processing_item : Optional["sigma.processing.pipeline.ProcessingItem"] = field(init=False, compare=False, default=None)
 
     @classmethod
@@ -272,9 +275,9 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
 
     Parameters:
     * expression: string that contains query expression with {field} and {id} placeholder
-      where placeholder identifier or a mapped identifier is inserted.
+    where placeholder identifier or a mapped identifier is inserted.
     * mapping: Mapping between placeholders and identifiers that should be used in the expression.
-      If no mapping is provided the placeholder name is used.
+    If no mapping is provided the placeholder name is used.
     """
     expression : str = ""
     mapping : Dict[str, str] = field(default_factory=dict)

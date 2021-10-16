@@ -32,6 +32,7 @@ pytest-cov = "^2.11.1"
 pytest-mypy = "^0.6.2"
 pylint = "^2.6.0"
 rope = "^0.18.0"
+Sphinx = "^4.2.0"
 
 [build-system]
 requires = ["poetry>=1.1.2"]

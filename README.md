@@ -11,7 +11,7 @@ It replaces a lot of the logic found in the `sigmac` tool, and brings it into a 
 ## Getting Started
 
 To start using `pySigma`, install it using your python package manager of choice. Documentation with
-some usage examples can be found [here](docs/Main.md).
+some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
 
 **Poetry:**
 
@@ -59,7 +59,7 @@ Pipelines
 
 ![Conversion Graph](/docs/images/pipelines.png)
 
-More details are described in [the documentation](docs/Main.md).
+More details are described in [the documentation](https://sigmahq-pysigma.readthedocs.io/).
 
 ## Testing
 

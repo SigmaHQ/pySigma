@@ -20,8 +20,8 @@ picture summarizes the conversion process from a Sigma rule into a query, which 
 Some basic concepts implemented by pySigma are:
 
 * Parsing of Sigma rules from YAML or a Python dict structure similar to the output of the YAML
-  parser into an object-based representation. Details are described [here](Sigma_Rules.md).
-* [Transformation](Processing_Pipelines.md) of parsed Sigma rules by applying *processing pipelines* to them. A
+  parser into an object-based representation. Details are described :doc:`here <Sigma_Rules>`.
+* :doc:`Transformation <Processing_Pipelines>` of parsed Sigma rules by applying *processing pipelines* to them. A
   transformation pipeline consists of *transformation operations* which are executed on whole Sigma
   rules or single detection items or values in a Sigma rule if the *transformation conditions*
   associated with the operations evaluate to true. A transformation pipeline works on and results in
@@ -29,7 +29,7 @@ Some basic concepts implemented by pySigma are:
 
 .. image:: images/pipelines.png
 
-* [Conversion](Conversion.md) of parsed Sigma rules into query languages. These can be text-based query languages as
+* :doc:`Conversion <Backends>` of parsed Sigma rules into query languages. These can be text-based query languages as
   well as data structures that can be used in API calls. The conversion is conducted by so-called
   *conversion backends*.
 
@@ -73,7 +73,7 @@ like the log source or detections are represented by special purpose classes tha
    print("This is not a Sysmon rule!")
    print("Consolidated condition: " + "or".join(rule.detection.condition))
 
-Further details regarding parsing and representation of rules is located [on a dedicated page](Sigma_Rules.md).
+Further details regarding parsing and representation of rules is located :doc:`on a dedicated page <Sigma_Rules>`.
 
 Conversion of Sigma Rules
 =========================
@@ -100,8 +100,8 @@ The following example:::
 * instantiates a Splunk backend.
 * Converts a Sigma rule collection into a list of queries and prints it.
 
-Details about the conversion process can be found [here](Conversion.md). Processing pipelines are
-described on [this page](Processing_Pipelines.md).
+Details about the conversion process can be found :doc:`here <Backends>`. Processing pipelines are
+described on :doc:`this page <Processing_Pipelines>`.
 
 Indices and tables
 ******************

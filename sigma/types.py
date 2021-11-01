@@ -369,9 +369,9 @@ class SigmaPartialRegularExpression(SigmaType):
 
     def __post_init__(self):
         """Verify if regular expression is valid by compiling it"""
-        if not self.regexp[:2] == '.*':
+        if self.regexp[:2] != '.*' and self.regexp[0] != "^":
             self.regexp = '.*' + self.regexp
-        if not self.regexp[-2:] == '.*':
+        if self.regexp[-2:] != '.*' and self.regexp[-1] != "$":
             self.regexp = self.regexp + '.*'
         try:
             re.compile(self.regexp)

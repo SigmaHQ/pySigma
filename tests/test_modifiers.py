@@ -131,6 +131,12 @@ def test_re(dummy_detection_item):
 def test_re_contains(dummy_detection_item):
     assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaPartialRegularExpression(".*foo?bar.*")
 
+def test_re_contains_start(dummy_detection_item):
+    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("^foo?bar")) == SigmaPartialRegularExpression("^foo?bar.*")
+
+def test_re_contains_end(dummy_detection_item):
+    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar$")) == SigmaPartialRegularExpression(".*foo?bar$")
+
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))

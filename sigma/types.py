@@ -1,5 +1,5 @@
 from enum import Enum, auto
-from typing import Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
+from typing import ClassVar, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
@@ -32,10 +32,22 @@ special_char_mapping = {
 
 class SigmaType(ABC):
     """Base class for Sigma value types"""
-    pass
+    def to_plain(self):
+        """
+        Return plain Python value (str, int etc.) from SigmaType instance for usage in conversion of
+        Sigma rules back to dict's. Uses the first annotated member as return value.
+        """
+        return self.__getattribute__(list(self.__annotations__.keys())[0])
+
+class NoPlainConversionMixin:
+    """Mixin for declaring a SigmaType as non-convertible into a plain representation."""
+    def to_plain(self):
+        raise SigmaValueError(f"Sigma type '{ self.__class__.__name__ }' can't be converted into a plain representation.")
 
 class SigmaNull(SigmaType):
     """Empty/none/null value"""
+    null : ClassVar[None] = None
+
     def __init__(self, dummy : Optional[Any] = None):
         pass
 
@@ -157,6 +169,10 @@ class SigmaString(SigmaType):
             else special_char_mapping[s]
             for s in self.s
         )
+
+    def to_plain(self):
+        """Return plain string representation of SigmaString, equivalent to converting it with str()."""
+        return (str(self))
 
     def __bytes__(self) -> bytes:
         return str(self).encode()
@@ -376,9 +392,8 @@ class SigmaPartialRegularExpression(SigmaType):
             for i,j in ranges
         ])
 
-
 @dataclass
-class SigmaCIDRv4Expression(SigmaType):
+class SigmaCIDRv4Expression(NoPlainConversionMixin, SigmaType):
     """CIDRv4 expression type"""
     cidr    : str
     network : IPv4Network = field(init=False, compare=False)
@@ -445,7 +460,7 @@ class SigmaCIDRv4Expression(SigmaType):
         ))
 
 @dataclass
-class SigmaCompareExpression(SigmaType):
+class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     class CompareOperators(Enum):
         LT  = auto()    # <
         LTE = auto()    # <=
@@ -460,7 +475,7 @@ class SigmaCompareExpression(SigmaType):
             raise SigmaTypeError("Compare operator expects number")
 
 @dataclass
-class SigmaQueryExpression(SigmaType):
+class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
     """
     Special purpose type for passing a query part (e.g. list lookups in placeholders) directly into the generated
     query. The query string may contain a {field} placeholder, which is replaced with the field name contained in

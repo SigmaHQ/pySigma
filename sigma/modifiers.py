@@ -136,7 +136,7 @@ class SigmaPartialRegularExpressionModifier(SigmaValueModifier):
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
         return SigmaPartialRegularExpression(str(val))
-        
+
 class SigmaCIDRv4Modifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaCIDRv4Expression:
         if len(self.applied_modifiers) > 0:
@@ -193,4 +193,10 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "gt"            : SigmaGreaterThanModifier,
     "gte"           : SigmaGreaterThanEqualModifier,
     "expand"        : SigmaExpandModifier,
+}
+
+# Mapping from modifier class to identifier
+reverse_modifier_mapping : Dict[str, str] = {
+    modifier_class.__name__: identifier
+    for identifier, modifier_class in modifier_mapping.items()
 }

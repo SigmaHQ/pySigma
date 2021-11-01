@@ -1,22 +1,28 @@
-from dataclasses import dataclass, field
-from typing import Optional, Union, Sequence, List, Set, Mapping, Type
+from dataclasses import InitVar, dataclass, field, fields
+import dataclasses
+from typing import Dict, Optional, Union, Sequence, List, Set, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
+from attr import has
 import yaml
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
-from sigma.modifiers import SigmaModifier, modifier_mapping, SigmaValueModifier, SigmaListModifier
+from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_mapping, SigmaValueModifier, SigmaListModifier
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ParentChainMixin
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 
-class SigmaStatus(Enum):
+class EnumLowercaseStringMixin:
+    def __str__(self) -> str:
+        return self.name.lower()
+
+class SigmaStatus(EnumLowercaseStringMixin, Enum):
     STABLE       = auto()
     EXPERIMENTAL = auto()
     TEST         = auto()
 
-class SigmaLevel(Enum):
+class SigmaLevel(EnumLowercaseStringMixin, Enum):
     INFORMATIONAL = auto()
     LOW           = auto()
     MEDIUM        = auto()
@@ -33,6 +39,9 @@ class SigmaRuleTag:
         """Build SigmaRuleTag class from plain text tag string."""
         ns, n = tag.split(".", maxsplit=1)
         return cls(ns, n)
+
+    def __str__(self) -> str:
+        return f"{self.namespace}.{self.name}"
 
 @dataclass
 class SigmaLogSource:
@@ -53,6 +62,13 @@ class SigmaLogSource:
                 logsource.get("product"),
                 logsource.get("service"),
                 )
+
+    def to_dict(self) -> dict:
+        return {
+            field.name: value
+            for field in dataclasses.fields(self)
+            if (value := self.__getattribute__(field.name)) is not None
+        }
 
     def __contains__(self, other : "SigmaLogSource") -> bool:
         """
@@ -81,12 +97,32 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     * a list of value modifiers that can also be empty
     * the mandatory value or a list of values (internally it's always a list of values)
 
-    By default all values are OR-linked but the 'all' modifier can be used to override this behavior.
+    By default all values are OR-linked but the 'all' modifier can be used to override this
+    behavior.
+
+    If the `auto_modifiers` parameter is set to False, modifiers are not automatically applied to
+    the values. This shouldn't normally be used, but only in test scenarios.
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[Type[SigmaModifier]]
     value : List[Union[SigmaType]]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
+    original_value : Optional[Union[SigmaType]] = field(init=False, repr=False, hash=False, compare=False)     # Copy of original values for conversion back to data structures (and YAML/JSON)
+    auto_modifiers : InitVar[bool] = True
+
+    def __post_init__(self, auto_modifiers):
+        if not isinstance(self.value, list):    # value cleanup: it has to be a list!
+            self.value = [ self.value ]
+        self.value = [                          # value cleanup: convert plain values into SigmaType's
+            sigma_type(v)
+            if not isinstance(v, SigmaType)
+            else v
+            for v in self.value
+        ]
+
+        self.original_value = self.value.copy()     # Create a copy of original values
+        if auto_modifiers:
+            self.apply_modifiers()
 
     def apply_modifiers(self):
         """
@@ -147,14 +183,12 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             val = [None]
 
         # Map Python types to Sigma typing classes
-        # TODO: also map None values to SigmaNull
         val = [
             sigma_type(v)
             for v in val
         ]
 
         detection_item = cls(field, modifiers, val)
-        detection_item.apply_modifiers()
         return detection_item
 
     @classmethod
@@ -167,6 +201,49 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             ) -> "SigmaDetectionItem":
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val)
+
+    def disable_conversion_to_plain(self):
+        """
+        Mark detection item as not convertible to plain data type. This is required in cases where
+        the value and original value get out of sync, e.g. because transformation are applied and
+        conversion with to_plain() would yield an outdated state.
+        """
+        self.original_value = None
+
+    def to_plain(self) -> Union[Dict[str, Union[str, int, None]], List[str]]:
+        """
+        Convert detection item into plain Python type, that can be:
+
+        * a plain value if it is a single plain keyword value.
+        * a list of values if it is a list of keyword values
+        * a dict in all other cases (detection item bound to field or keyword with modifiers)
+        """
+        if self.original_value is None:
+            raise sigma_exceptions.SigmaValueError(f"Detection item { str(self) } can't be converted to plain data type anymore because the current value is not in sync with original value anymore, e.g. by applying transformations.")
+
+        if len(self.original_value) > 1:
+            value = [
+                value.to_plain()
+                for value in self.original_value
+            ]
+        else:
+            value = self.original_value[0].to_plain()
+
+        if self.is_keyword() and len(self.modifiers) == 0:       # detection item is keyword detection and has no modifiers: return list of values
+            return value
+        else:
+            field_name = self.field or ""       # field name is empty in case of keyword detection items with modifiers
+            modifier_ids = [                    # list of modifier identifiers from reverse mapping
+                reverse_modifier_mapping[modifier.__name__]
+                for modifier in self.modifiers
+            ]
+            if len(modifier_ids) > 0:
+                modifiers_prefix = "|"
+            else:
+                modifiers_prefix = ""
+            return {
+                field_name + modifiers_prefix + "|".join(modifier_ids): value
+            }
 
     def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
         self.parent = parent
@@ -208,6 +285,10 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                     ])
                 cond.postprocess(detections, parent)
                 return cond
+
+    def is_keyword(self) -> bool:
+        """Returns True if detection item is a keyword detection without field reference."""
+        return self.field is None
 
 @dataclass
 class SigmaDetection(ParentChainMixin):
@@ -261,6 +342,87 @@ class SigmaDetection(ParentChainMixin):
                             ]
                         )
 
+    def to_plain(self) -> Union[Dict[str, Union[str, int, None]], List[str]]:
+        """Returns a dictionary or list representation of the detection."""
+        detection_items = [     # first convert all detection items into a Python representation.
+            detection_item.to_plain()
+            for detection_item in self.detection_items
+        ]
+        detection_items_types = {   # create set of types for decision what has to be returned
+            type(detection_item)
+            for detection_item in detection_items
+        }
+
+        if len(detection_items) == 0:       # pragma: no cover
+            return None                     # This case is catched by the post init check, so it shouldn't happen.
+        if len(detection_items) == 1:       # Only one detection item? Return it as result.
+            return detection_items[0]
+        else:                               # More than one detection iten, it depends now on the types
+            if dict in detection_items_types and len(detection_items_types) > 1:
+                # Merging dicts with other types isn't possibly, at least not in a simple way.
+                # This case can appear in a programmatically instantiated detection, but can't be
+                # expressed in a data structure, because there might be only a list or a map.
+                # In the future (if there's a need) a possibility would be to collect such items
+                # under null or empty keys, but for today I want to keep this simple and simply bail
+                # out.
+                raise sigma_exceptions.SigmaValueError("Can't convert detection into plain value because it contains mixed detection item types.")
+            elif detection_items_types == { dict }:     # only dict's, merge them together
+                merged = dict()
+                # Count key appearance for later all modifier addition
+                key_count = dict()
+                # The following double loop (the second one is no real one, as it operates on a
+                # single element dict) merges keys (not fields!) into the merged dict.
+                for detection_item_converted, detection_item in zip(detection_items, self.detection_items):
+                    for k, v in detection_item_converted.items():
+                        if k not in merged:     # key doesn't exists in merged dict: just add
+                            merged[k] = v
+                        else:                   # key collision, now the things get complicated...
+                            if "|all" in k:     # key contains 'all' modifier
+                                if not isinstance(merged[k], list):     # make list from existing all-modified value if it's a plain value
+                                    merged[k] = [merged[k]]
+
+                                if isinstance(v, list):     # merging two and-linked lists is possible
+                                    merged[k].extend(v)
+                                else:
+                                    merged[k].append(v)
+                            else:       # key collision without all modifier: trying to merge both keys into one and-linked key
+                                ev = merged[k]      # already existing value
+
+                                # Value normalization: extract value from signle-valued lists
+                                if isinstance(ev, list) and len(ev) == 1:
+                                    ev = ev[0]
+                                if isinstance(v, list) and len(v) == 1:
+                                    v = v[0]
+
+                                # Still lists? Merging lists is not allowed
+                                if isinstance(ev , list) or isinstance(v, list):
+                                    raise sigma_exceptions.SigmaValueError(f"Can't merge value lists '{k}' into one item due to different logical linking.")
+
+                                vs = [ev, v]        # The new merged value
+
+                                ak = k + "|all"
+                                if ak in merged:        # 'all' key already exist, append to this key if possible
+                                    if not isinstance(merged[ak], list):    # ensure that existing 'all' key is a list
+                                        merged[ak] = [av]
+                                    av = merged[ak]
+                                    av.extend(vs)
+                                else:                   # create new 'all' key from both existing keys
+                                    merged[ak] = vs
+                                del merged[k]
+
+                return {
+                    k: (v[0] if len(v) == 1 else v)
+                    for k, v in merged.items()
+                }
+            else:       # only lists and plain values, merge them into one list
+                merged = list()
+                for detection_item_converted in detection_items:
+                    if isinstance(detection_item_converted, list):        # if item is a list, extend result list with it.
+                        merged.extend(detection_item_converted)
+                    else:
+                        merged.append(detection_item_converted)           # if item is a plain value, append it to list
+                return merged
+
     def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
         """Convert detection item into condition tree element"""
         self.parent = parent
@@ -281,7 +443,7 @@ class SigmaDetection(ParentChainMixin):
 @dataclass
 class SigmaDetections:
     """Sigma detection section including named detections and condition."""
-    detections : Mapping[str, SigmaDetection]
+    detections : Dict[str, SigmaDetection]
     condition : List[str]
 
     def __post_init__(self):
@@ -312,6 +474,21 @@ class SigmaDetections:
                 condition=condition,
                 )
 
+    def to_dict(self) -> dict:
+        detections = {
+            identifier: detection.to_plain()
+            for identifier, detection in self.detections.items()
+        }
+        if len(self.condition) > 1:
+            condition = self.condition
+        else:
+            condition = self.condition[0]
+
+        return {
+            **detections,
+            "condition": condition,
+        }
+
     def __getitem__(self, key : str) -> SigmaDetection:
         """Get detection by name"""
         return self.detections[key]
@@ -322,20 +499,25 @@ class SigmaRule:
     A single Sigma rule.
     """
     title : str
-    id : Optional[UUID]
-    status : Optional[SigmaStatus]
-    description : Optional[str]
-    references : List[str]
-    tags : Optional[List[SigmaRuleTag]]
-    author : Optional[str]
-    date : Optional[date]
     logsource : SigmaLogSource
     detection : SigmaDetections
-    fields : Optional[List[str]]
-    falsepositives : Optional[List[str]]
-    level : Optional[SigmaLevel]
+    id : Optional[UUID] = None
+    status : Optional[SigmaStatus] = None
+    description : Optional[str] = None
+    references : List[str] = field(default_factory=list)
+    tags : List[SigmaRuleTag] = field(default_factory=list)
+    author : Optional[str] = None
+    date : Optional[date] = None
+    fields : List[str] = field(default_factory=list)
+    falsepositives : List[str] = field(default_factory=list)
+    level : Optional[SigmaLevel] = None
 
     errors : List[sigma_exceptions.SigmaError] = field(default_factory=list)
+
+    def __post_init__(self):
+        for field in ("references", "tags", "fields", "falsepositives"):
+            if self.__getattribute__(field) is None:
+                self.__setattr__(field, [])
 
     @classmethod
     def from_dict(cls, rule : dict, collect_errors : bool = False) -> "SigmaRule":
@@ -410,8 +592,8 @@ class SigmaRule:
                 date = rule_date,
                 logsource = logsource,
                 detection = detections,
-                fields = rule.get("fields"),
-                falsepositives = rule.get("falsepositives"),
+                fields = rule.get("fields", list()),
+                falsepositives = rule.get("falsepositives", list()),
                 errors = errors,
                 )
 
@@ -420,3 +602,28 @@ class SigmaRule:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.safe_load(rule)
         return cls.from_dict(parsed_rule, collect_errors)
+
+    def to_dict(self) -> dict:
+        """Convert rule object into dict."""
+        d = {
+            "title": self.title,
+            "logsource": self.logsource.to_dict(),
+            "detection": self.detection.to_dict(),
+        }
+        # Convert to string where possible
+        for field in ("id", "status", "level", "author", "description"):
+            if (s := self.__getattribute__(field)) is not None:
+                d[field] = str(s)
+
+        # copy list of strings
+        for field in ("references", "fields", "falsepositives"):
+            if len(l := self.__getattribute__(field)) > 0:
+                d[field] = l.copy()
+
+        # the special cases
+        if len(self.tags) > 0:
+            d["tags"] = [ str(tag) for tag in self.tags ]
+        if self.date is not None:
+            d["date"] = self.date.isoformat()
+
+        return d

@@ -307,9 +307,9 @@ def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only : S
     transformation.apply(dummy_pipeline, sigma_rule_placeholders_only)
     assert sigma_rule_placeholders_only.detection.detections["test"] == SigmaDetection([
         SigmaDetection([
-            SigmaDetectionItem("field1", [SigmaExpandModifier], [ SigmaQueryExpression("field1 lookup var1") ]),
-            SigmaDetectionItem("field2", [SigmaExpandModifier], [ SigmaQueryExpression("field2 lookup placeholder2") ]),
-            SigmaDetectionItem("field3", [SigmaExpandModifier], [ SigmaQueryExpression("field3 lookup var3") ]),
+            SigmaDetectionItem("field1", [SigmaExpandModifier], [ SigmaQueryExpression("field1 lookup var1") ], auto_modifiers=False),
+            SigmaDetectionItem("field2", [SigmaExpandModifier], [ SigmaQueryExpression("field2 lookup placeholder2") ], auto_modifiers=False),
+            SigmaDetectionItem("field3", [SigmaExpandModifier], [ SigmaQueryExpression("field3 lookup var3") ], auto_modifiers=False),
         ])
     ])
 

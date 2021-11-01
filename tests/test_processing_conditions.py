@@ -12,7 +12,7 @@ def dummy_processing_pipeline():
 
 @pytest.fixture
 def detection_item():
-    return SigmaDetectionItem("field", [], "value")
+    return SigmaDetectionItem("field", [], [ SigmaString("value") ])
 
 def test_logsource_match(dummy_processing_pipeline, detection_item):
     assert LogsourceCondition(category="test_category").match(

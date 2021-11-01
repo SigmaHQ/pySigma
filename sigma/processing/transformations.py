@@ -50,6 +50,8 @@ class DetectionItemTransformation(Transformation):
     replacement value was returned. In the other case the apply_detection_item method must take
     care of this to make conditional decisions in the processing pipeline working. This can be
     done with the detection_item_applied() method.
+
+    A detection item transformation also marks the item as unconvertible to plain data types.
     """
     @abstractmethod
     def apply_detection_item(self, detection_item : SigmaDetectionItem) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
@@ -64,6 +66,8 @@ class DetectionItemTransformation(Transformation):
                     self.processing_item is None or
                     self.processing_item.match_detection_item(self.pipeline, detection_item)
                  ) and (r := self.apply_detection_item(detection_item)) is not None:
+                    if isinstance(r, SigmaDetectionItem):
+                        r.disable_conversion_to_plain()
                     detection.detection_items[i] = r
                     self.processing_item_applied(r)
 

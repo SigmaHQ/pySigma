@@ -1,5 +1,5 @@
 import pytest
-from sigma.types import SigmaBool, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaBool, SigmaCompareExpression, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRv4Expression, SigmaPartialRegularExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 def test_strings_empty():
@@ -139,6 +139,9 @@ def test_strings_add_rspecial():
 def test_strings_to_string():
     assert str(SigmaString("test*?")) == "test*?"
 
+def test_strings_to_plain():
+    assert SigmaString("test*?").to_plain() == "test*?"
+
 def test_strings_to_bytes():
     assert bytes(SigmaString("test*?")) == b"test*?"
 
@@ -159,6 +162,9 @@ def test_strings_convert_no_singlewildcard():
     with pytest.raises(SigmaValueError, match="Single-character wildcard"):
         SigmaString("foo?bar").convert(wildcard_single=None)
 
+def test_number_to_plain():
+    assert SigmaNumber(123).to_plain() == 123
+
 def test_number_equal():
     assert SigmaNumber(123) == SigmaNumber(123)
 
@@ -171,6 +177,9 @@ def test_number_invalid():
 
 def test_re_ok():
     assert SigmaRegularExpression("test.*")
+
+def test_re_to_plain():
+    assert SigmaRegularExpression("test.*").to_plain() == "test.*"
 
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
@@ -195,9 +204,15 @@ def test_re_escape():
 def test_bool():
     assert SigmaBool(True).boolean == True
 
+def test_bool_to_plain():
+    assert SigmaBool(True).to_plain() == True
+
 def test_bool_invalid():
     with pytest.raises(SigmaTypeError, match="must be a boolean"):
         SigmaBool(123)
+
+def test_null_to_plain():
+    assert SigmaNull().to_plain() == None
 
 def test_null_equality():
     assert SigmaNull() == SigmaNull("foo")
@@ -230,12 +245,20 @@ def test_query_expression_finalize_nofield_error():
     with pytest.raises(SigmaValueError, match="no field was given"):
         SigmaQueryExpression("xxx{field}zzz").finalize()
 
+def test_query_expression_to_plain():
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
+        SigmaQueryExpression("test").to_plain()
+
 def test_query_expression_wrong_type():
     with pytest.raises(SigmaTypeError, match="must be a string"):
         SigmaQueryExpression(123)
 
 def test_cidrv4_ok():
     assert SigmaCIDRv4Expression("192.168.1.0/24")
+
+def test_cidrv4_to_plain():
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
+        SigmaCIDRv4Expression("192.168.1.0/24").to_plain()
 
 def test_cidrv4_invalid():
     with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
@@ -276,3 +299,11 @@ def test_cidrv4_convert_23_wildcard():
 def test_cidrv4_invalid():
     with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
         SigmaCIDRv4Expression("192.168.1.2/24")
+
+def test_compare_to_plain():
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
+        SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.LTE).to_plain()
+
+def test_compare_string():
+    with pytest.raises(SigmaTypeError, match="expects number"):
+        SigmaCompareExpression(SigmaString("123"), SigmaCompareExpression.CompareOperators.LTE).to_plain()

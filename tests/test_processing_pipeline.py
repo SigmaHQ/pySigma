@@ -7,6 +7,7 @@ from sigma.processing.conditions import rule_conditions, RuleProcessingCondition
 from sigma.processing.transformations import transformations, Transformation
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError
+from sigma.types import SigmaString
 
 @dataclass
 class RuleConditionTrue(RuleProcessingCondition):
@@ -78,7 +79,7 @@ def sigma_rule():
 
 @pytest.fixture
 def detection_item():
-    return SigmaDetectionItem("field", [], "value")
+    return SigmaDetectionItem("field", [], [ SigmaString("value") ])
 
 @pytest.fixture
 def processing_item_dict():

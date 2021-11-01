@@ -30,9 +30,9 @@ class TextQueryTestBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ("/", "bar")
 
-    cidrv4_expression : ClassVar[str] = "{field}={value}"
-    cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
-    cidrv4_wildcard : ClassVar[str] = None
+    cidr_expression : ClassVar[str] = "{field}={value}"
+    cidr_in_list_expression : ClassVar[str] = "{field} in ({list})"
+    cidr_wildcard : ClassVar[str] = None
 
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
@@ -232,7 +232,7 @@ def test_convert_value_cidr_wildcard_none(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4: 192.168.0.0/14
+                    fieldA|cidr: 192.168.0.0/14
                 condition: sel
         """)
     ) == ['mappedA=192.168.0.0/14']
@@ -240,7 +240,7 @@ def test_convert_value_cidr_wildcard_none(test_backend):
 
 def test_convert_value_cidr_wildcard_asterisk(test_backend):
     my_backend = test_backend
-    my_backend.cidrv4_wildcard = "*"
+    my_backend.cidr_wildcard = "*"
     assert my_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -250,7 +250,7 @@ def test_convert_value_cidr_wildcard_asterisk(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4: 192.168.0.0/14
+                    fieldA|cidr: 192.168.0.0/14
                 condition: sel
         """)
     ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
@@ -385,7 +385,7 @@ def test_convert_invalid_unbound_cidr(test_backend):
                     product: test_product
                 detection:
                     sel:
-                       "|cidrv4": 192.168.0.0/16
+                       "|cidr": 192.168.0.0/16
                     condition: sel
             """)
         )
@@ -529,7 +529,7 @@ def test_convert_list_cidr_wildcard_none(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4:
+                    fieldA|cidr:
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel
@@ -538,7 +538,7 @@ def test_convert_list_cidr_wildcard_none(test_backend):
 
 def test_convert_list_cidr_wildcard_asterisk(test_backend):
     my_backend = test_backend
-    my_backend.cidrv4_wildcard = "*"
+    my_backend.cidr_wildcard = "*"
     assert my_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -548,7 +548,7 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4:
+                    fieldA|cidr:
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel

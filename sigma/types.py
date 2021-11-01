@@ -366,8 +366,8 @@ class SigmaRegularExpression(SigmaType):
         ])
 
 @dataclass
-class SigmaCIDRv4Expression(NoPlainConversionMixin, SigmaType):
-    """CIDRv4 expression type"""
+class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
+    """CIDR IP address range expression type"""
     cidr    : str
     network : IPv4Network = field(init=False, compare=False)
 
@@ -425,7 +425,7 @@ class SigmaCIDRv4Expression(NoPlainConversionMixin, SigmaType):
         * join_expr: string used to join multiple network wildcard patterns, e.g. logical linking with OR.
         * template: resulting pattern is embedded with {network} placeholder in this template. By default the pattern is passed.
           This can be used to add some annotation/function required by the target query language to handle it as CIDR network.
-        * wildcard: string used as wildcard character or None if query language can handle CIDRv4 properly.
+        * wildcard: string used as wildcard character or None if query language can handle CIDR properly.
         """
         return join_expr.join((
             template.format(network=network)

@@ -41,7 +41,7 @@ class SplunkBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ('"',)
 
-    cidrv4_expression : ClassVar[str] = "{value}"
+    cidr_expression : ClassVar[str] = "{value}"
 
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
@@ -70,11 +70,11 @@ class SplunkBackend(TextQueryBackend):
             raise SigmaFeatureNotSupportedByBackendError("ORing regular expressions is not yet supported by Splunk backend")
         return SplunkDeferredRegularExpression(state, cond.field, super().convert_condition_field_eq_val_re(cond, state)).postprocess(None, cond)
 
-    def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression, state : "sigma.conversion.state.ConversionState") -> SplunkDeferredCIDRExpression:
+    def convert_condition_field_eq_val_cidr(self, cond : ConditionFieldEqualsValueExpression, state : "sigma.conversion.state.ConversionState") -> SplunkDeferredCIDRExpression:
         """Defer CIDR network range matching to pipelined where cidrmatch command after main search expression."""
         if cond.parent_condition_chain_contains(ConditionOR):
             raise SigmaFeatureNotSupportedByBackendError("ORing CIDR matching is not yet supported by Splunk backend")
-        return SplunkDeferredCIDRExpression(state, cond.field, super().convert_condition_field_eq_val_cidrv4(cond, state)).postprocess(None, cond)
+        return SplunkDeferredCIDRExpression(state, cond.field, super().convert_condition_field_eq_val_cidr(cond, state)).postprocess(None, cond)
 
     def finalize_query_savedsearches(self, rule: SigmaRule, query: str, index: int, state: ConversionState) -> str:
         clean_title = rule.title.translate({ord(c): None for c in "[]"})      # remove brackets from title

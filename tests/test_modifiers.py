@@ -9,7 +9,7 @@ from sigma.modifiers import \
     SigmaBase64OffsetModifier, \
     SigmaWideModifier, \
     SigmaRegularExpressionModifier, \
-    SigmaCIDRv4Modifier, \
+    SigmaCIDRModifier, \
     SigmaAllModifier, \
     SigmaLessThanModifier, \
     SigmaLessThanEqualModifier, \
@@ -17,7 +17,7 @@ from sigma.modifiers import \
     SigmaGreaterThanEqualModifier, \
     SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -197,13 +197,13 @@ def test_compare_string(dummy_detection_item):
 def test_expand(dummy_detection_item):
     assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == ("test", Placeholder("var"), "test")
 
-def test_cidrv4(dummy_detection_item):
-    assert SigmaCIDRv4Modifier(dummy_detection_item, []).modify(SigmaString("192.168.1.0/24")) == SigmaCIDRv4Expression("192.168.1.0/24")
+def test_cidr(dummy_detection_item):
+    assert SigmaCIDRModifier(dummy_detection_item, []).modify(SigmaString("192.168.1.0/24")) == SigmaCIDRExpression("192.168.1.0/24")
 
-def test_cidrv4_with_other(dummy_detection_item):
+def test_cidr_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
-        SigmaCIDRv4Modifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("192.168.1.0/24"))
+        SigmaCIDRModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("192.168.1.0/24"))
 
-def test_cidrv4_invalid(dummy_detection_item):
+def test_cidr_invalid(dummy_detection_item):
     with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
-        SigmaCIDRv4Modifier(dummy_detection_item, []).modify(SigmaString("192.168.1.1/24"))
+        SigmaCIDRModifier(dummy_detection_item, []).modify(SigmaString("192.168.1.1/24"))

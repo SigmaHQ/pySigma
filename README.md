@@ -33,15 +33,14 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
 
 |Modifier|Use|sigmac legacy|
 |--------|---|:-------------:|
-|contains|the value is matched anywhere in the field|X|
-|startswith|The value is expected at the beginning of the field's content|X|
-|endswith|The value is expected at the end of the field's content|X|
+|contains|the value is matched anywhere in the field (strings and regular expressions)|X|
+|startswith|The value is expected at the beginning of the field's content (strings and regular expressions)|X|
+|endswith|The value is expected at the end of the field's content (strings and regular expressions)|X|
 |base64|The value is encoded with Base64|X|
 |base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
 |wide|transforms value to UTF16-LE encoding|X|
 |re|value is handled as regular expression by backends|X|
-|re_contains|value is handled as contains regular expression by backends||
-|cidrv4|value is handled as a IPv4 CIDR by backends||
+|cidr|value is handled as a IP CIDR by backends||
 |all|This modifier changes OR logic to AND|X|
 |lt|Field is less than the value||
 |lte|Field is less or egal than the value||

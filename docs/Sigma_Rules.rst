@@ -104,10 +104,10 @@ SigmaRegularExpression
 .. autoclass:: sigma.types.SigmaRegularExpression
    :members:
 
-SigmaCIDRv4Expression
+SigmaCIDRExpression
 =====================
 
-.. autoclass:: sigma.types.SigmaCIDRv4Expression
+.. autoclass:: sigma.types.SigmaCIDRExpression
    :members:
 
 SigmaCompareExpression

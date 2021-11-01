@@ -87,7 +87,7 @@ def test_splunk_cidr_query(splunk_backend : SplunkBackend):
                 product: test_product
             detection:
                 sel:
-                    fieldA|cidrv4: 192.168.0.0/16
+                    fieldA|cidr: 192.168.0.0/16
                     fieldB: foo
                     fieldC: bar
                 condition: sel

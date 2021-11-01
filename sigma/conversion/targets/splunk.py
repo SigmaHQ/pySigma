@@ -19,8 +19,8 @@ class SplunkBackend(TextQueryBackend):
     re_expression : ClassVar[str] = "| regex field={field} \"{regex}\""
     re_escape_char : ClassVar[str] = "\\"
 
-    cidrv4_expression : ClassVar[str] = "| where cidrmatch(\"{value}\", {field})"
-    cidrv4_in_list_expression : ClassVar[str] = "{field} in ({list})"
+    cidr_expression : ClassVar[str] = "| where cidrmatch(\"{value}\", {field})"
+    cidr_in_list_expression : ClassVar[str] = "{field} in ({list})"
 
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {

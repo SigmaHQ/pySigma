@@ -560,3 +560,14 @@ def test_processingpipeline_invalid_concatenation():
                 ),
             ],
         ) + 3
+
+def test_processingpipeline_invalid_concatenation_left():
+    with pytest.raises(TypeError):
+        3 + ProcessingPipeline(
+            items=[
+                ProcessingItem(
+                    transformation=TransformationAppend(s="Append"),
+                    identifier="append",
+                ),
+            ],
+        )

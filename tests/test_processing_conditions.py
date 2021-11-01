@@ -99,3 +99,7 @@ def test_match_string_condition_error_mode():
 def test_match_string_condition_error_mode():
     with pytest.raises(SigmaRegularExpressionError, match="is invalid"):
         MatchStringCondition(pattern="*", cond="any")
+
+def test_value_processing_invalid_cond():
+    with pytest.raises(SigmaConfigurationError, match="The value.*cond"):
+        MatchStringCondition(pattern="^val.*", cond="invalid")

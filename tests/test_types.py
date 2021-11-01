@@ -191,6 +191,9 @@ def test_re_escape():
 def test_bool():
     assert SigmaBool(True).boolean == True
 
+def test_bool_str():
+    assert str(SigmaBool(True)) == "True"
+
 def test_bool_to_plain():
     assert SigmaBool(True).to_plain() == True
 

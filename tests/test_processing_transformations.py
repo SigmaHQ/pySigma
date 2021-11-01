@@ -9,7 +9,7 @@ from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
-from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError, SigmaValueError
+from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError, SigmaTransformationError, SigmaValueError
 
 @pytest.fixture
 def dummy_pipeline():
@@ -434,6 +434,10 @@ def test_replace_string_wildcard(dummy_pipeline):
             SigmaDetectionItem("field2", [], [ SigmaNumber(123) ]),
         ])
     ])
+
+def test_replace_string_invalid():
+    with pytest.raises(SigmaRegularExpressionError, match="Regular expression.*invalid"):
+        ReplaceStringTransformation("*", "test")
 
 def test_rule_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = RuleFailureTransformation("Test")

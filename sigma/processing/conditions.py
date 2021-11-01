@@ -44,7 +44,7 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
         elif self.cond == "all":
             self.match_func = all
         else:
-            raise SigmaConfigurationError(f"The parameter '{self.cond}' for the 'match' parameter is invalid. It must be 'any' or 'all'.")
+            raise SigmaConfigurationError(f"The value '{self.cond}' for the 'cond' parameter is invalid. It must be 'any' or 'all'.")
 
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
         return self.match_func((

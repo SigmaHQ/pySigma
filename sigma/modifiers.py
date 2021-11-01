@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from typing import ClassVar, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -66,23 +66,40 @@ class SigmaListModifier(SigmaModifier):
 
 ### Modifier Implementations ###
 class SigmaContainsModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString) -> SigmaString:
-        if not val.startswith(SpecialChars.WILDCARD_MULTI):
-            val = SpecialChars.WILDCARD_MULTI + val
-        if not val.endswith(SpecialChars.WILDCARD_MULTI):
-            val += SpecialChars.WILDCARD_MULTI
+    def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
+        if isinstance(val, SigmaString):
+            if not val.startswith(SpecialChars.WILDCARD_MULTI):
+                val = SpecialChars.WILDCARD_MULTI + val
+            if not val.endswith(SpecialChars.WILDCARD_MULTI):
+                val += SpecialChars.WILDCARD_MULTI
+        elif isinstance(val, SigmaRegularExpression):
+            if val.regexp[:2] != '.*' and val.regexp[0] != "^":
+                val.regexp = '.*' + val.regexp
+            if val.regexp[-2:] != '.*' and val.regexp[-1] != "$":
+                val.regexp = val.regexp + '.*'
+            val.compile()
         return val
 
 class SigmaStartswithModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString) -> SigmaString:
-        if not val.endswith(SpecialChars.WILDCARD_MULTI):
-            val += SpecialChars.WILDCARD_MULTI
+    def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
+        if isinstance(val, SigmaString):
+            if not val.endswith(SpecialChars.WILDCARD_MULTI):
+                val += SpecialChars.WILDCARD_MULTI
+        elif isinstance(val, SigmaRegularExpression):
+            if val.regexp[-2:] != '.*' and val.regexp[-1] != "$":
+                val.regexp = val.regexp + '.*'
+            val.compile()
         return val
 
 class SigmaEndswithModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString) -> SigmaString:
-        if not val.startswith(SpecialChars.WILDCARD_MULTI):
-            val = SpecialChars.WILDCARD_MULTI + val
+    def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
+        if isinstance(val, SigmaString):
+            if not val.startswith(SpecialChars.WILDCARD_MULTI):
+                val = SpecialChars.WILDCARD_MULTI + val
+        elif isinstance(val, SigmaRegularExpression):
+            if val.regexp[:2] != '.*' and val.regexp[0] != "^":
+                val.regexp = '.*' + val.regexp
+            val.compile()
         return val
 
 class SigmaBase64Modifier(SigmaValueModifier):
@@ -130,12 +147,6 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
         return SigmaRegularExpression(str(val))
-
-class SigmaPartialRegularExpressionModifier(SigmaValueModifier):
-    def modify(self, val : SigmaString) -> SigmaPartialRegularExpression:
-        if len(self.applied_modifiers) > 0:
-            raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
-        return SigmaPartialRegularExpression(str(val))
 
 class SigmaCIDRv4Modifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaCIDRv4Expression:
@@ -185,7 +196,6 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "base64offset"  : SigmaBase64OffsetModifier,
     "wide"          : SigmaWideModifier,
     "re"            : SigmaRegularExpressionModifier,
-    "re_contains"   : SigmaPartialRegularExpressionModifier,
     "cidrv4"        : SigmaCIDRv4Modifier,
     "all"           : SigmaAllModifier,
     "lt"            : SigmaLessThanModifier,

@@ -207,21 +207,6 @@ def test_convert_value_regex(test_backend):
         """)
     ) == ['mappedA=/pat.*tern\\/foo\\bar/']
 
-def test_convert_value_regex_partial(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re_contains: pat.*tern/foobar
-                condition: sel
-        """)
-    ) == ['mappedA=/.*pat.*tern\\/foo\\bar.*/']
-
 def test_convert_value_regex_unbound(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

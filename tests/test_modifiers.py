@@ -9,7 +9,6 @@ from sigma.modifiers import \
     SigmaBase64OffsetModifier, \
     SigmaWideModifier, \
     SigmaRegularExpressionModifier, \
-    SigmaPartialRegularExpressionModifier, \
     SigmaCIDRv4Modifier, \
     SigmaAllModifier, \
     SigmaLessThanModifier, \
@@ -18,7 +17,7 @@ from sigma.modifiers import \
     SigmaGreaterThanEqualModifier, \
     SigmaExpandModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRv4Expression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 
@@ -129,21 +128,47 @@ def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
 def test_re_contains(dummy_detection_item):
-    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaPartialRegularExpression(".*foo?bar.*")
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar")) == SigmaRegularExpression(".*foo?bar.*")
 
 def test_re_contains_start(dummy_detection_item):
-    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("^foo?bar")) == SigmaPartialRegularExpression("^foo?bar.*")
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression("^foo?bar")) == SigmaRegularExpression("^foo?bar.*")
 
 def test_re_contains_end(dummy_detection_item):
-    assert SigmaPartialRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar$")) == SigmaPartialRegularExpression(".*foo?bar$")
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar$")) == SigmaRegularExpression(".*foo?bar$")
+
+def test_re_contains_startswith_wildcard(dummy_detection_item):
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression(".*foo?bar")) == SigmaRegularExpression(".*foo?bar.*")
+
+def test_re_contains_endswith_wildcard(dummy_detection_item):
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar.*")) == SigmaRegularExpression(".*foo?bar.*")
+
+def test_re_startswith(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar")) == SigmaRegularExpression("foo?bar.*")
+
+def test_re_endswith(dummy_detection_item):
+    assert SigmaEndswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar")) == SigmaRegularExpression(".*foo?bar")
+
+def test_re_startswith_start(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("^foo?bar")) == SigmaRegularExpression("^foo?bar.*")
+
+def test_re_endswith_start(dummy_detection_item):
+    assert SigmaEndswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("^foo?bar")) == SigmaRegularExpression("^foo?bar")
+
+def test_re_startswith_end(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar$")) == SigmaRegularExpression("foo?bar$")
+
+def test_re_endswith_end(dummy_detection_item):
+    assert SigmaEndswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar$")) == SigmaRegularExpression(".*foo?bar$")
+
+def test_re_endswith_startswith_wildcard(dummy_detection_item):
+    assert SigmaEndswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression(".*foo?bar")) == SigmaRegularExpression(".*foo?bar")
+
+def test_re_startswith_endswith_wildcard(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
-
-def test_re_contains_with_other(dummy_detection_item):
-    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
-        SigmaPartialRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
 
 def test_all(dummy_detection_item):
     values = [

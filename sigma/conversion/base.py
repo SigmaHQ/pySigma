@@ -6,7 +6,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRv4Expression, SigmaPartialRegularExpression
+from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRv4Expression
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -131,9 +131,6 @@ class Backend(ABC):
         """Conversion of field matches regular expression value expressions"""
 
     @abstractmethod
-    def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
-        """Conversion of field matches regular expression value expressions"""
-    @abstractmethod
     def convert_condition_field_eq_val_cidrv4(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field matches cidrv4 expression value expressions"""
 
@@ -159,8 +156,6 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_bool(cond, state)
         elif isinstance(cond.value, SigmaRegularExpression):
             return self.convert_condition_field_eq_val_re(cond, state)
-        elif isinstance(cond.value, SigmaPartialRegularExpression):
-            return self.convert_condition_field_eq_val_re_contains(cond, state)
         elif isinstance(cond.value, SigmaCIDRv4Expression):
             return self.convert_condition_field_eq_val_cidrv4(cond, state)
         elif isinstance(cond.value, SigmaCompareExpression):

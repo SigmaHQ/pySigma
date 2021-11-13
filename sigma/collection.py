@@ -1,6 +1,9 @@
 from dataclasses import dataclass, field
-from typing import Callable, Iterable, List, Optional, Union, IO
+from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
+from uuid import UUID
+
+from _pytest.python_api import _recursive_list_map
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError, SigmaError
 import yaml
@@ -10,6 +13,17 @@ class SigmaCollection:
     """Collection of Sigma rules"""
     rules : List[SigmaRule]
     errors : List[SigmaError] = field(default_factory=list)
+    ids_to_rules : Dict[str, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
+
+    def __post_init__(self):
+        """
+        Map rule identifiers to rules.
+        """
+        self.ids_to_rules = {
+            str(rule.id): rule
+            for rule in self.rules
+            if rule.id is not None
+        }
 
     @classmethod
     def from_dicts(
@@ -143,8 +157,11 @@ class SigmaCollection:
     def __len__(self):
         return len(self.rules)
 
-    def __getitem__(self, i : int):
-        return self.rules[i]
+    def __getitem__(self, i : Union[int, str]):
+        if isinstance(i, int):
+            return self.rules[i]
+        else:
+            return self.ids_to_rules[i]
 
 def deep_dict_update(dest, src):
     for k, v in src.items():

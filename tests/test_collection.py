@@ -1,4 +1,5 @@
 from pathlib import Path
+from uuid import UUID
 import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.rule import SigmaRule, SigmaLogSource
@@ -216,8 +217,12 @@ def test_action_unknown_collect_errors():
         }
     ], collect_errors=True).errors) > 0
 
-def test_load_ruleset():
-    assert len(SigmaCollection.load_ruleset([ "tests/files/ruleset" ]).rules) == 2
+@pytest.fixture
+def ruleset():
+    return SigmaCollection.load_ruleset([ "tests/files/ruleset" ])
+
+def test_load_ruleset(ruleset):
+    assert len(ruleset.rules) == 2
 
 def test_load_ruleset_path():
     assert SigmaCollection.load_ruleset([ Path("tests/files/ruleset") ]).rules == SigmaCollection.load_ruleset([ "tests/files/ruleset" ]).rules
@@ -243,3 +248,10 @@ def test_load_ruleset_onload():
             return sc
     sigma_collection = SigmaCollection.load_ruleset([ "tests/files/ruleset" ], on_load=onload)
     assert len(sigma_collection.rules) == 1 and sigma_collection.rules[0].title == "changed"
+
+def test_index_rule_by_position(ruleset):
+    assert isinstance(ruleset[0], SigmaRule)
+
+def test_index_rule_by_id(ruleset):
+    rule_id = "240dbc26-8b19-4f5f-8972-fc3841f4185f"
+    assert ruleset[rule_id].id == UUID(rule_id)

@@ -1,3 +1,4 @@
+from pathlib import Path
 import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.rule import SigmaRule, SigmaLogSource
@@ -214,3 +215,31 @@ def test_action_unknown_collect_errors():
             "action": "invalid",
         }
     ], collect_errors=True).errors) > 0
+
+def test_load_ruleset():
+    assert len(SigmaCollection.load_ruleset([ "tests/files/ruleset" ]).rules) == 2
+
+def test_load_ruleset_path():
+    assert SigmaCollection.load_ruleset([ Path("tests/files/ruleset") ]).rules == SigmaCollection.load_ruleset([ "tests/files/ruleset" ]).rules
+
+def test_load_ruleset_nolist():
+    with pytest.raises(TypeError, match="must be list"):
+        SigmaCollection.load_ruleset("tests/files/ruleset")
+
+def test_load_ruleset_onbeforeload():
+    def onbeforeload(p):
+        if "2" in str(p):
+            return None
+        else:
+            return p
+    assert len(SigmaCollection.load_ruleset([ "tests/files/ruleset" ], on_beforeload=onbeforeload).rules) == 1
+
+def test_load_ruleset_onload():
+    def onload(p, sc):
+        if "2" in str(p):
+            return None
+        else:
+            sc.rules[0].title = "changed"
+            return sc
+    sigma_collection = SigmaCollection.load_ruleset([ "tests/files/ruleset" ], on_load=onload)
+    assert len(sigma_collection.rules) == 1 and sigma_collection.rules[0].title == "changed"

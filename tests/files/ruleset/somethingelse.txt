@@ -1,0 +1,1 @@
+This is not a Sigma rule and should be ignored by SigmaCollection.load_ruleset().

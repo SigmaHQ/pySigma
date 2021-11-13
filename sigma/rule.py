@@ -105,9 +105,9 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     """
     field : Optional[str]       # if None, this is a keyword argument not bound to a field
     modifiers : List[Type[SigmaModifier]]
-    value : List[Union[SigmaType]]
+    value : List[SigmaType]
     value_linking : Union[Type[ConditionAND], Type[ConditionOR]] = ConditionOR
-    original_value : Optional[Union[SigmaType]] = field(init=False, repr=False, hash=False, compare=False)     # Copy of original values for conversion back to data structures (and YAML/JSON)
+    original_value : Optional[SigmaType] = field(init=False, repr=False, hash=False, compare=False)     # Copy of original values for conversion back to data structures (and YAML/JSON)
     auto_modifiers : InitVar[bool] = True
 
     def __post_init__(self, auto_modifiers):

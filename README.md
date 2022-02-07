@@ -22,7 +22,7 @@ poetry add git+https://github.com/SigmaHQ/pySigma.git#main
 **Pipenv:**
 
 ```bash
-pipenv install git+https://github.com/SigmaHQ/pySigma.git#main
+pipenv install git+https://github.com/SigmaHQ/pySigma.git#egg=pysigma
 ```
 
 ## Features

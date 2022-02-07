@@ -3,7 +3,7 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -139,6 +139,20 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
         "fieldC": True,
         "fieldD": True,
     }
+
+def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeline):
+    transformation = DropDetectionItemTransformation()
+    processing_item = ProcessingItem(
+        transformation,
+        detection_item_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("value1") ]),
+            SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
+        ])
+    ])
 
 @pytest.fixture
 def add_fieldname_suffix_transformation():

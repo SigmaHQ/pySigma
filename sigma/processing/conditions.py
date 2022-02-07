@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+
+from charset_normalizer import detect
 import sigma
-from sigma.types import SigmaString, SigmaType
-from typing import Dict, List, Pattern, Literal, Optional
+from sigma.types import SigmaString, SigmaType, sigma_type
+from typing import Dict, List, Pattern, Literal, Optional, Union
 import re
-from sigma.rule import SigmaRule, SigmaDetectionItem, SigmaLogSource
-from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
+from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
+from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError, SigmaTypeError
 
 ### Base Classes ###
 
@@ -71,6 +73,40 @@ class LogsourceCondition(RuleProcessingCondition):
 
     def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
         return rule.logsource in self.logsource
+
+@dataclass
+class RuleContainsDetectionItemCondition(RuleProcessingCondition):
+    """Returns True if rule contains a detection item that matches the given field name and value."""
+    field : Optional[str]
+    value : Union[str, int, float, bool]
+
+    def __post_init__(self):
+        self.sigma_value = sigma_type(self.value)
+
+    def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
+        for detection in rule.detection.detections.values():
+            if self.find_detection_item(detection):
+                return True
+        return False
+
+    def find_detection_item(self, detection : Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+        if isinstance(detection, SigmaDetection):
+            for detection_item in detection.detection_items:
+                if self.find_detection_item(detection_item):
+                    return True
+        elif isinstance(detection, SigmaDetectionItem):
+            if detection.field is not None \
+                and detection.field == self.field \
+                and self.sigma_value in [
+                    v
+                    for v in detection.value
+                    if type(self.sigma_value) == type(v)
+                ]:
+                return True
+        else:
+            raise TypeError("Parameter of type SigmaDetection or SigmaDetectionItem expected.")
+
+        return False
 
 ### Detection Item Condition Classes ###
 @dataclass
@@ -144,6 +180,7 @@ class MatchStringCondition(ValueProcessingCondition):
 
 rule_conditions : Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
+    "contains_detection_item": RuleContainsDetectionItemCondition,
 }
 detection_item_conditions : Dict[str, DetectionItemProcessingCondition] = {
     "include_fields": IncludeFieldCondition,

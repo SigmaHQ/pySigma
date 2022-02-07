@@ -55,6 +55,36 @@ def process_creation_sigma_rule_parentimage_path():
             condition: sel
     """)
 
+@pytest.fixture
+def network_connection_sigma_rule():
+    return SigmaCollection.from_yaml("""
+        title: Network Connection Test
+        status: test
+        logsource:
+            category: network_connection
+            product: windows
+        detection:
+            sel:
+               Initiated: "true"
+               DestinationIp: "1.2.3.4"
+            condition: sel
+    """)
+
+@pytest.fixture
+def incoming_network_connection_sigma_rule():
+    return SigmaCollection.from_yaml("""
+        title: Incoming Network Connection Test
+        status: test
+        logsource:
+            category: network_connection
+            product: windows
+        detection:
+            sel:
+               Initiated: "false"
+               DestinationIp: "1.2.3.4"
+            condition: sel
+    """)
+
 def test_sysmon_pipeline(resolver : ProcessingPipelineResolver, process_creation_sigma_rule):
     pipeline = resolver.resolve_pipeline("sysmon")
     backend = TextQueryTestBackend(pipeline)
@@ -75,3 +105,13 @@ def test_crowdstrike_pipeline_parentimage_path(resolver : ProcessingPipelineReso
     backend = TextQueryTestBackend(pipeline)
     with pytest.raises(SigmaTransformationError, match="CrowdStrike"):
         backend.convert(process_creation_sigma_rule_parentimage_path)
+
+def test_crowdstrike_network_connect(resolver : ProcessingPipelineResolver, network_connection_sigma_rule):
+    pipeline = resolver.resolve_pipeline("crowdstrike")
+    backend = TextQueryTestBackend(pipeline)
+    assert backend.convert(network_connection_sigma_rule) == ["event_simpleName=\"NetworkConnectionIP4\" and RemoteAddressIP4=\"1.2.3.4\""]
+
+def test_crowdstrike_network_connect_incoming(resolver : ProcessingPipelineResolver, incoming_network_connection_sigma_rule):
+    pipeline = resolver.resolve_pipeline("crowdstrike")
+    backend = TextQueryTestBackend(pipeline)
+    assert backend.convert(incoming_network_connection_sigma_rule) == ["event_simpleName=\"NetworkReceiveAcceptIP4\" and RemoteAddressIP4=\"1.2.3.4\""]

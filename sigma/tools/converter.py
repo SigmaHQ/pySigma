@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Iterable, List, Optional, IO
 from sigma.collection import SigmaCollection
 from sigma.processing.pipelines.resolver import DefaultPipelineResolver
-from sigma.conversion.backends.splunk import SplunkBackend
+from sigma.backends.splunk import SplunkBackend
 from sigma.conversion.base import TextQueryBackend
 
 backends = {    # identifier -> backend class, description, mandatory processing pipeline

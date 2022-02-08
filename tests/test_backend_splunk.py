@@ -1,6 +1,6 @@
 from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 import pytest
-from sigma.conversion.backends.splunk import SplunkBackend
+from sigma.backends.splunk import SplunkBackend
 from sigma.collection import SigmaCollection
 
 @pytest.fixture

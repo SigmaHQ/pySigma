@@ -5,7 +5,7 @@ from sigma.processing.pipelines.common import logsource_windows_network_connecti
 
 cond_field_parentbasefilename = IncludeFieldCondition(fields=["ParentBaseFileName"])
 
-def crowdstrike_splunk_pipeline():
+def crowdstrike_fdr_pipeline():
     return ProcessingPipeline(
         name="Generic Log Sources to CrowdStrike Splunk Transformation",
         priority=10,

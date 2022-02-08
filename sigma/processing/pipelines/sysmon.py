@@ -23,7 +23,7 @@ def sysmon_pipeline():
                     service="sysmon",
                 ),
                 rule_conditions=[
-                    logsource_windows_file_change(),
+                    logsource_windows_process_creation(),
                 ]
             ),
             ProcessingItem(

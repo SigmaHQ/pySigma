@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
-from charset_normalizer import detect
 import sigma
 from sigma.types import SigmaString, SigmaType, sigma_type
 from typing import Dict, List, Pattern, Literal, Optional, Union

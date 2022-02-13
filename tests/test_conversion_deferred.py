@@ -3,7 +3,7 @@ from sigma.conversion.state import ConversionState
 from sigma.conversion.deferred import DeferredTextQueryExpression
 from sigma.conditions import ConditionFieldEqualsValueExpression
 from sigma.collection import SigmaCollection
-from tests.test_conversion_base import TextQueryTestBackend
+from sigma.backends.test import TextQueryTestBackend
 
 ### Base Tests ###
 @pytest.fixture

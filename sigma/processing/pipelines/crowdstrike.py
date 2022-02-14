@@ -74,6 +74,15 @@ def crowdstrike_fdr_pipeline():
                 ]
             ),
             ProcessingItem(
+                identifier="cs_network_connection_fieldmapping",
+                transformation=FieldMappingTransformation({
+                    "QueryName": "DomainName",
+                }),
+                rule_conditions=[
+                    logsource_windows_network_connection(),
+                ]
+            ),
+            ProcessingItem(
                 identifier="cs_network_connection_drop_initiated",
                 transformation=DropDetectionItemTransformation(),
                 rule_conditions=[

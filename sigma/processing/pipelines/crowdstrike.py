@@ -1,7 +1,7 @@
 from sigma.processing.conditions import IncludeFieldCondition, MatchStringCondition
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, FieldMappingTransformation, ReplaceStringTransformation
-from sigma.processing.pipelines.common import logsource_windows_network_connection, logsource_windows_network_connection_initiated, logsource_windows_process_creation
+from sigma.processing.pipelines.common import logsource_windows_network_connection, logsource_windows_network_connection_initiated, logsource_windows_process_creation, logsource_windows_dns_query
 
 cond_field_parentbasefilename = IncludeFieldCondition(fields=["ParentBaseFileName"])
 
@@ -79,7 +79,7 @@ def crowdstrike_fdr_pipeline():
                     "QueryName": "DomainName",
                 }),
                 rule_conditions=[
-                    logsource_windows_network_connection(),
+                    logsource_windows_dns_query(),
                 ]
             ),
             ProcessingItem(

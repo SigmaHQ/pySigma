@@ -2,6 +2,9 @@ name: Release to PyPI
 on:
   release:
     types: [published]
+  push:
+    tags:
+      - v*.*.*
 
 jobs:
   build-and-publish:
@@ -29,6 +32,10 @@ jobs:
         run: |
           poetry config repositories.testpypi https://test.pypi.org/legacy/
           poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
-          poetry config pypi-token.pypi "${{ secrets.PYPI_API_KEY }}"
+          poetry config pypi-token.pypi "${{ secrets.PYPI_API_TOKEN }}"
       - name: Publish to test PyPI
+        if: ${{ github.event_name == 'push' }}
         run: poetry publish -r testpypi
+      - name: Publish to PyPI
+        if: ${{ github.event_name == 'release' }}
+        run: poetry publish

@@ -10,8 +10,13 @@ It replaces a lot of the logic found in the `sigmac` tool, and brings it into a 
 
 ## Getting Started
 
-To start using `pySigma`, install it using your python package manager of choice. Documentation with
-some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
+To start using `pySigma`, install it using your python package manager of choice. Examples:
+
+```
+pip install pysigma
+```
+
+Documentation with some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
 
 **Poetry:**
 

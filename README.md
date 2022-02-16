@@ -32,9 +32,9 @@ pipenv install git+https://github.com/SigmaHQ/pySigma.git#egg=pysigma
 
 ## Features
 
-`pySigma` brings a number of additional features over `sigmac`, as well as some changes.
+`pySigma` brings a number of additional features compared to `sigmac`, as well as some changes.
 
-### Modifier compare from sigmac
+### Modifier comparison between pySigma and sigmac
 
 |Modifier|Use|sigmac legacy|
 |--------|---|:-------------:|

@@ -33,6 +33,7 @@ pytest-mypy = "^0.6.2"
 pylint = "^2.6.0"
 rope = "^0.18.0"
 Sphinx = "^4.2.0"
+mypy = "^0.931"
 
 [build-system]
 requires = ["poetry>=1.1.2"]

@@ -37,6 +37,3 @@ Sphinx = "^4.2.0"
 [build-system]
 requires = ["poetry>=1.1.2"]
 build-backend = "poetry.masonry.api"
-
-[tool.pytest.ini_options]
-addopts = "--cov=sigma --cov-report term --cov-report xml:cov.xml -vv"

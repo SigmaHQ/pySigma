@@ -25,9 +25,9 @@ jobs:
         with:
           poetry-version: ${{ matrix.poetry-version }}
       - name: Install dependencies
-        run: poetry install --no-root
+        run: poetry install
       - name: Run tests
-        run: poetry run pytest
+        run: poetry run pytest --cov=sigma --cov-report term --cov-report xml:cov.xml -vv
       - name: Store coverage for badge
         if: ${{ runner.os == 'Linux' }}
         run: poetry run python print-coverage.py >> $GITHUB_ENV

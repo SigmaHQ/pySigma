@@ -110,8 +110,8 @@ class SigmaCollection:
 
         :return: :class:`SigmaCollection` of all sigma rules contained in given paths.
         """
-        if not isinstance(inputs, list):
-            raise TypeError("Parameter 'inputs' must be list of strings or pathlib.Path objects.")
+        if not isinstance(inputs, Iterable) or isinstance(inputs, str):
+            raise TypeError("Parameter 'inputs' must be list of strings or pathlib.Path objects, not " + str(type(inputs)))
 
         paths = (       # Normalize all inputs into paths
             input if isinstance(input, Path)

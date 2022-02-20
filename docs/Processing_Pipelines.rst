@@ -14,8 +14,15 @@ Pipeline resolvers resolve identifiers and file names into a consolidated proces
 take care of the appropriate ordering via the `priority` property that should be contained in a
 processing pipeline.
 
-A default pipeline resolver that resolves to all pipelines contained in pySigma is available by
-importing `sigma.processing.pipelines.DefaultPipelineResolver`.
+A processing pipeline resolver is a
+:py:class:`sigma.processing.resolver.ProcessingPipelineResolver` object. It is initialized with an
+mapping between identifiers and :py:class:`sigma.processing.pipeline.ProcessingPipeline` objects or
+callables that return such objects.
+
+The method :py:meth:`sigma.processing.resolver.ProcessingPipelineResolver.resolve_pipeline` returns a
+`ProcessingPipeline` object corresponsing with the given identifier or contained in the specified
+YAML file. :py:meth:`sigma.processing.resolver.ProcessingPipelineResolver.resolve` returns a consolidated
+pipeline with the appropriate ordering as specified by the `priority` property of the specified pipelines.
 
 .. autoclass:: sigma.processing.resolver.ProcessingPipelineResolver
    :members:

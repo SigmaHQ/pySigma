@@ -88,15 +88,14 @@ initialization. Processing pipelines can be provided by:
 
 The following example:::
 
-   from sigma.processing.pipelines.resolver import DefaultPipelineResolver
-   pipeline = resolver.resolve_pipeline(["sysmon", "custom.yml"])
+   from sigma.pipelines.sysmon import sysmon_pipeline
+   pipeline = sysmon_pipeline()
    backend = SplunkBackend(pipeline)
    rules = SigmaCollection.from_yaml(sigma_rule_yaml)
    print("Result: " + "\n".join(backend.convert(rules)))
 
-* Builds a processing pipeline by concatenation of the builtin Sysmon processing pipeline and a
-  custom pipeline description provided as file by utilizing the default pipeline resolver contained
-  in pySigma.
+* Utilizes the Sysmon pipeline from the `pysigma-pipeline-sysmon <https://github.com/SigmaHQ/pySigma-pipeline-sysmon>` package that can be installed
+  with pip.
 * instantiates a Splunk backend.
 * Converts a Sigma rule collection into a list of queries and prints it.
 

@@ -19,7 +19,7 @@ from sigma.modifiers import \
 from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
-from sigma.exceptions import SigmaTypeError, SigmaValueError
+from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
 @pytest.fixture
 def dummy_detection_item():
@@ -30,7 +30,7 @@ def dummy_plain_modifier(dummy_detection_item):
     class DummyPlainModifier(SigmaModifier):
         def modify(self, val : SigmaString) -> SigmaString:
             return SigmaString("")
-    return DummyPlainModifier(dummy_detection_item, [])
+    return DummyPlainModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml"))
 
 @pytest.fixture
 def dummy_union_modifier(dummy_detection_item):
@@ -53,7 +53,7 @@ def test_typecheck_plain_wrong(dummy_plain_modifier):
     assert not dummy_plain_modifier.type_check(SigmaNumber(123))
 
 def test_typecheck_plain_wrong_apply(dummy_plain_modifier):
-    with pytest.raises(SigmaTypeError):
+    with pytest.raises(SigmaTypeError, match="incompatible.*type.*test.yml"):
         dummy_plain_modifier.apply(SigmaNumber(123))
 
 def test_typecheck_apply_list_input(dummy_sequence_modifier):
@@ -99,8 +99,8 @@ def test_base64(dummy_detection_item):
     assert SigmaBase64Modifier(dummy_detection_item, []).apply(SigmaString("foobar")) == [ SigmaString("Zm9vYmFy") ]
 
 def test_base64_wildcards(dummy_detection_item):
-    with pytest.raises(SigmaValueError):
-        SigmaBase64Modifier(dummy_detection_item, []).apply(SigmaString("foo*bar"))
+    with pytest.raises(SigmaValueError, match="wildcards is not allowed.*test.yml"):
+        SigmaBase64Modifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaString("foo*bar"))
 
 def test_base64offset(dummy_detection_item):
     assert SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("foobar")) == [
@@ -110,19 +110,19 @@ def test_base64offset(dummy_detection_item):
         ]
 
 def test_base64offset_wildcards(dummy_detection_item):
-    with pytest.raises(SigmaValueError):
-        SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("foo*bar"))
+    with pytest.raises(SigmaValueError, match="wildcards is not allowed.*test.yml"):
+        SigmaBase64OffsetModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaString("foo*bar"))
 
 def test_base64offset_re(dummy_detection_item):
-    with pytest.raises(SigmaTypeError):
-        SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaRegularExpression("foo.*bar"))
+    with pytest.raises(SigmaTypeError, match="incompatible.*type.*test.yml"):
+        SigmaBase64OffsetModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaRegularExpression("foo.*bar"))
 
 def test_wide(dummy_detection_item):
     assert SigmaWideModifier(dummy_detection_item, []).apply(SigmaString("*foobar*")) == [ SigmaString("*f\x00o\x00o\x00b\x00a\x00r\x00*") ]
 
 def test_wide_noascii(dummy_detection_item):
-    with pytest.raises(SigmaValueError):
-        SigmaWideModifier(dummy_detection_item, []).apply(SigmaString("foobär"))
+    with pytest.raises(SigmaValueError, match="ascii strings.*test.yml"):
+        SigmaWideModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaString("foobär"))
 
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
@@ -167,8 +167,8 @@ def test_re_startswith_endswith_wildcard(dummy_detection_item):
     assert SigmaStartswithModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
 def test_re_with_other(dummy_detection_item):
-    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
-        SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("foo?bar.*"))
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified values.*test.yml"):
+        SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaString("foo?bar.*"))
 
 def test_all(dummy_detection_item):
     values = [
@@ -191,8 +191,8 @@ def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
 
 def test_compare_string(dummy_detection_item):
-    with pytest.raises(SigmaTypeError, match="expects number"):
-        SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaString("123"))
+    with pytest.raises(SigmaTypeError, match="expects number.*test.yml"):
+        SigmaGreaterThanEqualModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).modify(SigmaString("123"))
 
 def test_expand(dummy_detection_item):
     assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == ("test", Placeholder("var"), "test")
@@ -201,9 +201,9 @@ def test_cidr(dummy_detection_item):
     assert SigmaCIDRModifier(dummy_detection_item, []).modify(SigmaString("192.168.1.0/24")) == SigmaCIDRExpression("192.168.1.0/24")
 
 def test_cidr_with_other(dummy_detection_item):
-    with pytest.raises(SigmaValueError, match="only applicable to unmodified values"):
-        SigmaCIDRModifier(dummy_detection_item, [SigmaBase64Modifier]).modify(SigmaString("192.168.1.0/24"))
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified values.*test.yml"):
+        SigmaCIDRModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaString("192.168.1.0/24"))
 
 def test_cidr_invalid(dummy_detection_item):
-    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
-        SigmaCIDRModifier(dummy_detection_item, []).modify(SigmaString("192.168.1.1/24"))
+    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression.*test.yml"):
+        SigmaCIDRModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).modify(SigmaString("192.168.1.1/24"))

@@ -1,21 +1,21 @@
 from abc import ABC, abstractmethod
-from typing import ClassVar, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
+from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
 from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
-from sigma.exceptions import SigmaTypeError, SigmaValueError
-
+from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
 ### Base Classes ###
 class SigmaModifier(ABC):
     """Base class for all Sigma modifiers"""
-    detection_item : "SigmaDetectionItem"
+    detection_item : "sigma.rule.SigmaDetectionItem"
     applied_modifiers : List["SigmaModifier"]
 
-    def __init__(self, detection_item : "SigmaDetectionItem", applied_modifiers : List["SigmaModifier"]):
+    def __init__(self, detection_item : "sigma.rule.SigmaDetectionItem", applied_modifiers : List["SigmaModifier"], source : Optional[SigmaRuleLocation] = None):
         self.detection_item = detection_item
         self.applied_modifiers = applied_modifiers
+        self.source = source
 
     def type_check(self, val : Union[SigmaType, Sequence[SigmaType]], explicit_type=None) -> bool:
         th = explicit_type or get_type_hints(self.modify)["val"]      # get type annotation from val parameter of apply method or explicit_type parameter
@@ -45,7 +45,7 @@ class SigmaModifier(ABC):
         * Ensure returned value is a list
         """
         if not self.type_check(val):
-            raise SigmaTypeError(f"Modifier {self.__class__.__name__} incompatible to value type of '{ val }'")
+            raise SigmaTypeError(f"Modifier {self.__class__.__name__} incompatible to value type of '{ val }'", source=self.source)
         r = self.modify(val)
         if isinstance(r, List):
             return r
@@ -105,7 +105,7 @@ class SigmaEndswithModifier(SigmaValueModifier):
 class SigmaBase64Modifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaString:
         if val.contains_special():
-            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed")
+            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed", source=self.source)
         return SigmaString(b64encode(bytes(val)).decode())
 
 class SigmaBase64OffsetModifier(SigmaValueModifier):
@@ -114,7 +114,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
 
     def modify(self, val : SigmaString) -> List[SigmaString]:
         if val.contains_special():
-            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed")
+            raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed", source=self.source)
         return [
             SigmaString(b64encode(
                 i * b' ' + bytes(val)
@@ -134,7 +134,7 @@ class SigmaWideModifier(SigmaValueModifier):
                 try:
                     r.append(item.encode("utf-16le").decode("utf-8"))
                 except UnicodeDecodeError:         # this method only works for ascii characters
-                    raise SigmaValueError(f"Wide modifier only allowed for ascii strings, input string '{str(val)}' isn't one")
+                    raise SigmaValueError(f"Wide modifier only allowed for ascii strings, input string '{str(val)}' isn't one", source=self.source)
             else:                           # just append special characters without further handling
                 r.append(item)
 
@@ -145,14 +145,14 @@ class SigmaWideModifier(SigmaValueModifier):
 class SigmaRegularExpressionModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaRegularExpression:
         if len(self.applied_modifiers) > 0:
-            raise SigmaValueError("Regular expression modifier only applicable to unmodified values")
+            raise SigmaValueError("Regular expression modifier only applicable to unmodified values", source=self.source)
         return SigmaRegularExpression(str(val))
 
 class SigmaCIDRModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaCIDRExpression:
         if len(self.applied_modifiers) > 0:
-            raise SigmaValueError("CIDR expression modifier only applicable to unmodified values")
-        return SigmaCIDRExpression(str(val))
+            raise SigmaValueError("CIDR expression modifier only applicable to unmodified values", source=self.source)
+        return SigmaCIDRExpression(str(val), source=self.source)
 
 class SigmaAllModifier(SigmaListModifier):
     def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:
@@ -164,7 +164,7 @@ class SigmaCompareModifier(SigmaValueModifier):
     op : ClassVar[SigmaCompareExpression.CompareOperators]
 
     def modify(self, val : SigmaNumber) -> SigmaCompareExpression:
-        return SigmaCompareExpression(val, self.op)
+        return SigmaCompareExpression(val, self.op, self.source)
 
 class SigmaLessThanModifier(SigmaCompareModifier):
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.LT
@@ -196,7 +196,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "base64offset"  : SigmaBase64OffsetModifier,
     "wide"          : SigmaWideModifier,
     "re"            : SigmaRegularExpressionModifier,
-    "cidr"        : SigmaCIDRModifier,
+    "cidr"          : SigmaCIDRModifier,
     "all"           : SigmaAllModifier,
     "lt"            : SigmaLessThanModifier,
     "lte"           : SigmaLessThanEqualModifier,

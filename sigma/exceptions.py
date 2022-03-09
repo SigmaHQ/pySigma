@@ -1,6 +1,41 @@
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Optional
+
+@dataclass
+class SigmaRuleLocation:
+    """Describes a Sigma source file and optionally a location inside it."""
+    path : Path
+    line : Optional[int] = None
+    char : Optional[int] = None
+
+    def __post_init__(self):
+        if isinstance(self.path, str):
+            self.path = Path(self.path)
+
+    def __str__(self):
+        s = str(self.path.resolve())
+        if self.line is not None:
+            s += ":" + str(self.line)
+            if self.char is not None:
+                s += ":" + str(self.char)
+        return s
+
 class SigmaError(ValueError):
     """Generic Sigma error and super-class of all Sigma exceptions"""
-    pass
+    def __init__(self, *args, **kwargs):
+        try:
+            self.source = kwargs["source"]
+            del kwargs["source"]
+        except KeyError:
+            self.source = None
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        if self.source is not None:
+            return super().__str__() + " in " + str(self.source)
+        else:
+            return super().__str__()
 
 class SigmaLogsourceError(SigmaError):
     """Error in Sigma rule logosurce specification"""

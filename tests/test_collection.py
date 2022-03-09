@@ -4,7 +4,7 @@ import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.rule import SigmaRule, SigmaLogSource
 from sigma.types import SigmaString
-from sigma.exceptions import SigmaCollectionError
+from sigma.exceptions import SigmaCollectionError, SigmaModifierError, SigmaRuleLocation
 
 def test_single_rule():
     rule = {
@@ -203,12 +203,12 @@ def test_action_repeat_global():
         and c[0].logsource == SigmaLogSource(category="testcat", service="svc-2")
 
 def test_action_unknown():
-    with pytest.raises(SigmaCollectionError, match="Unknown"):
+    with pytest.raises(SigmaCollectionError, match="Unknown.*test.yml"):
         SigmaCollection.from_dicts([
             {
                 "action": "invalid",
             }
-        ])
+        ], source=SigmaRuleLocation("test.yml"))
 
 def test_action_unknown_collect_errors():
     assert len(SigmaCollection.from_dicts([
@@ -226,6 +226,10 @@ def test_load_ruleset(ruleset):
 
 def test_load_ruleset_path():
     assert SigmaCollection.load_ruleset([ Path("tests/files/ruleset") ]).rules == SigmaCollection.load_ruleset([ "tests/files/ruleset" ]).rules
+
+def test_load_ruleset_with_error():
+    with pytest.raises(SigmaModifierError, match="Unknown modifier.*test_rule_with_error.yml"):
+        SigmaCollection.load_ruleset([ Path("tests/files/ruleset_with_errors") ])
 
 def test_load_ruleset_nolist():
     with pytest.raises(TypeError, match="must be list"):

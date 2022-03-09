@@ -60,8 +60,8 @@ def test_sigmalogsource_fromdict_no_service():
     assert logsource == SigmaLogSource("category-id", "product-id", None)
 
 def test_sigmalogsource_empty():
-    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
-        SigmaLogSource(None, None, None)
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="can't be empty.*test.yml"):
+        SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmalogsource_eq():
     assert SigmaLogSource("category", "product", "service") == SigmaLogSource("category", "product", "service")
@@ -100,9 +100,9 @@ def test_sigmadetectionitem_keyword_single_to_plain():
     assert SigmaDetectionItem(None, [], [SigmaString("value*")]).to_plain() == "value*"
 
 def test_sigmadetectionitem_disabled_to_plain():
-    detection_item = SigmaDetectionItem(None, [], [SigmaString("value*")])
+    detection_item = SigmaDetectionItem(None, [], [SigmaString("value*")], source=sigma_exceptions.SigmaRuleLocation("test.yml"))
     detection_item.disable_conversion_to_plain()
-    with pytest.raises(sigma_exceptions.SigmaValueError, match="can't be converted to plain data type"):
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="can't be converted to plain data type.*test.yml"):
         detection_item.to_plain()
 
 def test_sigmadetectionitem_is_keyword():
@@ -125,14 +125,13 @@ def test_sigmadetectionitem_keyword_modifiers():
 
 def test_sigmadetectionitem_keyword_modifiers_to_plain():
     """Keyword detection with modifier chain."""
-    #assert SigmaDetectionItem.from_mapping("|base64|contains", "foobar").to_plain() == {"|base64|contains": "foobar"}
     detection_item = SigmaDetectionItem(None, [SigmaBase64Modifier, SigmaContainsModifier], [SigmaString("foobar")])
     assert detection_item.to_plain() == {"|base64|contains": "foobar"}
 
 def test_sigmadetectionitem_unknown_modifier():
     """Keyword detection with modifier chain."""
-    with pytest.raises(sigma_exceptions.SigmaModifierError):
-        SigmaDetectionItem.from_mapping("|foobar", "foobar")
+    with pytest.raises(sigma_exceptions.SigmaModifierError, match="Unknown modifier.*test.yml"):
+        SigmaDetectionItem.from_mapping("|foobar", "foobar", source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmadetectionitem_key_value_single_string():
     """Key-value detection with one value."""
@@ -195,8 +194,8 @@ def test_sigmadetectionitem_key_value_modifiers_to_plain():
 
 def test_sigmadetectionitem_key_value_modifiers_invalid_re():
     """Invalid regular expression modifier chain."""
-    with pytest.raises(sigma_exceptions.SigmaValueError):
-        SigmaDetectionItem.from_mapping("key|base64|re", "value")
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="only applicable.*test.yml"):
+        SigmaDetectionItem.from_mapping("key|base64|re", "value", source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmadetectionitem_fromvalue():
     SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
@@ -322,12 +321,12 @@ def test_sigmadetections_index():
     ])
 
 def test_sigmadetections_fromdict_no_detections():
-    with pytest.raises(sigma_exceptions.SigmaDetectionError):
-        SigmaDetections.from_dict({ "condition": [ "selection" ] })
+    with pytest.raises(sigma_exceptions.SigmaDetectionError, match="No detections.*test.yml"):
+        SigmaDetections.from_dict({ "condition": [ "selection" ] }, sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmadetections_fromdict_no_condition():
-    with pytest.raises(sigma_exceptions.SigmaConditionError):
-        SigmaDetections.from_dict({ "selection": { "key": "value" }})
+    with pytest.raises(sigma_exceptions.SigmaConditionError, match="at least one condition.*test.yml"):
+        SigmaDetections.from_dict({ "selection": { "key": "value" }}, sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmadetection_processing_item_tracking(processing_item):
     """Key-value detection with one value."""
@@ -406,11 +405,11 @@ def test_sigmadetection_multi_dict_to_plain_key_collision_lists():
     implicitely and-linked, while the list items are or-linked. Merging them would cause a semantic
     change because all items must have the same logical linking.
     """
-    with pytest.raises(sigma_exceptions.SigmaValueError, match="different logical linking"):
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="different logical linking.*test.yml"):
         SigmaDetection(detection_items=[
             SigmaDetectionItem("field", [], [ SigmaString("value1"), SigmaString("value2") ]),
             SigmaDetectionItem("field", [], [ SigmaString("value3"), SigmaString("value4") ]),
-        ]).to_plain()
+        ], source=sigma_exceptions.SigmaRuleLocation("test.yml")).to_plain()
 
 def test_sigmadetection_multi_dict_to_plain_key_collision_all_2single():
     assert SigmaDetection(detection_items=[
@@ -428,40 +427,40 @@ def test_sigmadetection_lists_and_plain_to_plain():
 
 
 def test_sigmadetection_dict_and_keyword_to_plain():
-    with pytest.raises(sigma_exceptions.SigmaValueError, match="Can't convert detection"):
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="Can't convert detection.*test.yml"):
         SigmaDetection(detection_items=[
             SigmaDetectionItem("field", [], SigmaString("value")),
             SigmaDetectionItem(None, [], SigmaString("keyword")),
-        ]).to_plain()
+        ], source=sigma_exceptions.SigmaRuleLocation("test.yml")).to_plain()
 
 ### SigmaRule tests ###
 
 def test_sigmarule_bad_uuid():
-    with pytest.raises(sigma_exceptions.SigmaIdentifierError):
-        SigmaRule.from_dict({ "id": "no-uuid" })
+    with pytest.raises(sigma_exceptions.SigmaIdentifierError, match="must be an UUID.*test.yml"):
+        SigmaRule.from_dict({ "id": "no-uuid" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_bad_level():
-    with pytest.raises(sigma_exceptions.SigmaLevelError):
-        SigmaRule.from_dict({ "level": "bad" })
+    with pytest.raises(sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"):
+        SigmaRule.from_dict({ "level": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_bad_status():
-    with pytest.raises(sigma_exceptions.SigmaStatusError):
-        SigmaRule.from_dict({ "status": "bad" })
+    with pytest.raises(sigma_exceptions.SigmaStatusError, match="no valid Sigma rule status.*test.yml"):
+        SigmaRule.from_dict({ "status": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_bad_date():
-    with pytest.raises(sigma_exceptions.SigmaDateError):
-        SigmaRule.from_dict({ "date": "bad" })
+    with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
+        SigmaRule.from_dict({ "date": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_bad_date_collect_errors():
     assert len(SigmaRule.from_dict({ "date": "bad" }, collect_errors=True).errors) > 0
 
 def test_sigmarule_no_logsource():
-    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
-        SigmaRule.from_dict({})
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="must have a log source.*test.yml"):
+        SigmaRule.from_dict({}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_no_detections():
-    with pytest.raises(sigma_exceptions.SigmaDetectionError):
-        SigmaRule.from_dict({ "logsource": { "category": "category-id" } })
+    with pytest.raises(sigma_exceptions.SigmaDetectionError, match="must have a detection.*test.yml"):
+        SigmaRule.from_dict({ "logsource": { "category": "category-id" } }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 def test_sigmarule_none_to_list():
     sigma_rule = SigmaRule(
@@ -594,5 +593,5 @@ def test_sigmarule_to_dict(sigma_rule : SigmaRule):
     }
 
 def test_empty_detection():
-    with pytest.raises(sigma_exceptions.SigmaDetectionError):
-        SigmaDetection([])
+    with pytest.raises(sigma_exceptions.SigmaDetectionError, match="Detection is empty.*test.yml"):
+        SigmaDetection([], sigma_exceptions.SigmaRuleLocation("test.yml"))

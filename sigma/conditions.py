@@ -6,7 +6,7 @@ from sigma.processing.tracking import ProcessingItemTrackingMixin
 from pyparsing import Word, alphanums, Keyword, infixNotation, opAssoc, ParseResults
 from typing import ClassVar, List, Optional, Union, Type
 from sigma.types import SigmaType
-from sigma.exceptions import SigmaConditionError
+from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma
 
 @dataclass
@@ -41,12 +41,16 @@ class ParentChainMixin:
         """Determines if the class cond_class is contained in parent condition class chain."""
         return cond_class in self.parent_chain_condition_classes()
 
-    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None) -> "ConditionItem":
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> "ConditionItem":
         """
-        Minimal default postprocessing implementation for classes whcih don't bring their own postprocess method.
-        Just sets the parent property.
+        Minimal default postprocessing implementation for classes which don't bring their own postprocess method.
+        Just sets the parent and source property.
         """
         self.parent = parent
+        try:
+            self.source = source or self.source
+        except AttributeError:
+            self.source = None
         return self
 
 @dataclass
@@ -54,6 +58,7 @@ class ConditionItem(ParentChainMixin, ABC):
     arg_count : ClassVar[int]
     token_list : ClassVar[bool] = False     # determines if the value passed as tokenized is a ParseResult or a simple list object
     args : List[Union["ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionFieldValueInExpression", "ConditionValueExpression"]]
+    source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
     def from_parsed(cls, s : str, l : int, t : Union[ParseResults, list]) -> "ConditionItem":
@@ -72,16 +77,16 @@ class ConditionItem(ParentChainMixin, ABC):
             args = list()       # this case can only happen if broken classes are defined
         return [cls(args)]
 
-    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None) -> "ConditionItem":
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> "ConditionItem":
         """
         Postprocess condition parse tree after initial parsing. In this stage the detections
         are available, this allows to resolve references to detections into concrete conditions.
 
         This function should finally return itself or an instance of a ConditionItem subclass object.
         """
-        self.parent = parent
+        super().postprocess(detections, parent, source)
         self.args = [
-            arg.postprocess(detections, self)
+            arg.postprocess(detections, self, source)
             for arg in self.args
         ]
         return self
@@ -110,13 +115,13 @@ class ConditionIdentifier(ConditionItem):
     def __post_init__(self):
         self.identifier = self.args[0]
 
-    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> Union[ConditionAND, ConditionOR]:
         """Converts an identifier into a condition with SigmaDetectionItems at its leaf nodes."""
         self.parent = parent
         try:
             detection = detections[self.identifier]
         except KeyError:
-            raise SigmaConditionError(f"Detection '{ self.identifier }' not defined in detections")
+            raise SigmaConditionError(f"Detection '{ self.identifier }' not defined in detections", source=source)
         return detection.postprocess(detections, self)
 
 @dataclass
@@ -133,8 +138,9 @@ class ConditionSelector(ConditionItem):
             self.cond_class = ConditionAND
         self.pattern = self.args[1]
 
-    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None) -> Union[ConditionAND, ConditionOR]:
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> Union[ConditionAND, ConditionOR]:
         """Converts selector into an AND or OR condition"""
+        self.parent = parent
         r = re.compile(self.pattern.replace("*", ".*"))
         ids = [
             ConditionIdentifier([ identifier ])
@@ -142,7 +148,7 @@ class ConditionSelector(ConditionItem):
             if r.match(identifier)
         ]
         cond = self.cond_class(ids)
-        return cond.postprocess(detections)
+        return cond.postprocess(detections, parent, source)
 
 @dataclass
 class ConditionFieldEqualsValueExpression(ParentChainMixin):
@@ -183,6 +189,7 @@ condition = infixNotation(
 class SigmaCondition(ProcessingItemTrackingMixin):
     condition : str
     detections : "sigma.rule.SigmaDetections"
+    source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @property
     def parsed(self):
@@ -195,7 +202,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         state of the rule.
         """
         parsed = condition.parseString(self.condition)[0]
-        return parsed.postprocess(self.detections)
+        return parsed.postprocess(self.detections, source=self.source)
 
 ConditionType = Union[
     ConditionOR,

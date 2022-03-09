@@ -1,0 +1,26 @@
+    title: Test
+    id: 2dcca7b4-4b3a-4db6-9364-a019d54904bf
+    status: test
+    description: This is a test
+    references:
+        - ref1
+        - ref2
+    tags:
+        - attack.execution
+        - attack.t1059
+    author: Thomas Patzke
+    date: 2020/07/12
+    logsource:
+        category: process_creation
+        product: windows
+    detection:
+        selection_1:
+            Image|foobar: \cmd.exe
+            ParentImage|endswith: \svchost.exe
+        condition: selection
+    fields:
+        - User
+        - CommandLine
+    falsepositives:
+        - Everything
+    level: medium

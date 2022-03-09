@@ -1,11 +1,10 @@
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
-from uuid import UUID
 
 from _pytest.python_api import _recursive_list_map
 from sigma.rule import SigmaRule
-from sigma.exceptions import SigmaCollectionError, SigmaError
+from sigma.exceptions import SigmaCollectionError, SigmaError, SigmaRuleLocation
 import yaml
 
 @dataclass
@@ -30,6 +29,7 @@ class SigmaCollection:
         cls,
         rules : List[dict],
         collect_errors : bool = False,
+        source : Optional[SigmaRuleLocation] = None,
         ) -> "SigmaCollection":
         """
         Generate a rule collection from list of dicts containing parsed YAML content.
@@ -45,10 +45,11 @@ class SigmaCollection:
         for i, rule in zip(range(1, len(rules) + 1), rules):
             if isinstance(rule, SigmaRule):     # Included rules are already parsed, skip collection action processing
                 parsed_rules.append(rule)
+                rule.source = source
             else:
                 action = rule.get("action")
                 if action is None:          # no action defined: merge with global rule and handle as simple rule
-                    parsed_rules.append(SigmaRule.from_dict(deep_dict_update(rule, global_rule), collect_errors))
+                    parsed_rules.append(SigmaRule.from_dict(deep_dict_update(rule, global_rule), collect_errors, source))
                     prev_rule = rule
                 elif action == "global":    # set global rule template
                     del rule["action"]
@@ -58,9 +59,9 @@ class SigmaCollection:
                     global_rule = dict()
                 elif action == "repeat":    # add content of current rule to previous rule and parse it
                     prev_rule = deep_dict_update(prev_rule, rule)
-                    parsed_rules.append(SigmaRule.from_dict(prev_rule, collect_errors))
+                    parsed_rules.append(SigmaRule.from_dict(prev_rule, collect_errors, source))
                 else:
-                    exception = SigmaCollectionError(f"Unknown Sigma collection action '{ action }' in rule { i }")
+                    exception = SigmaCollectionError(f"Unknown Sigma collection action '{ action }' in rule { i }", source=source)
                     if collect_errors:
                         errors.append(exception)
                     else:
@@ -73,6 +74,7 @@ class SigmaCollection:
         cls,
         yaml_str : Union[bytes, str, IO],
         collect_errors : bool = False,
+        source : Optional[SigmaRuleLocation] = None,
         ) -> "SigmaCollection":
         """
         Generate a rule collection from a string containing one or multiple YAML documents.
@@ -80,7 +82,7 @@ class SigmaCollection:
         If the collect_errors parameters is set, exceptions are not raised while parsing but collected
         in the errors property individually for each Sigma rule and the whole SigmaCollection.
         """
-        return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), collect_errors)
+        return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), collect_errors, source)
 
     @classmethod
     def load_ruleset(
@@ -133,7 +135,7 @@ class SigmaCollection:
             if on_beforeload is not None:       # replace path with return value of on_beforeload function if provided
                 path = on_beforeload(path)
             if path is not None:                # Skip if path is None
-                sigma_collection = SigmaCollection.from_yaml(path.open(), collect_errors)
+                sigma_collection = SigmaCollection.from_yaml(path.open(), collect_errors, SigmaRuleLocation(path))
                 if on_load is not None:         # replace SigmaCollection generated from file content with the return value from on_load function if provided
                     sigma_collection = on_load(path, sigma_collection)
                 if sigma_collection is not None:    # Skip if nothing

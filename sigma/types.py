@@ -4,7 +4,7 @@ from abc import ABC
 from dataclasses import dataclass, field, replace
 from enum import Enum, auto
 import re
-from sigma.exceptions import SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
+from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaRegularExpressionError, SigmaTypeError
 from ipaddress import IPv4Network
 
 class SpecialChars(Enum):
@@ -369,6 +369,7 @@ class SigmaRegularExpression(SigmaType):
 class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
     """CIDR IP address range expression type"""
     cidr    : str
+    source : Optional[SigmaRuleLocation] = None
     network : IPv4Network = field(init=False, compare=False)
 
     def __post_init__(self):
@@ -376,7 +377,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         try:
             self.network = IPv4Network(self.cidr)
         except ValueError as e:
-            raise SigmaTypeError("Invalid IPv4 CIDR expression: " + str(e))
+            raise SigmaTypeError("Invalid IPv4 CIDR expression: " + str(e), source=self.source)
 
     def expand(
             self,
@@ -442,10 +443,11 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
 
     number : SigmaNumber
     op : CompareOperators
+    source : Optional[SigmaRuleLocation] = None
 
     def __post_init__(self):
         if not isinstance(self.number, SigmaNumber):
-            raise SigmaTypeError("Compare operator expects number")
+            raise SigmaTypeError("Compare operator expects number", source=self.source)
 
 @dataclass
 class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Literal, Set, Any, Callable, Iterable, Dict, Tuple, Optional, Union
+from typing import List, Literal, Set, Any, Callable, Iterable, Dict, Tuple, Optional
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition

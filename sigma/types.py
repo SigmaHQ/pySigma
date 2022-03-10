@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from typing import ClassVar, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from enum import Enum, auto
 import re
 from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaRegularExpressionError, SigmaTypeError

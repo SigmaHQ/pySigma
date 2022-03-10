@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from sigma import conditions
 from sigma.conditions import SigmaCondition
 from typing import Iterable, List, Dict, Optional, Union, Pattern, Iterator
 from dataclasses import dataclass, field

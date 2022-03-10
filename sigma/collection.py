@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
 
-from _pytest.python_api import _recursive_list_map
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError, SigmaError, SigmaRuleLocation
 import yaml

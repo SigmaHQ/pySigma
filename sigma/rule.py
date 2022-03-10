@@ -1,14 +1,12 @@
-from dataclasses import InitVar, dataclass, field, fields
+from dataclasses import InitVar, dataclass, field
 import dataclasses
-from pathlib import Path
-from typing import Dict, Optional, Union, Sequence, List, Set, Mapping, Type
+from typing import Dict, Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
-from attr import has
 import yaml
 import sigma
-from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, SigmaRegularExpression, sigma_type
+from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_mapping, SigmaValueModifier, SigmaListModifier
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ParentChainMixin
 from sigma.processing.tracking import ProcessingItemTrackingMixin

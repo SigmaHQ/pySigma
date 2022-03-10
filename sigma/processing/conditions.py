@@ -6,7 +6,7 @@ from sigma.types import SigmaString, SigmaType, sigma_type
 from typing import Dict, List, Pattern, Literal, Optional, Union
 import re
 from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
-from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError, SigmaTypeError
+from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 
 ### Base Classes ###
 

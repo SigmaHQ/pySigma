@@ -1,4 +1,3 @@
-from enum import Enum, auto
 from dataclasses import dataclass, field
 from abc import ABC
 import re

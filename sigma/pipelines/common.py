@@ -29,3 +29,9 @@ def logsource_linux_network_connection() -> LogsourceCondition:
         category="network_connection",
         product="linux",
     )
+
+def logsource_windows_dns_query() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="dns_query",
+        product="windows",
+    )

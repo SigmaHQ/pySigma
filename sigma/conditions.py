@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from abc import ABC
 import re
 from sigma.processing.tracking import ProcessingItemTrackingMixin
-from pyparsing import Word, alphanums, Keyword, infixNotation, opAssoc, ParseResults
+from pyparsing import Word, alphanums, Keyword, infix_notation, opAssoc, ParseResults
 from typing import ClassVar, List, Optional, Union, Type
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
@@ -175,7 +175,7 @@ selector = quantifier + Keyword("of") + identifier_pattern
 selector.setParseAction(ConditionSelector.from_parsed)
 
 operand = selector | identifier
-condition = infixNotation(
+condition = infix_notation(
     operand,
     [
         ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),

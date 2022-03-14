@@ -84,6 +84,32 @@ class SigmaCollection:
         return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), collect_errors, source)
 
     @classmethod
+    def resolve_paths(
+        cls,
+        inputs : List[Union[str, Path]],
+        recursion_pattern : str = "**/*.yml",
+    ) -> Iterable[Path]:
+        """
+        Resolve list of paths *inputs* that can contain files as well as directories into a flat list of
+        files matching *resursion_pattern*.
+        """
+        paths = (       # Normalize all inputs into paths
+            input if isinstance(input, Path)
+            else Path(input)
+            for input in inputs
+        )
+        paths = (       # Recurse into directories if provided
+            path.glob(recursion_pattern) if path.is_dir()
+            else (path,)
+            for path in paths
+        )
+        return (       # Flatten the list
+            subpath
+            for subpaths in paths
+            for subpath in subpaths
+        )
+
+    @classmethod
     def load_ruleset(
         cls,
         inputs : List[Union[str, Path]],
@@ -114,21 +140,7 @@ class SigmaCollection:
         if not isinstance(inputs, Iterable) or isinstance(inputs, str):
             raise TypeError("Parameter 'inputs' must be list of strings or pathlib.Path objects, not " + str(type(inputs)))
 
-        paths = (       # Normalize all inputs into paths
-            input if isinstance(input, Path)
-            else Path(input)
-            for input in inputs
-        )
-        paths = (       # Recurse into directories if provided
-            path.glob(recursion_pattern) if path.is_dir()
-            else (path,)
-            for path in paths
-        )
-        paths = (       # Flatten the list
-            subpath
-            for subpaths in paths
-            for subpath in subpaths
-        )
+        paths = cls.resolve_paths(inputs, recursion_pattern)
         sigma_collections = list()
         for path in paths:
             if on_beforeload is not None:       # replace path with return value of on_beforeload function if provided

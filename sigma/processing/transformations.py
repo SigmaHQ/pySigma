@@ -206,7 +206,8 @@ class AddFieldnamePrefixTransformation(DetectionItemTransformation):
     prefix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        detection_item.field = self.prefix + detection_item.field
+        if type(detection_item.field) is str:
+            detection_item.field = self.prefix + detection_item.field
         self.processing_item_applied(detection_item)
 
 @dataclass

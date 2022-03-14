@@ -21,6 +21,8 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
     STABLE       = auto()
     EXPERIMENTAL = auto()
     TEST         = auto()
+    DEPRECATED   = auto()
+    UNSUPPORTED  = auto()
 
 class SigmaLevel(EnumLowercaseStringMixin, Enum):
     INFORMATIONAL = auto()

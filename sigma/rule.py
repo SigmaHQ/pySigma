@@ -154,8 +154,8 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             cls,
             key : Optional[str],
             val : Union[
-                List[Union[int, str]],
-                Union[int, str],
+                List[Union[int, float, str]],
+                Union[int, float, str],
                 None,
                 ],
             source : Optional[SigmaRuleLocation] = None,
@@ -184,7 +184,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         except KeyError as e:
             raise sigma_exceptions.SigmaModifierError(f"Unknown modifier {str(e)}", source=source)
 
-        if isinstance(val, (int, str)):     # value is plain, convert into single element list
+        if isinstance(val, (int, float, str)):     # value is plain, convert into single element list
             val = [val]
         elif val is None:
             val = [None]

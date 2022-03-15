@@ -150,9 +150,13 @@ def test_sigmadetectionitem_key_value_single_string_modifier_to_plain():
     detection_item.apply_modifiers()
     assert detection_item.to_plain() == { "key|contains": "value" }
 
-def test_sigmadetectionitem_key_value_single_number():
-    """Key-value detection with one value."""
+def test_sigmadetectionitem_key_value_single_int():
+    """Key-value detection with one integer value."""
     assert SigmaDetectionItem.from_mapping("key", 123) == SigmaDetectionItem("key", [], [SigmaNumber(123)])
+
+def test_sigmadetectionitem_key_value_single_float():
+    """Key-value detection with one integer value."""
+    assert SigmaDetectionItem.from_mapping("key", 12.34) == SigmaDetectionItem("key", [], [SigmaNumber(12.34)])
 
 def test_sigmadetectionitem_key_value_none():
     """Key-value detection with none value."""

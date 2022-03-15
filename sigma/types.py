@@ -310,8 +310,13 @@ class SigmaNumber(SigmaType):
     number : Union[int, float]
 
     def __post_init__(self):
-        try:
-            self.number = int(self.number)
+        try:        # Only use float number if it can't be represented as int.
+            i = int(self.number)
+            f = float(self.number)
+            if i == f:
+                self.number = i
+            else:
+                self.number = f
         except ValueError as e:
             raise SigmaValueError("Invalid number") from e
 

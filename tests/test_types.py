@@ -162,6 +162,12 @@ def test_strings_convert_no_singlewildcard():
     with pytest.raises(SigmaValueError, match="Single-character wildcard"):
         SigmaString("foo?bar").convert(wildcard_single=None)
 
+def test_number_int():
+    assert SigmaNumber(123).number == 123
+
+def test_number_float():
+    assert SigmaNumber(12.34).number == 12.34
+
 def test_number_to_plain():
     assert SigmaNumber(123).to_plain() == 123
 

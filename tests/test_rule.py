@@ -599,3 +599,31 @@ def test_sigmarule_to_dict(sigma_rule : SigmaRule):
 def test_empty_detection():
     with pytest.raises(sigma_exceptions.SigmaDetectionError, match="Detection is empty.*test.yml"):
         SigmaDetection([], sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+def test_sigma_rule_overlapping_selections():
+    rule = SigmaRule.from_yaml("""
+    logsource:
+        category: test
+    detection:
+        selection1:
+            field|contains|all:
+                - str1
+                - str2
+        selection2:
+            field|contains|all:
+                - str1
+                - str2
+                - str3
+                - str4
+        condition: 1 of selection*
+    """)
+    cond = rule.detection.parsed_condition[0].parsed
+    assert isinstance(cond, ConditionOR) and \
+        all((
+            isinstance(arg, ConditionAND)
+            for arg in cond.args
+        )) and \
+        [
+            len(ands.args)
+            for ands in cond.args
+        ] == [2, 4]

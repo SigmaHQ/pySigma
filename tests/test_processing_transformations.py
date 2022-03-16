@@ -33,6 +33,23 @@ def sigma_rule():
     })
 
 @pytest.fixture
+def keyword_sigma_rule():
+    return SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {
+            "category": "test"
+        },
+        "detection": {
+            "test": [
+                "value1",
+                "value2",
+                "value3",
+            ],
+            "condition": "test",
+        }
+    })
+
+@pytest.fixture
 def sigma_rule_placeholders():
     return SigmaRule.from_dict({
         "title": "Test",
@@ -170,6 +187,16 @@ def test_add_fieldname_suffix(dummy_pipeline, sigma_rule, add_fieldname_suffix_t
         ])
     ])
 
+def test_add_fieldname_suffix_keyword(dummy_pipeline, keyword_sigma_rule, add_fieldname_suffix_transformation):
+    add_fieldname_suffix_transformation.apply(dummy_pipeline, keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetectionItem(None, [], [
+            SigmaString("value1"),
+            SigmaString("value2"),
+            SigmaString("value3"),
+        ]),
+    ])
+
 def test_add_fieldname_suffix_tracking(dummy_pipeline, sigma_rule, add_fieldname_suffix_transformation):
     processing_item = ProcessingItem(
         add_fieldname_suffix_transformation,
@@ -204,6 +231,16 @@ def test_add_fieldname_prefix(dummy_pipeline, sigma_rule, add_fieldname_prefix_t
             SigmaDetectionItem("test.field2", [], [ SigmaString("value2") ]),
             SigmaDetectionItem("test.field3", [], [ SigmaString("value3") ]),
         ])
+    ])
+
+def test_add_fieldname_prefix_keyword(dummy_pipeline, keyword_sigma_rule, add_fieldname_prefix_transformation):
+    add_fieldname_prefix_transformation.apply(dummy_pipeline, keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetectionItem(None, [], [
+            SigmaString("value1"),
+            SigmaString("value2"),
+            SigmaString("value3"),
+        ]),
     ])
 
 def test_add_fieldname_prefix_tracking(dummy_pipeline, sigma_rule, add_fieldname_prefix_transformation):

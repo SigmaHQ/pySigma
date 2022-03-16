@@ -92,7 +92,7 @@ class Backend(ABC):
                 for cond in rule.detection.parsed_condition
             ]
             return [                                    # 3. Postprocess generated query
-                self.finalize_query(rule, query, index, state, output_format)
+                self.finalize_query(rule, query, index, state, output_format or self.default_format)
                 for index, query in enumerate(queries)
             ]
         except SigmaError as e:

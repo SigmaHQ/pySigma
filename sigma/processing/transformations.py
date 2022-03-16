@@ -195,7 +195,8 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
     suffix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        detection_item.field += self.suffix
+        if type(detection_item.field) is str:
+            detection_item.field += self.suffix
         self.processing_item_applied(detection_item)
 
 @dataclass

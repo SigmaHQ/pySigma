@@ -1,5 +1,11 @@
 from sigma.processing.conditions import LogsourceCondition, RuleContainsDetectionItemCondition
 
+def logsource_windows(service : str) -> LogsourceCondition:
+    return LogsourceCondition(
+        product="windows",
+        service=service,
+    )
+
 def logsource_windows_process_creation() -> LogsourceCondition:
     return LogsourceCondition(
         category="process_creation",

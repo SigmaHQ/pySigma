@@ -164,6 +164,15 @@ def test_selector_1_parent_chain_classes(sigma_simple_detections):
     assert SigmaCondition("1 of detection*", sigma_simple_detections) \
         .parsed.args[0].parent_chain_classes() == [SigmaDetectionItem, SigmaDetection, ConditionIdentifier, ConditionOR]
 
+def test_selector_1_of_them(sigma_simple_detections):
+    assert SigmaCondition("1 of them", sigma_simple_detections).parsed == ConditionOR([
+        ConditionValueExpression(SigmaString("val1")),
+        ConditionValueExpression(SigmaString("val2")),
+        ConditionValueExpression(SigmaString("val3")),
+        ConditionValueExpression(SigmaString("val4")),
+        ConditionValueExpression(SigmaString("other")),
+    ])
+
 def test_selector_any(sigma_simple_detections):
     assert SigmaCondition("any of detection*", sigma_simple_detections).parsed == ConditionOR([
         ConditionValueExpression(SigmaString("val1")),
@@ -172,12 +181,30 @@ def test_selector_any(sigma_simple_detections):
         ConditionValueExpression(SigmaString("val4")),
     ])
 
+def test_selector_any_of_them(sigma_simple_detections):
+    assert SigmaCondition("any of them", sigma_simple_detections).parsed == ConditionOR([
+        ConditionValueExpression(SigmaString("val1")),
+        ConditionValueExpression(SigmaString("val2")),
+        ConditionValueExpression(SigmaString("val3")),
+        ConditionValueExpression(SigmaString("val4")),
+        ConditionValueExpression(SigmaString("other")),
+    ])
+
 def test_selector_all(sigma_simple_detections):
     assert SigmaCondition("all of detection*", sigma_simple_detections).parsed == ConditionAND([
         ConditionValueExpression(SigmaString("val1")),
         ConditionValueExpression(SigmaString("val2")),
         ConditionValueExpression(SigmaString("val3")),
         ConditionValueExpression(SigmaString("val4")),
+    ])
+
+def test_selector_all_of_them(sigma_simple_detections):
+    assert SigmaCondition("all of them", sigma_simple_detections).parsed == ConditionAND([
+        ConditionValueExpression(SigmaString("val1")),
+        ConditionValueExpression(SigmaString("val2")),
+        ConditionValueExpression(SigmaString("val3")),
+        ConditionValueExpression(SigmaString("val4")),
+        ConditionValueExpression(SigmaString("other")),
     ])
 
 def test_keyword_detection(sigma_detections):

@@ -58,6 +58,7 @@ class SigmaString(SigmaType):
     """
     Strings in Sigma detection values containing wildcards.
     """
+    original : str  # the original string, untouched
     s : Tuple[Union[str, SpecialChars, Placeholder]]      # the string is represented as sequence of strings and characters with special meaning
 
     def __init__(self, s : Optional[str] = None):
@@ -70,6 +71,9 @@ class SigmaString(SigmaType):
         """
         if s is None:
             s = ""
+
+        self.original = s
+
         r = list()
         acc = ""            # string accumulation until special character appears
         escaped = False     # escape mode flag: characters in this mode are always accumulated

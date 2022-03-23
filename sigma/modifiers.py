@@ -146,7 +146,7 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaRegularExpression:
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values", source=self.source)
-        return SigmaRegularExpression(str(val))
+        return SigmaRegularExpression(val.original)
 
 class SigmaCIDRModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaCIDRExpression:

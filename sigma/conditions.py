@@ -140,7 +140,12 @@ class ConditionSelector(ConditionItem):
     def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> Union[ConditionAND, ConditionOR]:
         """Converts selector into an AND or OR condition"""
         self.parent = parent
-        r = re.compile(self.pattern.replace("*", ".*"))
+
+        if self.pattern == "them":
+            r = re.compile(".*")
+        else:
+            r = re.compile(self.pattern.replace("*", ".*"))
+
         ids = [
             ConditionIdentifier([ identifier ])
             for identifier in detections.detections.keys()

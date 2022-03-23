@@ -127,6 +127,9 @@ def test_wide_noascii(dummy_detection_item):
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
 
+def test_do_not_escape_regular_expressions(dummy_detection_item):
+    assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString(r"foo\\bar")) == SigmaRegularExpression(r"foo\\bar")
+
 def test_re_contains(dummy_detection_item):
     assert SigmaContainsModifier(dummy_detection_item, []).modify(SigmaRegularExpression("foo?bar")) == SigmaRegularExpression(".*foo?bar.*")
 

@@ -269,6 +269,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             # field must be present and values must all be basic types without any special characters (e.g. wildcards)
             # to result in an "in" expression. Reason is, that most backend only support plain values in "in" expressions.
             if self.field is not None \
+                and self.value_linking is ConditionOR \
                 and all([
                     isinstance(v, ( SigmaString, SigmaNumber ))
                     for v in self.value

@@ -5,7 +5,7 @@ from sigma import conditions
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
 from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
-from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR
+from sigma.conditions import ConditionFieldEqualsValueExpression, ConditionValueExpression, SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
 from tests.test_processing_conditions import detection_item
 from tests.test_processing_pipeline import processing_item
@@ -331,6 +331,57 @@ def test_sigmadetections_fromdict_no_detections():
 def test_sigmadetections_fromdict_no_condition():
     with pytest.raises(sigma_exceptions.SigmaConditionError, match="at least one condition.*test.yml"):
         SigmaDetections.from_dict({ "selection": { "key": "value" }}, sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+def test_detectionitem_all_modified_key_plain_values_postprocess():
+    """
+    Test if postprocessed condition result of an all-modified field-bound value list results in an
+    AND condition linking all listed values.
+    """
+    detections = SigmaDetections.from_dict({
+        "selection": {
+            "field|all": ["val1", "val2", 123]
+        },
+        "condition": "selection"
+    })
+    assert detections.parsed_condition[0].parsed == ConditionAND([
+        ConditionFieldEqualsValueExpression("field", SigmaString("val1")),
+        ConditionFieldEqualsValueExpression("field", SigmaString("val2")),
+        ConditionFieldEqualsValueExpression("field", SigmaNumber(123)),
+    ])
+
+def test_detectionitem_all_modified_unbound_plain_values_postprocess():
+    """
+    Test if postprocessed condition result of an all-modified not field-bound value list results in an
+    AND condition linking all listed values.
+    """
+    detections = SigmaDetections.from_dict({
+        "selection": {
+            "|all": ["val1", "val2", 123]
+        },
+        "condition": "selection"
+    })
+    assert detections.parsed_condition[0].parsed == ConditionAND([
+        ConditionValueExpression(SigmaString("val1")),
+        ConditionValueExpression(SigmaString("val2")),
+        ConditionValueExpression(SigmaNumber(123)),
+    ])
+
+def test_detectionitem_all_modified_key_special_values_postprocess():
+    """
+    Test if postprocessed condition result of an all-modified field-bound value list containing
+    strings with wildcards results in an AND condition linking all listed values.
+    """
+    detections = SigmaDetections.from_dict({
+        "selection": {
+            "field|all": ["val1*", "val2", 123]
+        },
+        "condition": "selection"
+    })
+    assert detections.parsed_condition[0].parsed == ConditionAND([
+        ConditionFieldEqualsValueExpression("field", SigmaString("val1*")),
+        ConditionFieldEqualsValueExpression("field", SigmaString("val2")),
+        ConditionFieldEqualsValueExpression("field", SigmaNumber(123)),
+    ])
 
 def test_sigmadetection_processing_item_tracking(processing_item):
     """Key-value detection with one value."""

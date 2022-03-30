@@ -146,7 +146,7 @@ class SigmaCollection:
             if on_beforeload is not None:       # replace path with return value of on_beforeload function if provided
                 path = on_beforeload(path)
             if path is not None:                # Skip if path is None
-                sigma_collection = SigmaCollection.from_yaml(path.open(), collect_errors, SigmaRuleLocation(path))
+                sigma_collection = SigmaCollection.from_yaml(path.open(encoding="utf-8"), collect_errors, SigmaRuleLocation(path))
                 if on_load is not None:         # replace SigmaCollection generated from file content with the return value from on_load function if provided
                     sigma_collection = on_load(path, sigma_collection)
                 if sigma_collection is not None:    # Skip if nothing

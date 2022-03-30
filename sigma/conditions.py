@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from abc import ABC
 import re
 from sigma.processing.tracking import ProcessingItemTrackingMixin
-from pyparsing import Word, alphanums, Keyword, infix_notation, opAssoc, ParseResults
+from pyparsing import Word, alphanums, Keyword, infix_notation, opAssoc, ParseResults, ParseException
 from typing import ClassVar, List, Optional, Union, Type
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
@@ -205,8 +205,11 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
         state of the rule.
         """
-        parsed = condition.parseString(self.condition)[0]
-        return parsed.postprocess(self.detections, source=self.source)
+        try:
+            parsed = condition.parseString(self.condition, parse_all=True)[0]
+            return parsed.postprocess(self.detections, source=self.source)
+        except ParseException as e:
+            raise SigmaConditionError(str(e))
 
 ConditionType = Union[
     ConditionOR,

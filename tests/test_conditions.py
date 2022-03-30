@@ -270,3 +270,13 @@ def test_undefined_identifier(sigma_simple_detections):
 def test_null_keyword(sigma_invalid_detections):
     with pytest.raises(SigmaConditionError):
         SigmaCondition("null-keyword", sigma_invalid_detections).parsed
+
+
+@pytest.mark.parametrize("condition", [
+    "detection1 and",
+    "detection1 and (detection2 OR detection3)",
+    "detection1 and not (detection2 OR detection3)",
+])
+def test_invalid_conditions(condition, sigma_simple_detections):
+    with pytest.raises(SigmaConditionError):
+        SigmaCondition(condition, sigma_simple_detections).parsed

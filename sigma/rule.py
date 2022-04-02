@@ -527,6 +527,8 @@ class SigmaRule(ProcessingItemTrackingMixin):
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
                 self.__setattr__(field, [])
+        if self.id is not None and not isinstance(self.id, UUID):
+            self.id = UUID(self.id)
 
     @classmethod
     def from_dict(

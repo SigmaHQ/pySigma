@@ -2,9 +2,10 @@ from sigma.types import SigmaNumber, SigmaString
 from sigma import processing
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 import pytest
-from sigma.processing.pipeline import ProcessingPipeline
-from sigma.processing.conditions import LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, MatchStringCondition, RuleContainsDetectionItemCondition
+from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, LogsourceCondition, IncludeFieldCondition, ExcludeFieldCondition, MatchStringCondition, RuleContainsDetectionItemCondition, RuleProcessingItemAppliedCondition
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
+from tests.test_processing_pipeline import processing_item
 
 @pytest.fixture
 def dummy_processing_pipeline():
@@ -43,6 +44,23 @@ def test_logsource_no_match(dummy_processing_pipeline, sigma_rule):
     assert not LogsourceCondition(
         category="test_category",
         product="other_product"
+    ).match(
+        dummy_processing_pipeline,
+        sigma_rule,
+    )
+
+def test_rule_processing_item_applied(dummy_processing_pipeline, processing_item, sigma_rule : SigmaRule):
+    sigma_rule.add_applied_processing_item(processing_item)
+    assert RuleProcessingItemAppliedCondition(
+        processing_item_id="test"
+    ).match(
+        dummy_processing_pipeline,
+        sigma_rule,
+    )
+
+def test_rule_processing_item_not_applied(dummy_processing_pipeline, processing_item, sigma_rule : SigmaRule):
+    assert not RuleProcessingItemAppliedCondition(
+        processing_item_id="test"
     ).match(
         dummy_processing_pipeline,
         sigma_rule,
@@ -121,3 +139,20 @@ def test_match_string_condition_error_mode():
 def test_value_processing_invalid_cond():
     with pytest.raises(SigmaConfigurationError, match="The value.*cond"):
         MatchStringCondition(pattern="^val.*", cond="invalid")
+
+def test_detection_item_processing_item_applied(dummy_processing_pipeline, processing_item, detection_item : SigmaDetectionItem):
+    detection_item.add_applied_processing_item(processing_item)
+    assert DetectionItemProcessingItemAppliedCondition(
+        processing_item_id="test"
+    ).match(
+        dummy_processing_pipeline,
+        detection_item,
+    )
+
+def test_detection_item_processing_item_not_applied(dummy_processing_pipeline, processing_item, detection_item : SigmaDetectionItem):
+    assert not DetectionItemProcessingItemAppliedCondition(
+        processing_item_id="test"
+    ).match(
+        dummy_processing_pipeline,
+        detection_item,
+    )

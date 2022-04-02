@@ -107,6 +107,16 @@ class RuleContainsDetectionItemCondition(RuleProcessingCondition):
 
         return False
 
+@dataclass
+class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
+    """
+    Checks if processing item was applied to rule.
+    """
+    processing_item_id : str
+
+    def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
+        return rule.was_processed_by(self.processing_item_id)
+
 ### Detection Item Condition Classes ###
 @dataclass
 class IncludeFieldCondition(DetectionItemProcessingCondition):
@@ -175,14 +185,26 @@ class MatchStringCondition(ValueProcessingCondition):
         else:
             return result
 
+@dataclass
+class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingCondition):
+    """
+    Checks if processing item was applied to detection item.
+    """
+    processing_item_id : str
+
+    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
+        return detection_item.was_processed_by(self.processing_item_id)
+
 ### Condition mappings between rule identifier and class
 
 rule_conditions : Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
+    "processing_item_applied": RuleProcessingItemAppliedCondition,
 }
 detection_item_conditions : Dict[str, DetectionItemProcessingCondition] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,
     "match_string": MatchStringCondition,
+    "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
 }

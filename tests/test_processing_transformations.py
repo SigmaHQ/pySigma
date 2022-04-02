@@ -150,12 +150,14 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
         if isinstance(detection, SigmaDetection)
         for detection_item in detection.detection_items
     })
-    assert updated_detection_items == {
-        "fieldA": True,
-        "field2": False,
-        "fieldC": True,
-        "fieldD": True,
-    }
+    assert (
+        updated_detection_items == {
+            "fieldA": True,
+            "field2": False,
+            "fieldC": True,
+            "fieldD": True,
+        }
+        and field_mapping_transformation_sigma_rule.was_processed_by("test"))
 
 def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeline):
     transformation = DropDetectionItemTransformation()
@@ -207,15 +209,18 @@ def test_add_fieldname_suffix_tracking(dummy_pipeline, sigma_rule, add_fieldname
     )
     processing_item.apply(dummy_pipeline, sigma_rule)
     detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
-    assert detection_items == [
+    assert (
+        detection_items == [
             SigmaDetectionItem("field1.test", [], [ SigmaString("value1") ]),
             SigmaDetectionItem("field2", [], [ SigmaString("value2") ]),
             SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
-        ] and \
-        [
+        ]
+        and [
             detection_item.was_processed_by("test")
             for detection_item in detection_items
         ] == [ True, False, False ]
+        and sigma_rule.was_processed_by("test")
+    )
 
 @pytest.fixture
 def add_fieldname_prefix_transformation():
@@ -253,15 +258,18 @@ def test_add_fieldname_prefix_tracking(dummy_pipeline, sigma_rule, add_fieldname
     )
     processing_item.apply(dummy_pipeline, sigma_rule)
     detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
-    assert detection_items == [
+    assert (
+        detection_items == [
             SigmaDetectionItem("test.field1", [], [ SigmaString("value1") ]),
             SigmaDetectionItem("field2", [], [ SigmaString("value2") ]),
             SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
-        ] and \
-        [
+        ]
+        and [
             detection_item.was_processed_by("test")
             for detection_item in detection_items
         ] == [ True, False, False ]
+        and sigma_rule.was_processed_by("test")
+    )
 
 def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders : SigmaRule):
     transformation = WildcardPlaceholderTransformation()
@@ -293,7 +301,8 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders 
         detection_items[1].value[0].s == ("value", Placeholder("var2"), "test", Placeholder("var3")) and \
         detection_items[1].was_processed_by("test") == False and \
         detection_items[2].value[0].s == ("value", SpecialChars.WILDCARD_MULTI, "test", Placeholder("var2"), "test", Placeholder("var3"), "test") and \
-        detection_items[2].was_processed_by("test") == True
+        detection_items[2].was_processed_by("test") == True and \
+        sigma_rule_placeholders.was_processed_by("test")
 
 def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders : SigmaRule):
     transformation = WildcardPlaceholderTransformation(exclude=["var2", "var3"])
@@ -310,7 +319,8 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders 
         detection_items[1].value[0].s == ("value", Placeholder("var2"), "test", Placeholder("var3")) and \
         detection_items[1].was_processed_by("test") == False and \
         detection_items[2].value[0].s == ("value", SpecialChars.WILDCARD_MULTI, "test", Placeholder("var2"), "test", Placeholder("var3"), "test") and \
-        detection_items[2].was_processed_by("test") == True
+        detection_items[2].was_processed_by("test") == True and \
+        sigma_rule_placeholders.was_processed_by("test")
 
 def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = WildcardPlaceholderTransformation()
@@ -403,7 +413,10 @@ def test_conditiontransformation_tracking_change(dummy_pipeline, sigma_rule : Si
         )
     )
     transformation.apply(dummy_pipeline, sigma_rule)
-    assert sigma_rule.detection.parsed_condition[0].was_processed_by("test")
+    assert (
+        sigma_rule.detection.parsed_condition[0].was_processed_by("test") and
+        sigma_rule.was_processed_by("test")
+    )
 
 def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = DummyConditionTransformation(False)
@@ -414,7 +427,10 @@ def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule : 
         )
     )
     transformation.apply(dummy_pipeline, sigma_rule)
-    assert not sigma_rule.detection.parsed_condition[0].was_processed_by("test")
+    assert (
+        not sigma_rule.detection.parsed_condition[0].was_processed_by("test") and
+        sigma_rule.was_processed_by("test")
+    )
 
 ### AddConditionTransformation ###
 def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
@@ -439,6 +455,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
             detection_item.was_processed_by("test")
             for detection_item in sigma_rule.detection.detections["additional"].detection_items
         )
+        and sigma_rule.was_processed_by("test")
     )
 
 def test_addconditiontransformation_random_name():
@@ -448,9 +465,15 @@ def test_addconditiontransformation_random_name():
 
 ### ChangeLogsourceTransformation ###
 def test_changelogsource(dummy_pipeline, sigma_rule : SigmaRule):
-    transformation = ChangeLogsourceTransformation("test_category", "test_product", "test_service")
-    transformation.apply(dummy_pipeline, sigma_rule)
-    assert sigma_rule.logsource == SigmaLogSource("test_category", "test_product", "test_service")
+    processing_item = ProcessingItem(
+        ChangeLogsourceTransformation("test_category", "test_product", "test_service"),
+        identifier="test",
+    )
+    processing_item.apply(dummy_pipeline, sigma_rule)
+
+    assert (sigma_rule.logsource == SigmaLogSource("test_category", "test_product", "test_service")
+        and sigma_rule.was_processed_by("test")
+        )
 
 def test_replace_string_simple(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = ReplaceStringTransformation("value", "test")

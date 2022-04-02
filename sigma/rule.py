@@ -514,7 +514,7 @@ class SigmaDetections:
         return self.detections[key]
 
 @dataclass
-class SigmaRule:
+class SigmaRule(ProcessingItemTrackingMixin):
     """
     A single Sigma rule.
     """

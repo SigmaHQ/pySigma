@@ -28,11 +28,12 @@ class Transformation(ABC):
     def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         """Apply transformation on Sigma rule."""
         self.pipeline = pipeline        # make pipeline accessible from all further options in class property
+        self.processing_item_applied(rule)
 
     def set_processing_item(self, processing_item : "sigma.processing.pipeline.ProcessingItem"):
         self.processing_item = processing_item
 
-    def processing_item_applied(self, d : Union[SigmaDetection, SigmaDetectionItem, SigmaCondition]):
+    def processing_item_applied(self, d : Union[SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition]):
         """Mark detection item or detection as applied."""
         d.add_applied_processing_item(self.processing_item)
 

@@ -651,6 +651,10 @@ def test_empty_detection():
     with pytest.raises(sigma_exceptions.SigmaDetectionError, match="Detection is empty.*test.yml"):
         SigmaDetection([], sigma_exceptions.SigmaRuleLocation("test.yml"))
 
+def test_sigmarule_processing_item_tracking(sigma_rule, processing_item):
+    sigma_rule.add_applied_processing_item(processing_item)
+    assert sigma_rule.was_processed_by("test")
+
 def test_sigma_rule_overlapping_selections():
     rule = SigmaRule.from_yaml("""
     logsource:

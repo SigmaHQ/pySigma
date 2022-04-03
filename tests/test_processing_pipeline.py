@@ -367,6 +367,26 @@ def test_processingitem_match_detection_item_any_without_true(dummy_processing_p
     )
     assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
 
+def test_processingitem_match_detection_item_negated_true(dummy_processing_pipeline, detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_condition_negation=True,
+        detection_item_conditions=[
+            DetectionItemConditionTrue(dummy="test-true"),
+        ],
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
+
+def test_processingitem_match_detection_item_negated_false(dummy_processing_pipeline, detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_condition_negation=True,
+        detection_item_conditions=[
+            DetectionItemConditionFalse(dummy="test-false"),
+        ],
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+
 def test_processingpipeline_fromdict(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_dict({
         "name": "Test",

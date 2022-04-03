@@ -300,12 +300,34 @@ def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipelin
     applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
     assert not applied and sigma_rule.title == "Test"
 
-def test_processingitem_apply_notapplied_any_without_true(dummy_processing_pipeline, sigma_rule):
+def test_processingitem_apply_negated_true(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
-        rule_condition_linking=any,
+        rule_condition_negation=True,
         rule_conditions=[
-            RuleConditionFalse(dummy="test-true"),
+            RuleConditionTrue(dummy="test-true"),
+        ],
+    )
+    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    assert not applied and sigma_rule.title == "Test"
+
+def test_processingitem_apply_negated_false(dummy_processing_pipeline, sigma_rule):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        rule_condition_negation=True,
+        rule_conditions=[
+            RuleConditionFalse(dummy="test-false"),
+        ],
+    )
+    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    assert applied and sigma_rule.title == "TestTest"
+
+def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        rule_condition_linking=all,
+        rule_conditions=[
+            RuleConditionTrue(dummy="test-true"),
             RuleConditionFalse(dummy="test-false"),
         ],
     )

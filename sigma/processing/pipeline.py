@@ -17,8 +17,10 @@ class ProcessingItem:
     """
     transformation : Transformation
     rule_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
+    rule_condition_negation : bool = False
     rule_conditions : List[RuleProcessingCondition] = field(default_factory=list)
     detection_item_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
+    detection_item_condition_negation : bool = False
     detection_item_conditions : List[DetectionItemProcessingCondition] = field(default_factory=list)
     identifier : Optional[str] = None
 
@@ -70,6 +72,9 @@ class ProcessingItem:
         rule_condition_linking = condition_linking[d.get("rule_cond_op", "and")]   # default: conditions are linked with and operator
         detection_item_condition_linking = condition_linking[d.get("detection_item_cond_op", "and")]   # same for detection item conditions
 
+        rule_condition_negation = d.get("rule_cond_not", False)
+        detection_item_condition_negation = d.get("detection_item_cond_not", False)
+
         # Transformation
         try:
             transformation_class_name = d["type"]
@@ -84,14 +89,14 @@ class ProcessingItem:
         params = {
             k: v
             for k, v in d.items()
-            if k not in {"rule_conditions", "rule_cond_op", "detection_item_conditions", "detection_item_cond_op", "type", "id"}
+            if k not in {"rule_conditions", "rule_cond_op", "rule_cond_not", "detection_item_conditions", "detection_item_cond_op", "detection_item_cond_not", "type", "id"}
         }
         try:
             transformation = transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
-        return cls(transformation, rule_condition_linking, rule_conds, detection_item_condition_linking, detection_item_conds, identifier)
+        return cls(transformation, rule_condition_linking, rule_condition_negation, rule_conds, detection_item_condition_linking, detection_item_condition_negation, detection_item_conds, identifier)
 
     def __post_init__(self):
         self.transformation.set_processing_item(self)   # set processing item in transformation object after it is instantiated
@@ -101,23 +106,28 @@ class ProcessingItem:
         Matches condition against rule and performs transformation if condition is true or not present.
         Returns Sigma rule and bool if transformation was applied.
         """
-        if not self.rule_conditions or \
-            self.rule_condition_linking([
-                condition.match(pipeline, rule)
-                for condition in self.rule_conditions
-            ]):     # apply transformation if conditions match or no condition defined
+        cond_result = self.rule_condition_linking([
+            condition.match(pipeline, rule)
+            for condition in self.rule_conditions
+        ])
+        if self.rule_condition_negation:
+            cond_result = not cond_result
+        if not self.rule_conditions or cond_result:     # apply transformation if conditions match or no condition defined
             self.transformation.apply(pipeline, rule)
             return True
         else:       # just pass rule through
             return False
 
     def match_detection_item(self, pipeline : "ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
-        """Evalutates detection item conditions from processing item to detection item and returns result."""
-        return not self.detection_item_conditions or \
-            self.detection_item_condition_linking([
-                condition.match(pipeline, detection_item)
-                for condition in self.detection_item_conditions
-            ])
+        """Evalutates detection item conditions from processing item to detection item and returns
+        result."""
+        cond_result = self.detection_item_condition_linking([
+            condition.match(pipeline, detection_item)
+            for condition in self.detection_item_conditions
+        ])
+        if self.detection_item_condition_negation:
+            cond_result = not cond_result
+        return not self.detection_item_conditions or cond_result
 
 @dataclass
 class ProcessingPipeline:

@@ -8,7 +8,7 @@ import yaml
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_mapping, SigmaValueModifier, SigmaListModifier
-from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ParentChainMixin
+from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionValueExpression, ParentChainMixin
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation
@@ -252,7 +252,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                 field_name + modifiers_prefix + "|".join(modifier_ids): value
             }
 
-    def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression]:
+    def postprocess(self, detections : "SigmaDetections", parent : Optional["sigma.condition.ConditionItem"] = None) -> Union[ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionValueExpression]:
         super().postprocess(detections, parent)
         if len(self.value) == 0:    # no value: map to none type
             if self.field is None:
@@ -265,34 +265,18 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             else:
                 return ConditionFieldEqualsValueExpression(self.field, self.value[0]).postprocess(detections, self, self.source)
         else:     # more than one value, return logically linked values or an "in" expression
-            # special case: "in" expression
-            # field must be present and values must all be basic types without any special characters (e.g. wildcards)
-            # to result in an "in" expression. Reason is, that most backend only support plain values in "in" expressions.
-            if self.field is not None \
-                and self.value_linking is ConditionOR \
-                and all([
-                    isinstance(v, ( SigmaString, SigmaNumber ))
+            if self.field is None:      # no field - only values
+                cond = self.value_linking([
+                    ConditionValueExpression(v)
                     for v in self.value
-                ]) \
-                and not any([
-                    v.contains_special()
+                ])
+            else:                       # with field - field/value pairs
+                cond = self.value_linking([
+                    ConditionFieldEqualsValueExpression(self.field, v)
                     for v in self.value
-                    if isinstance(v, SigmaString)
-                ]):
-                return ConditionFieldValueInExpression(self.field, self.value).postprocess(detections, self, self.source)
-            else:       # default case: AND/OR linked expressions
-                if self.field is None:      # no field - only values
-                    cond = self.value_linking([
-                        ConditionValueExpression(v)
-                        for v in self.value
-                    ])
-                else:                       # with field - field/value pairs
-                    cond = self.value_linking([
-                        ConditionFieldEqualsValueExpression(self.field, v)
-                        for v in self.value
-                    ])
-                cond.postprocess(detections, parent, self.source)
-                return cond
+                ])
+            cond.postprocess(detections, parent, self.source)
+            return cond
 
     def is_keyword(self) -> bool:
         """Returns True if detection item is a keyword detection without field reference."""

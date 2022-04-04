@@ -3,7 +3,7 @@ from abc import ABC
 import re
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from pyparsing import Word, alphanums, Keyword, infix_notation, opAssoc, ParseResults, ParseException
-from typing import ClassVar, List, Optional, Union, Type
+from typing import ClassVar, List, Literal, Optional, Union, Type
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma
@@ -56,7 +56,7 @@ class ParentChainMixin:
 class ConditionItem(ParentChainMixin, ABC):
     arg_count : ClassVar[int]
     token_list : ClassVar[bool] = False     # determines if the value passed as tokenized is a ParseResult or a simple list object
-    args : List[Union["ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionFieldValueInExpression", "ConditionValueExpression"]]
+    args : List[Union["ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionValueExpression"]]
     source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
@@ -161,12 +161,6 @@ class ConditionFieldEqualsValueExpression(ParentChainMixin):
     value : SigmaType
 
 @dataclass
-class ConditionFieldValueInExpression(ParentChainMixin):
-    """Field has value contained in list"""
-    field : str
-    value : List[SigmaType]
-
-@dataclass
 class ConditionValueExpression(ParentChainMixin):
     """Match on value without field"""
     value : SigmaType
@@ -216,6 +210,5 @@ ConditionType = Union[
     ConditionAND,
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
-    ConditionFieldValueInExpression,
     ConditionValueExpression,
 ]

@@ -1,4 +1,4 @@
-from typing import ClassVar, Dict, Tuple
+from typing import ClassVar, Dict, Optional, Tuple
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
@@ -43,7 +43,12 @@ class TextQueryTestBackend(TextQueryBackend):
 
     field_null_expression : ClassVar[str] = "{field} is null"
 
-    field_in_list_expression : ClassVar[str] = "{field} in ({list})"
+    convert_or_as_in : ClassVar[bool] = True
+    convert_and_as_in : ClassVar[bool] = True
+    in_expressions_allow_wildcards : ClassVar[bool] = True
+    field_in_list_expression : ClassVar[str] = "{field} {op} ({list})"
+    or_in_operator : ClassVar[Optional[str]] = "in"
+    and_in_operator : ClassVar[Optional[str]] = "contains-all"
     list_separator : ClassVar[str] = ", "
 
     unbound_value_str_expression : ClassVar[str] = '_="{value}"'

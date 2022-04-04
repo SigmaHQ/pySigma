@@ -235,7 +235,7 @@ def test_convert_compare_str(test_backend):
                     condition: sel
             """))
 
-def test_convert_value_in_list(test_backend):
+def test_convert_or_in_list(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -253,7 +253,212 @@ def test_convert_value_in_list(test_backend):
         """)
     ) == ['mappedA in ("value1", "value2", "value3")']
 
-def test_convert_value_in_list_numbers(test_backend):
+def test_convert_or_in_list_with_wildcards(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2*
+                        - val*ue3
+                condition: sel
+        """)
+    ) == ['mappedA in ("value1", "value2*", "val*ue3")']
+
+def test_convert_or_in_list_with_wildcards_disabled(test_backend):
+    test_backend.in_expressions_allow_wildcards = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2*
+                        - val*ue3
+                condition: sel
+        """)
+    ) == ['mappedA="value1" or mappedA="value2*" or mappedA="val*ue3"']
+
+def test_convert_or_in_separate(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel2:
+                    fieldA: value2
+                sel3:
+                    fieldA: value3
+                condition: sel1 or sel2 or sel3
+        """)
+    ) == ['mappedA in ("value1", "value2", "value3")']
+
+def test_convert_or_in_mixed_keyword_field(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel2:
+                    fieldB: value2
+                sel3: value3
+                condition: sel1 or sel2 or sel3
+        """)
+    ) == ['mappedA="value1" or mappedB="value2" or _="value3"']
+
+def test_convert_or_in_mixed_fields(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel2:
+                    fieldB: value2
+                sel3:
+                    fieldA: value3
+                condition: sel1 or sel2 or sel3
+        """)
+    ) == ['mappedA="value1" or mappedB="value2" or mappedA="value3"']
+
+def test_convert_or_in_unallowed_value_type(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2
+                        - null
+                condition: sel
+        """)
+    ) == ['mappedA="value1" or mappedA="value2" or mappedA is null']
+
+def test_convert_and_in_list(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|all:
+                        - value1
+                        - value2
+                        - value3
+                condition: sel
+        """)
+    ) == ['mappedA contains-all ("value1", "value2", "value3")']
+
+def test_convert_and_in_list_or_disabled(test_backend):
+    test_backend.convert_or_as_in = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|all:
+                        - value1
+                        - value2
+                        - value3
+                condition: sel
+        """)
+    ) == ['mappedA contains-all ("value1", "value2", "value3")']
+
+def test_convert_or_in_list_and_disabled(test_backend):
+    test_backend.convert_and_as_in = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2
+                        - value3
+                condition: sel
+        """)
+    ) == ['mappedA in ("value1", "value2", "value3")']
+
+def test_convert_or_in_list_disabled(test_backend):
+    test_backend.convert_or_as_in = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2
+                        - value3
+                condition: sel
+        """)
+    ) == ['mappedA="value1" or mappedA="value2" or mappedA="value3"']
+
+def test_convert_and_in_list_disabled(test_backend):
+    test_backend.convert_and_as_in = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|all:
+                        - value1
+                        - value2
+                        - value3
+                condition: sel
+        """)
+    ) == ['mappedA="value1" and mappedA="value2" and mappedA="value3"']
+
+def test_convert_or_in_list_numbers(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test

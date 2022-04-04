@@ -1,5 +1,5 @@
 import pytest
-from sigma.conditions import ConditionItem, SigmaCondition, ConditionAND, ConditionOR, ConditionNOT, ConditionIdentifier, ConditionSelector, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression
+from sigma.conditions import ConditionItem, SigmaCondition, ConditionAND, ConditionOR, ConditionNOT, ConditionIdentifier, ConditionSelector, ConditionFieldEqualsValueExpression, ConditionValueExpression
 from sigma.rule import SigmaDetections, SigmaDetection, SigmaDetectionItem
 from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.exceptions import SigmaConditionError
@@ -230,18 +230,6 @@ def test_field_value_detection(sigma_detections):
         ConditionFieldEqualsValueExpression("field1", SigmaString("value1")),
         ConditionFieldEqualsValueExpression("field2", SigmaNumber(123)),
         ConditionFieldEqualsValueExpression("field3", SigmaNull()),
-    ])
-
-def test_field_valuelist_detection(sigma_detections):
-    assert SigmaCondition("field-valuelist", sigma_detections).parsed == ConditionAND([
-        ConditionFieldValueInExpression("field1", [
-            SigmaString("value1-1"),
-            SigmaNumber(123),
-        ]),
-        ConditionFieldValueInExpression("field2", [
-            SigmaString("value2-1"),
-            SigmaNumber(234),
-        ]),
     ])
 
 def test_field_valuelist_with_wildcards_detection(sigma_detections):

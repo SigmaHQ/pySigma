@@ -1,11 +1,13 @@
 from abc import ABC, abstractmethod
+
+from attr import field
 from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Union, ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
-from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionFieldValueInExpression, ConditionValueExpression, ConditionType
+from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
 from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression
 from sigma.conversion.state import ConversionState
 
@@ -62,6 +64,11 @@ class Backend(ABC):
     collect_errors : bool = False
     errors : List[Tuple[SigmaRule, SigmaError]] = list()
 
+    # in-expressions
+    convert_or_as_in : ClassVar[bool] = False                     # Convert OR as in-expression
+    convert_and_as_in : ClassVar[bool] = False                    # Convert AND as in-expression
+    in_expressions_allow_wildcards : ClassVar[bool] = False       # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
+
     def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False, **kwargs):
         self.processing_pipeline = self.backend_processing_pipeline + processing_pipeline
         self.collect_errors = collect_errors
@@ -101,6 +108,60 @@ class Backend(ABC):
                 return []
             else:
                 raise e
+
+    def decide_convert_condition_as_in_expression(self, cond : Union[ConditionOR, ConditionAND], state : ConversionState) -> bool:
+        """
+        Decide if an OR or AND expression should be converted as "field in (value list)" or as plain expression.
+
+        :param cond: Condition that is converted for which the decision has to be made.
+        :type cond: Union[ConditionOR, ConditionAND]
+        :param state: Current conversion state.
+        :type state: ConversionState
+        :return: True if in-expression should be generated, else False
+        :rtype: bool
+        """
+        # Check if conversion of condition type is enabled
+        if (not self.convert_or_as_in and isinstance(cond, ConditionOR)
+           or not self.convert_and_as_in and isinstance(cond, ConditionAND)):
+           return False
+
+        # All arguments of the given condition must reference a field
+        if not all((
+            isinstance(arg, ConditionFieldEqualsValueExpression)
+            for arg in cond.args
+        )):
+            return False
+
+        # Build a set of all fields appearing in condition arguments
+        fields = {
+            arg.field
+            for arg in cond.args
+        }
+        # All arguments must reference the same field
+        if len(fields) != 1:
+            return False
+
+        # All argument values must be strings or numbers
+        if not all([
+            isinstance(arg.value, ( SigmaString, SigmaNumber ))
+            for arg in cond.args
+        ]):
+           return False
+
+        # Check for plain strings if wildcards are not allowed for string expressions.
+        if not self.in_expressions_allow_wildcards and any([
+            arg.value.contains_special()
+            for arg in cond.args
+            if isinstance(arg.value, SigmaString)
+        ]):
+           return False
+
+        # All checks passed, expression can be converted to in-expression
+        return True
+
+    @abstractmethod
+    def convert_condition_as_in_expression(self, cond : Union[ConditionOR, ConditionAND], state : ConversionState) -> Any:
+        """Conversion of OR or AND conditions into "field in (value list)" expressions."""
 
     @abstractmethod
     def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> Any:
@@ -168,15 +229,6 @@ class Backend(ABC):
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
     @abstractmethod
-    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression, state : ConversionState) -> Any:
-        """
-        Conversion of field in value conditions.
-
-        The value list will only contain plain strings (without wildcards) or numbers. These
-        both types must be handled accordingly.
-        """
-
-    @abstractmethod
     def convert_condition_val_str(self, cond : ConditionValueExpression, state : ConversionState) -> Any:
         """Conversion of string-only conditions."""
 
@@ -223,15 +275,19 @@ class Backend(ABC):
         finalize_query method and must be implemented individually.
         """
         if isinstance(cond, ConditionOR):
-            return self.convert_condition_or(cond, state)
+            if self.decide_convert_condition_as_in_expression(cond, state):
+                return self.convert_condition_as_in_expression(cond, state)
+            else:
+                return self.convert_condition_or(cond, state)
         elif isinstance(cond, ConditionAND):
-            return self.convert_condition_and(cond, state)
+            if self.decide_convert_condition_as_in_expression(cond, state):
+                return self.convert_condition_as_in_expression(cond, state)
+            else:
+                return self.convert_condition_and(cond, state)
         elif isinstance(cond, ConditionNOT):
             return self.convert_condition_not(cond, state)
         elif isinstance(cond, ConditionFieldEqualsValueExpression):
             return self.convert_condition_field_eq_val(cond, state)
-        elif isinstance(cond, ConditionFieldValueInExpression):
-            return self.convert_condition_field_in_vals(cond, state)
         elif isinstance(cond, ConditionValueExpression):
             return self.convert_condition_val(cond, state)
         else:       # pragma: no cover
@@ -314,8 +370,10 @@ class TextQueryBackend(Backend):
     # Null/None expressions
     field_null_expression : ClassVar[Optional[str]] = None          # Expression for field has null value as format string with {field} placeholder for field name
 
-    # Field value in list
-    field_in_list_expression : ClassVar[Optional[str]] = None       # Expression for field in list of values as format string with placeholders {field} and {list}
+    # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
+    field_in_list_expression : ClassVar[Optional[str]] = None       # Expression for field in list of values as format string with placeholders {field}, {op} and {list}
+    or_in_operator : ClassVar[Optional[str]] = None      # Operator used to convert OR into in-expressions. Must be set if convert_or_as_in is set
+    and_in_operator : ClassVar[Optional[str]] = None     # Operator used to convert AND into in-expressions. Must be set if convert_and_as_in is set
     list_separator : ClassVar[Optional[str]] = None     # List element separator
 
     # Value not bound to a field
@@ -364,6 +422,19 @@ class TextQueryBackend(Backend):
                 ))
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Operator 'or' not supported by the backend")
+
+    def convert_condition_as_in_expression(self, cond : Union[ConditionOR, ConditionAND], state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of field in value list conditions."""
+        return self.field_in_list_expression.format(
+            field=cond.args[0].field,       # The assumption that the field is the same for all argument is valid because this is checked before
+            op=self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator,
+            list=self.list_separator.join([
+                self.str_quote + self.convert_value_str(arg.value, state) + self.str_quote
+                if isinstance(arg.value, SigmaString)   # string escaping and qouting
+                else str(arg.value)       # value is number
+                for arg in cond.args
+            ]),
+        )
 
     def convert_condition_and(self, cond : ConditionAND, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of AND conditions."""
@@ -495,17 +566,6 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
         return cond.value.finalize(field=cond.field)
-
-    def convert_condition_field_in_vals(self, cond : ConditionFieldValueInExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Conversion of field in value list conditions."""
-        return self.field_in_list_expression.format(
-            field=cond.field,
-            list=self.list_separator.join([
-                self.str_quote + self.convert_value_str(v, state) + self.str_quote if isinstance(v, SigmaString)   # string escaping and qouting
-                else str(v)       # value is number
-                for v in cond.value
-            ]),
-        )
 
     def convert_condition_val_str(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only strings."""

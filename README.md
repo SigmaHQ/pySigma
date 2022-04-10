@@ -45,6 +45,64 @@ Documentation with some usage examples can be found [here](https://sigmahq-pysig
 |gte|Field is Greater or egal than the value||
 |expand|Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)||
 
+### Backends comparison between pySigma and sigmac
+On 2022/04/10
+|sigmac Backends|Observation|pySigma|
+|---------------|-----------|:-----:|
+|ala |Azure Log Analytics Queries||
+|ala-rule|Azure Log Analytics Rule||
+|arcsight|ArcSight saved search||
+|arcsight-esm|ArcSight ESM saved search||
+|athena|SQL query||
+|carbonblack|Converts Sigma rule into CarbonBlack query string|
+|chronicle|Google Chronicle YARA-L|
+|crowdstrike|CrowdStrike Search Processing Language (SPL)|[pySigma-pipeline-crowdstrike](https://github.com/SigmaHQ/pySigma-pipeline-crowdstrike)|
+|csharp|CSharp Regex in LINQ query|
+|datadog-logs|Datadog log search query|
+|devo|Devo query|
+|ee-outliers|ee-outliers|
+|elastalert|ElastAlert QS query|
+|elastalert-dsl|ElastAlert DSL query|
+|es-dsl|Elasticsearch DSL query|
+|es-eql|Elasticsearch EQL query|
+|es-qs|Elasticsearch query string. Only searches, no aggregations|
+| es-qs-lr|Lucene query string for LogRhythm. Only searches, no aggregations|
+|es-rule|Elastic SIEM lucene query|
+|es-rule-eql|Elastic SIEM EQL query|
+|fieldlist|List all fieldnames from given Sigma rules for creation of a field mapping configuration|
+|fireeye-helix|FireEye Helix Query Language|
+|fortisiem|Base class for Fortisem backends that generate one text-based expression from a Sigma rule|
+|graylog|Graylog query string. Only searches, no aggregations|
+|grep|Generates Perl compatible regular expressions and puts 'grep -P' around it|
+|hawk|HAWK search|
+|humio|Humio query|
+|kibana|Kibana JSON Configuration files (searches only)|
+|kibana-ndjson|Kibana JSON Configuration files (searches only)|
+|lacework|Lacework Policy Platform|
+|limacharlie|LimaCharlie D&R rules|
+|logiq|LOGIQ event rule api payload|
+|logpoint|LogPoint query|
+|mdatp|Microsoft Defender ATP Hunting Queries|
+|netwitness|NetWitness saved search|
+|netwitness-epl|RSA NetWitness EPL|
+|opensearch-monitor|OpenSearch monitors and ElasticRule are in Elastic Common Schema|
+|powershell|PowerShell event log cmdlets|
+|qradar|Qradar saved search|
+|qualys|Qualys saved search|
+|sentinel-rule|Azure Sentinel scheduled alert rule ARM template|
+|splunk|Splunk Search Processing Language (SPL)|[pySigma-backend-splunk](https://github.com/SigmaHQ/pySigma-backend-splunk)|
+|splunkdm|Splunk syntax leveraging Datamodel acceleration|
+|splunkxml|XML used for Splunk Dashboard Panels|
+|sql|SQL query|
+|sqlite|SQL query for SQLite|
+|stix|STIX pattern|
+|sumologic|SumoLogic query|
+|sumologic-cse|SumoLogic CSE query|
+|sumologic-cse-rule|SumoLogic CSE query|
+|sysmon|sysmon XML configuration|
+|uberagent|uberAgent ESA's process tagging rules|
+|xpack-watcher|X-Pack Watcher JSON for alerting|
+
 ## Overview
 
 Conversion Overview

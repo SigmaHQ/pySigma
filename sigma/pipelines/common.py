@@ -18,6 +18,12 @@ def logsource_windows_registry_add():
         product="windows",
     )
 
+def logsource_windows_registry_set():
+    return LogsourceCondition(
+        category="registry_set",
+        product="windows",
+    )
+
 def logsource_windows_registry_delete():
     return LogsourceCondition(
         category="registry_delete",
@@ -27,12 +33,6 @@ def logsource_windows_registry_delete():
 def logsource_windows_registry_event():
     return LogsourceCondition(
         category="registry_event",
-        product="windows",
-    )
-
-def logsource_windows_registry_set():
-    return LogsourceCondition(
-        category="registry_set",
         product="windows",
     )
 

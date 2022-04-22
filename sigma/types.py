@@ -1,3 +1,4 @@
+from math import inf
 from enum import Enum, auto
 from typing import ClassVar, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
@@ -100,6 +101,89 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
 
+    def __getitem__(self, idx : Union[int, slice]) -> "SigmaString":
+        """
+        Index SigmaString parts with transparent handling of special characters.
+
+        :param key: Integer index or slice.
+        :type key: Union[int, slice]
+        :return: SigmaString containing only the specified part.
+        :rtype: SigmaString
+        """
+        # Set start and end indices from given index
+        length = len(self)
+        if isinstance(idx, int):
+            start = idx
+            end = None
+        elif isinstance(idx, slice):
+            if idx.step is not None:
+                raise IndexError("SigmaString slice index with step is not allowed")
+            start = idx.start or 0
+            end = idx.stop or inf
+        else:
+            raise TypeError("SigmaString indices must be integers or slices")
+
+        # Handling of negative indices and deferred setting of end index if only character index was set
+        if start < 0:
+            start = length + start
+        if end is None:
+            end = start + 1
+        elif end < 0:
+            end = length + end
+
+        # Range checks
+        if start < 0 or end < 0 or start >= length or (end != inf and end > length):
+            raise IndexError("SigmaString index out of range")
+
+        i = 0               # Pointer to SigmaString element
+        result = []    # Result: indexed string part
+
+        # Find start. The variables start and end now contain the remaining characters until the
+        # indexed part begins/ends relative to the current element.
+        while start > 0 and i < len(self.s):
+            e = self.s[i]
+            if isinstance(e, str):      # Current SigmaString part is string
+                e_len = len(e)
+                #if e_len <= start:
+                if e_len > start:
+                #else:
+                    if end < e_len:     # end lies within this string part
+                        return SigmaString(e[start:end])
+                    else:               # end lies behind the current string part
+                        result.append(e[start:])
+                        #end -= start
+                        #start = 0
+                start -= e_len
+                end -= e_len
+            else:                       # Current SigmaString part is a special character or placeholder
+                start -= 1
+                end -= 1
+
+            i += 1
+
+        # Append until end of string or indexed part is reached.
+        while end > 0 and i < len(self.s):
+            e = self.s[i]
+            if isinstance(e, str):      # Current SigmaString part is string
+                e_len = len(e)
+                if end < e_len:         # end lies within this string part
+                    result.append(e[:end])
+                else:
+                    result.append(e)
+                end -= e_len
+            else:                       # Current SigmaString part is a special character or placeholder
+                result.append(e)
+                end -= 1
+
+            i += 1
+
+        if len(result) == 0:   # Special case: start begins after string - return empty string
+            return SigmaString("")
+        else:                       # Return calculated result
+            s = SigmaString()
+            s.s = tuple(result)
+            return s
+
     def insert_placeholders(self) -> "SigmaString":
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
@@ -174,6 +258,9 @@ class SigmaString(SigmaType):
             for s in self.s
         )
 
+    def __repr__(self) -> str:
+        return str(self.s)
+
     def to_plain(self):
         """Return plain string representation of SigmaString, equivalent to converting it with str()."""
         return (str(self))
@@ -182,7 +269,11 @@ class SigmaString(SigmaType):
         return str(self).encode()
 
     def __len__(self) -> int:
-        return len(str(self))
+        return sum((
+            len(e) if isinstance(e, str)    # count string parts with number of characters
+            else 1                          # everything else is counted as single character
+            for e in self.s
+        ))
 
     def startswith(self, val : Union[str, SpecialChars]) -> bool:
         """Check if string starts with a given string or special character."""

@@ -196,6 +196,9 @@ def test_string_index_slice_open_end_with_escaped(sigma_string):
 def test_string_index_slice_open_end_without_escaped(sigma_string):
     assert sigma_string[10:] == SigmaString("ing*")
 
+def test_string_index_slice_empty_result(sigma_string):
+    assert sigma_string[4:2] == SigmaString("")
+
 def test_string_index_slice_start_after_end(sigma_string):
     with pytest.raises(IndexError, match="out of range"):
         assert sigma_string[100:]

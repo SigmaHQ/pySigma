@@ -8,7 +8,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -353,6 +353,11 @@ class TextQueryBackend(Backend):
         False: None,
     }
 
+    # String matching operators. if none is appropriate eq_token is used.
+    startswith_operator : ClassVar[Optional[str]] = None
+    endswith_operator   : ClassVar[Optional[str]] = None
+    contains_operator   : ClassVar[Optional[str]] = None
+
     # Regular expressions
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
@@ -381,7 +386,7 @@ class TextQueryBackend(Backend):
     unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
 
-    # Query finalization: appending and concatenating deferred query party
+    # Query finalization: appending and concatenating deferred query part
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
     deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
     deferred_only_query : ClassVar[Optional[str]] = None            # String used as query if final query only contains deferred expression
@@ -484,7 +489,32 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = string value expressions"""
         try:
-            return cond.field + self.eq_token + self.str_quote + self.convert_value_str(cond.value, state) + self.str_quote
+            if (                                                                # Check conditions for usage of 'startswith' operator
+                self.startswith_operator is not None                            # 'startswith' operator is defined in backend
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)            # String ends with wildcard
+                and not cond.value[:-1].contains_special()                      # Remainder of string doesn't contains special characters
+                ):
+                op = self.token_separator + self.startswith_operator + self.token_separator  # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                value = cond.value[:-1]
+            elif (                                                              # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
+                self.endswith_operator is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:].contains_special()
+                ):
+                op = self.token_separator + self.endswith_operator + self.token_separator
+                value = cond.value[1:]
+            elif (                                                              # contains: string starts and ends with wildcard
+                self.contains_operator is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:-1].contains_special()
+                ):
+                op = self.token_separator + self.contains_operator + self.token_separator
+                value = cond.value[1:-1]
+            else:
+                op = self.eq_token
+                value = cond.value
+            return cond.field + op + self.str_quote + self.convert_value_str(value, state) + self.str_quote
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
 

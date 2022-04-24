@@ -6,6 +6,10 @@ from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpres
 def sigma_string():
     return SigmaString("*Test*Str\\*ing*")
 
+@pytest.fixture
+def empty_sigma_string():
+    return SigmaString("")
+
 def test_strings_empty():
     assert SigmaString().s == tuple()
 
@@ -175,10 +179,10 @@ def test_string_index_negative(sigma_string):
 def test_string_index_open_start(sigma_string):
     assert sigma_string[:3] == SigmaString("*Te")
 
-def test_string_index_slice_without_escpaed(sigma_string):
+def test_string_index_slice_without_escaped(sigma_string):
     assert sigma_string[3:9] == SigmaString("st*Str")
 
-def test_string_index_slice_with_escpaed(sigma_string):
+def test_string_index_slice_with_escaped(sigma_string):
     assert sigma_string[3:10] == SigmaString("st*Str\\*")
 
 def test_string_index_slice_start_and_end_in_same_string_part(sigma_string):
@@ -186,6 +190,12 @@ def test_string_index_slice_start_and_end_in_same_string_part(sigma_string):
 
 def test_string_index_slice_negative_end(sigma_string):
     assert sigma_string[3:-1] == SigmaString("st*Str\\*ing")
+
+def test_string_index_slice_cut_first_and_last(sigma_string):
+    assert sigma_string[1:-1] == SigmaString("Test*Str\\*ing")
+
+def test_empty_string_index_slice_cut_first_and_last(empty_sigma_string):
+    assert empty_sigma_string[1:-1] == SigmaString("")
 
 def test_string_index_slice_negative_start_and_end(sigma_string):
     assert sigma_string[-3:-1] == SigmaString("ng")

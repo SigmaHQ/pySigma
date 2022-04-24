@@ -25,6 +25,10 @@ class TextQueryTestBackend(TextQueryBackend):
         False: "0",
     }
 
+    startswith_operator : ClassVar[str] = "startswith"
+    endswith_operator   : ClassVar[str] = "endswith"
+    contains_operator   : ClassVar[str] = "contains"
+
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ("/", "bar")

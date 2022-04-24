@@ -55,6 +55,144 @@ def test_convert_value_str(test_backend):
         """)
     ) == ['mappedA="value"']
 
+def test_convert_value_str_startswith(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA startswith "value"']
+
+def test_convert_value_str_startswith_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA="va*lue*"']
+
+def test_convert_value_str_startswith_operator_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "startswith_operator", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA="value*"']
+
+def test_convert_value_str_endswith(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA endswith "value"']
+
+def test_convert_value_str_endswith_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA="*va*lue"']
+
+def test_convert_value_str_endswith_operator_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "endswith_operator", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA="*value"']
+
+def test_convert_value_str_contains(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "value"
+                condition: sel
+        """)
+    ) == ['mappedA contains "value"']
+
+def test_convert_value_str_contains_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA="*va*lue*"']
+
+def test_convert_value_str_contains_operator_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "contains_operator", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "value"
+                condition: sel
+        """)
+    ) == ['mappedA="*value*"']
+
 def test_convert_value_num(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -284,11 +422,11 @@ def test_convert_or_in_list_with_wildcards_disabled(test_backend):
                 sel:
                     fieldA:
                         - value1
-                        - value2*
+                        - value2
                         - val*ue3
                 condition: sel
         """)
-    ) == ['mappedA="value1" or mappedA="value2*" or mappedA="val*ue3"']
+    ) == ['mappedA="value1" or mappedA="value2" or mappedA="val*ue3"']
 
 def test_convert_or_in_separate(test_backend):
     assert test_backend.convert(

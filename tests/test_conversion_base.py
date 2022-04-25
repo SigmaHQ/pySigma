@@ -85,8 +85,8 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
         """)
     ) == ['mappedA="va*lue*"']
 
-def test_convert_value_str_startswith_operator_not_defined(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "startswith_operator", None)
+def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "startswith_expression", None)
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -131,8 +131,8 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
         """)
     ) == ['mappedA="*va*lue"']
 
-def test_convert_value_str_endswith_operator_not_defined(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "endswith_operator", None)
+def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "endswith_expression", None)
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -177,8 +177,8 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
         """)
     ) == ['mappedA="*va*lue*"']
 
-def test_convert_value_str_contains_operator_not_defined(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "contains_operator", None)
+def test_convert_value_str_contains_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "contains_expression", None)
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test

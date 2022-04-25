@@ -25,9 +25,9 @@ class TextQueryTestBackend(TextQueryBackend):
         False: "0",
     }
 
-    startswith_operator : ClassVar[str] = "startswith"
-    endswith_operator   : ClassVar[str] = "endswith"
-    contains_operator   : ClassVar[str] = "contains"
+    startswith_expression : ClassVar[str] = "{field} startswith \"{value}\""
+    endswith_expression   : ClassVar[str] = "{field} endswith \"{value}\""
+    contains_expression   : ClassVar[str] = "{field} contains \"{value}\""
 
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"

@@ -354,9 +354,9 @@ class TextQueryBackend(Backend):
     }
 
     # String matching operators. if none is appropriate eq_token is used.
-    startswith_operator : ClassVar[Optional[str]] = None
-    endswith_operator   : ClassVar[Optional[str]] = None
-    contains_operator   : ClassVar[Optional[str]] = None
+    startswith_expression : ClassVar[Optional[str]] = None
+    endswith_expression   : ClassVar[Optional[str]] = None
+    contains_expression   : ClassVar[Optional[str]] = None
 
     # Regular expressions
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
@@ -490,31 +490,31 @@ class TextQueryBackend(Backend):
         """Conversion of field = string value expressions"""
         try:
             if (                                                                # Check conditions for usage of 'startswith' operator
-                self.startswith_operator is not None                            # 'startswith' operator is defined in backend
+                self.startswith_expression is not None                            # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)            # String ends with wildcard
                 and not cond.value[:-1].contains_special()                      # Remainder of string doesn't contains special characters
                 ):
-                op = self.token_separator + self.startswith_operator + self.token_separator  # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                expr = self.startswith_expression                               # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
                 value = cond.value[:-1]
             elif (                                                              # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
-                self.endswith_operator is not None
+                self.endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and not cond.value[1:].contains_special()
                 ):
-                op = self.token_separator + self.endswith_operator + self.token_separator
+                expr = self.endswith_expression
                 value = cond.value[1:]
             elif (                                                              # contains: string starts and ends with wildcard
-                self.contains_operator is not None
+                self.contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
                 and not cond.value[1:-1].contains_special()
                 ):
-                op = self.token_separator + self.contains_operator + self.token_separator
+                expr = self.contains_expression
                 value = cond.value[1:-1]
             else:
-                op = self.eq_token
+                expr = "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote
                 value = cond.value
-            return cond.field + op + self.str_quote + self.convert_value_str(value, state) + self.str_quote
+            return expr.format(field=cond.field, value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
 

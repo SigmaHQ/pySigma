@@ -357,6 +357,7 @@ class TextQueryBackend(Backend):
     startswith_expression : ClassVar[Optional[str]] = None
     endswith_expression   : ClassVar[Optional[str]] = None
     contains_expression   : ClassVar[Optional[str]] = None
+    wildcard_match_expression : ClassVar[Optional[str]] = None      # Special expression if wildcards can't be matched with the eq_token operator
 
     # Regular expressions
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
@@ -511,6 +512,12 @@ class TextQueryBackend(Backend):
                 ):
                 expr = self.contains_expression
                 value = cond.value[1:-1]
+            elif (                                                              # wildcard match expression: string contains wildcard
+                self.wildcard_match_expression is not None
+                and cond.value.contains_special()
+                ):
+                expr = self.wildcard_match_expression
+                value = cond.value
             else:
                 expr = "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote
                 value = cond.value

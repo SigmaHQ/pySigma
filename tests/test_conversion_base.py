@@ -19,23 +19,58 @@ def test_backend():
         testparam="testvalue",
     )
 
-def test_init_processing_pipeline(test_backend):
-    assert test_backend.processing_pipeline == ProcessingPipeline([
-        ProcessingItem(FieldMappingTransformation({
-            "fieldA": "mappedA",
-        })),
-        ProcessingItem(FieldMappingTransformation({
-            "fieldB": "mappedB",
-        })),
-    ])
-
-def test_only_backend_pipeline():
+def test_backend_pipeline():
     test_backend = TextQueryTestBackend()
-    assert test_backend.processing_pipeline == ProcessingPipeline([
-        ProcessingItem(FieldMappingTransformation({
-            "fieldA": "mappedA",
-        })),
-    ])
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """)
+    ) == ['mappedA="valueA" and fieldB="valueB" and fieldC="valueC"']
+
+def test_backend_and_custom_pipeline(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """)
+    ) == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+
+def test_backend_custom_format_pipeline(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """),
+        output_format="test",
+    ) == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
 
 def test_init_config(test_backend):
     assert test_backend.config == { "testparam": "testvalue" }

@@ -1,3 +1,4 @@
+from collections import defaultdict
 from typing import ClassVar, Dict, Optional, Tuple
 
 from sigma.conversion.base import TextQueryBackend
@@ -69,3 +70,16 @@ class TextQueryTestBackend(TextQueryBackend):
             "fieldA": "mappedA",
         }))
     ])
+    output_format_processing_pipeline = defaultdict(ProcessingPipeline,
+        test=ProcessingPipeline([
+            ProcessingItem(FieldMappingTransformation({
+                "fieldC": "mappedC",
+            }))
+        ])
+    )
+
+    def finalize_query_test(self, rule, query, index, state):
+        return self.finalize_query_default(rule, query, index, state)
+
+    def finalize_output_test(self, queries):
+        return self.finalize_output_default(queries)

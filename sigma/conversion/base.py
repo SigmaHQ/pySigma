@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 
 from attr import field
 from sigma.exceptions import SigmaError, SigmaValueError
@@ -59,6 +60,7 @@ class Backend(ABC):
     """
     processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()
+    output_format_processing_pipeline : ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(ProcessingPipeline)
     config : Dict[str, Any]
     default_format : ClassVar[str] = "default"
     collect_errors : bool = False
@@ -70,7 +72,7 @@ class Backend(ABC):
     in_expressions_allow_wildcards : ClassVar[bool] = False       # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
 
     def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False, **kwargs):
-        self.processing_pipeline = self.backend_processing_pipeline + processing_pipeline
+        self.processing_pipeline = processing_pipeline
         self.collect_errors = collect_errors
         self.config = kwargs
 
@@ -93,7 +95,8 @@ class Backend(ABC):
         """
         state = ConversionState()
         try:
-            self.processing_pipeline.apply(rule)        # 1. Apply transformations
+            processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
+            processing_pipeline.apply(rule)             # 1. Apply transformations
             queries = [                                 # 2. Convert condition
                 self.convert_condition(cond.parsed, state)
                 for cond in rule.detection.parsed_condition

@@ -1,3 +1,4 @@
+import re
 import pytest
 from sigma.types import SigmaBool, SigmaCompareExpression, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
@@ -48,6 +49,10 @@ def test_string_placeholders_single():
 
 def test_string_placeholders_multi():
     assert SigmaString("%start%te*st1%middle%te?st2%end%").insert_placeholders().s == (Placeholder("start"), "te", SpecialChars.WILDCARD_MULTI, "st1", Placeholder("middle"), "te", SpecialChars.WILDCARD_SINGLE, "st2", Placeholder("end"))
+
+def test_string_replace_with_placeholder():
+    assert SigmaString("testx1xfoox1xtest*x2x*bar*x3x").replace_with_placeholder(re.compile("x\\dx"), "test").s == \
+        ("test", Placeholder("test"), "foo", Placeholder("test"), "test", SpecialChars.WILDCARD_MULTI, Placeholder("test"), SpecialChars.WILDCARD_MULTI, "bar", SpecialChars.WILDCARD_MULTI, Placeholder("test"))
 
 def test_string_placeholders_replace():
     def callback(p):

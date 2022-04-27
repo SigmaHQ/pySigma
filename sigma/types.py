@@ -1,6 +1,6 @@
 from math import inf
 from enum import Enum, auto
-from typing import ClassVar, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
+from typing import ClassVar, Pattern, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -210,6 +210,43 @@ class SigmaString(SigmaType):
 
         return self
 
+    def replace_with_placeholder(self, regex : Pattern, placeholder_name : str) -> "SigmaString":
+        """
+        Replace all occurrences of string part matching regular expression with placeholder.
+
+        :param regex: regular expression that should be matched.
+        :type regex: Pattern
+        :param placeholder_name: name of placeholder that should be inserted.
+        :type placeholder_name: str
+        :return: Returns a string with the replacement placeholders.
+        :rtype: SigmaString
+        """
+        result = []
+        for e in self.s:
+            if isinstance(e, str):
+                matched = False
+                i = 0
+                for m in regex.finditer(e):
+                    matched = True
+                    s = e[i:m.start()]
+                    if s != "":
+                        result.append(s)
+                    result.append(Placeholder(placeholder_name))
+                    i = m.end()
+
+                if matched:     # if matched, append remainder of string
+                    s = e[i:]
+                    if s != "":
+                        result.append(s)
+                else:     # no matches: append original string
+                    result.append(e)
+            else:
+                result.append(e)
+
+        s = self.__class__()
+        s.s = tuple(result)
+        return s
+
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
         src = list(reversed(self.s))
@@ -349,7 +386,6 @@ class SigmaString(SigmaType):
                     for replacement in callback(placeholder)                        # iterate over all callback result values
                     for result_suffix in suffix.replace_placeholders(callback)      # iterate over all result values of calling this method with the SigmaString remainder
                 ]
-
 
     def __iter__(self) -> Iterable[Union[str, SpecialChars]]:
         for item in self.s:

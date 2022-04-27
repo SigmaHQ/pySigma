@@ -1,8 +1,9 @@
 from abc import ABC, abstractmethod
+import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -66,6 +67,7 @@ class SigmaListModifier(SigmaModifier):
 
 ### Modifier Implementations ###
 class SigmaContainsModifier(SigmaValueModifier):
+    """Puts wildcards around a string to match it somewhere inside another string instead of as a whole."""
     def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
@@ -81,6 +83,7 @@ class SigmaContainsModifier(SigmaValueModifier):
         return val
 
 class SigmaStartswithModifier(SigmaValueModifier):
+    """Puts a wildcard at the end of a string to match arbitrary values after the given prefix."""
     def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
         if isinstance(val, SigmaString):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
@@ -92,6 +95,7 @@ class SigmaStartswithModifier(SigmaValueModifier):
         return val
 
 class SigmaEndswithModifier(SigmaValueModifier):
+    """Puts a wildcard before a string to match arbitrary values before it."""
     def modify(self, val : Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
@@ -103,12 +107,17 @@ class SigmaEndswithModifier(SigmaValueModifier):
         return val
 
 class SigmaBase64Modifier(SigmaValueModifier):
+    """Encode string as Base64 value."""
     def modify(self, val : SigmaString) -> SigmaString:
         if val.contains_special():
             raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed", source=self.source)
         return SigmaString(b64encode(bytes(val)).decode())
 
 class SigmaBase64OffsetModifier(SigmaValueModifier):
+    """
+    Encode string as Base64 value with different offsets to match it at different locations in
+    encoded form.
+    """
     start_offsets = (0, 2, 3)
     end_offsets = (None, -3, -2)
 
@@ -127,6 +136,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
             ]
 
 class SigmaWideModifier(SigmaValueModifier):
+    """Encode string as wide string (UTF-16LE)."""
     def modify(self, val : SigmaString) -> SigmaString:
         r = list()
         for item in val.s:
@@ -141,6 +151,21 @@ class SigmaWideModifier(SigmaValueModifier):
         s = SigmaString()
         s.s = tuple(r)
         return(s)
+
+class SigmaWindowsDashModifier(SigmaValueModifier):
+    """
+    Expand parameter characters / and - that are often interchangeable in Windows into the other
+    form if it appears between word boundaries. E.g. in -param-name the first dash will be expanded
+    into /param-name while the second dash is left untouched.
+    """
+    def modify(self, val : SigmaString) -> List[SigmaString]:
+        def callback(p : Placeholder):
+            if p.name == "_windash":
+                yield from ("-", "/")
+            else:
+                yield p
+        return val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash") \
+            .replace_placeholders(callback)
 
 class SigmaRegularExpressionModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaRegularExpression:
@@ -195,6 +220,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "base64"        : SigmaBase64Modifier,
     "base64offset"  : SigmaBase64OffsetModifier,
     "wide"          : SigmaWideModifier,
+    "windash"       : SigmaWindowsDashModifier,
     "re"            : SigmaRegularExpressionModifier,
     "cidr"          : SigmaCIDRModifier,
     "all"           : SigmaAllModifier,

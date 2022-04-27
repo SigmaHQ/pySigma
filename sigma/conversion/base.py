@@ -1,7 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
 
-from attr import field
 from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Union, ClassVar, Optional, Tuple, List, Dict, Any

@@ -244,6 +244,22 @@ def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
         """)
     ) == ['mappedA="val*ue"']
 
+def test_convert_value_expansion_with_all(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+        title: Testrule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|windash|contains|all:
+                    - -foo
+                    - -bar
+            condition: selection
+        """)
+    ) == ['(CommandLine contains "-foo" or CommandLine contains "/foo") and (CommandLine contains "-bar" or CommandLine contains "/bar")']
+
 def test_convert_value_num(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

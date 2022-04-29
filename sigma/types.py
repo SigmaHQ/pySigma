@@ -614,6 +614,21 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
             raise SigmaValueError(f"Query expression '{ self.expr }' has a field placeholder but no field was given in finalization")
         return self.expr.format(field=field)
 
+@dataclass
+class SigmaExpansion(NoPlainConversionMixin, SigmaType):
+    """
+    Special purpose type for correct logic linking of values expanded by modifiers. In the usual
+    cases the writer of a Sigma rule expects the values expanded by modifiers like base64offset or
+    windash are OR-linked, even if the value list containing the original values is linked with AND
+    by modifying it with 'all'. A SigmaExpansion is emitted by such modifiers, contains the
+    expanded values and is converted as follows:
+
+    1. the whole expansion is handled as group which is enclosed in parentheses.
+    2. the values contained in the expansion are linked with OR, independend from the linking of the
+       context that encloses the expansion.
+    """
+    values : List[SigmaType]
+
 type_map = {
     bool        : SigmaBool,
     int         : SigmaNumber,

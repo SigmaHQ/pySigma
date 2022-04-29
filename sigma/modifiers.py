@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import Placeholder, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaExpansion, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -44,14 +44,24 @@ class SigmaModifier(ABC):
         Modifier entry point containing the default operations:
         * Type checking
         * Ensure returned value is a list
+        * Handle values of SigmaExpansion objects separately.
         """
-        if not self.type_check(val):
-            raise SigmaTypeError(f"Modifier {self.__class__.__name__} incompatible to value type of '{ val }'", source=self.source)
-        r = self.modify(val)
-        if isinstance(r, List):
-            return r
+        if isinstance(val, SigmaExpansion):     # Handle each SigmaExpansion item separately
+            return [
+                SigmaExpansion([
+                    va
+                    for v in val.values
+                    for va in self.apply(v)
+                ])
+            ]
         else:
-            return [r]
+            if not self.type_check(val):
+                raise SigmaTypeError(f"Modifier {self.__class__.__name__} incompatible to value type of '{ val }'", source=self.source)
+            r = self.modify(val)
+            if isinstance(r, List):
+                return r
+            else:
+                return [r]
 
 class SigmaValueModifier(SigmaModifier):
     """Base class for all modifiers that handle each value for the modifier scope separately"""
@@ -164,8 +174,10 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
                 yield from ("-", "/")
             else:
                 yield p
-        return val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash") \
-            .replace_placeholders(callback)
+        return SigmaExpansion(
+            val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash") \
+                .replace_placeholders(callback)
+        )
 
 class SigmaRegularExpressionModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaRegularExpression:

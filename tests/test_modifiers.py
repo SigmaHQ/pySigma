@@ -18,7 +18,7 @@ from sigma.modifiers import \
     SigmaExpandModifier, \
     SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaExpansion, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -126,12 +126,12 @@ def test_wide_noascii(dummy_detection_item):
         SigmaWideModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaString("foobär"))
 
 def test_windash(dummy_detection_item):
-    assert SigmaWindowsDashModifier(dummy_detection_item, []).modify(SigmaString("-param-1 -param2")) == [
+    assert SigmaWindowsDashModifier(dummy_detection_item, []).modify(SigmaString("-param-1 -param2")) == SigmaExpansion([
         SigmaString("-param-1 -param2"),
         SigmaString("-param-1 /param2"),
         SigmaString("/param-1 -param2"),
         SigmaString("/param-1 /param2"),
-    ]
+    ])
 
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")

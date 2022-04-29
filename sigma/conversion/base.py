@@ -8,7 +8,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
+from sigma.types import SigmaBool, SigmaExpansion, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -209,6 +209,17 @@ class Backend(ABC):
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions bound to a field."""
 
+    def convert_condition_field_eq_expansion(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """
+        Convert each value of the expansion with the field from the containing condition and OR-link
+        all converted subconditions.
+        """
+        or_cond = ConditionOR([
+            ConditionFieldEqualsValueExpression(cond.field, value)
+            for value in cond.value.values
+        ], cond.source)
+        return self.convert_condition_or(or_cond, state)
+
     def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
         if isinstance(cond.value, SigmaString):
@@ -227,6 +238,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_null(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
             return self.convert_condition_field_eq_query_expr(cond, state)
+        elif isinstance(cond.value, SigmaExpansion):
+            return self.convert_condition_field_eq_expansion(cond, state)
         else:       # pragma: no cover
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
@@ -394,18 +407,25 @@ class TextQueryBackend(Backend):
     deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
     deferred_only_query : ClassVar[Optional[str]] = None            # String used as query if final query only contains deferred expression
 
-    def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
+    def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
         """
         Compare precedence of outer and inner condition items. Return True if precedence of
         enclosing condition item (outer) is lower than the contained (inner) condition item.
         In this case, no additional grouping is required.
         """
+        outer_class = outer.__class__
+        # Special case: Conditions containing a SigmaExpansion value convert into OR conditions and therefore the precedence has to be handled the same way.
+        if isinstance(inner, ( ConditionFieldEqualsValueExpression, ConditionValueExpression )) and isinstance(inner.value, SigmaExpansion):
+            inner_class = ConditionOR
+        else:
+            inner_class = inner.__class__
+
         try:
-            idx_inner = self.precedence.index(inner)
+            idx_inner = self.precedence.index(inner_class)
         except ValueError:      # ConditionItem not in precedence tuple
             idx_inner = -1      # Assume precedence of inner condition item is higher than the outer
 
-        return idx_inner <= self.precedence.index(outer)
+        return idx_inner <= self.precedence.index(outer_class)
 
     def convert_condition_group(self, cond : ConditionItem, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Group condition item."""
@@ -422,7 +442,7 @@ class TextQueryBackend(Backend):
             return joiner.join((
                     converted
                     for converted in (
-                        self.convert_condition(arg, state) if self.compare_precedence(ConditionOR, arg.__class__)
+                        self.convert_condition(arg, state) if self.compare_precedence(cond, arg)
                         else self.convert_condition_group(arg, state)
                         for arg in cond.args
                     )
@@ -455,7 +475,7 @@ class TextQueryBackend(Backend):
             return joiner.join((
                     converted
                     for converted in (
-                        self.convert_condition(arg, state) if self.compare_precedence(ConditionAND, arg.__class__)
+                        self.convert_condition(arg, state) if self.compare_precedence(cond, arg)
                         else self.convert_condition_group(arg, state)
                         for arg in cond.args
                     )

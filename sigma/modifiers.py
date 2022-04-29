@@ -132,10 +132,10 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
     start_offsets = (0, 2, 3)
     end_offsets = (None, -3, -2)
 
-    def modify(self, val : SigmaString) -> List[SigmaString]:
+    def modify(self, val : SigmaString) -> SigmaExpansion:
         if val.contains_special():
             raise SigmaValueError("Base64 encoding of strings with wildcards is not allowed", source=self.source)
-        return [
+        return SigmaExpansion([
             SigmaString(b64encode(
                 i * b' ' + bytes(val)
                 )[
@@ -144,7 +144,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
                 ].decode()
             )
             for i in range(3)
-            ]
+            ])
 
 class SigmaWideModifier(SigmaValueModifier):
     """Encode string as wide string (UTF-16LE)."""
@@ -169,7 +169,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
     form if it appears between word boundaries. E.g. in -param-name the first dash will be expanded
     into /param-name while the second dash is left untouched.
     """
-    def modify(self, val : SigmaString) -> List[SigmaString]:
+    def modify(self, val : SigmaString) -> SigmaExpansion:
         def callback(p : Placeholder):
             if p.name == "_windash":
                 yield from ("-", "/")

@@ -105,10 +105,12 @@ def test_base64_wildcards(dummy_detection_item):
 
 def test_base64offset(dummy_detection_item):
     assert SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("foobar")) == [
-        SigmaString("Zm9vYmFy"),
-        SigmaString("Zvb2Jhc"),
-        SigmaString("mb29iYX"),
-        ]
+        SigmaExpansion([
+            SigmaString("Zm9vYmFy"),
+            SigmaString("Zvb2Jhc"),
+            SigmaString("mb29iYX"),
+        ])
+    ]
 
 def test_base64offset_wildcards(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="wildcards is not allowed.*test.yml"):

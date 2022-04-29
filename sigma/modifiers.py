@@ -6,6 +6,7 @@ from base64 import b64encode
 from sigma.types import Placeholder, SigmaExpansion, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
+import sigma
 
 ### Base Classes ###
 class SigmaModifier(ABC):

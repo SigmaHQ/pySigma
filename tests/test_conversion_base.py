@@ -2,7 +2,7 @@ from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 from typing import ClassVar, Dict, Tuple
@@ -14,7 +14,8 @@ def test_backend():
         ProcessingPipeline([
             ProcessingItem(FieldMappingTransformation({
                 "fieldB": "mappedB",
-            }))
+            })),
+            ProcessingItem(SetStateTransformation("index", "test")),
         ]),
         testparam="testvalue",
     )
@@ -911,3 +912,18 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend):
                 condition: sel
         """)
     ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']
+
+def test_convert_state(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """), "state"
+    ) == ['index=test (mappedA="value")']

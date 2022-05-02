@@ -96,6 +96,7 @@ class Backend(ABC):
         try:
             processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
             processing_pipeline.apply(rule)             # 1. Apply transformations
+            state.processing_state = processing_pipeline.state
             queries = [                                 # 2. Convert condition
                 self.convert_condition(cond.parsed, state)
                 for cond in rule.detection.parsed_condition

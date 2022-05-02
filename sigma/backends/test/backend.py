@@ -2,6 +2,7 @@ from collections import defaultdict
 from typing import ClassVar, Dict, Optional, Tuple
 
 from sigma.conversion.base import TextQueryBackend
+from sigma.conversion.state import ConversionState
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import SigmaCompareExpression
@@ -82,4 +83,10 @@ class TextQueryTestBackend(TextQueryBackend):
         return self.finalize_query_default(rule, query, index, state)
 
     def finalize_output_test(self, queries):
+        return self.finalize_output_default(queries)
+
+    def finalize_query_state(self, rule, query, index, state : ConversionState):
+        return "index=" + state.processing_state.get("index", "default") + " (" + self.finalize_query_default(rule, query, index, state) + ")"
+
+    def finalize_output_state(self, queries):
         return self.finalize_output_default(queries)

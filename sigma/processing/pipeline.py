@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import List, Literal, Set, Any, Callable, Iterable, Dict, Tuple, Optional
+from typing import List, Literal, Mapping, Set, Any, Callable, Iterable, Dict, Tuple, Optional
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
@@ -147,14 +147,18 @@ class ProcessingPipeline:
     vars  : Dict[str, Any] = field(default_factory=dict)
     priority : int = field(default=0)
     name : Optional[str] = field(default=None)
+    # The following items are reset for each invocation of apply().
+    # TODO: move this to parameters or return values of apply().
     applied : List[bool] = field(init=False, compare=False)     # list of applied items as booleans. If True, the corresponding item at the same position was applied
     applied_ids : Set[str] = field(init=False, compare=False)   # set of identifiers of applied items, doesn't contains items without identifier
+    state : Mapping[str, Any] = field(init=False, compare=False)    # pipeline state: allows to set variables that can be used in conversion (e.g. indices, data model names etc.)
 
     def __post_init__(self):
         if not all((isinstance(item, ProcessingItem) for item in self.items)):
             raise TypeError("Each item in a processing pipeline must be a ProcessingItem - don't use processing classes directly!")
         self.applied = list()
         self.applied_ids = set()
+        self.state = dict()
 
     @classmethod
     def from_dict(cls, d : dict) -> "ProcessingPipeline":
@@ -182,6 +186,7 @@ class ProcessingPipeline:
         """Apply processing pipeline on Sigma rule."""
         self.applied = list()
         self.applied_ids = set()
+        self.state = dict()
         for item in self.items:
             applied = item.apply(self, rule)
             self.applied.append(applied)

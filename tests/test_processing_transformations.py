@@ -3,7 +3,7 @@ from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, SetStateTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -512,6 +512,11 @@ def test_replace_string_wildcard(dummy_pipeline):
 def test_replace_string_invalid():
     with pytest.raises(SigmaRegularExpressionError, match="Regular expression.*invalid"):
         ReplaceStringTransformation("*", "test")
+
+def test_set_state(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = SetStateTransformation("testkey", "testvalue")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert dummy_pipeline.state == { "testkey": "testvalue" }
 
 def test_rule_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = RuleFailureTransformation("Test")

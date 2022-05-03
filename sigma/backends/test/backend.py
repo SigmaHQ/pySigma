@@ -1,6 +1,8 @@
+from collections import defaultdict
 from typing import ClassVar, Dict, Optional, Tuple
 
 from sigma.conversion.base import TextQueryBackend
+from sigma.conversion.state import ConversionState
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import SigmaCompareExpression
@@ -24,6 +26,11 @@ class TextQueryTestBackend(TextQueryBackend):
         True: "1",
         False: "0",
     }
+
+    startswith_expression : ClassVar[str] = "{field} startswith \"{value}\""
+    endswith_expression   : ClassVar[str] = "{field} endswith \"{value}\""
+    contains_expression   : ClassVar[str] = "{field} contains \"{value}\""
+    wildcard_match_expression : ClassVar[str] = "{field} match \"{value}\""
 
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
@@ -64,3 +71,22 @@ class TextQueryTestBackend(TextQueryBackend):
             "fieldA": "mappedA",
         }))
     ])
+    output_format_processing_pipeline = defaultdict(ProcessingPipeline,
+        test=ProcessingPipeline([
+            ProcessingItem(FieldMappingTransformation({
+                "fieldC": "mappedC",
+            }))
+        ])
+    )
+
+    def finalize_query_test(self, rule, query, index, state):
+        return self.finalize_query_default(rule, query, index, state)
+
+    def finalize_output_test(self, queries):
+        return self.finalize_output_default(queries)
+
+    def finalize_query_state(self, rule, query, index, state : ConversionState):
+        return "index=" + state.processing_state.get("index", "default") + " (" + self.finalize_query_default(rule, query, index, state) + ")"
+
+    def finalize_output_state(self, queries):
+        return self.finalize_output_default(queries)

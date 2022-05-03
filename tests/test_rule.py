@@ -3,7 +3,7 @@ from datetime import date
 from uuid import UUID
 from sigma import conditions
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
-from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
+from sigma.types import SigmaExpansion, SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
 from sigma.conditions import ConditionFieldEqualsValueExpression, ConditionValueExpression, SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
@@ -184,9 +184,11 @@ def test_sigmadetectionitem_key_value_modifiers():
         "key",
         [SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaAllModifier],
         [
-            SigmaString("*Zm9vYmFy*"),
-            SigmaString("*Zvb2Jhc*"),
-            SigmaString("*mb29iYX*"),
+            SigmaExpansion([
+                SigmaString("*Zm9vYmFy*"),
+                SigmaString("*Zvb2Jhc*"),
+                SigmaString("*mb29iYX*"),
+            ])
         ],
         ConditionAND,
         auto_modifiers=False,

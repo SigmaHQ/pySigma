@@ -1,6 +1,15 @@
+import re
 import pytest
 from sigma.types import SigmaBool, SigmaCompareExpression, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
+
+@pytest.fixture
+def sigma_string():
+    return SigmaString("*Test*Str\\*ing*")
+
+@pytest.fixture
+def empty_sigma_string():
+    return SigmaString("")
 
 def test_strings_empty():
     assert SigmaString().s == tuple()
@@ -40,6 +49,10 @@ def test_string_placeholders_single():
 
 def test_string_placeholders_multi():
     assert SigmaString("%start%te*st1%middle%te?st2%end%").insert_placeholders().s == (Placeholder("start"), "te", SpecialChars.WILDCARD_MULTI, "st1", Placeholder("middle"), "te", SpecialChars.WILDCARD_SINGLE, "st2", Placeholder("end"))
+
+def test_string_replace_with_placeholder():
+    assert SigmaString("testx1xfoox1xtest*x2x*bar*x3x").replace_with_placeholder(re.compile("x\\dx"), "test").s == \
+        ("test", Placeholder("test"), "foo", Placeholder("test"), "test", SpecialChars.WILDCARD_MULTI, Placeholder("test"), SpecialChars.WILDCARD_MULTI, "bar", SpecialChars.WILDCARD_MULTI, Placeholder("test"))
 
 def test_string_placeholders_replace():
     def callback(p):
@@ -145,8 +158,8 @@ def test_strings_to_plain():
 def test_strings_to_bytes():
     assert bytes(SigmaString("test*?")) == b"test*?"
 
-def test_strings_len():
-    assert len(SigmaString("foo*bar?")) == 8
+def test_strings_len(sigma_string):
+    assert len(sigma_string) == 14
 
 def test_strings_iter():
     assert list(SigmaString("foo*bar")) == ["f", "o", "o", SpecialChars.WILDCARD_MULTI, "b", "a", "r"]
@@ -161,6 +174,60 @@ def test_strings_convert_no_multiwildcard():
 def test_strings_convert_no_singlewildcard():
     with pytest.raises(SigmaValueError, match="Single-character wildcard"):
         SigmaString("foo?bar").convert(wildcard_single=None)
+
+def test_string_index(sigma_string):
+    assert sigma_string[3] == SigmaString("s")
+
+def test_string_index_negative(sigma_string):
+    assert sigma_string[-1] == SigmaString("*")
+
+def test_string_index_open_start(sigma_string):
+    assert sigma_string[:3] == SigmaString("*Te")
+
+def test_string_index_slice_without_escaped(sigma_string):
+    assert sigma_string[3:9] == SigmaString("st*Str")
+
+def test_string_index_slice_with_escaped(sigma_string):
+    assert sigma_string[3:10] == SigmaString("st*Str\\*")
+
+def test_string_index_slice_start_and_end_in_same_string_part(sigma_string):
+    assert sigma_string[2:4] == SigmaString("es")
+
+def test_string_index_slice_negative_end(sigma_string):
+    assert sigma_string[3:-1] == SigmaString("st*Str\\*ing")
+
+def test_string_index_slice_cut_first_and_last(sigma_string):
+    assert sigma_string[1:-1] == SigmaString("Test*Str\\*ing")
+
+def test_empty_string_index_slice_cut_first_and_last(empty_sigma_string):
+    assert empty_sigma_string[1:-1] == SigmaString("")
+
+def test_string_index_slice_negative_start_and_end(sigma_string):
+    assert sigma_string[-3:-1] == SigmaString("ng")
+
+def test_string_index_slice_open_end_with_escaped(sigma_string):
+    assert sigma_string[9:] == SigmaString("\\*ing*")
+
+def test_string_index_slice_open_end_without_escaped(sigma_string):
+    assert sigma_string[10:] == SigmaString("ing*")
+
+def test_string_index_slice_empty_result(sigma_string):
+    assert sigma_string[4:2] == SigmaString("")
+
+def test_string_index_slice_start_after_end(sigma_string):
+    with pytest.raises(IndexError, match="out of range"):
+        assert sigma_string[100:]
+
+def test_string_index_slice_open_start_negative_end(sigma_string):
+    assert sigma_string[:-1] == SigmaString("*Test*Str\\*ing")
+
+def test_string_index_invalid_type(sigma_string):
+    with pytest.raises(TypeError, match="indices must be"):
+        sigma_string["invalid"]
+
+def test_string_index_slice_with_step(sigma_string):
+    with pytest.raises(IndexError, match="slice index with step"):
+        sigma_string[2:8:2]
 
 def test_number_int():
     assert SigmaNumber(123).number == 123

@@ -1,5 +1,6 @@
+from math import inf
 from enum import Enum, auto
-from typing import ClassVar, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
+from typing import ClassVar, Pattern, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -100,6 +101,91 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
 
+    def __getitem__(self, idx : Union[int, slice]) -> "SigmaString":
+        """
+        Index SigmaString parts with transparent handling of special characters.
+
+        :param key: Integer index or slice.
+        :type key: Union[int, slice]
+        :return: SigmaString containing only the specified part.
+        :rtype: SigmaString
+        """
+        # Set start and end indices from given index
+        length = len(self)
+        if isinstance(idx, int):
+            start = idx
+            end = None
+        elif isinstance(idx, slice):
+            if idx.step is not None:
+                raise IndexError("SigmaString slice index with step is not allowed")
+            start = idx.start or 0
+            end = idx.stop or inf
+        else:
+            raise TypeError("SigmaString indices must be integers or slices")
+
+        # Handling of negative indices and deferred setting of end index if only character index was set
+        if start < 0:
+            start = length + start
+        if end is None:
+            end = start + 1
+        elif end < 0:
+            end = length + end
+
+        # Range checks
+        if start > end:
+            return SigmaString("")
+        if start < 0 or end < 0 or start >= length or (end != inf and end > length):
+            raise IndexError("SigmaString index out of range")
+
+        i = 0               # Pointer to SigmaString element
+        result = []    # Result: indexed string part
+
+        # Find start. The variables start and end now contain the remaining characters until the
+        # indexed part begins/ends relative to the current element.
+        while start > 0 and i < len(self.s):
+            e = self.s[i]
+            if isinstance(e, str):      # Current SigmaString part is string
+                e_len = len(e)
+                #if e_len <= start:
+                if e_len > start:
+                #else:
+                    if end < e_len:     # end lies within this string part
+                        return SigmaString(e[start:end])
+                    else:               # end lies behind the current string part
+                        result.append(e[start:])
+                        #end -= start
+                        #start = 0
+                start -= e_len
+                end -= e_len
+            else:                       # Current SigmaString part is a special character or placeholder
+                start -= 1
+                end -= 1
+
+            i += 1
+
+        # Append until end of string or indexed part is reached.
+        while end > 0 and i < len(self.s):
+            e = self.s[i]
+            if isinstance(e, str):      # Current SigmaString part is string
+                e_len = len(e)
+                if end < e_len:         # end lies within this string part
+                    result.append(e[:end])
+                else:
+                    result.append(e)
+                end -= e_len
+            else:                       # Current SigmaString part is a special character or placeholder
+                result.append(e)
+                end -= 1
+
+            i += 1
+
+        if len(result) == 0:   # Special case: start begins after string - return empty string
+            return SigmaString("")
+        else:                       # Return calculated result
+            s = SigmaString()
+            s.s = tuple(result)
+            return s
+
     def insert_placeholders(self) -> "SigmaString":
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
@@ -123,6 +209,43 @@ class SigmaString(SigmaType):
         self.s = tuple(res)     # finally replace the string with the result
 
         return self
+
+    def replace_with_placeholder(self, regex : Pattern, placeholder_name : str) -> "SigmaString":
+        """
+        Replace all occurrences of string part matching regular expression with placeholder.
+
+        :param regex: regular expression that should be matched.
+        :type regex: Pattern
+        :param placeholder_name: name of placeholder that should be inserted.
+        :type placeholder_name: str
+        :return: Returns a string with the replacement placeholders.
+        :rtype: SigmaString
+        """
+        result = []
+        for e in self.s:
+            if isinstance(e, str):
+                matched = False
+                i = 0
+                for m in regex.finditer(e):
+                    matched = True
+                    s = e[i:m.start()]
+                    if s != "":
+                        result.append(s)
+                    result.append(Placeholder(placeholder_name))
+                    i = m.end()
+
+                if matched:     # if matched, append remainder of string
+                    s = e[i:]
+                    if s != "":
+                        result.append(s)
+                else:     # no matches: append original string
+                    result.append(e)
+            else:
+                result.append(e)
+
+        s = self.__class__()
+        s.s = tuple(result)
+        return s
 
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
@@ -174,6 +297,9 @@ class SigmaString(SigmaType):
             for s in self.s
         )
 
+    def __repr__(self) -> str:
+        return str(self.s)
+
     def to_plain(self):
         """Return plain string representation of SigmaString, equivalent to converting it with str()."""
         return (str(self))
@@ -182,7 +308,11 @@ class SigmaString(SigmaType):
         return str(self).encode()
 
     def __len__(self) -> int:
-        return len(str(self))
+        return sum((
+            len(e) if isinstance(e, str)    # count string parts with number of characters
+            else 1                          # everything else is counted as single character
+            for e in self.s
+        ))
 
     def startswith(self, val : Union[str, SpecialChars]) -> bool:
         """Check if string starts with a given string or special character."""
@@ -256,7 +386,6 @@ class SigmaString(SigmaType):
                     for replacement in callback(placeholder)                        # iterate over all callback result values
                     for result_suffix in suffix.replace_placeholders(callback)      # iterate over all result values of calling this method with the SigmaString remainder
                 ]
-
 
     def __iter__(self) -> Iterable[Union[str, SpecialChars]]:
         for item in self.s:
@@ -484,6 +613,21 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
         if field is None and self.has_field_placeholder():
             raise SigmaValueError(f"Query expression '{ self.expr }' has a field placeholder but no field was given in finalization")
         return self.expr.format(field=field)
+
+@dataclass
+class SigmaExpansion(NoPlainConversionMixin, SigmaType):
+    """
+    Special purpose type for correct logic linking of values expanded by modifiers. In the usual
+    cases the writer of a Sigma rule expects the values expanded by modifiers like base64offset or
+    windash are OR-linked, even if the value list containing the original values is linked with AND
+    by modifying it with 'all'. A SigmaExpansion is emitted by such modifiers, contains the
+    expanded values and is converted as follows:
+
+    1. the whole expansion is handled as group which is enclosed in parentheses.
+    2. the values contained in the expansion are linked with OR, independend from the linking of the
+       context that encloses the expansion.
+    """
+    values : List[SigmaType]
 
 type_map = {
     bool        : SigmaBool,

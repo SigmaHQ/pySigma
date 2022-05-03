@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from sigma.conditions import SigmaCondition
-from typing import Iterable, List, Dict, Optional, Union, Pattern, Iterator
+from typing import Any, Iterable, List, Dict, Optional, Union, Pattern, Iterator
 from dataclasses import dataclass, field
 import dataclasses
 import random
@@ -373,6 +373,16 @@ class ReplaceStringTransformation(ValueTransformation):
             return SigmaString(self.re.sub(self.replacement, str(val)))
 
 @dataclass
+class SetStateTransformation(Transformation):
+    """Set pipeline state key to value."""
+    key : str
+    val : Any
+
+    def apply(self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule) -> None:
+        super().apply(pipeline, rule)
+        pipeline.state[self.key] = self.val
+
+@dataclass
 class RuleFailureTransformation(Transformation):
     """
     Raise a SigmaTransformationError with the provided message. This enables transformation
@@ -407,6 +417,7 @@ transformations : Dict[str, Transformation] = {
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
     "replace_string": ReplaceStringTransformation,
+    "set_state": SetStateTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

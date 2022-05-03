@@ -15,9 +15,10 @@ from sigma.modifiers import \
     SigmaLessThanEqualModifier, \
     SigmaGreaterThanModifier, \
     SigmaGreaterThanEqualModifier, \
-    SigmaExpandModifier
+    SigmaExpandModifier, \
+    SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaExpansion, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -104,10 +105,12 @@ def test_base64_wildcards(dummy_detection_item):
 
 def test_base64offset(dummy_detection_item):
     assert SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("foobar")) == [
-        SigmaString("Zm9vYmFy"),
-        SigmaString("Zvb2Jhc"),
-        SigmaString("mb29iYX"),
-        ]
+        SigmaExpansion([
+            SigmaString("Zm9vYmFy"),
+            SigmaString("Zvb2Jhc"),
+            SigmaString("mb29iYX"),
+        ])
+    ]
 
 def test_base64offset_wildcards(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="wildcards is not allowed.*test.yml"):
@@ -123,6 +126,14 @@ def test_wide(dummy_detection_item):
 def test_wide_noascii(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="ascii strings.*test.yml"):
         SigmaWideModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(SigmaString("foobär"))
+
+def test_windash(dummy_detection_item):
+    assert SigmaWindowsDashModifier(dummy_detection_item, []).modify(SigmaString("-param-1 -param2")) == SigmaExpansion([
+        SigmaString("-param-1 -param2"),
+        SigmaString("-param-1 /param2"),
+        SigmaString("/param-1 -param2"),
+        SigmaString("/param-1 /param2"),
+    ])
 
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")

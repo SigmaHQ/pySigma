@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 
 from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
@@ -7,7 +8,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaExpansion, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -58,6 +59,7 @@ class Backend(ABC):
     """
     processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()
+    output_format_processing_pipeline : ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(ProcessingPipeline)
     config : Dict[str, Any]
     default_format : ClassVar[str] = "default"
     collect_errors : bool = False
@@ -69,7 +71,7 @@ class Backend(ABC):
     in_expressions_allow_wildcards : ClassVar[bool] = False       # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
 
     def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False, **kwargs):
-        self.processing_pipeline = self.backend_processing_pipeline + processing_pipeline
+        self.processing_pipeline = processing_pipeline
         self.collect_errors = collect_errors
         self.config = kwargs
 
@@ -92,7 +94,9 @@ class Backend(ABC):
         """
         state = ConversionState()
         try:
-            self.processing_pipeline.apply(rule)        # 1. Apply transformations
+            processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
+            processing_pipeline.apply(rule)             # 1. Apply transformations
+            state.processing_state = processing_pipeline.state
             queries = [                                 # 2. Convert condition
                 self.convert_condition(cond.parsed, state)
                 for cond in rule.detection.parsed_condition
@@ -206,6 +210,17 @@ class Backend(ABC):
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions bound to a field."""
 
+    def convert_condition_field_eq_expansion(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """
+        Convert each value of the expansion with the field from the containing condition and OR-link
+        all converted subconditions.
+        """
+        or_cond = ConditionOR([
+            ConditionFieldEqualsValueExpression(cond.field, value)
+            for value in cond.value.values
+        ], cond.source)
+        return self.convert_condition_or(or_cond, state)
+
     def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
         if isinstance(cond.value, SigmaString):
@@ -224,6 +239,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_null(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
             return self.convert_condition_field_eq_query_expr(cond, state)
+        elif isinstance(cond.value, SigmaExpansion):
+            return self.convert_condition_field_eq_expansion(cond, state)
         else:       # pragma: no cover
             raise TypeError("Unexpected value type class in condition parse tree: " + cond.value.__class__.__name__)
 
@@ -352,6 +369,12 @@ class TextQueryBackend(Backend):
         False: None,
     }
 
+    # String matching operators. if none is appropriate eq_token is used.
+    startswith_expression : ClassVar[Optional[str]] = None
+    endswith_expression   : ClassVar[Optional[str]] = None
+    contains_expression   : ClassVar[Optional[str]] = None
+    wildcard_match_expression : ClassVar[Optional[str]] = None      # Special expression if wildcards can't be matched with the eq_token operator
+
     # Regular expressions
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
@@ -380,23 +403,30 @@ class TextQueryBackend(Backend):
     unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
     unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
 
-    # Query finalization: appending and concatenating deferred query party
+    # Query finalization: appending and concatenating deferred query part
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
     deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
     deferred_only_query : ClassVar[Optional[str]] = None            # String used as query if final query only contains deferred expression
 
-    def compare_precedence(self, outer : ConditionItem, inner : ConditionType) -> bool:
+    def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
         """
         Compare precedence of outer and inner condition items. Return True if precedence of
         enclosing condition item (outer) is lower than the contained (inner) condition item.
         In this case, no additional grouping is required.
         """
+        outer_class = outer.__class__
+        # Special case: Conditions containing a SigmaExpansion value convert into OR conditions and therefore the precedence has to be handled the same way.
+        if isinstance(inner, ( ConditionFieldEqualsValueExpression, ConditionValueExpression )) and isinstance(inner.value, SigmaExpansion):
+            inner_class = ConditionOR
+        else:
+            inner_class = inner.__class__
+
         try:
-            idx_inner = self.precedence.index(inner)
+            idx_inner = self.precedence.index(inner_class)
         except ValueError:      # ConditionItem not in precedence tuple
             idx_inner = -1      # Assume precedence of inner condition item is higher than the outer
 
-        return idx_inner <= self.precedence.index(outer)
+        return idx_inner <= self.precedence.index(outer_class)
 
     def convert_condition_group(self, cond : ConditionItem, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Group condition item."""
@@ -413,7 +443,7 @@ class TextQueryBackend(Backend):
             return joiner.join((
                     converted
                     for converted in (
-                        self.convert_condition(arg, state) if self.compare_precedence(ConditionOR, arg.__class__)
+                        self.convert_condition(arg, state) if self.compare_precedence(cond, arg)
                         else self.convert_condition_group(arg, state)
                         for arg in cond.args
                     )
@@ -446,7 +476,7 @@ class TextQueryBackend(Backend):
             return joiner.join((
                     converted
                     for converted in (
-                        self.convert_condition(arg, state) if self.compare_precedence(ConditionAND, arg.__class__)
+                        self.convert_condition(arg, state) if self.compare_precedence(cond, arg)
                         else self.convert_condition_group(arg, state)
                         for arg in cond.args
                     )
@@ -483,7 +513,38 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = string value expressions"""
         try:
-            return cond.field + self.eq_token + self.str_quote + self.convert_value_str(cond.value, state) + self.str_quote
+            if (                                                                # Check conditions for usage of 'startswith' operator
+                self.startswith_expression is not None                            # 'startswith' operator is defined in backend
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)            # String ends with wildcard
+                and not cond.value[:-1].contains_special()                      # Remainder of string doesn't contains special characters
+                ):
+                expr = self.startswith_expression                               # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                value = cond.value[:-1]
+            elif (                                                              # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
+                self.endswith_expression is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:].contains_special()
+                ):
+                expr = self.endswith_expression
+                value = cond.value[1:]
+            elif (                                                              # contains: string starts and ends with wildcard
+                self.contains_expression is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:-1].contains_special()
+                ):
+                expr = self.contains_expression
+                value = cond.value[1:-1]
+            elif (                                                              # wildcard match expression: string contains wildcard
+                self.wildcard_match_expression is not None
+                and cond.value.contains_special()
+                ):
+                expr = self.wildcard_match_expression
+                value = cond.value
+            else:
+                expr = "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote
+                value = cond.value
+            return expr.format(field=cond.field, value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
 

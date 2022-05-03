@@ -2,7 +2,7 @@ from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation
+from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 from typing import ClassVar, Dict, Tuple
@@ -14,28 +14,64 @@ def test_backend():
         ProcessingPipeline([
             ProcessingItem(FieldMappingTransformation({
                 "fieldB": "mappedB",
-            }))
+            })),
+            ProcessingItem(SetStateTransformation("index", "test")),
         ]),
         testparam="testvalue",
     )
 
-def test_init_processing_pipeline(test_backend):
-    assert test_backend.processing_pipeline == ProcessingPipeline([
-        ProcessingItem(FieldMappingTransformation({
-            "fieldA": "mappedA",
-        })),
-        ProcessingItem(FieldMappingTransformation({
-            "fieldB": "mappedB",
-        })),
-    ])
-
-def test_only_backend_pipeline():
+def test_backend_pipeline():
     test_backend = TextQueryTestBackend()
-    assert test_backend.processing_pipeline == ProcessingPipeline([
-        ProcessingItem(FieldMappingTransformation({
-            "fieldA": "mappedA",
-        })),
-    ])
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """)
+    ) == ['mappedA="valueA" and fieldB="valueB" and fieldC="valueC"']
+
+def test_backend_and_custom_pipeline(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """)
+    ) == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+
+def test_backend_custom_format_pipeline(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """),
+        output_format="test",
+    ) == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
 
 def test_init_config(test_backend):
     assert test_backend.config == { "testparam": "testvalue" }
@@ -54,6 +90,176 @@ def test_convert_value_str(test_backend):
                 condition: sel
         """)
     ) == ['mappedA="value"']
+
+def test_convert_value_str_startswith(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA startswith "value"']
+
+def test_convert_value_str_startswith_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA match "va*lue*"']
+
+def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "startswith_expression", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA match "value*"']
+
+def test_convert_value_str_endswith(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA endswith "value"']
+
+def test_convert_value_str_endswith_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA match "*va*lue"']
+
+def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "endswith_expression", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "value"
+                condition: sel
+        """)
+    ) == ['mappedA match "*value"']
+
+def test_convert_value_str_contains(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "value"
+                condition: sel
+        """)
+    ) == ['mappedA contains "value"']
+
+def test_convert_value_str_contains_further_wildcard(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """)
+    ) == ['mappedA match "*va*lue*"']
+
+def test_convert_value_str_contains_expression_not_defined(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "contains_expression", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "value"
+                condition: sel
+        """)
+    ) == ['mappedA match "*value*"']
+
+def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "wildcard_match_expression", None)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: val*ue
+                condition: sel
+        """)
+    ) == ['mappedA="val*ue"']
+
+def test_convert_value_expansion_with_all(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+        title: Testrule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|windash|contains|all:
+                    - -foo
+                    - -bar
+            condition: selection
+        """)
+    ) == ['(CommandLine contains "-foo" or CommandLine contains "/foo") and (CommandLine contains "-bar" or CommandLine contains "/bar")']
 
 def test_convert_value_num(test_backend):
     assert test_backend.convert(
@@ -284,11 +490,11 @@ def test_convert_or_in_list_with_wildcards_disabled(test_backend):
                 sel:
                     fieldA:
                         - value1
-                        - value2*
+                        - value2
                         - val*ue3
                 condition: sel
         """)
-    ) == ['mappedA="value1" or mappedA="value2*" or mappedA="val*ue3"']
+    ) == ['mappedA="value1" or mappedA="value2" or mappedA match "val*ue3"']
 
 def test_convert_or_in_separate(test_backend):
     assert test_backend.convert(
@@ -706,3 +912,18 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend):
                 condition: sel
         """)
     ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']
+
+def test_convert_state(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """), "state"
+    ) == ['index=test (mappedA="value")']

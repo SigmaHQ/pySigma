@@ -141,7 +141,7 @@ pySigma isn't a monolithic library attempting to support everything but the core
 query languages and log data models is provided by additional packages that extend pySigma:
 
 * [sigma-cli](https://github.com/SigmaHQ/sigma-cli): a command line interface for conversion of
-  Sigma rules based on pySigma. (work in progress, not yet on PyPI)
+  Sigma rules based on pySigma.
 * [pySigma-backend-splunk](https://github.com/SigmaHQ/pySigma-backend-splunk):
 * [pySigma-pipeline-sysmon](https://github.com/SigmaHQ/pySigma-pipeline-sysmon)
 * [pySigma-pipeline-crowdstrike](https://github.com/SigmaHQ/pySigma-pipeline-crowdstrike)

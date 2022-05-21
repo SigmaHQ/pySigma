@@ -447,6 +447,7 @@ class SigmaDetections:
     """Sigma detection section including named detections and condition."""
     detections : Dict[str, SigmaDetection]
     condition : List[str]
+    timeframe : Optional[str] = None
     source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     def __post_init__(self):
@@ -467,7 +468,10 @@ class SigmaDetections:
                 condition = [ detections["condition"] ]
         except KeyError:
             raise sigma_exceptions.SigmaConditionError("Sigma rule must contain at least one condition", source=source)
-
+        try:
+            timeframe = detections["timeframe"]
+        except:
+            timeframe = None
         return cls(
                 detections={
                     name: SigmaDetection.from_definition(definition, source)
@@ -475,6 +479,7 @@ class SigmaDetections:
                     if name != "condition"
                     },
                 condition=condition,
+                timeframe=timeframe,
                 source=source,
                 )
 
@@ -487,10 +492,12 @@ class SigmaDetections:
             condition = self.condition
         else:
             condition = self.condition[0]
-
+        if self.timeframe  != None:
+            timeframe = self.timeframe
         return {
             **detections,
             "condition": condition,
+            "timeframe": timeframe
         }
 
     def __getitem__(self, key : str) -> SigmaDetection:

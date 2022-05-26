@@ -173,6 +173,15 @@ def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeli
         ])
     ])
 
+def test_drop_detection_item_transformation_all(sigma_rule : SigmaRule, dummy_pipeline):
+    transformation = DropDetectionItemTransformation()
+    processing_item = ProcessingItem(
+        transformation,
+        detection_item_conditions=[ IncludeFieldCondition(fields=["field1", "field2", "field3"]) ],
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"].detection_items[0].detection_items == []
+
 @pytest.fixture
 def add_fieldname_suffix_transformation():
     return AddFieldnameSuffixTransformation.from_dict({

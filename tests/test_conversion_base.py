@@ -1,8 +1,9 @@
 from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
+from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
+from sigma.processing.transformations import DropDetectionItemTransformation, FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
 from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 from typing import ClassVar, Dict, Tuple
@@ -588,6 +589,21 @@ def test_convert_and_in_list(test_backend):
         """)
     ) == ['mappedA contains-all ("value1", "value2", "value3")']
 
+def test_convert_and_in_list_single_item(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|all: value1
+                condition: sel
+        """)
+    ) == ['mappedA="value1"']
+
 def test_convert_and_in_list_or_disabled(test_backend):
     test_backend.convert_or_as_in = False
     assert test_backend.convert(
@@ -927,3 +943,53 @@ def test_convert_state(test_backend):
                 condition: sel
         """), "state"
     ) == ['index=test (mappedA="value")']
+
+def test_convert_dropped_detection_item_and():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline([
+            ProcessingItem(
+                DropDetectionItemTransformation(),
+                detection_item_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
+            ),
+        ]),
+    )
+    assert backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 and sel2
+        """)
+    ) == ['fieldB="value"']
+
+def test_convert_dropped_detection_item_or():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline([
+            ProcessingItem(
+                DropDetectionItemTransformation(),
+                detection_item_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
+            ),
+        ]),
+    )
+    assert backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 or sel2
+        """)
+    ) == ['fieldB="value"']

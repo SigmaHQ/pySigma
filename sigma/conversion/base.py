@@ -128,6 +128,10 @@ class Backend(ABC):
            or not self.convert_and_as_in and isinstance(cond, ConditionAND)):
            return False
 
+        # Check if more than one argument is present
+        #if len(cond.args <= 1):
+        #    return False
+
         # All arguments of the given condition must reference a field
         if not all((
             isinstance(arg, ConditionFieldEqualsValueExpression)

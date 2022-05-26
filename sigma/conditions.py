@@ -88,7 +88,16 @@ class ConditionItem(ParentChainMixin, ABC):
             arg.postprocess(detections, self, source)
             for arg in self.args
         ]
-        return self
+        self.args = list(       # filter all None entries from argument list. These can be caused by empty detection items from applied transformations.
+            filter(
+                lambda arg: arg is not None,
+                self.args
+            )
+        )
+        if self.arg_count > 1 and len(self.args) == 1:  # multi-argument condition (AND, OR) has only one argument left: return the single argument
+            return self.args[0]
+        else:
+            return self
 
 @dataclass
 class ConditionOR(ConditionItem):

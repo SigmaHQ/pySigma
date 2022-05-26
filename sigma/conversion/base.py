@@ -472,7 +472,7 @@ class TextQueryBackend(Backend):
                 joiner = self.and_token
             else:
                 joiner = self.token_separator + self.and_token + self.token_separator
-
+            cond.args = list(filter((None).__ne__,cond.args)) # Remove None field in cond.args
             return joiner.join((
                     converted
                     for converted in (

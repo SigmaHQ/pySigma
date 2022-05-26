@@ -1,3 +1,0 @@
-# Transient solution until found reasonable solution to use pyproject.toml in ReadTheDocs.
-pyyaml ~= 5.3.1
-pyparsing ~= 2.4.7

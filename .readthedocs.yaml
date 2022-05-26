@@ -3,8 +3,13 @@ build:
   os: ubuntu-20.04
   tools:
     python: "3.9"
-python:
-  install:
-    - requirements: docs/requirements.txt
+  jobs:
+    pre_create_environment:
+      - asdf plugin add poetry
+      - asdf install poetry latest
+      - asdf global poetry latest
+      - poetry config virtualenvs.create false
+    post_install:
+      - poetry install
 sphinx:
    configuration: docs/conf.py

@@ -53,9 +53,22 @@ The following items are expected on the root level of the YAML file:
   Lower priorities are used first.
 * `transformations`: contains a list of transformation items.
 
-Common used priorities are:
+Some conventions used for processing pipeline priorities are:
 
-* 10: log source pipelines like for Sysmon.
+.. list-table::
+   :header-rows: 1
+
+   * - Priority
+     - Description
+   * - 10
+     - Log source pipelines like for Sysmon.
+   * - 20
+     - Pipelines provided by backend packages that should be run before the backend pipeline.
+   * - 50
+     - Backend pipelines that are integrated in the backend and applied automatically.
+   * - 60
+     - Backend output format pipelines that are integrated in the backend and applied automatically for
+       the asscoiated output format.
 
 Pipelines with the same priority are applied in the order they were provided. Pipelines without a
 priority are assumed to have the priority 0.

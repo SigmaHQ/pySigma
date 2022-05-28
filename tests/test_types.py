@@ -299,22 +299,26 @@ def test_conversion_none():
     assert sigma_type(None) == SigmaNull()
 
 def test_query_expression():
-    assert str(SigmaQueryExpression("test\\test*test?test[]")) == "test\\test*test?test[]"
+    assert str(SigmaQueryExpression("test\\test*test?test[]", "id")) == "test\\test*test?test[]"
 
 def test_query_expression_finalize():
-    assert SigmaQueryExpression("xxx{field}zzz").finalize("yyy") == "xxxyyyzzz"
+    assert SigmaQueryExpression("{field} in list({id})", "id").finalize("xxx") == "xxx in list(id)"
 
 def test_query_expression_finalize_nofield_error():
     with pytest.raises(SigmaValueError, match="no field was given"):
-        SigmaQueryExpression("xxx{field}zzz").finalize()
+        SigmaQueryExpression("{field} in list({id})", "id").finalize()
 
 def test_query_expression_to_plain():
     with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
-        SigmaQueryExpression("test").to_plain()
+        SigmaQueryExpression("test", "id").to_plain()
 
-def test_query_expression_wrong_type():
+def test_query_expression_wrong_expr_type():
     with pytest.raises(SigmaTypeError, match="must be a string"):
-        SigmaQueryExpression(123)
+        SigmaQueryExpression(123, "id")
+
+def test_query_expression_wrong_id_type():
+    with pytest.raises(SigmaTypeError, match="must be a string"):
+        SigmaQueryExpression("123", 123)
 
 def test_cidr_ok():
     assert SigmaCIDRExpression("192.168.1.0/24")

@@ -598,10 +598,13 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
     process by backend-specific processing pipelines or the backend itself.
     """
     expr : str
+    id : str
 
     def __post_init__(self):
         if not isinstance(self.expr, str):
-            raise SigmaTypeError("SigmaQueryExpression must be a string")
+            raise SigmaTypeError("SigmaQueryExpression expression must be a string")
+        if not isinstance(self.id, str):
+            raise SigmaTypeError("SigmaQueryExpression placeholder identifier must be a string")
 
     def __str__(self):
         return self.expr
@@ -612,7 +615,7 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
     def finalize(self, field : Optional[str] = None) -> str:
         if field is None and self.has_field_placeholder():
             raise SigmaValueError(f"Query expression '{ self.expr }' has a field placeholder but no field was given in finalization")
-        return self.expr.format(field=field)
+        return self.expr.format(field=field, id=self.id)
 
 @dataclass
 class SigmaExpansion(NoPlainConversionMixin, SigmaType):

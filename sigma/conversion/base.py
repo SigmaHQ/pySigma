@@ -362,6 +362,7 @@ class TextQueryBackend(Backend):
     eq_token  : ClassVar[Optional[str]] = None      # Token inserted between field and value (without separator)
 
     # String output
+    field_quote       : ClassVar[str] = "'"       # [New] changed field quoting character (added as escaping character)
     str_quote       : ClassVar[Optional[str]] = None    # string quoting character (added as escaping character)
     escape_char     : ClassVar[Optional[str]] = None    # Escaping character for special characrers inside string
     wildcard_multi  : ClassVar[Optional[str]] = None    # Character used as multi-character wildcard
@@ -476,7 +477,7 @@ class TextQueryBackend(Backend):
                 joiner = self.and_token
             else:
                 joiner = self.token_separator + self.and_token + self.token_separator
-
+            
             return joiner.join((
                     converted
                     for converted in (
@@ -546,7 +547,7 @@ class TextQueryBackend(Backend):
                 expr = self.wildcard_match_expression
                 value = cond.value
             else:
-                expr = "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote
+                expr =  self.field_quote + "{field}" + self.field_quote + self.eq_token + self.str_quote + "{value}" + self.str_quote # [New]
                 value = cond.value
             return expr.format(field=cond.field, value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
@@ -555,14 +556,14 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = number value expressions"""
         try:
-            return cond.field + self.eq_token + str(cond.value)
+            return self.field_quote + cond.field + self.field_quote + self.eq_token + str(cond.value)
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 
     def convert_condition_field_eq_val_bool(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = bool value expressions"""
         try:
-            return cond.field + self.eq_token + self.bool_values[cond.value.boolean]
+            return self.field_quote + cond.field + self.field_quote + self.eq_token + self.bool_values[cond.value.boolean]
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 

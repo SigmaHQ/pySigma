@@ -368,8 +368,9 @@ def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple : Sigm
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
 
 def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only : SigmaRule):
+    expr = "{field} lookup {id}"
     transformation = QueryExpressionPlaceholderTransformation(
-        expression="{field} lookup {id}",
+        expression=expr,
         mapping={
             "var2": "placeholder2"
         }
@@ -377,9 +378,9 @@ def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only : S
     transformation.apply(dummy_pipeline, sigma_rule_placeholders_only)
     assert sigma_rule_placeholders_only.detection.detections["test"] == SigmaDetection([
         SigmaDetection([
-            SigmaDetectionItem("field1", [SigmaExpandModifier], [ SigmaQueryExpression("field1 lookup var1") ], auto_modifiers=False),
-            SigmaDetectionItem("field2", [SigmaExpandModifier], [ SigmaQueryExpression("field2 lookup placeholder2") ], auto_modifiers=False),
-            SigmaDetectionItem("field3", [SigmaExpandModifier], [ SigmaQueryExpression("field3 lookup var3") ], auto_modifiers=False),
+            SigmaDetectionItem("field1", [SigmaExpandModifier], [ SigmaQueryExpression(expr, "var1") ], auto_modifiers=False),
+            SigmaDetectionItem("field2", [SigmaExpandModifier], [ SigmaQueryExpression(expr, "placeholder2") ], auto_modifiers=False),
+            SigmaDetectionItem("field3", [SigmaExpandModifier], [ SigmaQueryExpression(expr, "var3") ], auto_modifiers=False),
         ])
     ])
 

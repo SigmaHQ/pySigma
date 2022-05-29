@@ -88,9 +88,10 @@ def test_convert_value_str(test_backend):
             detection:
                 sel:
                     fieldA: value
+                    field A: value
                 condition: sel
         """)
-    ) == ['mappedA="value"']
+    ) == ['mappedA="value" and \'field A\'="value"']
 
 def test_convert_value_str_startswith(test_backend):
     assert test_backend.convert(
@@ -103,9 +104,10 @@ def test_convert_value_str_startswith(test_backend):
             detection:
                 sel:
                     fieldA|startswith: "value"
+                    field A|startswith: "value"
                 condition: sel
         """)
-    ) == ['mappedA startswith "value"']
+    ) == ['mappedA startswith "value" and \'field A\' startswith "value"']
 
 def test_convert_value_str_startswith_further_wildcard(test_backend):
     assert test_backend.convert(
@@ -118,9 +120,10 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
             detection:
                 sel:
                     fieldA|startswith: "va*lue"
+                    field A|startswith: "va*lue"
                 condition: sel
         """)
-    ) == ['mappedA match "va*lue*"']
+    ) == ['mappedA match "va*lue*" and \'field A\' match "va*lue*"']
 
 def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "startswith_expression", None)
@@ -149,9 +152,10 @@ def test_convert_value_str_endswith(test_backend):
             detection:
                 sel:
                     fieldA|endswith: "value"
+                    field A|endswith: "value"
                 condition: sel
         """)
-    ) == ['mappedA endswith "value"']
+    ) == ['mappedA endswith "value" and \'field A\' endswith "value"']
 
 def test_convert_value_str_endswith_further_wildcard(test_backend):
     assert test_backend.convert(
@@ -164,9 +168,10 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
             detection:
                 sel:
                     fieldA|endswith: "va*lue"
+                    field A|endswith: "va*lue"
                 condition: sel
         """)
-    ) == ['mappedA match "*va*lue"']
+    ) == ['mappedA match "*va*lue" and \'field A\' match "*va*lue"']
 
 def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "endswith_expression", None)
@@ -195,9 +200,10 @@ def test_convert_value_str_contains(test_backend):
             detection:
                 sel:
                     fieldA|contains: "value"
+                    field A|contains: "value"
                 condition: sel
         """)
-    ) == ['mappedA contains "value"']
+    ) == ['mappedA contains "value" and \'field A\' contains "value"']
 
 def test_convert_value_str_contains_further_wildcard(test_backend):
     assert test_backend.convert(
@@ -273,9 +279,10 @@ def test_convert_value_num(test_backend):
             detection:
                 sel:
                     fieldA: 123
+                    field A: 123
                 condition: sel
         """)
-    ) == ['mappedA=123']
+    ) == ['mappedA=123 and \'field A\'=123']
 
 def test_convert_value_bool(test_backend):
     assert test_backend.convert(
@@ -289,9 +296,10 @@ def test_convert_value_bool(test_backend):
                 sel:
                     fieldA: true
                     fieldB: false
+                    field B: false
                 condition: sel
         """)
-    ) == ['mappedA=1 and mappedB=0']
+    ) == ['mappedA=1 and mappedB=0 and \'field B\'=0']
 
 def test_convert_value_null(test_backend):
     assert test_backend.convert(
@@ -304,9 +312,10 @@ def test_convert_value_null(test_backend):
             detection:
                 sel:
                     fieldA: null
+                    field A: null
                 condition: sel
         """)
-    ) == ['mappedA is null']
+    ) == ['mappedA is null and \'field A\' is null']
 
 def test_convert_query_expr():
     pipeline = ProcessingPipeline([
@@ -323,9 +332,10 @@ def test_convert_query_expr():
             detection:
                 sel:
                     fieldA|expand: "%test%"
+                    field A|expand: "%test%"
                 condition: sel
         """)
-    ) == ['mappedA in list(test)']
+    ) == ['mappedA in list(test) and \'field A\' in list(test)']
 
 def test_convert_query_expr_unbound():
     pipeline = ProcessingPipeline([
@@ -357,9 +367,10 @@ def test_convert_value_regex(test_backend):
             detection:
                 sel:
                     fieldA|re: pat.*tern/foobar
+                    field A|re: pat.*tern/foobar
                 condition: sel
         """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/']
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*tern\\/foo\\bar/']
 
 def test_convert_value_regex_unbound(test_backend):
     assert test_backend.convert(
@@ -387,9 +398,10 @@ def test_convert_value_cidr_wildcard_none(test_backend):
             detection:
                 sel:
                     fieldA|cidr: 192.168.0.0/14
+                    field A|cidr: 192.168.0.0/14
                 condition: sel
         """)
-    ) == ['mappedA=192.168.0.0/14']
+    ) == ['mappedA=192.168.0.0/14 and \'field A\'=192.168.0.0/14']
 
 
 def test_convert_value_cidr_wildcard_asterisk(test_backend):
@@ -405,9 +417,10 @@ def test_convert_value_cidr_wildcard_asterisk(test_backend):
             detection:
                 sel:
                     fieldA|cidr: 192.168.0.0/14
+                    field A|cidr: 192.168.0.0/14
                 condition: sel
         """)
-    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") and \'field A\' in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
 
 def test_convert_compare(test_backend):
     assert test_backend.convert(
@@ -420,12 +433,16 @@ def test_convert_compare(test_backend):
             detection:
                 sel:
                     fieldA|lt: 123
+                    field A|lt: 123
                     fieldB|lte: 123
+                    field B|lte: 123
                     fieldC|gt: 123
+                    field C|gt: 123
                     fieldD|gte: 123
+                    field D|gte: 123
                 condition: sel
         """)
-    ) == ['mappedA<123 and mappedB<=123 and fieldC>123 and fieldD>=123']
+    ) == ['mappedA<123 and \'field A\'<123 and mappedB<=123 and \'field B\'<=123 and fieldC>123 and \'field C\'>123 and fieldD>=123 and \'field D\'>=123']
 
 def test_convert_compare_str(test_backend):
     with pytest.raises(SigmaTypeError, match="incompatible to value type"):
@@ -456,9 +473,13 @@ def test_convert_or_in_list(test_backend):
                         - value1
                         - value2
                         - value3
+                    field A:
+                        - value1
+                        - value2
+                        - value3
                 condition: sel
         """)
-    ) == ['mappedA in ("value1", "value2", "value3")']
+    ) == ['(mappedA in ("value1", "value2", "value3")) and (\'field A\' in ("value1", "value2", "value3"))']
 
 def test_convert_or_in_list_with_wildcards(test_backend):
     assert test_backend.convert(
@@ -585,9 +606,13 @@ def test_convert_and_in_list(test_backend):
                         - value1
                         - value2
                         - value3
+                    field A|all:
+                        - value1
+                        - value2
+                        - value3
                 condition: sel
         """)
-    ) == ['mappedA contains-all ("value1", "value2", "value3")']
+    ) == ['mappedA contains-all ("value1", "value2", "value3") and \'field A\' contains-all ("value1", "value2", "value3")']
 
 def test_convert_and_in_list_single_item(test_backend):
     assert test_backend.convert(

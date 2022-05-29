@@ -315,7 +315,7 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
             if len(val.s) == 1:     # Sigma string must only contain placeholder, nothing else.
                 p = val.s[0]
                 if self.is_handled_placeholder(p):
-                    return SigmaQueryExpression(self.expression.format(field=field, id=self.mapping.get(p.name) or p.name))
+                    return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)
             else:       # SigmaString contains placeholder as well as other parts
                 raise SigmaValueError(f"Placeholder query expression transformation only allows placeholder-only strings.")
         return None

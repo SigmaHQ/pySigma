@@ -118,8 +118,12 @@ Rule Conditions
 
    "Identifier", "Class"
    "logosurce", "LogsourceCondition"
+   "contains_detection_item", "RuleContainsDetectionItemCondition"
+   "processing_item_applied", "RuleProcessingItemAppliedCondition"
 
 .. autoclass:: sigma.processing.conditions.LogsourceCondition
+.. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
+.. autoclass:: sigma.processing.conditions.RuleProcessingItemAppliedCondition
 
 Detection Item Conditions
 =========================
@@ -131,10 +135,12 @@ Detection Item Conditions
    "include_fields", "IncludeFieldCondition"
    "exclude_fields", "ExcludeFieldCondition"
    "match_string", "MatchStringCondition"
+   "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
 
 .. autoclass:: sigma.processing.conditions.IncludeFieldCondition
 .. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
 .. autoclass:: sigma.processing.conditions.MatchStringCondition
+.. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
 
 Base Classes
 ============
@@ -169,6 +175,7 @@ definitions are available:
    "field_name_mapping", "FieldMappingTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
+   "drop_detection_item", "DropDetectionItemTransformation",
    "wildcard_placeholders", "WildcardPlaceholderTransformation"
    "value_placeholders", "ValueListPlaceholderTransformation"
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
@@ -181,6 +188,7 @@ definitions are available:
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnameSuffixTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnamePrefixTransformation
+.. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
 .. autoclass:: sigma.processing.transformations.WildcardPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.ValueListPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.QueryExpressionPlaceholderTransformation

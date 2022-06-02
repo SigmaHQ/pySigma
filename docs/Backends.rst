@@ -9,6 +9,9 @@ naming or differences in value representation. Use ::doc:`Processing_Pipelines` 
 To implement a conversion for a new query language derive an appropriate backend base class from
 below and override properties or methods as required.
 
+Use the [Cookiecutter template](https://github.com/SigmaHQ/cookiecutter-pySigma-backend) to start a
+new backend.
+
 Concepts
 ********
 

@@ -22,7 +22,7 @@ poetry add pysigma
 
 Documentation with some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
 
-## Creating You Own Backend for pySigma
+## Create Your Own Backend for pySigma
 
 The creation of a backend has become much easier with pySigma. We recommend using the "Cookie Cutter Template" and reviewing the existing backends listed in the "Related Projects" section of this README.
 

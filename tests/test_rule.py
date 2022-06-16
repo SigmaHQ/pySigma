@@ -22,7 +22,7 @@ def test_sigmaruletag_fromstr():
     assert SigmaRuleTag.from_str("namespace.name") == SigmaRuleTag("namespace", "name")
 
 def test_sigmaruletag_fromstr_nodot():
-    with pytest.raises(ValueError):
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="must start with namespace"):
         SigmaRuleTag.from_str("tag")
 
 def test_sigmaruletag_fromstr_3dots():

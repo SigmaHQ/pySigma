@@ -11,7 +11,7 @@ from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_ma
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionValueExpression, ParentChainMixin
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaRuleLocation, SigmaValueError
 
 class EnumLowercaseStringMixin:
     def __str__(self) -> str:
@@ -40,7 +40,10 @@ class SigmaRuleTag:
     @classmethod
     def from_str(cls, tag : str, source : Optional[SigmaRuleLocation] = None) -> "SigmaRuleTag":
         """Build SigmaRuleTag class from plain text tag string."""
-        ns, n = tag.split(".", maxsplit=1)
+        try:
+            ns, n = tag.split(".", maxsplit=1)
+        except ValueError as e:
+            raise SigmaValueError("Sigma tag must start with namespace separated with dot from remaining tag.")
         return cls(ns, n)
 
     def __str__(self) -> str:

@@ -22,6 +22,12 @@ poetry add pysigma
 
 Documentation with some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
 
+## Create Your Own Backend for pySigma
+
+The creation of a backend has become much easier with pySigma. We recommend using the "Cookie Cutter Template" and reviewing the existing backends listed in the "Related Projects" section of this README.
+
+[pySigma Cookie Cutter Template](https://github.com/SigmaHQ/cookiecutter-pySigma-backend)
+
 ## Features
 
 `pySigma` brings a number of additional features compared to `sigmac`, as well as some changes.
@@ -142,7 +148,7 @@ query languages and log data models is provided by additional packages that exte
 
 * [sigma-cli](https://github.com/SigmaHQ/sigma-cli): a command line interface for conversion of
   Sigma rules based on pySigma.
-* [pySigma-backend-splunk](https://github.com/SigmaHQ/pySigma-backend-splunk):
+* [pySigma-backend-splunk](https://github.com/SigmaHQ/pySigma-backend-splunk)
 * [pySigma-pipeline-sysmon](https://github.com/SigmaHQ/pySigma-pipeline-sysmon)
 * [pySigma-pipeline-crowdstrike](https://github.com/SigmaHQ/pySigma-pipeline-crowdstrike)
 

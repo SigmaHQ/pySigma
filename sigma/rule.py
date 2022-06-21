@@ -416,7 +416,7 @@ class SigmaDetection(ParentChainMixin):
                                 del merged[k]
 
                 return {
-                    k: (v[0] if len(v) == 1 else v)
+                    k: (v[0] if isinstance(v, list) and len(v) == 1 else v)
                     for k, v in merged.items()
                 }
             else:       # only lists and plain values, merge them into one list

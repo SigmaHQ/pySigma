@@ -3,7 +3,7 @@ from datetime import date
 from uuid import UUID
 from sigma import conditions
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
-from sigma.types import SigmaExpansion, SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
+from sigma.types import SigmaBool, SigmaExpansion, SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.modifiers import SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaRegularExpressionModifier, SigmaAllModifier
 from sigma.conditions import ConditionFieldEqualsValueExpression, ConditionValueExpression, SigmaCondition, ConditionAND, ConditionOR
 import sigma.exceptions as sigma_exceptions
@@ -231,6 +231,19 @@ def test_sigmadetection_mixed():
         SigmaDetectionItem("key_1", [], [ SigmaString("value_1") ]),
         SigmaDetection([ SigmaDetectionItem("key_2", [], [ SigmaString("value_2") ])]),
         ])
+
+def test_sigmadetection_to_plain():
+    assert SigmaDetection([
+        SigmaDetectionItem("test_str", [], [ SigmaString("test") ]),
+        SigmaDetectionItem("test_num", [], [ SigmaNumber(123) ]),       # Issue #56
+        SigmaDetectionItem("test_bool", [], [ SigmaBool(True) ]),
+        SigmaDetectionItem("test_null", [], [ SigmaNull() ]),
+    ]).to_plain() == {
+        "test_str": "test",
+        "test_num": 123,
+        "test_bool": True,
+        "test_null": None,
+    }
 
 ### SigmaDetections tests ###
 

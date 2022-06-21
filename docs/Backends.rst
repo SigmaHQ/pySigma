@@ -12,6 +12,17 @@ below and override properties or methods as required.
 Use the `Cookiecutter template <https://github.com/SigmaHQ/cookiecutter-pySigma-backend>`_ to start a
 new backend.
 
+Conventions
+***********
+
+* Always implement the default output format in a way that the user does get some directly
+  actionable output if she/he doesn't explicitely chooses a format.
+* Don't do any concatenation of simple queries in the basic default format, the CLI or other tools
+  will take care of this.
+* Don't print any output to the console or create files from the backend. Return text output as
+  string or file output as bytes. The tools using your backend will take care of the proper handling
+  of the result.
+
 Concepts
 ********
 

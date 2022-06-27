@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+import re
 
 from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
@@ -363,10 +364,15 @@ class TextQueryBackend(Backend):
 
     # String output
     ## Fields
+    ### Quoting
     field_quote : ClassVar[Optional[str]] = None                # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
     field_quote_pattern : ClassVar[Optional[Pattern]] = None    # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
     field_quote_pattern_negation : ClassVar[bool] = True        # Negate field_quote_pattern result. Field name is quoted if pattern doesn't matches if set to True (default).
-    # TODO: add field name escaping at least for quote character
+
+    ### Escaping
+    field_escape : ClassVar[Optional[str]] = None               # Character to escape particular parts defined in field_escape_pattern.
+    field_escape_quote : ClassVar[bool] = True                  # Escape quote string defined in field_quote
+    field_escape_pattern : ClassVar[Optional[Pattern]] = None   # All matches of this pattern are prepended with the string contained in field_escape.
 
     ## Values
     str_quote       : ClassVar[Optional[str]] = None    # string quoting character (added as escaping character)
@@ -466,7 +472,7 @@ class TextQueryBackend(Backend):
     def convert_condition_as_in_expression(self, cond : Union[ConditionOR, ConditionAND], state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field in value list conditions."""
         return self.field_in_list_expression.format(
-            field=self.quote_field(cond.args[0].field),       # The assumption that the field is the same for all argument is valid because this is checked before
+            field=self.escape_and_quote_field(cond.args[0].field),       # The assumption that the field is the same for all argument is valid because this is checked before
             op=self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator,
             list=self.list_separator.join([
                 self.str_quote + self.convert_value_str(arg.value, state) + self.str_quote
@@ -511,20 +517,57 @@ class TextQueryBackend(Backend):
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Operator 'not' not supported by the backend")
 
-    def quote_field(self, field_name : str) -> str:
-        """Quote field name with field_quote if field_quote_pattern (doesn't) matches, depending on
-        field_quote_pattern_negation."""
-        if self.field_quote is not None:
-            if self.field_quote_pattern is not None:
-                quote = bool(self.field_quote_pattern.match(field_name))
-                if self.field_quote_pattern_negation:
+    def escape_and_quote_field(self, field_name : str) -> str:
+        """
+        Escape field name by prepending pattern matches of field_escape_pattern with field_escape
+        string. If field_escape_quote is set to True (default) and field escaping string is defined
+        in field_escape, all instances of the field quoting character are escaped before quoting.
+
+        Quote field name with field_quote if field_quote_pattern (doesn't) matches the original
+        (unescaped) field name. If field_quote_pattern_negation is set to True (default) the pattern matching
+        result is negated, which is the default behavior. In this case the field name is quoted if
+        the pattern doesn't matches.
+        """
+        if self.field_escape is not None:               # field name escaping
+            if self.field_escape_pattern is not None:   # Match all occurrences of field_escpae_pattern if defined and initialize match position set with result.
+                match_positions = {
+                    match.start()
+                    for match in self.field_escape_pattern.finditer(field_name)
+                }
+            else:
+                match_positions = set()
+
+            if self.field_escape_quote and self.field_quote is not None:         # Add positions of quote string to match position set
+                re_quote = re.compile(re.escape(self.field_quote))
+                match_positions.update((
+                    match.start()
+                    for match in re_quote.finditer(field_name)
+                ))
+
+            if len(match_positions) > 0:    # found matches, escape them
+                r = [0] + list(sorted(match_positions)) + [len(field_name)]
+                escaped_field_name = ""
+                for i in range(len(r) - 1):    # TODO: from Python 3.10 this can be replaced with itertools.pairwise(), but for now we keep support for Python <3.10
+                    if i == 0:          # The first range is passed to the result without escaping
+                        escaped_field_name += field_name[r[i]:r[i + 1]]
+                    else:               # Subsequent ranges are positions of matches and therefore are prepended with field_escape
+                        escaped_field_name += self.field_escape + field_name[r[i]:r[i + 1]]
+            else:                       # no matches, just pass original field name without escaping
+                escaped_field_name = field_name
+        else:
+            escaped_field_name = field_name
+
+        if self.field_quote is not None:                # Field quoting
+            if self.field_quote_pattern is not None:    # Match field quote pattern...
+                quote = bool(self.field_quote_pattern.match(escaped_field_name))
+                if self.field_quote_pattern_negation:   # ...negate result of matching, if requested...
                     quote = not quote
             else:
                 quote = True
 
-            if quote:
-                return self.field_quote + field_name + self.field_quote
-        return field_name
+            if quote:                                   #  ...and quote if pattern (doesn't) matches
+                return self.field_quote + escaped_field_name + self.field_quote
+        return escaped_field_name
 
     def convert_value_str(self, s : SigmaString, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Convert a SigmaString into a plain string which can be used in query."""
@@ -570,21 +613,21 @@ class TextQueryBackend(Backend):
             else:
                 expr =  "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote # [New]
                 value = cond.value
-            return expr.format(field=self.quote_field(cond.field), value=self.convert_value_str(value, state))
+            return expr.format(field=self.escape_and_quote_field(cond.field), value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
 
     def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = number value expressions"""
         try:
-            return self.quote_field(cond.field) + self.eq_token + str(cond.value)
+            return self.escape_and_quote_field(cond.field) + self.eq_token + str(cond.value)
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 
     def convert_condition_field_eq_val_bool(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = bool value expressions"""
         try:
-            return self.quote_field(cond.field) + self.eq_token + self.bool_values[cond.value.boolean]
+            return self.escape_and_quote_field(cond.field) + self.eq_token + self.bool_values[cond.value.boolean]
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals numeric value expressions are not supported by the backend.")
 
@@ -599,14 +642,14 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""
         return self.re_expression.format(
-            field=self.quote_field(cond.field),
+            field=self.escape_and_quote_field(cond.field),
             regex=self.convert_value_re(cond.value, state),
         )
 
     def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only regular expressions."""
         return self.re_expression.format(
-            field=self.quote_field(cond.field),
+            field=self.escape_and_quote_field(cond.field),
             regex=self.convert_value_re(cond.value, state),
         )
 
@@ -617,41 +660,41 @@ class TextQueryBackend(Backend):
             list_ip = convert_str.split(self.or_token)
             if self.cidr_wildcard == None:
                     return self.cidr_in_list_expression.format(
-                        field=self.quote_field(cond.field),
+                        field=self.escape_and_quote_field(cond.field),
                         list=self.list_separator.join([str(v) for v in list_ip])
                     )
             else:
                 return self.cidr_in_list_expression.format(
-                    field=self.quote_field(cond.field),
+                    field=self.escape_and_quote_field(cond.field),
                     list=self.list_separator.join([ self.str_quote + str(v) + self.str_quote for v in list_ip])
                 )
         else:
             if self.cidr_wildcard == None:
                 return self.cidr_expression.format(
-                    field=self.quote_field(cond.field),
+                    field=self.escape_and_quote_field(cond.field),
                     value=convert_str,
                 )
             else:
                 return self.cidr_expression.format(
-                    field=self.quote_field(cond.field),
+                    field=self.escape_and_quote_field(cond.field),
                     value=self.str_quote + convert_str + self.str_quote,
                 )
 
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of numeric comparison operations into queries."""
         return self.compare_op_expression.format(
-            field=self.quote_field(cond.field),
+            field=self.escape_and_quote_field(cond.field),
             operator=self.compare_operators[cond.value.op],
             value=cond.value.number,
         )
 
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
-        return self.field_null_expression.format(field=self.quote_field(cond.field))
+        return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
 
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
-        return cond.value.finalize(field=self.quote_field(cond.field))
+        return cond.value.finalize(field=self.escape_and_quote_field(cond.field))
 
     def convert_condition_val_str(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only strings."""

@@ -1,12 +1,11 @@
+import re
 from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import DropDetectionItemTransformation, FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
-from sigma.types import SigmaCompareExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError
-from typing import ClassVar, Dict, Tuple
 import pytest
 
 @pytest.fixture
@@ -1018,3 +1017,70 @@ def test_convert_dropped_detection_item_or():
                 condition: sel1 or sel2
         """)
     ) == ['fieldB="value"']
+
+# Quoting & Escaping Tests
+quote_escape_config = ("'", re.compile("^[\\w.;\\\\]+$"), True, "\\", True, re.compile(";"))
+quote_always_escape_quote_config = ("'", None, True, "\\", True, None)
+quote_only_config = ("'", re.compile("^.*\s"), False, None, False, None)
+escape_only_config = (None, None, True, "\\", False, re.compile("[\s]"))
+quoting_escaping_testcases = {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
+    "escape_quote_nothing": (
+        quote_escape_config,
+        "foo.bar", "foo.bar"
+    ),
+    "escape_quote_quoteonly": (
+        quote_escape_config,
+        "foo bar", "'foo bar'"
+    ),
+    "escape_quote_quote_and_escape": (
+        quote_escape_config,
+        "foo bar;foo;bar", "'foo bar\\;foo\\;bar'"
+    ),
+    "escape_quote_escapeonly": (
+        quote_escape_config,
+        "foobar;foo;bar", "foobar\\;foo\\;bar"
+    ),
+    "escape_quote_escapeonly_start_end": (
+        quote_escape_config,
+        ";foo;bar;", "\\;foo\\;bar\\;"
+    ),
+    "escape_quote_quote_and_escape_quotechar": (
+        quote_escape_config,
+        "foo bar';foo;bar", "'foo bar\\'\\;foo\\;bar'"
+    ),
+    "quote_always_escape_quote_only": (
+        quote_always_escape_quote_config,
+        "foo 'bar'", "'foo \\'bar\\''"
+    ),
+    "quote_only": (
+        quote_only_config,
+        "foo bar", "'foo bar'"
+    ),
+    "escape_only": (
+        escape_only_config,
+        "foo bar", "foo\\ bar"
+    ),
+    "escape_only_start_end": (
+        escape_only_config,
+        " foo bar ", "\\ foo\\ bar\\ "
+    ),
+}
+
+@pytest.mark.parametrize(
+    "backend_parameters,input,expected_result",
+    list(quoting_escaping_testcases.values()),
+    ids=list(quoting_escaping_testcases.keys())
+    )
+def test_quote_escape(backend_parameters, input, expected_result, test_backend):
+    for param, value in zip(
+        (
+            "field_quote",
+            "field_quote_pattern",
+            "field_quote_pattern_negation",
+            "field_escape",
+            "field_escape_quote",
+            "field_escape_pattern",
+        ), backend_parameters):
+        setattr(test_backend, param, value)
+
+    assert test_backend.escape_and_quote_field(input) == expected_result

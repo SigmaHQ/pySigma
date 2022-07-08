@@ -1,5 +1,28 @@
 from sigma.processing.conditions import LogsourceCondition, RuleContainsDetectionItemCondition
 
+windows_logsource_mapping = {       # Mapping between Sigma log source services and Windows event log channel names
+    "security": "Security",
+    "application": "Application",
+    "system": "System",
+    "sysmon": "Microsoft-Windows-Sysmon/Operational",
+    "powershell": "Microsoft-Windows-PowerShell/Operational",
+    "powershell-classic": "Windows PowerShell",
+    "taskscheduler": "Microsoft-Windows-TaskScheduler/Operational",
+    "wmi": "Microsoft-Windows-WMI-Activity/Operational",
+    "dns-server": "DNS Server",
+    "dns-server-audit": "Microsoft-Windows-DNS-Server/Audit",
+    "driver-framework": "Microsoft-Windows-DriverFrameworks-UserMode/Operational",
+    "ntlm": "Microsoft-Windows-NTLM/Operational",
+    "dhcp": "Microsoft-Windows-DHCP-Server/Operational",
+    "applocker": "MSExchange Management",
+    "printservice-admin": "Microsoft-Windows-PrintService/Admin",
+    "printservice-operational": "Microsoft-Windows-PrintService/Operational",
+    "codeintegrity-operational": "Microsoft-Windows-CodeIntegrity/Operational",
+    "smbclient-security": "Microsoft-Windows-SmbClient/Security",
+    "firewall-as": "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall",
+    "bits-client": "Microsoft-Windows-Bits-Client/Operational",
+}
+
 def logsource_windows(service : str) -> LogsourceCondition:
     return LogsourceCondition(
         product="windows",

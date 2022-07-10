@@ -14,13 +14,17 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "driver-framework": "Microsoft-Windows-DriverFrameworks-UserMode/Operational",
     "ntlm": "Microsoft-Windows-NTLM/Operational",
     "dhcp": "Microsoft-Windows-DHCP-Server/Operational",
-    "applocker": "MSExchange Management",
+    "msexchange-management": "MSExchange Management",
+    "applocker": "Microsoft-Windows-AppLocker/EXE and DLL Management",
     "printservice-admin": "Microsoft-Windows-PrintService/Admin",
     "printservice-operational": "Microsoft-Windows-PrintService/Operational",
     "codeintegrity-operational": "Microsoft-Windows-CodeIntegrity/Operational",
     "smbclient-security": "Microsoft-Windows-SmbClient/Security",
     "firewall-as": "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall",
     "bits-client": "Microsoft-Windows-Bits-Client/Operational",
+    "windefend": "Microsoft-Windows-Windows Defender/Operational",
+    "terminalservices-localsessionmanager": "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational",
+    "microsoft-servicebus-client": "Microsoft-ServiceBus-Client",
 }
 
 def logsource_windows(service : str) -> LogsourceCondition:

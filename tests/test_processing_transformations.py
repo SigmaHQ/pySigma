@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from re import template
 from sigma.conditions import SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
@@ -447,6 +448,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = AddConditionTransformation({
         "newfield1": "test",
         "newfield2": 123,
+        "newfield3": "$category",
     }, "additional")
     transformation.set_processing_item(
         ProcessingItem(
@@ -460,6 +462,32 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
         and sigma_rule.detection.detections["additional"] == SigmaDetection([               # additional detection item referred by condition
                 SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
                 SigmaDetectionItem("newfield2", [], [ SigmaNumber(123) ]),
+                SigmaDetectionItem("newfield3", [], [ SigmaString("$category") ]),
+        ])
+        and all(                                                                            # detection items are marked as processed by processing item
+            detection_item.was_processed_by("test")
+            for detection_item in sigma_rule.detection.detections["additional"].detection_items
+        )
+        and sigma_rule.was_processed_by("test")
+    )
+
+def test_addconditiontransformation_template(dummy_pipeline, sigma_rule : SigmaRule):
+    transformation = AddConditionTransformation({
+        "newfield1": "$category",
+        "newfield2": "$something",
+    }, "additional", template=True)
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert (
+        sigma_rule.detection.parsed_condition[0].condition == "additional and (test)"       # condition expression was added
+        and sigma_rule.detection.detections["additional"] == SigmaDetection([               # additional detection item referred by condition
+                SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
+                SigmaDetectionItem("newfield2", [], [ SigmaString("$something") ]),
         ])
         and all(                                                                            # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")

@@ -322,16 +322,36 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
 
 @dataclass
 class AddConditionTransformation(ConditionTransformation):
-    """Add and condition expression to rule conditions."""
+    """
+    Add and condition expression to rule conditions.
+
+    If template is set to True the condition values are interpreted as string templates and the
+    following placeholders are replaced:
+
+    * $category, $product and $service: with the corresponding values of the Sigma rule log source.
+    """
     conditions : Dict[str, str] = field(default_factory=dict)
     name : Optional[str] = None
+    template : bool = False
 
     def __post_init__(self):
         if self.name is None:       # generate random detection item name if none is given
             self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
-        rule.detection.detections[self.name] = SigmaDetection.from_definition(self.conditions)
+        if self.template:
+            conditions = {
+                field: string.Template(value).safe_substitute(
+                    category=rule.logsource.category,
+                    product=rule.logsource.product,
+                    service=rule.logsource.service,
+                )
+                for field, value in self.conditions.items()
+            }
+        else:
+            conditions = self.conditions
+
+        rule.detection.detections[self.name] = SigmaDetection.from_definition(conditions)
         self.processing_item_applied(rule.detection.detections[self.name])
         super().apply(pipeline, rule)
 

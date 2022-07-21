@@ -479,7 +479,7 @@ class TextQueryBackend(Backend):
             field=self.escape_and_quote_field(cond.args[0].field),       # The assumption that the field is the same for all argument is valid because this is checked before
             op=self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator,
             list=self.list_separator.join([
-                self.str_quote + self.convert_value_str(arg.value, state) + self.str_quote
+                self.quote_string(self.convert_value_str(arg.value, state))
                 if isinstance(arg.value, SigmaString)   # string escaping and qouting
                 else str(arg.value)       # value is number
                 for arg in cond.args
@@ -573,6 +573,9 @@ class TextQueryBackend(Backend):
                 return self.field_quote + escaped_field_name + self.field_quote
         return escaped_field_name
 
+    def quote_string(self, s : str) -> str:
+        return self.str_quote + s + self.str_quote
+
     def convert_value_str(self, s : SigmaString, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Convert a SigmaString into a plain string which can be used in query."""
         return s.convert(
@@ -615,7 +618,7 @@ class TextQueryBackend(Backend):
                 expr = self.wildcard_match_expression
                 value = cond.value
             else:
-                expr =  "{field}" + self.eq_token + self.str_quote + "{value}" + self.str_quote # [New]
+                expr =  "{field}" + self.eq_token + self.quote_string("{value}")
                 value = cond.value
             return expr.format(field=self.escape_and_quote_field(cond.field), value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
@@ -670,7 +673,7 @@ class TextQueryBackend(Backend):
             else:
                 return self.cidr_in_list_expression.format(
                     field=self.escape_and_quote_field(cond.field),
-                    list=self.list_separator.join([ self.str_quote + str(v) + self.str_quote for v in list_ip])
+                    list=self.list_separator.join([ self.quote_string(str(v)) for v in list_ip])
                 )
         else:
             if self.cidr_wildcard == None:
@@ -681,7 +684,7 @@ class TextQueryBackend(Backend):
             else:
                 return self.cidr_expression.format(
                     field=self.escape_and_quote_field(cond.field),
-                    value=self.str_quote + convert_str + self.str_quote,
+                    value=self.quote_string(convert_str)
                 )
 
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:

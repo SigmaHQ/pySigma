@@ -354,6 +354,7 @@ class TextQueryBackend(Backend):
     # The backend generates grouping if required
     precedence : ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (ConditionNOT, ConditionAND, ConditionOR)
     group_expression : ClassVar[Optional[str]] = None   # Expression for precedence override grouping as format string with {expr} placeholder
+    parenthesize : bool = False     # Reflect parse tree by putting parenthesis around all expressions - use this for target systems without strict precedence rules.
 
     # Generated query tokens
     token_separator : str = " "     # separator inserted between all boolean operators
@@ -431,6 +432,9 @@ class TextQueryBackend(Backend):
         enclosing condition item (outer) is lower than the contained (inner) condition item.
         In this case, no additional grouping is required.
         """
+        if self.parenthesize and not isinstance(inner, ( ConditionFieldEqualsValueExpression, ConditionValueExpression )):       # if parenthesize is set, parenthesis are generally put around everything.
+            return False
+
         outer_class = outer.__class__
         # Special case: Conditions containing a SigmaExpansion value convert into OR conditions and therefore the precedence has to be handled the same way.
         if isinstance(inner, ( ConditionFieldEqualsValueExpression, ConditionValueExpression )) and isinstance(inner.value, SigmaExpansion):

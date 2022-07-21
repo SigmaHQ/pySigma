@@ -898,6 +898,33 @@ def test_convert_precedence(test_backend):
         """)
     ) == ['(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")']
 
+def test_convert_parenthesize(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "parenthesize", True)
+    monkeypatch.setattr(test_backend, "convert_or_as_in", False)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                    fieldB:
+                       - value2
+                       - value3
+                       - value4
+                sel2:
+                    fieldC:
+                       - value4
+                       - value5
+                       - value6
+                    fieldD: value7
+                condition: sel1 or not sel2
+        """)
+    ) == ['(mappedA="value1" and (mappedB="value2" or mappedB="value3" or mappedB="value4")) or (not ((fieldC="value4" or fieldC="value5" or fieldC="value6") and fieldD="value7"))']
+
 def test_convert_multi_conditions(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

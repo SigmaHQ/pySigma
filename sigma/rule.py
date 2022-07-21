@@ -298,19 +298,20 @@ class SigmaDetection(ParentChainMixin):
     3. a list of plain values or mappings defined and matched as in 1 where at least one of the items should appear in matched events.
     """
     detection_items : List[Union[SigmaDetectionItem, "SigmaDetection"]]
-    item_linking : Union[Type[ConditionAND], Type[ConditionOR]] = field(init=False)
     source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
+    item_linking : Union[Type[ConditionAND], Type[ConditionOR]] = field(default=None)
 
     def __post_init__(self):
         """Check detection validity."""
         if len(self.detection_items) == 0:
             raise sigma_exceptions.SigmaDetectionError("Detection is empty", source=self.source)
 
-        type_set = { type(item) for item in self.detection_items }
-        if SigmaDetectionItem in type_set:
-            self.item_linking = ConditionAND
-        else:
-            self.item_linking = ConditionOR
+        if self.item_linking is None:
+            type_set = { type(item) for item in self.detection_items }
+            if SigmaDetectionItem in type_set:
+                self.item_linking = ConditionAND
+            else:
+                self.item_linking = ConditionOR
 
     @classmethod
     def from_definition(cls, definition : Union[Mapping, Sequence, str, int], source : Optional[SigmaRuleLocation] = None) -> "SigmaDetection":

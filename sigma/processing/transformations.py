@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from sigma.conditions import SigmaCondition
+from sigma.conditions import ConditionOR, SigmaCondition
 from typing import Any, Iterable, List, Dict, Optional, Union, Pattern, Iterator
 from dataclasses import dataclass, field
 import dataclasses
@@ -164,7 +164,7 @@ class FieldMappingTransformation(DetectionItemTransformation):
                 return SigmaDetection([
                     dataclasses.replace(detection_item, field=field)
                     for field in mapping
-                ])
+                ], item_linking=ConditionOR)
 
 @dataclass
 class DropDetectionItemTransformation(DetectionItemTransformation):

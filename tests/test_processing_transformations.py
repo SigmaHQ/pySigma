@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from re import template
-from sigma.conditions import SigmaCondition
+from sigma.conditions import ConditionOR, SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
@@ -134,7 +134,7 @@ def test_field_mapping(field_mapping_transformation_sigma_rule):
             SigmaDetection([
                 SigmaDetectionItem("fieldC", [], [ SigmaString("value3") ]),
                 SigmaDetectionItem("fieldD", [], [ SigmaString("value3") ]),
-            ])
+            ], item_linking=ConditionOR)
         ])
     ])
 

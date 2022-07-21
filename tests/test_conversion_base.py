@@ -1084,3 +1084,25 @@ def test_quote_escape(backend_parameters, input, expected_result, test_backend):
         setattr(test_backend, param, value)
 
     assert test_backend.escape_and_quote_field(input) == expected_result
+
+def test_multi_field_mapping_conversion():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline([
+            ProcessingItem(FieldMappingTransformation({
+                "fieldB": ["mappedB", "mappedC" ],
+            })),
+        ]),
+    )
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldB: value1
+                condition: sel
+        """)
+    ) == ['mappedB="value1" or mappedC="value1"']

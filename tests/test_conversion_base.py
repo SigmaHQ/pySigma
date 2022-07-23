@@ -436,7 +436,7 @@ def test_convert_value_regex_unbound(test_backend):
         """)
     ) == ['_=/pat.*tern\\/foo\\bar/']
 
-def test_convert_value_cidr_wildcard_none(test_backend):
+def test_convert_value_cidr_wildcard_native(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -450,13 +450,12 @@ def test_convert_value_cidr_wildcard_none(test_backend):
                     field A|cidr: 192.168.0.0/14
                 condition: sel
         """)
-    ) == ['mappedA=192.168.0.0/14 and \'field A\'=192.168.0.0/14']
+    ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") and cidrmatch(\'field A\', "192.168.0.0/14")']
 
 
-def test_convert_value_cidr_wildcard_asterisk(test_backend):
-    my_backend = test_backend
-    my_backend.cidr_wildcard = "*"
-    assert my_backend.convert(
+def test_convert_value_cidr_wildcard_expression(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", None)
+    assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
             status: test
@@ -1009,10 +1008,10 @@ def test_convert_list_cidr_wildcard_none(test_backend):
                         - 10.10.10.0/24
                 condition: sel
         """)
-    ) == ['mappedA=192.168.0.0/14 or mappedA=10.10.10.0/24']
+    ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") or cidrmatch(\'mappedA\', "10.10.10.0/24")']
 
 def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "cidr_wildcard", "*")
+    monkeypatch.setattr(test_backend, "cidr_expression", None)
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -1027,7 +1026,7 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
                         - 10.10.10.0/24
                 condition: sel
         """)
-    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA="10.10.10.*"']
+    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA in ("10.10.10.*")']
 
 def test_convert_state(test_backend):
     assert test_backend.convert(

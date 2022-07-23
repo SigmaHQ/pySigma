@@ -403,10 +403,9 @@ class TextQueryBackend(Backend):
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
 
-    # cidr expressions
-    cidr_wildcard : ClassVar[Optional[str]] = None    # Character used as single wildcard
+    # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
+    # CIDR values into string wildcard matches.
     cidr_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = {value}
-    cidr_in_list_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = in({list})
 
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
@@ -668,10 +667,6 @@ class TextQueryBackend(Backend):
         """Convert regular expression into string representation used in query."""
         return r.escape(self.re_escape, self.re_escape_char)
 
-    def convert_value_cidr(self, ip : SigmaCIDRExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Convert CIDR value into string representation used in query."""
-        return ip.convert(join_expr=self.or_token, wildcard=self.cidr_wildcard)
-
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""
         return self.re_expression.format(
@@ -688,35 +683,16 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_cidr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches CIDR value expressions."""
-        # TODO: Cleanup required here:
-        # * Quoting should takeplace in convert_value_cidr
-        # * Splitting up string that was previously joined makes no sense.
-        # * cidr_wildcard distinction is already done in SigmaCIDRValueExpression.expand()
-        # All this (and possible more) should be consolidated.
-        convert_str = self.convert_value_cidr(cond.value, state)
-        if self.or_token in convert_str:
-            list_ip = convert_str.split(self.or_token)
-            if self.cidr_wildcard == None:
-                    return self.cidr_in_list_expression.format(
-                        field=self.escape_and_quote_field(cond.field),
-                        list=self.list_separator.join([str(v) for v in list_ip])
-                    )
-            else:
-                return self.cidr_in_list_expression.format(
-                    field=self.escape_and_quote_field(cond.field),
-                    list=self.list_separator.join([ self.quote_string(str(v)) for v in list_ip])
-                )
-        else:
-            if self.cidr_wildcard == None:
-                return self.cidr_expression.format(
-                    field=self.escape_and_quote_field(cond.field),
-                    value=convert_str,
-                )
-            else:
-                return self.cidr_expression.format(
-                    field=self.escape_and_quote_field(cond.field),
-                    value=self.quote_string(convert_str)
-                )
+        cidr : SigmaCIDRExpression = cond.value
+        if self.cidr_expression is not None:        # native CIDR support from backend with expression templates.
+            return self.cidr_expression.format(field=cond.field, value=str(cidr.network))
+        else:                                       # No native CIDR support: expand into string wildcard matches on prefixes.
+            expanded = cidr.expand(self.wildcard_multi)
+            expanded_cond = ConditionOR([
+                ConditionFieldEqualsValueExpression(cond.field, SigmaString(network))
+                for network in expanded
+            ], cond.source)
+            return self.convert_condition(expanded_cond, state)
 
     def convert_condition_field_compare_op_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of numeric comparison operations into queries."""

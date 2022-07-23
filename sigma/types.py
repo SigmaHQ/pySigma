@@ -519,7 +519,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
     def expand(
             self,
-            wildcard : Optional[str] = "*",
+            wildcard : str = "*",
         ) -> List[str]:
         """
         Convert CIDR range into a list of wildcard patterns or plain CIDR notation. The following parameters allow to change the behavior:
@@ -528,48 +528,26 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
-        if wildcard == None:
-            return [self.cidr]
-        else:
-            subnet = int (str(self.cidr).split('/')[1])
-            if subnet <= 8 :
-                new_sub = 8
-                remp_old = '0.0.0/8'
-                remp_new = wildcard
-            elif subnet <= 16:
-                new_sub = 16
-                remp_old = '0.0/16'
-                remp_new = wildcard
-            elif subnet <= 24:
-                new_sub = 24
-                remp_old = '0/24'
-                remp_new = wildcard
-            elif subnet <= 32:
-                new_sub = 32
-                remp_old = '/32'
-                remp_new = ''
-            subnets = self.network.subnets(new_prefix=new_sub)
-            wildcarded_subnets = [str(ip_sub).replace(remp_old, remp_new) for ip_sub in subnets]
-            return wildcarded_subnets
-
-    def convert(
-            self,
-            join_expr : str,
-            template  : str = "{network}",
-            wildcard : Optional[str] = "*",
-        ) -> str:
-        """
-        Convert a network into a query expression. This is controlled by the following parameters:
-
-        * join_expr: string used to join multiple network wildcard patterns, e.g. logical linking with OR.
-        * template: resulting pattern is embedded with {network} placeholder in this template. By default the pattern is passed.
-          This can be used to add some annotation/function required by the target query language to handle it as CIDR network.
-        * wildcard: string used as wildcard character or None if query language can handle CIDR properly.
-        """
-        return join_expr.join((
-            template.format(network=network)
-            for network in self.expand(wildcard)
-        ))
+        subnet = int (str(self.cidr).split('/')[1])
+        if subnet <= 8 :
+            new_sub = 8
+            remp_old = '0.0.0/8'
+            remp_new = wildcard
+        elif subnet <= 16:
+            new_sub = 16
+            remp_old = '0.0/16'
+            remp_new = wildcard
+        elif subnet <= 24:
+            new_sub = 24
+            remp_old = '0/24'
+            remp_new = wildcard
+        elif subnet <= 32:
+            new_sub = 32
+            remp_old = '/32'
+            remp_new = ''
+        subnets = self.network.subnets(new_prefix=new_sub)
+        wildcarded_subnets = [str(ip_sub).replace(remp_old, remp_new) for ip_sub in subnets]
+        return wildcarded_subnets
 
 @dataclass
 class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):

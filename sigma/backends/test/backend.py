@@ -40,9 +40,7 @@ class TextQueryTestBackend(TextQueryBackend):
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ("/", "bar")
 
-    cidr_expression : ClassVar[str] = "{field}={value}"
-    cidr_in_list_expression : ClassVar[str] = "{field} in ({list})"
-    cidr_wildcard : ClassVar[str] = None
+    cidr_expression : ClassVar[str] = "cidrmatch('{field}', \"{value}\")"
 
     compare_op_expression : ClassVar[str] = "{field}{operator}{value}"
     compare_operators : ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {

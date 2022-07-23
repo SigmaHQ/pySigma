@@ -31,10 +31,10 @@ class TextQueryTestBackend(TextQueryBackend):
         False: "0",
     }
 
-    startswith_expression : ClassVar[str] = "{field} startswith \"{value}\""
-    endswith_expression   : ClassVar[str] = "{field} endswith \"{value}\""
-    contains_expression   : ClassVar[str] = "{field} contains \"{value}\""
-    wildcard_match_expression : ClassVar[str] = "{field} match \"{value}\""
+    startswith_expression : ClassVar[str] = "{field} startswith {value}"
+    endswith_expression   : ClassVar[str] = "{field} endswith {value}"
+    contains_expression   : ClassVar[str] = "{field} contains {value}"
+    wildcard_match_expression : ClassVar[str] = "{field} match {value}"
 
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
@@ -62,7 +62,7 @@ class TextQueryTestBackend(TextQueryBackend):
     and_in_operator : ClassVar[Optional[str]] = "contains-all"
     list_separator : ClassVar[str] = ", "
 
-    unbound_value_str_expression : ClassVar[str] = '_="{value}"'
+    unbound_value_str_expression : ClassVar[str] = '_={value}'
     unbound_value_num_expression : ClassVar[str] = '_={value}'
     unbound_value_re_expression : ClassVar[str] = '_=/{value}/'
 

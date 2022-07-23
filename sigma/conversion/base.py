@@ -376,12 +376,17 @@ class TextQueryBackend(Backend):
     field_escape_pattern : ClassVar[Optional[Pattern]] = None   # All matches of this pattern are prepended with the string contained in field_escape.
 
     ## Values
-    str_quote       : ClassVar[Optional[str]] = None    # string quoting character (added as escaping character)
-    escape_char     : ClassVar[Optional[str]] = None    # Escaping character for special characrers inside string
+    ### String quoting
+    str_quote       : ClassVar[str] = ""                # string quoting character (added as escaping character)
+    str_quote_pattern : ClassVar[Optional[Pattern]] = None      # Quote string values that match (or don't match) this pattern
+    str_quote_pattern_negation : ClassVar[bool] = True  # Negate str_quote_pattern result
+    ### String escaping and filtering
+    escape_char     : ClassVar[Optional[str]] = None    # Escaping character for special characters inside string
     wildcard_multi  : ClassVar[Optional[str]] = None    # Character used as multi-character wildcard
     wildcard_single : ClassVar[Optional[str]] = None    # Character used as single-character wildcard
     add_escaped     : ClassVar[str] = ""                # Characters quoted in addition to wildcards and string quote
     filter_chars    : ClassVar[str] = ""                # Characters filtered
+    ### Booleans
     bool_values     : ClassVar[Dict[bool, Optional[str]]] = {   # Values to which boolean values are mapped.
         True: None,
         False: None,
@@ -479,7 +484,7 @@ class TextQueryBackend(Backend):
             field=self.escape_and_quote_field(cond.args[0].field),       # The assumption that the field is the same for all argument is valid because this is checked before
             op=self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator,
             list=self.list_separator.join([
-                self.quote_string(self.convert_value_str(arg.value, state))
+                self.convert_value_str(arg.value, state)
                 if isinstance(arg.value, SigmaString)   # string escaping and qouting
                 else str(arg.value)       # value is number
                 for arg in cond.args
@@ -573,18 +578,39 @@ class TextQueryBackend(Backend):
                 return self.field_quote + escaped_field_name + self.field_quote
         return escaped_field_name
 
+    def decide_string_quoting(self, s : SigmaString) -> bool:
+        """
+        Decide if string is quoted based on the pattern in the class attribute str_quote_pattern. If
+        this matches (or not matches if str_quote_pattern_negation is set to True), the string is quoted.
+        """
+        if self.str_quote == "":    # No quoting if quoting string is empty.
+            return False
+
+        if self.str_quote_pattern is None:      # Always quote if pattern is not set.
+            return True
+        else:
+            match = bool(self.str_quote_pattern.match(str(s)))
+            if self.str_quote_pattern_negation:
+                match = not match
+            return match
+
     def quote_string(self, s : str) -> str:
+        """Put quotes around string."""
         return self.str_quote + s + self.str_quote
 
-    def convert_value_str(self, s : SigmaString, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+    def convert_value_str(self, s : SigmaString, state : ConversionState) -> str:
         """Convert a SigmaString into a plain string which can be used in query."""
-        return s.convert(
+        converted = s.convert(
             self.escape_char,
             self.wildcard_multi,
             self.wildcard_single,
             self.str_quote + self.add_escaped,
             self.filter_chars,
         )
+        if self.decide_string_quoting(s):
+            return self.quote_string(converted)
+        else:
+            return converted
 
     def convert_condition_field_eq_val_str(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = string value expressions"""
@@ -618,7 +644,7 @@ class TextQueryBackend(Backend):
                 expr = self.wildcard_match_expression
                 value = cond.value
             else:
-                expr =  "{field}" + self.eq_token + self.quote_string("{value}")
+                expr =  "{field}" + self.eq_token + "{value}"
                 value = cond.value
             return expr.format(field=self.escape_and_quote_field(cond.field), value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
@@ -643,8 +669,8 @@ class TextQueryBackend(Backend):
         return r.escape(self.re_escape, self.re_escape_char)
 
     def convert_value_cidr(self, ip : SigmaCIDRExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Convert regular expression into string representation used in query."""
-        return ip.convert(join_expr=self.or_token,wildcard=self.cidr_wildcard)
+        """Convert CIDR value into string representation used in query."""
+        return ip.convert(join_expr=self.or_token, wildcard=self.cidr_wildcard)
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""
@@ -661,7 +687,12 @@ class TextQueryBackend(Backend):
         )
 
     def convert_condition_field_eq_val_cidr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
-        """Conversion of field matches regular expression value expressions."""
+        """Conversion of field matches CIDR value expressions."""
+        # TODO: Cleanup required here:
+        # * Quoting should takeplace in convert_value_cidr
+        # * Splitting up string that was previously joined makes no sense.
+        # * cidr_wildcard distinction is already done in SigmaCIDRValueExpression.expand()
+        # All this (and possible more) should be consolidated.
         convert_str = self.convert_value_cidr(cond.value, state)
         if self.or_token in convert_str:
             list_ip = convert_str.split(self.or_token)

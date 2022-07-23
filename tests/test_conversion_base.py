@@ -92,6 +92,56 @@ def test_convert_value_str(test_backend):
         """)
     ) == ['mappedA="value" and \'field A\'="value"']
 
+def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
+    monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: test value
+                condition: sel
+        """)
+    ) == ['mappedA="test value"']
+
+def test_convert_value_str_quote_pattern_nomatch(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
+    monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """)
+    ) == ['mappedA=value']
+
+def test_convert_value_str_quote_pattern_negated(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^\\w+$"))
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """)
+    ) == ['mappedA=value']
+
 def test_convert_value_str_startswith(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -961,10 +1011,9 @@ def test_convert_list_cidr_wildcard_none(test_backend):
         """)
     ) == ['mappedA=192.168.0.0/14 or mappedA=10.10.10.0/24']
 
-def test_convert_list_cidr_wildcard_asterisk(test_backend):
-    my_backend = test_backend
-    my_backend.cidr_wildcard = "*"
-    assert my_backend.convert(
+def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_wildcard", "*")
+    assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
             status: test

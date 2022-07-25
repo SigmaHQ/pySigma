@@ -405,7 +405,7 @@ class TextQueryBackend(Backend):
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
-    cidr_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field} = {value}
+    cidr_expression : ClassVar[Optional[str]] = None    # CIDR expression query as format string with placeholders {field}, {value} (the whole CIDR value), {network} (network part only), {prefixlen} (length of network mask prefix) and {netmask} (CIDR network mask only)
 
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
@@ -685,7 +685,7 @@ class TextQueryBackend(Backend):
         """Conversion of field matches CIDR value expressions."""
         cidr : SigmaCIDRExpression = cond.value
         if self.cidr_expression is not None:        # native CIDR support from backend with expression templates.
-            return self.cidr_expression.format(field=cond.field, value=str(cidr.network))
+            return self.cidr_expression.format(field=cond.field, value=str(cidr.network), network=cidr.network.network_address, prefixlen=cidr.network.prefixlen, netmask=cidr.network.netmask)
         else:                                       # No native CIDR support: expand into string wildcard matches on prefixes.
             expanded = cidr.expand(self.wildcard_multi)
             expanded_cond = ConditionOR([

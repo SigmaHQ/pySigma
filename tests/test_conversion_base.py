@@ -452,6 +452,37 @@ def test_convert_value_cidr_wildcard_native(test_backend):
         """)
     ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") and cidrmatch(\'field A\', "192.168.0.0/14")']
 
+def test_convert_value_cidr_wildcard_native_template_network_prefixlen(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', {prefixlen})")
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ["cidrmatch('mappedA', '192.168.0.0', 14)"]
+
+def test_convert_value_cidr_wildcard_native_template_network_netmask(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', '{netmask}')")
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 192.168.0.0/14
+                condition: sel
+        """)
+    ) == ["cidrmatch('mappedA', '192.168.0.0', '255.252.0.0')"]
 
 def test_convert_value_cidr_wildcard_expression(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)

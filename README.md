@@ -69,9 +69,9 @@ On 2022/04/10
 |ee-outliers|ee-outliers|
 |elastalert|ElastAlert QS query|
 |elastalert-dsl|ElastAlert DSL query|
-|es-dsl|Elasticsearch DSL query|
+|es-dsl|Elasticsearch DSL query|[pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)|
 |es-eql|Elasticsearch EQL query|
-|es-qs|Elasticsearch query string. Only searches, no aggregations|
+|es-qs|Elasticsearch query string. Only searches, no aggregations|[pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)|
 | es-qs-lr|Lucene query string for LogRhythm. Only searches, no aggregations|
 |es-rule|Elastic SIEM lucene query|
 |es-rule-eql|Elastic SIEM EQL query|
@@ -83,7 +83,7 @@ On 2022/04/10
 |hawk|HAWK search|
 |humio|Humio query|
 |kibana|Kibana JSON Configuration files (searches only)|
-|kibana-ndjson|Kibana JSON Configuration files (searches only)|
+|kibana-ndjson|Kibana JSON Configuration files (searches only)|[pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)|
 |lacework|Lacework Policy Platform|
 |limacharlie|LimaCharlie D&R rules|
 |logiq|LOGIQ event rule api payload|
@@ -91,7 +91,9 @@ On 2022/04/10
 |mdatp|Microsoft Defender ATP Hunting Queries|
 |netwitness|NetWitness saved search|
 |netwitness-epl|RSA NetWitness EPL|
-|opensearch-monitor|OpenSearch monitors and ElasticRule are in Elastic Common Schema|
+|es-qs (proxied)|OpenSearch search query string. Only searches, no aggregations|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch) (proxied by [pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)) |
+|es-dsl (proxied)|OpenSearch DSL query|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch) (proxied by [pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)) |
+|opensearch-monitor|OpenSearch monitors and ElasticRule are in Elastic Common Schema|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch)|
 |powershell|PowerShell event log cmdlets|
 |qradar|Qradar saved search|
 |qualys|Qualys saved search|

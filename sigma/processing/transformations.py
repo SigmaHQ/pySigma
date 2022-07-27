@@ -76,6 +76,26 @@ class DetectionItemTransformation(Transformation):
         for detection in rule.detection.detections.values():
             self.apply_detection(detection)
 
+class FieldMappingTransformationBase(DetectionItemTransformation):
+    """
+    Transformation that is applied to detection items and additionally the field list of a Sigma
+    rule.
+    """
+    @abstractmethod
+    def apply_field_name(self, field : str) -> List[str]:
+        """
+        Apply field name transformation to a field list item of a Sigma rule. It must always return
+        a list of strings that are expanded into a new field list.
+        """
+
+    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        rule.fields = [
+            item
+            for mapping in map(self.apply_field_name, rule.fields)
+            for item in mapping
+        ]
+        return super().apply(pipeline, rule)
+
 @dataclass
 class ValueTransformation(DetectionItemTransformation):
     """
@@ -150,7 +170,7 @@ class ConditionTransformation(Transformation):
 
 ### Transformations ###
 @dataclass
-class FieldMappingTransformation(DetectionItemTransformation):
+class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
     mapping : Dict[str, Union[str, List[str]]]
 
@@ -166,6 +186,13 @@ class FieldMappingTransformation(DetectionItemTransformation):
                     dataclasses.replace(detection_item, field=field)
                     for field in mapping
                 ], item_linking=ConditionOR)
+
+    def apply_field_name(self, field: str) -> Union[str, List[str]]:
+        mapping = self.mapping.get(field, field)
+        if isinstance(mapping, str):
+            return [mapping]
+        else:
+            return mapping
 
 @dataclass
 class DropDetectionItemTransformation(DetectionItemTransformation):
@@ -190,7 +217,7 @@ class DropDetectionItemTransformation(DetectionItemTransformation):
             ))
 
 @dataclass
-class AddFieldnameSuffixTransformation(DetectionItemTransformation):
+class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
     """
     Add field name suffix.
     """
@@ -202,8 +229,11 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
+    def apply_field_name(self, field: str) -> List[str]:
+        return [ field + self.suffix ]
+
 @dataclass
-class AddFieldnamePrefixTransformation(DetectionItemTransformation):
+class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
     """
     Add field name prefix.
     """
@@ -214,6 +244,9 @@ class AddFieldnamePrefixTransformation(DetectionItemTransformation):
             detection_item.field = self.prefix + detection_item.field
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
+
+    def apply_field_name(self, field: str) -> List[str]:
+        return [ self.prefix + field ]
 
 @dataclass
 class PlaceholderIncludeExcludeMixin:

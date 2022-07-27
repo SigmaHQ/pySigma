@@ -24,6 +24,9 @@ class FieldMappingTracking(UserDict):
     """
     Tracking class for field mappings. Tracks initial field name to finally mapped name after a
     processing pipeline was applied. Each key maps the source field to a set of target fields.
+
+    Currently this class is intentionally only used to track field mappings in detection items and
+    the fields list is excluded from it. This might change in the future depending on use cases.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

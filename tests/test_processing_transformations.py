@@ -30,7 +30,14 @@ def sigma_rule():
                 "field3": "value3",
             }],
             "condition": "test",
-        }
+        },
+        "fields": [
+            "otherfield1",
+            "field1",
+            "field2",
+            "field3",
+            "otherfield2",
+        ]
     })
 
 @pytest.fixture
@@ -138,6 +145,14 @@ def test_field_mapping(field_mapping_transformation_sigma_rule):
             ], item_linking=ConditionOR)
         ])
     ])
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "fieldA",
+        "field2",
+        "fieldC",
+        "fieldD",
+        "otherfield2",
+    ]
 
 def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
     transformation, sigma_rule = field_mapping_transformation_sigma_rule
@@ -203,6 +218,13 @@ def test_add_fieldname_suffix(dummy_pipeline, sigma_rule, add_fieldname_suffix_t
             SigmaDetectionItem("field3.test", [], [ SigmaString("value3") ]),
         ])
     ])
+    assert sigma_rule.fields == [
+        "otherfield1.test",
+        "field1.test",
+        "field2.test",
+        "field3.test",
+        "otherfield2.test",
+    ]
 
 def test_add_fieldname_suffix_keyword(dummy_pipeline, keyword_sigma_rule, add_fieldname_suffix_transformation):
     add_fieldname_suffix_transformation.apply(dummy_pipeline, keyword_sigma_rule)
@@ -252,6 +274,13 @@ def test_add_fieldname_prefix(dummy_pipeline, sigma_rule, add_fieldname_prefix_t
             SigmaDetectionItem("test.field3", [], [ SigmaString("value3") ]),
         ])
     ])
+    assert sigma_rule.fields == [
+        "test.otherfield1",
+        "test.field1",
+        "test.field2",
+        "test.field3",
+        "test.otherfield2",
+    ]
 
 def test_add_fieldname_prefix_keyword(dummy_pipeline, keyword_sigma_rule, add_fieldname_prefix_transformation):
     add_fieldname_prefix_transformation.apply(dummy_pipeline, keyword_sigma_rule)

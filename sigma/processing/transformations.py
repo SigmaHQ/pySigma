@@ -27,7 +27,7 @@ class Transformation(ABC):
     @abstractmethod
     def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
         """Apply transformation on Sigma rule."""
-        self.pipeline = pipeline        # make pipeline accessible from all further options in class property
+        self.pipeline : "sigma.processing.pipeline.ProcessingPipeline" = pipeline        # make pipeline accessible from all further options in class property
         self.processing_item_applied(rule)
 
     def set_processing_item(self, processing_item : "sigma.processing.pipeline.ProcessingItem"):
@@ -157,6 +157,7 @@ class FieldMappingTransformation(DetectionItemTransformation):
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
         if (field_name := detection_item.field) in self.mapping:
             mapping = self.mapping[field_name]
+            self.pipeline.field_mappings.add_mapping(field_name, mapping)
             if isinstance(mapping, str):    # 1:1 mapping, map field name of detection item directly
                 detection_item.field = self.mapping[field_name]
                 self.processing_item_applied(detection_item)
@@ -196,8 +197,9 @@ class AddFieldnameSuffixTransformation(DetectionItemTransformation):
     suffix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        if type(detection_item.field) is str:
+        if type(orig_field := detection_item.field) is str:
             detection_item.field += self.suffix
+            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
 @dataclass
@@ -208,8 +210,9 @@ class AddFieldnamePrefixTransformation(DetectionItemTransformation):
     prefix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        if type(detection_item.field) is str:
+        if type(orig_field := detection_item.field) is str:
             detection_item.field = self.prefix + detection_item.field
+            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
 @dataclass

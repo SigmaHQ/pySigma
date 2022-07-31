@@ -25,6 +25,7 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "windefend": "Microsoft-Windows-Windows Defender/Operational",
     "terminalservices-localsessionmanager": "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational",
     "microsoft-servicebus-client": "Microsoft-ServiceBus-Client",
+    "ldap_debug": "Microsoft-Windows-LDAP-Client/Debug",
 }
 
 def logsource_windows(service : str) -> LogsourceCondition:

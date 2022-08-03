@@ -476,7 +476,7 @@ class SigmaDetections:
                 detections={
                     name: SigmaDetection.from_definition(definition, source)
                     for name, definition in detections.items()
-                    if name != "condition"
+                    if name not in ("condition", "timeframe")
                     },
                 condition=condition,
                 source=source,

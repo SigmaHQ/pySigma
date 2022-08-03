@@ -146,10 +146,18 @@ class IncludeFieldCondition(DetectionItemProcessingCondition):
         if self.type == "plain":
             return detection_item.field in self.fields
         else:   # regular expression matching
-            return any((
-                pattern.match(detection_item.field)
-                for pattern in self.patterns
-             ))
+            try:
+                return any((
+                    pattern.match(detection_item.field)
+                    for pattern in self.patterns
+                ))
+            except Exception as e:
+                msg = f" (while processing detection item: field={str(detection_item.field)} value={str(detection_item.value)})"
+                if len (e.args) > 1:
+                    e.args = (e.args[0] + msg,) + e.args[1:]
+                else:
+                    e.args = (e.args[0] + msg,)
+                raise
 
 @dataclass
 class ExcludeFieldCondition(IncludeFieldCondition):

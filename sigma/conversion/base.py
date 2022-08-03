@@ -96,12 +96,18 @@ class Backend(ABC):
         state = ConversionState()
         try:
             processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
+
+            error_state = "applying processing pipeline on"
             processing_pipeline.apply(rule)             # 1. Apply transformations
             state.processing_state = processing_pipeline.state
+
+            error_state = "converting"
             queries = [                                 # 2. Convert condition
                 self.convert_condition(cond.parsed, state)
                 for cond in rule.detection.parsed_condition
             ]
+
+            error_state = "finalizing query for"
             return [                                    # 3. Postprocess generated query
                 self.finalize_query(rule, query, index, state, output_format or self.default_format)
                 for index, query in enumerate(queries)
@@ -112,6 +118,13 @@ class Backend(ABC):
                 return []
             else:
                 raise e
+        except Exception as e:      # enrich all other exceptions with Sigma-specific context information
+            msg = f" (while {error_state} rule {str(rule.source)})"
+            if len (e.args) > 1:
+                e.args = (e.args[0] + msg,) + e.args[1:]
+            else:
+                e.args = (e.args[0] + msg,)
+            raise
 
     def decide_convert_condition_as_in_expression(self, cond : Union[ConditionOR, ConditionAND], state : ConversionState) -> bool:
         """

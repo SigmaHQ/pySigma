@@ -143,7 +143,9 @@ class IncludeFieldCondition(DetectionItemProcessingCondition):
             raise SigmaConfigurationError(f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'.")
 
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
-        if self.type == "plain":
+        if detection_item.field is None:
+            return False
+        elif self.type == "plain":
             return detection_item.field in self.fields
         else:   # regular expression matching
             try:

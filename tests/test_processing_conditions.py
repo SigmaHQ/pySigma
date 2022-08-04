@@ -16,6 +16,10 @@ def detection_item():
     return SigmaDetectionItem("field", [], [ SigmaString("value") ])
 
 @pytest.fixture
+def detection_item_nofield():
+    return SigmaDetectionItem(None, [], [ SigmaString("value") ])
+
+@pytest.fixture
 def sigma_rule():
     return SigmaRule.from_yaml("""
         title: Test
@@ -87,11 +91,17 @@ def test_rule_contains_detection_item_nomatch_value(sigma_rule):
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):
     assert IncludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, detection_item) == True
 
+def test_include_field_condition_match_nofield(dummy_processing_pipeline, detection_item_nofield):
+    assert IncludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, detection_item_nofield) == False
+
 def test_include_field_condition_nomatch(dummy_processing_pipeline, detection_item):
     assert IncludeFieldCondition(["testfield", "otherfield"]).match(dummy_processing_pipeline, detection_item) == False
 
 def test_include_field_condition_re_match(dummy_processing_pipeline, detection_item):
     assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match(dummy_processing_pipeline, detection_item) == True
+
+def test_include_field_condition_re_match_nofield(dummy_processing_pipeline, detection_item_nofield):
+    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match(dummy_processing_pipeline, detection_item_nofield) == False
 
 def test_include_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
     assert IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match(dummy_processing_pipeline, detection_item) == False

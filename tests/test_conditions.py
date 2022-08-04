@@ -268,3 +268,7 @@ def test_null_keyword(sigma_invalid_detections):
 def test_invalid_conditions(condition, sigma_simple_detections):
     with pytest.raises(SigmaConditionError):
         SigmaCondition(condition, sigma_simple_detections).parsed
+
+def test_deprecated_pipe_syntax(sigma_simple_detections):
+    with pytest.raises(SigmaConditionError, match="deprecated"):
+        SigmaCondition("detection | count() by src_ip > 50", sigma_simple_detections).parsed

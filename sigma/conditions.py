@@ -208,11 +208,13 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
         state of the rule.
         """
+        if "|" in self.condition:
+            raise SigmaConditionError("The pipe syntax in Sigma conditions will be deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax.")
         try:
             parsed = condition.parseString(self.condition, parse_all=True)[0]
             return parsed.postprocess(self.detections, source=self.source)
         except ParseException as e:
-            raise SigmaConditionError(str(e))
+            raise SigmaConditionError(str(e), source=self.source)
 
 ConditionType = Union[
     ConditionOR,

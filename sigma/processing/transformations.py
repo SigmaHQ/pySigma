@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
+from functools import partial
 from sigma.conditions import ConditionOR, SigmaCondition
-from typing import Any, Iterable, List, Dict, Optional, Union, Pattern, Iterator
+from typing import Any, Iterable, List, Dict, Optional, Set, Union, Pattern, Iterator
 from dataclasses import dataclass, field
 import dataclasses
 import random
@@ -37,6 +38,7 @@ class Transformation(ABC):
         """Mark detection item or detection as applied."""
         d.add_applied_processing_item(self.processing_item)
 
+@dataclass
 class DetectionItemTransformation(Transformation):
     """
     Iterates over all detection items of a Sigma rule and calls the apply_detection_item method
@@ -76,6 +78,7 @@ class DetectionItemTransformation(Transformation):
         for detection in rule.detection.detections.values():
             self.apply_detection(detection)
 
+@dataclass
 class FieldMappingTransformationBase(DetectionItemTransformation):
     """
     Transformation that is applied to detection items and additionally the field list of a Sigma
@@ -88,10 +91,24 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         a list of strings that are expanded into a new field list.
         """
 
+    def _apply_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> List[str]:
+        """
+        Evaluate field name conditions and perform transformation with apply_field_name() method if
+        condition matches, else return original value.
+        """
+        if self.processing_item is None or self.processing_item.match_field_name(pipeline, field):
+            result = self.apply_field_name(field)
+            if self.processing_item is not None:
+                pipeline.track_field_processing_items(field, result, self.processing_item.identifier)
+            return result
+        else:
+            return [ field ]
+
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        _apply_field_name = partial(self._apply_field_name, pipeline)
         rule.fields = [
             item
-            for mapping in map(self.apply_field_name, rule.fields)
+            for mapping in map(_apply_field_name, rule.fields)
             for item in mapping
         ]
         return super().apply(pipeline, rule)
@@ -149,6 +166,7 @@ class ValueTransformation(DetectionItemTransformation):
         The type annotation of the val argument is used to skip incompatible values.
         """
 
+@dataclass
 class ConditionTransformation(Transformation):
     """
     Iterates over all rule conditions and calls the apply_condition method for each condition. Automatically

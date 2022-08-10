@@ -6,7 +6,7 @@ import pytest
 from sigma.processing import transformations
 from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, SetStateTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.conditions import IncludeFieldCondition
+from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingItemAppliedCondition, IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
@@ -184,7 +184,7 @@ def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeli
     transformation = DropDetectionItemTransformation()
     processing_item = ProcessingItem(
         transformation,
-        detection_item_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
+        field_name_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
     )
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection([
@@ -198,7 +198,7 @@ def test_drop_detection_item_transformation_all(sigma_rule : SigmaRule, dummy_pi
     transformation = DropDetectionItemTransformation()
     processing_item = ProcessingItem(
         transformation,
-        detection_item_conditions=[ IncludeFieldCondition(fields=["field1", "field2", "field3"]) ],
+        field_name_conditions=[ IncludeFieldCondition(fields=["field1", "field2", "field3"]) ],
     )
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"].detection_items[0].detection_items == []
@@ -239,7 +239,7 @@ def test_add_fieldname_suffix_keyword(dummy_pipeline, keyword_sigma_rule, add_fi
 def test_add_fieldname_suffix_tracking(dummy_pipeline, sigma_rule, add_fieldname_suffix_transformation):
     processing_item = ProcessingItem(
         add_fieldname_suffix_transformation,
-        detection_item_conditions=[
+        field_name_conditions=[
             IncludeFieldCondition("field1")
         ],
         identifier="test",
@@ -295,7 +295,7 @@ def test_add_fieldname_prefix_keyword(dummy_pipeline, keyword_sigma_rule, add_fi
 def test_add_fieldname_prefix_tracking(dummy_pipeline, sigma_rule, add_fieldname_prefix_transformation):
     processing_item = ProcessingItem(
         add_fieldname_prefix_transformation,
-        detection_item_conditions=[
+        field_name_conditions=[
             IncludeFieldCondition("field1")
         ],
         identifier="test",
@@ -313,6 +313,38 @@ def test_add_fieldname_prefix_tracking(dummy_pipeline, sigma_rule, add_fieldname
     ] == [ True, False, False ]
     assert sigma_rule.was_processed_by("test")
     assert processing_item.transformation.pipeline.field_mappings == { "field1": { "test.field1" } }
+
+def test_fields_list_mapping_with_detection_item_condition(sigma_rule : SigmaRule):
+    processing_pipeline = ProcessingPipeline(
+        [
+            ProcessingItem(
+                identifier="suffix_some",
+                transformation=AddFieldnameSuffixTransformation(".test"),
+                field_name_conditions=[
+                    IncludeFieldCondition(
+                        fields=["^field\\d+"],
+                        type="re",
+                    ),
+                ],
+            ),
+            ProcessingItem(
+                identifier="prefix_others",
+                transformation=AddFieldnamePrefixTransformation("test."),
+                field_name_conditions=[
+                    FieldNameProcessingItemAppliedCondition("suffix_some"),
+                ],
+                field_name_condition_negation=True,
+            ),
+        ]
+    )
+    processing_pipeline.apply(sigma_rule)
+    assert sigma_rule.fields == [
+            "test.otherfield1",
+            "field1.test",
+            "field2.test",
+            "field3.test",
+            "test.otherfield2",
+    ]
 
 def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders : SigmaRule):
     transformation = WildcardPlaceholderTransformation()

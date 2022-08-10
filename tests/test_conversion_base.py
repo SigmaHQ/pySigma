@@ -1079,7 +1079,7 @@ def test_convert_dropped_detection_item_and():
         ProcessingPipeline([
             ProcessingItem(
                 DropDetectionItemTransformation(),
-                detection_item_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
+                field_name_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
             ),
         ]),
     )
@@ -1104,7 +1104,7 @@ def test_convert_dropped_detection_item_or():
         ProcessingPipeline([
             ProcessingItem(
                 DropDetectionItemTransformation(),
-                detection_item_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
+                field_name_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
             ),
         ]),
     )

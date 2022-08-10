@@ -472,6 +472,23 @@ def test_processingpipeline_apply_partial(sigma_rule):
         and pipeline.applied == [False, True] \
         and pipeline.applied_ids == { "append" }
 
+def test_processingpipeline_field_processing_item_tracking():
+    pipeline = ProcessingPipeline()
+    pipeline.track_field_processing_items("field1", ["fieldA", "fieldB"], "processing_item_1")
+    pipeline.track_field_processing_items("fieldA", ["fieldA", "fieldC", "fieldD"], "processing_item_2")
+    pipeline.track_field_processing_items("fieldB", ["fieldD", "fieldE"], "processing_item_3")
+    pipeline.track_field_processing_items("fieldE", ["fieldF"], None)
+    assert pipeline.field_name_applied_ids == {
+        "fieldA": {"processing_item_1", "processing_item_2"},
+        "fieldC": {"processing_item_1", "processing_item_2"},
+        "fieldD": {"processing_item_1", "processing_item_3"},
+        "fieldF": {"processing_item_1", "processing_item_3"},
+    }
+    assert pipeline.field_was_processed_by("fieldF", "processing_item_3") == True
+    assert pipeline.field_was_processed_by("fieldF", "processing_item_2") == False
+    assert pipeline.field_was_processed_by("nonexistingfield", "processing_item_2") == False
+    assert pipeline.field_was_processed_by(None, "processing_item_3") == False
+
 def test_processingpipeline_concatenation():
     p1 = ProcessingPipeline(
         items=[

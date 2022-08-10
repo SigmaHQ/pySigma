@@ -107,8 +107,15 @@ Example:
 Conditions
 **********
 
-There are two types of conditions: rule conditions which are evaluated to the whole rule and
-detection item conditions that are evaluated for each detection item.
+.. versionadded:: 0.8.0
+  Field name conditions.
+
+There are three types of conditions:
+
+* Rule conditions are evaluated to the whole rule.
+* Detection item conditions are evaluated for each detection item.
+* Field name conditions are evaluated for field names that can be located in detection items or in
+  the field name list of a Sigma rule.
 
 Rule Conditions
 ===============
@@ -132,15 +139,26 @@ Detection Item Conditions
    :header-rows: 1
 
    "Identifier", "Class"
-   "include_fields", "IncludeFieldCondition"
-   "exclude_fields", "ExcludeFieldCondition"
    "match_string", "MatchStringCondition"
    "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
 
-.. autoclass:: sigma.processing.conditions.IncludeFieldCondition
-.. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
 .. autoclass:: sigma.processing.conditions.MatchStringCondition
 .. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
+
+Field Name Conditions
+=====================
+
+.. csv-table:: Field Name Identifiers
+   :header-rows: 1
+
+   "Identifier", "Class"
+   "include_fields", "IncludeFieldCondition"
+   "exclude_fields", "ExcludeFieldCondition"
+   "processing_item_applied", "FieldNameProcessingItemAppliedCondition"
+
+.. autoclass:: sigma.processing.conditions.IncludeFieldCondition
+.. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
+.. autoclass:: sigma.processing.conditions.FieldNameProcessingItemAppliedCondition
 
 Base Classes
 ============
@@ -154,6 +172,7 @@ and not be distributed via the main pySigma distribution.
 
 .. autoclass:: sigma.processing.conditions.RuleProcessingCondition
 .. autoclass:: sigma.processing.conditions.DetectionItemProcessingCondition
+.. autoclass:: sigma.processing.conditions.FieldNameProcessingCondition
 .. autoclass:: sigma.processing.conditions.ValueProcessingCondition
 
 .. _transformations:

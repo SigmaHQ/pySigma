@@ -1,9 +1,11 @@
+from collections import defaultdict
 from dataclasses import dataclass, field
+from functools import partial
 from typing import List, Literal, Mapping, Set, Any, Callable, Iterable, Dict, Tuple, Optional
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
-from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
+from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition, field_name_conditions, FieldNameProcessingCondition
 from sigma.exceptions import SigmaConfigurationError
 import yaml
 
@@ -23,6 +25,9 @@ class ProcessingItem:
     detection_item_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
     detection_item_condition_negation : bool = False
     detection_item_conditions : List[DetectionItemProcessingCondition] = field(default_factory=list)
+    field_name_condition_linking : Callable[[ Iterable[bool] ], bool] = all    # any or all
+    field_name_condition_negation : bool = False
+    field_name_conditions : List[FieldNameProcessingCondition] = field(default_factory=list)
     identifier : Optional[str] = None
 
     @classmethod
@@ -43,6 +48,11 @@ class ProcessingItem:
                 detection_item_conditions,
                 d.get("detection_item_conditions", list()),
                 detection_item_conds := list()
+            ),
+            (
+                field_name_conditions,
+                d.get("field_name_conditions", list()),
+                field_name_conds := list()
             ),
         ):
             for i, cond_def in enumerate(cond_defs):
@@ -72,9 +82,11 @@ class ProcessingItem:
         }
         rule_condition_linking = condition_linking[d.get("rule_cond_op", "and")]   # default: conditions are linked with and operator
         detection_item_condition_linking = condition_linking[d.get("detection_item_cond_op", "and")]   # same for detection item conditions
+        field_name_condition_linking = condition_linking[d.get("field_name_cond_op", "and")]   # same for field name conditions
 
         rule_condition_negation = d.get("rule_cond_not", False)
         detection_item_condition_negation = d.get("detection_item_cond_not", False)
+        field_name_condition_negation = d.get("field_name_cond_not", False)
 
         # Transformation
         try:
@@ -90,14 +102,14 @@ class ProcessingItem:
         params = {
             k: v
             for k, v in d.items()
-            if k not in {"rule_conditions", "rule_cond_op", "rule_cond_not", "detection_item_conditions", "detection_item_cond_op", "detection_item_cond_not", "type", "id"}
+            if k not in {"rule_conditions", "rule_cond_op", "rule_cond_not", "detection_item_conditions", "detection_item_cond_op", "detection_item_cond_not", "field_name_conditions", "field_name_cond_op", "field_name_cond_not", "type", "id"}
         }
         try:
             transformation = transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
-        return cls(transformation, rule_condition_linking, rule_condition_negation, rule_conds, detection_item_condition_linking, detection_item_condition_negation, detection_item_conds, identifier)
+        return cls(transformation, rule_condition_linking, rule_condition_negation, rule_conds, detection_item_condition_linking, detection_item_condition_negation, detection_item_conds, field_name_condition_linking, field_name_condition_negation, field_name_conds, identifier)
 
     def __post_init__(self):
         self.transformation.set_processing_item(self)   # set processing item in transformation object after it is instantiated
@@ -120,15 +132,33 @@ class ProcessingItem:
             return False
 
     def match_detection_item(self, pipeline : "ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
-        """Evalutates detection item conditions from processing item to detection item and returns
-        result."""
-        cond_result = self.detection_item_condition_linking([
+        """
+        Evalutates detection item and field name conditions from processing item to detection item
+        and returns result.
+        """
+        detection_item_cond_result = self.detection_item_condition_linking([
             condition.match(pipeline, detection_item)
             for condition in self.detection_item_conditions
         ])
         if self.detection_item_condition_negation:
-            cond_result = not cond_result
-        return not self.detection_item_conditions or cond_result
+            detection_item_cond_result = not detection_item_cond_result
+
+        field_name_cond_result = self.match_field_name(pipeline, detection_item.field)
+
+        return detection_item_cond_result and field_name_cond_result
+
+    def match_field_name(self, pipeline : "ProcessingPipeline", field : Optional[str]) -> bool:
+        """
+        Evaluate field name conditions on field names and return result.
+        """
+        field_name_cond_result = self.field_name_condition_linking([
+            condition.match(pipeline, field)
+            for condition in self.field_name_conditions
+        ])
+        if self.field_name_condition_negation:
+            field_name_cond_result = not field_name_cond_result
+
+        return field_name_cond_result
 
 @dataclass
 class ProcessingPipeline:
@@ -152,6 +182,7 @@ class ProcessingPipeline:
     # TODO: move this to parameters or return values of apply().
     applied : List[bool] = field(init=False, compare=False, default_factory=list)       # list of applied items as booleans. If True, the corresponding item at the same position was applied
     applied_ids : Set[str] = field(init=False, compare=False, default_factory=set)      # set of identifiers of applied items, doesn't contains items without identifier
+    field_name_applied_ids : Dict[str, Set[str]] = field(init=False, compare=False, default_factory=partial(defaultdict, set))   # Mapping of field names from rule fields list to set of applied processing items
     field_mappings : FieldMappingTracking = field(init=False, compare=False, default_factory=FieldMappingTracking)    # Mapping between initial field names and finally mapped field name.
     state : Mapping[str, Any] = field(init=False, compare=False, default_factory=dict)  # pipeline state: allows to set variables that can be used in conversion (e.g. indices, data model names etc.)
 
@@ -185,6 +216,7 @@ class ProcessingPipeline:
         """Apply processing pipeline on Sigma rule."""
         self.applied = list()
         self.applied_ids = set()
+        self.field_name_applied_ids = defaultdict(set)
         self.field_mappings = FieldMappingTracking()
         self.state = dict()
         for item in self.items:
@@ -193,6 +225,27 @@ class ProcessingPipeline:
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)
         return rule
+
+    def track_field_processing_items(self, src_field : str, dest_field : List[str], processing_item_id : Optional[str]) -> None:
+        """
+        Track processing items that were applied to field names. This adds the processing_item_id to
+        the set of applied processing items from src_field and assigns a copy of this set ass
+        tracking set to all fields in dest_field.
+        """
+        applied_identifiers : Set = self.field_name_applied_ids[src_field]
+        if processing_item_id is not None:
+            applied_identifiers.add(processing_item_id)
+        del self.field_name_applied_ids[src_field]
+        for field in dest_field:
+            self.field_name_applied_ids[field] = applied_identifiers.copy()
+
+    def field_was_processed_by(self, field : Optional[str], processing_item_id : str) -> bool:
+        """
+        Check if field name was processed by a particular processing item.
+        """
+        if field is None:
+            return False
+        return processing_item_id in self.field_name_applied_ids[field]
 
     def __add__(self, other : Optional["ProcessingPipeline"]) -> "ProcessingPipeline":
         """Concatenate two processing pipelines and merge their variables."""

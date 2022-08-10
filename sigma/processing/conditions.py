@@ -19,6 +19,15 @@ class RuleProcessingCondition(ABC):
     def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
         """Match condition on Sigma rule."""
 
+class FieldNameProcessingCondition(ABC):
+    """
+    Base class for conditions on field names in detection items, Sigma rule field lists and other
+    use cases that require matching on field names without detection item context.
+    """
+    @abstractmethod
+    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
+        "The method match is called for each field name and must return a bool result."
+
 @dataclass
 class DetectionItemProcessingCondition(ABC):
     """
@@ -117,9 +126,9 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
     def match(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> bool:
         return rule.was_processed_by(self.processing_item_id)
 
-### Detection Item Condition Classes ###
+### Field Name Condition Classes ###
 @dataclass
-class IncludeFieldCondition(DetectionItemProcessingCondition):
+class IncludeFieldCondition(FieldNameProcessingCondition):
     """
     Matches on field name if it is contained in fields list. The parameter 'type' determines if field names are matched as
     plain string ("plain") or regular expressions ("re").
@@ -142,19 +151,19 @@ class IncludeFieldCondition(DetectionItemProcessingCondition):
         else:
             raise SigmaConfigurationError(f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'.")
 
-    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
-        if detection_item.field is None:
+    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: Optional[str]) -> bool:
+        if field is None:
             return False
         elif self.type == "plain":
-            return detection_item.field in self.fields
+            return field in self.fields
         else:   # regular expression matching
             try:
                 return any((
-                    pattern.match(detection_item.field)
+                    pattern.match(field)
                     for pattern in self.patterns
                 ))
             except Exception as e:
-                msg = f" (while processing detection item: field={str(detection_item.field)} value={str(detection_item.value)})"
+                msg = f" (while processing field '{field}'"
                 if len (e.args) > 1:
                     e.args = (e.args[0] + msg,) + e.args[1:]
                 else:
@@ -167,6 +176,7 @@ class ExcludeFieldCondition(IncludeFieldCondition):
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
         return not super().match(pipeline, detection_item)
 
+### Detection Item Condition Classes ###
 @dataclass
 class MatchStringCondition(ValueProcessingCondition):
     """
@@ -205,6 +215,16 @@ class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingConditi
     def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
         return detection_item.was_processed_by(self.processing_item_id)
 
+@dataclass
+class FieldNameProcessingItemAppliedCondition(DetectionItemProcessingCondition):
+    """
+    Checks if processing item was applied to a field name.
+    """
+    processing_item_id : str
+
+    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
+        return pipeline.field_was_processed_by(field, self.processing_item_id)
+
 ### Condition mappings between rule identifier and class
 
 rule_conditions : Dict[str, RuleProcessingCondition] = {
@@ -213,8 +233,11 @@ rule_conditions : Dict[str, RuleProcessingCondition] = {
     "processing_item_applied": RuleProcessingItemAppliedCondition,
 }
 detection_item_conditions : Dict[str, DetectionItemProcessingCondition] = {
-    "include_fields": IncludeFieldCondition,
-    "exclude_fields": ExcludeFieldCondition,
     "match_string": MatchStringCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
+}
+field_name_conditions : Dict[str, DetectionItemProcessingCondition] = {
+    "include_fields": IncludeFieldCondition,
+    "exclude_fields": ExcludeFieldCondition,
+    "processing_item_applied": FieldNameProcessingItemAppliedCondition,
 }

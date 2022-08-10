@@ -79,7 +79,7 @@ Transformation items are defined as a map as follows:
   be used in future conditions.
 * `type`: the type of the transformation as specified in the identifier to class mappings below: :ref:`transformations`
 * Arbitrary transformation parameters are specified at the samle level.
-* `rule_conditions` or `detection_item_conditions`: conditions of the type corresponding to the name.
+* `rule_conditions`, `detection_item_conditions`, `field_name_conditions`: conditions of the type corresponding to the name.
 
 Conditions are specified as follows:
 
@@ -112,10 +112,25 @@ Conditions
 
 There are three types of conditions:
 
-* Rule conditions are evaluated to the whole rule.
-* Detection item conditions are evaluated for each detection item.
+* Rule conditions are evaluated to the whole rule. They are defined in the `rule_conditions`
+  attribute of a `ProcessingItem`.
+* Detection item conditions are evaluated for each detection item. They are defined in the
+  `detection_item_conditions` attribute of a `ProcessingPipeline`.
 * Field name conditions are evaluated for field names that can be located in detection items or in
-  the field name list of a Sigma rule.
+  the field name list of a Sigma rule. They are defined in the `field_name_conditions` attribute of
+  a `ProcessingPipeline`.
+
+In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two furthert
+attributes hat control the condition matching behavior:
+
+* `rule_condition_linking`, `detection_item_condition_linking` and `field_name_condition_linking`:
+  one of `any` or `all` functions. Controls if one or all of the conditions from the list must match
+  to result in an overall match.
+* `rule_condition_negation`, `detection_item_condition_negation` and
+  `field_name_condition_negation`: if set to *True*, the condition result is negated.
+
+The results of the evaluatuon of different condition types are and-linked. E.g. if a processing item
+contains rule and field name conditions, both must evaluate to *True* to get the overall result of *True*.
 
 Rule Conditions
 ===============

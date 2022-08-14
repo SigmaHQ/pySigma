@@ -216,7 +216,7 @@ class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingConditi
         return detection_item.was_processed_by(self.processing_item_id)
 
 @dataclass
-class FieldNameProcessingItemAppliedCondition(DetectionItemProcessingCondition):
+class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
     """
     Checks if processing item was applied to a field name.
     """

@@ -6,7 +6,7 @@ from sigma.processing.tracking import FieldMappingTracking
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition, field_name_conditions, FieldNameProcessingCondition
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 import yaml
 
 @dataclass
@@ -113,6 +113,21 @@ class ProcessingItem:
 
     def __post_init__(self):
         self.transformation.set_processing_item(self)   # set processing item in transformation object after it is instantiated
+        if not isinstance(self.rule_conditions, list):
+            raise SigmaTypeError("Rule processing conditions must be provided as list")
+        for rule_condition in self.rule_conditions:
+            if not isinstance(rule_condition, RuleProcessingCondition):
+                raise SigmaTypeError(f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition")
+        if not isinstance(self.detection_item_conditions, list):
+            raise SigmaTypeError("Detection item processing conditions must be provided as list")
+        for detection_item_condition in self.detection_item_conditions:
+            if not isinstance(detection_item_condition, DetectionItemProcessingCondition):
+                raise SigmaTypeError(f"Detection item processing condition '{str(detection_item_condition)}' is not a DetectionItemProcessingCondition")
+        if not isinstance(self.field_name_conditions, list):
+            raise SigmaTypeError("Field name processing conditions must be provided as list")
+        for field_name_condition in self.field_name_conditions:
+            if not isinstance(field_name_condition, FieldNameProcessingCondition):
+                raise SigmaTypeError(f"Detection item processing condition '{str(field_name_condition)}' is not a FieldNameProcessingCondition")
 
     def apply(self, pipeline : "ProcessingPipeline", rule : SigmaRule) -> Tuple[SigmaRule, bool]:
         """

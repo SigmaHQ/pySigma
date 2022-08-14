@@ -3,10 +3,10 @@ from dataclasses import dataclass
 import re
 from textwrap import dedent
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
-from sigma.processing.transformations import transformations, Transformation
+from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingCondition, IncludeFieldCondition, LogsourceCondition, rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
+from sigma.processing.transformations import SetStateTransformation, transformations, Transformation
 from sigma.rule import SigmaRule, SigmaDetectionItem
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 from sigma.types import SigmaString
 
 @dataclass
@@ -386,6 +386,48 @@ def test_processingitem_match_detection_item_negated_false(dummy_processing_pipe
         ],
     )
     assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+
+def test_processingitem_rule_condition_nolist():
+    with pytest.raises(SigmaTypeError, match="Rule processing conditions"):
+        ProcessingItem(
+            rule_conditions=LogsourceCondition(category="test"),
+            transformation=SetStateTransformation("test", True),
+        )
+
+def test_processingitem_detection_item_condition_nolist():
+    with pytest.raises(SigmaTypeError, match="Detection item processing conditions"):
+        ProcessingItem(
+            detection_item_conditions=DetectionItemProcessingItemAppliedCondition("test"),
+            transformation=SetStateTransformation("test", True),
+        )
+
+def test_processingitem_field_name_condition_nolist():
+    with pytest.raises(SigmaTypeError, match="Field name processing conditions"):
+        ProcessingItem(
+            field_name_conditions=IncludeFieldCondition(fields=["test"]),
+            transformation=SetStateTransformation("test", True),
+        )
+
+def test_processingitem_wrong_rule_condition():
+    with pytest.raises(SigmaTypeError, match="RuleProcessingCondition"):
+        ProcessingItem(
+            rule_conditions=[IncludeFieldCondition(fields=["testfield"])],
+            transformation=SetStateTransformation("test", True),
+        )
+
+def test_processingitem_wrong_detection_item_condition():
+    with pytest.raises(SigmaTypeError, match="DetectionItemProcessingCondition"):
+        ProcessingItem(
+            detection_item_conditions=[IncludeFieldCondition(fields=["testfield"])],
+            transformation=SetStateTransformation("test", True),
+        )
+
+def test_processingitem_wrong_field_name_condition():
+    with pytest.raises(SigmaTypeError, match="FieldNameProcessingCondition"):
+        ProcessingItem(
+            field_name_conditions=[LogsourceCondition(category="test")],
+            transformation=SetStateTransformation("test", True),
+        )
 
 def test_processingpipeline_fromdict(processing_item_dict, processing_item, processing_pipeline_vars):
     assert ProcessingPipeline.from_dict({

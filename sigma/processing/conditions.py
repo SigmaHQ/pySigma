@@ -25,8 +25,15 @@ class FieldNameProcessingCondition(ABC):
     use cases that require matching on field names without detection item context.
     """
     @abstractmethod
-    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
+    def match_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
         "The method match is called for each field name and must return a bool result."
+
+    def match_detection_item(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item : SigmaDetectionItem):
+        """
+        Match field name condition on detection item by default by match on the field name
+        contained in the detection item.
+        """
+        return self.match_field_name(pipeline, detection_item.field)
 
 @dataclass
 class DetectionItemProcessingCondition(ABC):
@@ -151,7 +158,7 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
         else:
             raise SigmaConfigurationError(f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'.")
 
-    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: Optional[str]) -> bool:
+    def match_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: Optional[str]) -> bool:
         if field is None:
             return False
         elif self.type == "plain":
@@ -173,8 +180,8 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
 @dataclass
 class ExcludeFieldCondition(IncludeFieldCondition):
     """Matches on field name if it is not contained in fields list."""
-    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
-        return not super().match(pipeline, detection_item)
+    def match_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem) -> bool:
+        return not super().match_field_name(pipeline, detection_item)
 
 ### Detection Item Condition Classes ###
 @dataclass
@@ -222,8 +229,11 @@ class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
     """
     processing_item_id : str
 
-    def match(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
+    def match_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
         return pipeline.field_was_processed_by(field, self.processing_item_id)
+
+    def match_detection_item(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item: SigmaDetectionItem):
+        return detection_item.was_processed_by(self.processing_item_id)
 
 ### Condition mappings between rule identifier and class
 

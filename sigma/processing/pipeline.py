@@ -158,7 +158,12 @@ class ProcessingItem:
         if self.detection_item_condition_negation:
             detection_item_cond_result = not detection_item_cond_result
 
-        field_name_cond_result = self.match_field_name(pipeline, detection_item.field)
+        field_name_cond_result = self.field_name_condition_linking([
+            condition.match_detection_item(pipeline, detection_item)
+            for condition in self.field_name_conditions
+        ])
+        if self.field_name_condition_negation:
+            field_name_cond_result = not field_name_cond_result
 
         return detection_item_cond_result and field_name_cond_result
 
@@ -167,7 +172,7 @@ class ProcessingItem:
         Evaluate field name conditions on field names and return result.
         """
         field_name_cond_result = self.field_name_condition_linking([
-            condition.match(pipeline, field)
+            condition.match_field_name(pipeline, field)
             for condition in self.field_name_conditions
         ])
         if self.field_name_condition_negation:
@@ -247,12 +252,13 @@ class ProcessingPipeline:
         the set of applied processing items from src_field and assigns a copy of this set ass
         tracking set to all fields in dest_field.
         """
-        applied_identifiers : Set = self.field_name_applied_ids[src_field]
-        if processing_item_id is not None:
-            applied_identifiers.add(processing_item_id)
-        del self.field_name_applied_ids[src_field]
-        for field in dest_field:
-            self.field_name_applied_ids[field] = applied_identifiers.copy()
+        if [ src_field ] != dest_field:     # Only add if source field was mapped to something different.
+            applied_identifiers : Set = self.field_name_applied_ids[src_field]
+            if processing_item_id is not None:
+                applied_identifiers.add(processing_item_id)
+            del self.field_name_applied_ids[src_field]
+            for field in dest_field:
+                self.field_name_applied_ids[field] = applied_identifiers.copy()
 
     def field_was_processed_by(self, field : Optional[str], processing_item_id : str) -> bool:
         """

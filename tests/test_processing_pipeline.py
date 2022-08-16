@@ -3,8 +3,8 @@ from dataclasses import dataclass
 import re
 from textwrap import dedent
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingCondition, IncludeFieldCondition, LogsourceCondition, rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition
-from sigma.processing.transformations import SetStateTransformation, transformations, Transformation
+from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, IncludeFieldCondition, LogsourceCondition, rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition, FieldNameProcessingItemAppliedCondition
+from sigma.processing.transformations import SetStateTransformation, transformations, Transformation, FieldMappingTransformation, AddFieldnamePrefixTransformation
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 from sigma.types import SigmaString
@@ -530,6 +530,66 @@ def test_processingpipeline_field_processing_item_tracking():
     assert pipeline.field_was_processed_by("fieldF", "processing_item_2") == False
     assert pipeline.field_was_processed_by("nonexistingfield", "processing_item_2") == False
     assert pipeline.field_was_processed_by(None, "processing_item_3") == False
+
+@pytest.fixture(scope="module")
+def processing_pipeline_with_field_name_condition():
+    return ProcessingPipeline(
+        items=[
+            ProcessingItem(     # Field mappings
+                identifier="field_mapping",
+                transformation=FieldMappingTransformation({
+                    "fieldA": "mappedA",
+                })
+            ),
+            ProcessingItem(         # Prepend each field that was not processed by previous field mapping transformation with "winlog.event_data."
+                identifier="prefix",
+                transformation=AddFieldnamePrefixTransformation("prefix."),
+                field_name_conditions=[
+                    FieldNameProcessingItemAppliedCondition("field_mapping"),
+                ],
+                field_name_condition_negation=True,
+                field_name_condition_linking=any,
+            ),
+        ]
+    )
+
+def test_processingpipeline_field_name_condition_tracking_in_field_list(processing_pipeline_with_field_name_condition):
+    rule = processing_pipeline_with_field_name_condition.apply(SigmaRule.from_yaml(f"""
+            title: Test
+            status: test
+            logsource:
+                category: test
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+            fields:
+                - fieldA
+                - fieldB
+        """)
+    )
+    assert rule.fields == ["mappedA", "prefix.fieldB"]
+
+def test_processingpipeline_field_name_condition_tracking_in_detection_item(processing_pipeline_with_field_name_condition):
+    rule = processing_pipeline_with_field_name_condition.apply(SigmaRule.from_yaml(f"""
+            title: Test
+            status: test
+            logsource:
+                category: test
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+        """)
+    )
+    detection_items = rule.detection.detections["sel"].detection_items
+    detection_item_fields = [
+        detection_item.field
+        for detection_item in detection_items
+    ]
+    assert detection_item_fields == ["mappedA", "prefix.fieldB"]
 
 def test_processingpipeline_concatenation():
     p1 = ProcessingPipeline(

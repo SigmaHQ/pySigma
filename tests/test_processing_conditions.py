@@ -89,38 +89,38 @@ def test_rule_contains_detection_item_nomatch_value(sigma_rule):
         ).match(dummy_processing_pipeline, sigma_rule)
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, "field") == True
+    assert IncludeFieldCondition(["field", "otherfield"]).match_field_name(dummy_processing_pipeline, "field") == True
 
 def test_include_field_condition_match_nofield(dummy_processing_pipeline, detection_item_nofield):
-    assert IncludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, None) == False
+    assert IncludeFieldCondition(["field", "otherfield"]).match_field_name(dummy_processing_pipeline, None) == False
 
 def test_include_field_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["testfield", "otherfield"]).match(dummy_processing_pipeline, "field") == False
+    assert IncludeFieldCondition(["testfield", "otherfield"]).match_field_name(dummy_processing_pipeline, "field") == False
 
 def test_include_field_condition_re_match(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match(dummy_processing_pipeline, "field") == True
+    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(dummy_processing_pipeline, "field") == True
 
 def test_include_field_condition_re_match_nofield(dummy_processing_pipeline, detection_item_nofield):
-    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match(dummy_processing_pipeline, None) == False
+    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(dummy_processing_pipeline, None) == False
 
 def test_include_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match(dummy_processing_pipeline, "field") == False
+    assert IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(dummy_processing_pipeline, "field") == False
 
 def test_include_field_condition_wrong_type(dummy_processing_pipeline, detection_item):
     with pytest.raises(SigmaConfigurationError, match="Invalid.*type"):
         IncludeFieldCondition(["field", "otherfield"], "invalid")
 
 def test_exclude_field_condition_match(dummy_processing_pipeline, detection_item):
-    assert ExcludeFieldCondition(["field", "otherfield"]).match(dummy_processing_pipeline, "field") == False
+    assert ExcludeFieldCondition(["field", "otherfield"]).match_field_name(dummy_processing_pipeline, "field") == False
 
 def test_exclude_field_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert ExcludeFieldCondition(["testfield", "otherfield"]).match(dummy_processing_pipeline, "field") == True
+    assert ExcludeFieldCondition(["testfield", "otherfield"]).match_field_name(dummy_processing_pipeline, "field") == True
 
 def test_exclude_field_condition_re_match(dummy_processing_pipeline, detection_item):
-    assert ExcludeFieldCondition(["o[0-9]+", "f.*"], "re").match(dummy_processing_pipeline, "field") == False
+    assert ExcludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(dummy_processing_pipeline, "field") == False
 
 def test_exclude_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
-    assert ExcludeFieldCondition(["o[0-9]+", "x.*"], "re").match(dummy_processing_pipeline, "field") == True
+    assert ExcludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(dummy_processing_pipeline, "field") == True
 
 @pytest.fixture
 def multivalued_detection_item():
@@ -175,8 +175,8 @@ def pipeline_field_tracking():
 
 def test_field_name_processing_item_applied(pipeline_field_tracking):
     assert FieldNameProcessingItemAppliedCondition(processing_item_id="processing_item") \
-        .match(pipeline_field_tracking, "fieldA")
+        .match_field_name(pipeline_field_tracking, "fieldA")
 
 def test_field_name_processing_item_not_applied(pipeline_field_tracking):
     assert not FieldNameProcessingItemAppliedCondition(processing_item_id="processing_item") \
-        .match(pipeline_field_tracking, "fieldC")
+        .match_field_name(pipeline_field_tracking, "fieldC")

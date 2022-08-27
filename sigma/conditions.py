@@ -146,20 +146,26 @@ class ConditionSelector(ConditionItem):
             self.cond_class = ConditionAND
         self.pattern = self.args[1]
 
-    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> Union[ConditionAND, ConditionOR]:
-        """Converts selector into an AND or OR condition"""
-        self.parent = parent
-
+    def resolve_referenced_detections(self, detections : "sigma.rule.SigmaDetections") -> List[str]:
+        """
+        Resolve all detection identifiers referenced by the selector.
+        """
         if self.pattern == "them":
             r = re.compile(".*")
         else:
             r = re.compile(self.pattern.replace("*", ".*"))
 
-        ids = [
+        return [
             ConditionIdentifier([ identifier ])
             for identifier in detections.detections.keys()
             if r.match(identifier)
         ]
+
+    def postprocess(self, detections : "sigma.rule.SigmaDetections", parent : Optional["ConditionItem"] = None, source : Optional[SigmaRuleLocation] = None) -> Union[ConditionAND, ConditionOR]:
+        """Converts selector into an AND or OR condition"""
+        self.parent = parent
+
+        ids = self.resolve_referenced_detections(detections)
         cond = self.cond_class(ids)
         return cond.postprocess(detections, parent, source)
 
@@ -198,6 +204,26 @@ class SigmaCondition(ProcessingItemTrackingMixin):
     detections : "sigma.rule.SigmaDetections"
     source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
+    def parse(self, postprocess : bool = True):
+        """
+        Parse condition and return parse tree (no postprocessing) or condition tree (postprocessed).
+
+        :param postprocess: Postprocess parse tree into a condition tree, defaults to True
+        :type postprocess: bool, optional
+        :raises SigmaConditionError: on parse error.
+        :return: Parse or condition tree.
+        """
+        if "|" in self.condition:
+            raise SigmaConditionError("The pipe syntax in Sigma conditions will be deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax.")
+        try:
+            parsed = condition.parseString(self.condition, parse_all=True)[0]
+            if postprocess:
+                return parsed.postprocess(self.detections, source=self.source)
+            else:
+                return parsed
+        except ParseException as e:
+            raise SigmaConditionError(str(e), source=self.source)
+
     @property
     def parsed(self):
         """
@@ -208,13 +234,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
         state of the rule.
         """
-        if "|" in self.condition:
-            raise SigmaConditionError("The pipe syntax in Sigma conditions will be deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax.")
-        try:
-            parsed = condition.parseString(self.condition, parse_all=True)[0]
-            return parsed.postprocess(self.detections, source=self.source)
-        except ParseException as e:
-            raise SigmaConditionError(str(e), source=self.source)
+        return self.parse(True)
 
 ConditionType = Union[
     ConditionOR,

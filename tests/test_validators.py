@@ -4,8 +4,10 @@ from wsgiref.validate import validator
 import pytest
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
+from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
+from sigma.validators.values import DoubleWildcardIssue, DoubleWildcardValidator
 
 @pytest.fixture
 def rule_without_id():
@@ -105,5 +107,71 @@ def test_validator_dangling_detection_valid():
         referenced3:
             field3: val3
         condition: (referenced1 or referenced2) and referenced3
+    """)
+    assert validator.validate(rule) == []
+
+def test_validator_dangling_detection_valid_x_of_wildcard():
+    validator = DanglingDetectionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: 1 of referenced*
+    """)
+    assert validator.validate(rule) == []
+
+def test_validator_dangling_detection_valid_x_of_them():
+    validator = DanglingDetectionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: 1 of them
+    """)
+    assert validator.validate(rule) == []
+
+def test_validator_double_wildcard():
+    validator = DoubleWildcardValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: te**st
+            field2: 123
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ DoubleWildcardIssue([ rule ], SigmaString("te**st")) ]
+
+def test_validator_double_wildcard_valid():
+    validator = DoubleWildcardValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: t*es*t
+            field2: 123
+        condition: sel
     """)
     assert validator.validate(rule) == []

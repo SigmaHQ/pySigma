@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-from typing import ClassVar, List, Optional, Type
+from typing import ClassVar, List, Optional, Set, Type
 from sigma.collection import SigmaCollection
-from sigma.rule import SigmaDetection, SigmaRule
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule
+from .types import SigmaString, SigmaType
 
 class SigmaValidationIssueSeverity(Enum):
     """
@@ -67,6 +68,7 @@ class SigmaRuleValidator(ABC):
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
+        self.rule = rule
 
     def finalize(self) -> List[SigmaValidationIssue]:
         """
@@ -95,6 +97,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
         """
         Iterate over all detections and call validate_detection() for each.
         """
+        super().validate(rule)
         return [
             issue
             for name, detection in rule.detection.detections.items()
@@ -127,6 +130,91 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
     The validation state stored in the object should be reset as required to prevent undesired side
     effects in implementations of them methods mentioned above.
     """
+    def validate_detection(self, name: Optional[str], detection: SigmaDetection) -> List[SigmaValidationIssue]:
+        """
+        Iterate over all detection items of a detection definition and call
+        validate_detection_item() method on each detection item or this method itself recursively
+        for nested detection definitions.
+        """
+        return [
+            issue
+            for item in detection.detection_items
+            for issue in (
+                self.validate_detection_item(item) if isinstance(item, SigmaDetectionItem)
+                else self.validate_detection(None, item)
+                )
+        ]
+
+    @abstractmethod
+    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+        """Implementation of the detection item validation. It is invoked for each detection item.
+
+        :param detection_item: detection item that should be validated.
+        :type detection: SigmaDetectionItem
+        :return: List of validation issue objects describing.
+        :rtype: List[SigmaValidationIssue]
+        """
+
+class SigmaValueValidator(SigmaDetectionItemValidator):
+    """
+    A value validator iterates over all values contained in a Sigma rules detection items and calls
+    the method validate_value() for each of them if the type is contained in the validated_types
+    set. It can perform isolated checks per value or collect state across different values and then
+    conduct checks across multiple of them in the following methods:
+
+    * validate_detection_item(): all values of a detection item.
+    * validate_detection(): all detection items of a detection.
+    * validate(): all detection items across a rule.
+    * finalize(): all detection items across a rule set.
+
+    The validation state stored in the object should be reset as required to prevent undesired side
+    effects in implementations of them methods mentioned above.
+    """
+    validated_types : ClassVar[Set[Type[SigmaType]]] = { SigmaType }
+
+    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+        """
+        Iterate over all values of a detection item and call validate_value() method for each of
+        them if they are contained in the validated_types class attribute.
+        """
+        return [
+            issue
+            for value in detection_item.value
+            for issue in (
+                self.validate_value(value) if any((
+                    isinstance(value, t)
+                    for t in self.validated_types
+                    ))
+                else []
+            )
+        ]
+
+    @abstractmethod
+    def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
+        """Implementation of the value validation. It is invoked for each value of a type.
+
+        :param detection_item: detection item that should be validated.
+        :type detection: SigmaDetectionItem
+        :return: List of validation issue objects describing.
+        :rtype: List[SigmaValidationIssue]
+        """
+
+class SigmaStringValueValidator(SigmaValueValidator):
+    """
+    A value validator iterates over all values contained in a Sigma rules detection items and calls
+    the method validate_value() for all strings. It can perform isolated checks per value or collect
+    state across different values and then conduct checks across multiple of them in the following
+    methods:
+
+    * validate_detection_item(): all values of a detection item.
+    * validate_detection(): all detection items of a detection.
+    * validate(): all detection items across a rule.
+    * finalize(): all detection items across a rule set.
+
+    The validation state stored in the object should be reset as required to prevent undesired side
+    effects in implementations of them methods mentioned above.
+    """
+    validated_types : ClassVar[Set[Type[SigmaType]]] = { SigmaString }
 
 class SigmaValidator:
     """

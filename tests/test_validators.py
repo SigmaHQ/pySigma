@@ -7,7 +7,7 @@ from sigma.rule import SigmaRule
 from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
-from sigma.validators.values import DoubleWildcardIssue, DoubleWildcardValidator
+from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator
 
 @pytest.fixture
 def rule_without_id():
@@ -175,3 +175,33 @@ def test_validator_double_wildcard_valid():
         condition: sel
     """)
     assert validator.validate(rule) == []
+
+def test_validator_number_as_string():
+    validator = NumberAsStringValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: 123
+            field2: "234"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ NumberAsStringIssue([ rule ], SigmaString("234")) ]
+
+def test_validator_control_characters():
+    validator = ControlCharacterValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: "\\temp"
+            field2: "\\\\test"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ControlCharacterIssue([ rule ], SigmaString("\temp"))]

@@ -1,8 +1,10 @@
 from dataclasses import dataclass
 import string
 from typing import ClassVar, List
+from sigma.modifiers import SigmaContainsModifier, SigmaEndswithModifier, SigmaStartswithModifier
+from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SpecialChars
-from sigma.validation import SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validation import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
 
 @dataclass
@@ -67,5 +69,50 @@ class ControlCharacterValidator(SigmaStringValueValidator):
             )
         )):
             return [ ControlCharacterIssue([ self.rule ], value) ]
+        else:
+            return []
+
+@dataclass
+class WildcardsInsteadOfContainsModifierIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "String contains wildcards at beginning and end instead of being modified with contains modifier"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
+    detection_item: SigmaDetectionItem
+
+@dataclass
+class WildcardInsteadOfStartswithIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "String contains wildcard at end instead of being modified with startswith modifier"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
+    detection_item: SigmaDetectionItem
+
+@dataclass
+class WildcardInsteadOfEndswithIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "String contains wildcard at beginning instead of being modified with endswith modifier"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
+    detection_item: SigmaDetectionItem
+
+class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
+    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+        if all((
+            isinstance(value, SigmaString) and
+            value.startswith(SpecialChars.WILDCARD_MULTI) and
+            value.endswith(SpecialChars.WILDCARD_MULTI) and
+            not value[1:-1].contains_special()
+            for value in detection_item.original_value
+        )) and SigmaContainsModifier not in detection_item.modifiers:
+            return [ WildcardsInsteadOfContainsModifierIssue([ self.rule ], detection_item) ]
+        elif all((
+            isinstance(value, SigmaString) and
+            value.startswith(SpecialChars.WILDCARD_MULTI) and
+            not value[1:].contains_special()
+            for value in detection_item.original_value
+        )) and SigmaEndswithModifier not in detection_item.modifiers:
+            return [ WildcardInsteadOfEndswithIssue([ self.rule ], detection_item) ]
+        elif all((
+            isinstance(value, SigmaString) and
+            value.endswith(SpecialChars.WILDCARD_MULTI) and
+            not value[:-1].contains_special()
+            for value in detection_item.original_value
+        )) and SigmaStartswithModifier not in detection_item.modifiers:
+            return [ WildcardInsteadOfStartswithIssue([ self.rule ], detection_item) ]
         else:
             return []

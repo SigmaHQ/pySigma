@@ -3,11 +3,14 @@ from wsgiref.validate import validator
 
 import pytest
 from sigma.collection import SigmaCollection
-from sigma.rule import SigmaRule
+from sigma.exceptions import SigmaValueError
+from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaContainsModifier
+from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
-from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator
+from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
+from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
 
 @pytest.fixture
 def rule_without_id():
@@ -205,3 +208,237 @@ def test_validator_control_characters():
         condition: sel
     """)
     assert validator.validate(rule) == [ ControlCharacterIssue([ rule ], SigmaString("\temp"))]
+
+def test_validator_wildcards_instead_of_contains():
+    validator = WildcardsInsteadOfModifiersValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field:
+              - "*val1*"
+              - "*val2*"
+              - "*val3*"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        WildcardsInsteadOfContainsModifierIssue(
+            [ rule ],
+            SigmaDetectionItem("field", [], [
+                    SigmaString("*val1*"),
+                    SigmaString("*val2*"),
+                    SigmaString("*val3*"),
+                    ]
+                )
+            )
+        ]
+
+def test_validator_wildcard_instead_of_endswith():
+    validator = WildcardsInsteadOfModifiersValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field:
+              - "*val1"
+              - "*val2"
+              - "*val3"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        WildcardInsteadOfEndswithIssue(
+            [ rule ],
+            SigmaDetectionItem("field", [], [
+                    SigmaString("*val1"),
+                    SigmaString("*val2"),
+                    SigmaString("*val3"),
+                    ]
+                )
+            )
+        ]
+
+def test_validator_wildcard_instead_of_startswith():
+    validator = WildcardsInsteadOfModifiersValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field:
+              - "val1*"
+              - "val2*"
+              - "val3*"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        WildcardInsteadOfStartswithIssue(
+            [ rule ],
+            SigmaDetectionItem("field", [], [
+                    SigmaString("val1*"),
+                    SigmaString("val2*"),
+                    SigmaString("val3*"),
+                    ]
+                )
+            )
+        ]
+
+def test_validator_wildcards_instead_of_modifiers_inconsistent():
+    validator = WildcardsInsteadOfModifiersValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field:
+              - "*val1*"
+              - "*val2"
+              - "val3*"
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ]
+
+def test_validator_all_without_contains():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|all:
+                - value1
+                - value2
+                - value3
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        AllWithoutContainsModifierIssue(
+                [ rule ],
+                SigmaDetectionItem("field", [ SigmaAllModifier ], [ "value1", "value2", "value3" ])
+            )
+        ]
+
+def test_validator_all_without_contains_unbound():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            "|all":
+                - value1
+                - value2
+                - value3
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ]
+
+def test_validator_all_with_contains():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|contains|all:
+                - value1
+                - value2
+                - value3
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ]
+
+def test_validator_base64offset_without_contains_modifier():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|base64offset: value
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        Base64OffsetWithoutContainsModifierIssue(
+            [ rule ],
+            SigmaDetectionItem("field", [ SigmaBase64OffsetModifier ], [ "value" ])
+        )
+    ]
+
+def test_validator_base64offset_after_contains_modifier():
+    with pytest.raises(SigmaValueError, match="strings with wildcards"):
+        rule = SigmaRule.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field|contains|base64offset: value
+            condition: sel
+        """)
+
+def test_validator_base64offset_with_contains_modifier():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|base64offset|contains: value
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ]
+
+def test_validator_multiple_modifier():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|base64offset|base64offset|contains|contains: value
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        ModifierAppliedMultipleIssue(
+            [ rule ],
+            SigmaDetectionItem("field", [ SigmaBase64OffsetModifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaContainsModifier ], [ "value" ]),
+            { SigmaBase64OffsetModifier, SigmaContainsModifier }
+        )
+    ]
+
+def test_validator_multiple_base64_modifier():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|base64|base64: value
+        condition: sel
+    """)
+    assert validator.validate(rule) == [ ]

@@ -15,7 +15,7 @@ class SigmaValidationIssueSeverity(Enum):
     * Medium: issue can cause problems under certain conditions or the meaning of the rule can be
       different than intended.
     * High: issue will cause problems. It is certain that the intention of the rule author and the
-      rule logic deviate.
+      rule logic deviate or the rule doesn't matches anything.
     """
     LOW           = auto()
     MEDIUM        = auto()

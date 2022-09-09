@@ -24,3 +24,39 @@ class ATTACKTagValidator(SigmaTagValidator):
         if tag.namespace == "attack" and tag.name not in self.allowed_tags:
             return [ InvalidATTACKTagIssue([ self.rule ], tag) ]
         return []
+
+@dataclass
+class InvalidTLPTagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid TLP tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+class TLPTagValidatorBase(SigmaTagValidator):
+    """Base class for TLP tag validation"""
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        if tag.namespace == "tlp" and tag.name not in self.allowed_tags:
+            return [ InvalidTLPTagIssue([ self.rule ], tag) ]
+        return []
+
+class TLPv1TagValidator(TLPTagValidatorBase):
+    """Validation of TLP tags according to old version 1 standard."""
+    allowed_tags: Set[str] = {
+        "white",
+        "green",
+        "amber",
+        "red",
+    }
+
+class TLPv2TagValidator(TLPTagValidatorBase):
+    """Validation of TLP tags according to version 2 standard."""
+    allowed_tags: Set[str] = {
+        "clear",
+        "green",
+        "amber",
+        "amber+strict",
+        "red",
+    }
+
+class TLPTagValidator(TLPTagValidatorBase):
+    """Validation of TLP tags from all versions of the TLP standard."""
+    allowed_tags: Set[str] = TLPv1TagValidator.allowed_tags.union(TLPv2TagValidator.allowed_tags)

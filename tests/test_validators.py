@@ -10,7 +10,7 @@ from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
-from sigma.validators.tags import ATTACKTagValidator, InvalidATTACKTagIssue
+from sigma.validators.tags import ATTACKTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
 from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
 
 @pytest.fixture
@@ -521,3 +521,38 @@ def test_validator_valid_attack_tags():
         - attack.t1001.001
     """)
     assert validator.validate(rule) == [ ]
+
+@pytest.mark.parametrize(
+    "validator_class,tags,issue_tags", [
+        (TLPv1TagValidator, [ "tlp.clear", "tlp.white" ], [ "tlp.clear" ]),
+        (TLPv2TagValidator, [ "tlp.clear", "tlp.white" ], [ "tlp.white" ]),
+        (TLPTagValidator, [ "tlp.clear", "tlp.white" ], [ ]),
+        (TLPTagValidator, [ "tlp.clear", "tlp.white", "tlp.test" ], [ "tlp.test" ]),
+    ],
+    ids=[
+        "TLPv1-invalid",
+        "TLPv2-invalid",
+        "TLP-valid",
+        "TLP-invalid",
+    ]
+)
+def test_validator_tlp_tags(validator_class, tags, issue_tags):
+    validator = validator_class()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """)
+    rule.tags = [
+        SigmaRuleTag.from_str(tag)
+        for tag in tags
+    ]
+    assert validator.validate(rule) == [
+        InvalidTLPTagIssue( [ rule ], SigmaRuleTag.from_str(tag))
+        for tag in issue_tags
+    ]

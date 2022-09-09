@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar, List, Set
 from sigma.rule import SigmaRule, SigmaRuleTag
-from sigma.validation import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validation import SigmaRuleValidator, SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 
 @dataclass
@@ -10,7 +10,7 @@ class InvalidATTACKTagIssue(SigmaValidationIssue):
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 
-class ATTACKTagValidator(SigmaRuleValidator):
+class ATTACKTagValidator(SigmaTagValidator):
     def __init__(self) -> None:
         self.allowed_tags = {
             tactic.lower().replace("-", "_")
@@ -20,9 +20,7 @@ class ATTACKTagValidator(SigmaRuleValidator):
             for technique in mitre_attack_techniques.keys()
         })
 
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        return [
-            InvalidATTACKTagIssue([ rule ], tag)
-            for tag in rule.tags
-            if tag.namespace == "attack" and tag.name not in self.allowed_tags
-         ]
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        if tag.namespace == "attack" and tag.name not in self.allowed_tags:
+            return [ InvalidATTACKTagIssue([ self.rule ], tag) ]
+        return []

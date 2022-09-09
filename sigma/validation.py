@@ -3,7 +3,7 @@ from dataclasses import dataclass, fields
 from enum import Enum, auto
 from typing import ClassVar, List, Optional, Set, Type
 from sigma.collection import SigmaCollection
-from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from .types import SigmaString, SigmaType
 
 class SigmaValidationIssueSeverity(Enum):
@@ -215,6 +215,23 @@ class SigmaStringValueValidator(SigmaValueValidator):
     effects in implementations of them methods mentioned above.
     """
     validated_types : ClassVar[Set[Type[SigmaType]]] = { SigmaString }
+
+class SigmaTagValidator(SigmaRuleValidator):
+    """
+    The tag validator iterates over all tags from the rule and calls the method validate_tag() for
+    each tag.
+    """
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        super().validate(rule)
+        return [
+            issue
+            for tag in rule.tags
+            for issue in self.validate_tag(tag)
+        ]
+
+    @abstractmethod
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        """Validates a tag."""
 
 class SigmaValidator:
     """

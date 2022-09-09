@@ -30,7 +30,7 @@ def rule_without_id():
 def rule_with_id():
     return SigmaRule.from_yaml("""
     title: Test
-    id: 32532a0b-e56c-47c9-bcbb-3d88bd670c37
+    id: 19855ce4-00b3-4d07-8e57-f6c6955ce4e7
     status: test
     logsource:
         category: test

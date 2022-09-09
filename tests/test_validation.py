@@ -8,9 +8,9 @@ def test_sigmavalidator_validate_rule_collection(rule_with_id, rule_without_id, 
     rules = SigmaCollection([rule_with_id, rule_without_id, *rules_with_id_collision])
     validator = SigmaValidator([IdentifierExistenceValidator, IdentifierUniquenessValidator])
     issues = validator.validate_rule_collection(rules)
-    assert len(issues) == 2 \
-        and IdentifierExistenceIssue([rule_without_id]) in issues \
-        and IdentifierCollisionIssue(rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37"))
+    assert len(issues) == 2
+    assert IdentifierExistenceIssue([rule_without_id]) in issues
+    assert IdentifierCollisionIssue(rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")) in issues
 
 def test_issue_string_rendering(rules_with_id_collision):
     assert str(IdentifierCollisionIssue(rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37"))) == \

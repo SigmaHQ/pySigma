@@ -5,11 +5,12 @@ import pytest
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaValueError
 from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaContainsModifier
-from sigma.rule import SigmaDetectionItem, SigmaRule
+from sigma.rule import SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
+from sigma.validators.tags import ATTACKTagValidator, InvalidATTACKTagIssue
 from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
 
 @pytest.fixture
@@ -440,5 +441,83 @@ def test_validator_multiple_base64_modifier():
         sel:
             field|base64|base64: value
         condition: sel
+    """)
+    assert validator.validate(rule) == [ ]
+
+def test_validator_invalid_attack_tags():
+    validator = ATTACKTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.test1
+        - attack.test2
+    """)
+    assert validator.validate(rule) == [
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test1")),
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
+    ]
+
+def test_validator_invalid_attack_tags():
+    validator = ATTACKTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.test1
+        - attack.test2
+    """)
+    assert validator.validate(rule) == [
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test1")),
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
+    ]
+
+
+def test_validator_invalid_attack_tags():
+    validator = ATTACKTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.test1
+        - attack.test2
+    """)
+    assert validator.validate(rule) == [
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test1")),
+        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
+    ]
+
+def test_validator_valid_attack_tags():
+    validator = ATTACKTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.command_and_control
+        - attack.t1001.001
     """)
     assert validator.validate(rule) == [ ]

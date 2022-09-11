@@ -4,7 +4,7 @@ from typing import ClassVar, List
 from sigma.modifiers import SigmaContainsModifier, SigmaEndswithModifier, SigmaStartswithModifier
 from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SpecialChars
-from sigma.validation import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
 
 @dataclass

@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Dict, List
 from uuid import UUID
 from sigma.rule import SigmaRule
-from sigma.validation import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
 @dataclass
 class IdentifierExistenceIssue(SigmaValidationIssue):

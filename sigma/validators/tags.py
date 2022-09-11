@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import ClassVar, List, Set
 from sigma.rule import SigmaRule, SigmaRuleTag
-from sigma.validation import SigmaRuleValidator, SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaRuleValidator, SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques
 
 @dataclass

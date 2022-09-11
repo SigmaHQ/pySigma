@@ -6,6 +6,7 @@ from sigma.exceptions import SigmaConfigurationError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
 from sigma.validators import validators
+import yaml
 
 class SigmaValidator:
     """
@@ -81,6 +82,10 @@ class SigmaValidator:
             raise SigmaConfigurationError(f"Unknown validator '{ e.args[0] }'")
 
         return cls(validator_classes, exclusions)
+
+    @classmethod
+    def from_yaml(cls, validator_config: str) -> "SigmaValidator":
+        return cls.from_dict(yaml.safe_load(validator_config))
 
     def validate_rule(self, rule : SigmaRule) -> List[SigmaValidationIssue]:
         """

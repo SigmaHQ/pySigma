@@ -29,7 +29,7 @@ def test_sigmavalidator_exclusions(rule_with_id, rule_without_id, rules_with_id_
         IdentifierExistenceIssue([rule_without_id]),
     ]
 
-def test_sigmavalidator_fromdict():
+def test_sigmavalidator_from_dict():
     validator = SigmaValidator.from_dict({
         "validators": [
             "all",
@@ -44,6 +44,29 @@ def test_sigmavalidator_fromdict():
             ]
         }
     })
+    assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
+    assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
+    assert len(validator.validators) >= 10
+    assert validator.exclusions == {
+        "c702c6c7-1393-40e5-93f8-91469f3445ad": { DanglingDetectionValidator },
+        "bf39335e-e666-4eaf-9416-47f1955b5fb3": {
+            ATTACKTagValidator,
+            NumberAsStringValidator,
+        }
+    }
+
+def test_sigmavalidator_from_yaml():
+    validator = SigmaValidator.from_yaml("""
+    validators:
+        - all
+        - -tlptag
+        - -tlpv1_tag
+    exclusions:
+        c702c6c7-1393-40e5-93f8-91469f3445ad: dangling_detection
+        bf39335e-e666-4eaf-9416-47f1955b5fb3:
+            - attacktag
+            - number_as_string
+    """)
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
     assert len(validator.validators) >= 10

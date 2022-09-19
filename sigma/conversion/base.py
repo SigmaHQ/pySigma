@@ -58,6 +58,9 @@ class Backend(ABC):
     * Use intermediate representations for queries and query sets for formats that require state information,
       e.g. if the target query language results in a different structure than given by the condition.
     """
+    name : ClassVar[str] = "Base backend"
+    formats : Dict[str, str] = dict()
+
     processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()
     output_format_processing_pipeline : ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(ProcessingPipeline)

@@ -104,6 +104,7 @@ def test_strings_equal_invalid_type():
 
 def test_strings_startswith_str():
     assert SigmaString("foobar").startswith("foo")
+    assert not SigmaString("").startswith("abc")
 
 def test_strings_startswith_special():
     assert SigmaString("*foobar").startswith(SpecialChars.WILDCARD_MULTI)
@@ -113,6 +114,7 @@ def test_strings_startswith_difftypes():
 
 def test_strings_endswith_str():
     assert SigmaString("foobar").endswith("bar")
+    assert not SigmaString("").endswith("abc")
 
 def test_strings_endswith_special():
     assert SigmaString("foobar*").endswith(SpecialChars.WILDCARD_MULTI)

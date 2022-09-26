@@ -316,6 +316,8 @@ class SigmaString(SigmaType):
 
     def startswith(self, val : Union[str, SpecialChars]) -> bool:
         """Check if string starts with a given string or special character."""
+        if len(self.s) == 0:
+            return False
         c = self.s[0]
         if not isinstance(val, type(c)):    # can't match if types differ
             return False
@@ -326,6 +328,8 @@ class SigmaString(SigmaType):
 
     def endswith(self, val : Union[str, SpecialChars]) -> bool:
         """Check if string ends with a given string or special character."""
+        if len(self.s) == 0:
+            return False
         c = self.s[-1]
         if not isinstance(val, type(c)):    # can't match if types differ
             return False

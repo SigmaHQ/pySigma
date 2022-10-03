@@ -9,10 +9,10 @@ from tests.test_validators import rule_with_id, rule_without_id, rules_with_id_c
 from sigma.collection import SigmaCollection
 from sigma.validators.metadata import IdentifierExistenceValidator, IdentifierUniquenessValidator, IdentifierExistenceIssue, IdentifierCollisionIssue
 
-def test_sigmavalidator_validate_rule_collection(rule_with_id, rule_without_id, rules_with_id_collision):
+def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with_id_collision):
     rules = SigmaCollection([rule_with_id, rule_without_id, *rules_with_id_collision])
     validator = SigmaValidator({ IdentifierExistenceValidator, IdentifierUniquenessValidator })
-    issues = validator.validate_rule_collection(rules)
+    issues = validator.validate_rules(rules)
     assert issues == [
         IdentifierExistenceIssue([rule_without_id]),
         IdentifierCollisionIssue(rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")),
@@ -24,7 +24,7 @@ def test_sigmavalidator_exclusions(rule_with_id, rule_without_id, rules_with_id_
         UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37"): { IdentifierUniquenessValidator },
     }
     validator = SigmaValidator({ IdentifierExistenceValidator, IdentifierUniquenessValidator }, exclusions)
-    issues = validator.validate_rule_collection(rules)
+    issues = validator.validate_rules(rules)
     assert issues == [
         IdentifierExistenceIssue([rule_without_id]),
     ]

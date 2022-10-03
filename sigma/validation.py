@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, List, Set, Type
+from typing import DefaultDict, Dict, Iterable, Iterator, List, Set, Type
 from uuid import UUID
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaConfigurationError
@@ -120,9 +120,9 @@ class SigmaValidator:
             for issue in validator.finalize()
         ]
 
-    def validate_rule_collection(self, rule_collection : SigmaCollection) -> List[SigmaValidationIssue]:
+    def validate_rules(self, rules : Iterator[SigmaRule]) -> List[SigmaValidationIssue]:
         """
-        Validate a Sigma rule collection. This method runs all validators on all rules and finalizes
+        Validate Sigma rules. This method runs all validators on all rules and finalizes
         the validators at the end.
 
         :param rule_collection: Rule collection that should be validated.
@@ -132,6 +132,6 @@ class SigmaValidator:
         """
         return [
             issue
-            for rule in rule_collection
+            for rule in rules
             for issue in self.validate_rule(rule)
         ] + self.finalize()

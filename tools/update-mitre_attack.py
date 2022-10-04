@@ -14,10 +14,12 @@ def get_attack_id(refs):
             if src.startswith("mitre") and src.endswith("attack"):
                 return ref["external_id"]
 
+tactics = dict()
+techniques = dict()
+intrusion_sets = dict()
+malwares = dict()
 for stix_file in args.stix:
     stix = json.load(stix_file)
-    tactics = dict()
-    techniques = dict()
     for obj in stix["objects"]:     # iterate over all STIX objects
         if not (obj.get("revoked") or obj.get("x_mitre_deprecated")):       # ignore deprecated items
             if (obj_type := obj.get("type")) is not None:
@@ -27,11 +29,19 @@ for stix_file in args.stix:
                 elif obj_type == "attack-pattern":                          # Technique
                     technique_id = get_attack_id(obj["external_references"])
                     techniques[technique_id] = obj["name"]
+                elif obj_type == "intrusion-set":
+                    intrusion_set_id = get_attack_id(obj["external_references"])
+                    intrusion_sets[intrusion_set_id] = obj["name"]
+                elif obj_type == "malware":
+                    malware_id = get_attack_id(obj["external_references"])
+                    malwares[malware_id] = obj["name"]
                 elif obj_type == "x-mitre-collection":
                     attack_version = obj["x_mitre_version"]
 
-print(f"Found { len(tactics) } tactics and { len(techniques) } techniques", file=stderr)
+print(f"Found { len(tactics) } tactics, { len(techniques) } techniques, { len(intrusion_sets) } intrusion sets and { len(malwares) } malwares.", file=stderr)
 print("from typing import Dict", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)
 print("mitre_attack_tactics: Dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_techniques: Dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True), file=args.output)
+print("mitre_attack_intrusion_sets: Dict[str, str] = " + pformat(intrusion_sets, indent=4, sort_dicts=True), file=args.output)
+print("mitre_attack_malwares: Dict[str, str] = " + pformat(malwares, indent=4, sort_dicts=True), file=args.output)

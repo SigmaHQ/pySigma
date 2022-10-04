@@ -464,47 +464,6 @@ def test_validator_invalid_attack_tags():
         InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
     ]
 
-def test_validator_invalid_attack_tags():
-    validator = ATTACKTagValidator()
-    rule = SigmaRule.from_yaml("""
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    tags:
-        - attack.test1
-        - attack.test2
-    """)
-    assert validator.validate(rule) == [
-        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test1")),
-        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
-    ]
-
-
-def test_validator_invalid_attack_tags():
-    validator = ATTACKTagValidator()
-    rule = SigmaRule.from_yaml("""
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    tags:
-        - attack.test1
-        - attack.test2
-    """)
-    assert validator.validate(rule) == [
-        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test1")),
-        InvalidATTACKTagIssue([ rule ], SigmaRuleTag.from_str("attack.test2")),
-    ]
-
 def test_validator_valid_attack_tags():
     validator = ATTACKTagValidator()
     rule = SigmaRule.from_yaml("""
@@ -519,6 +478,8 @@ def test_validator_valid_attack_tags():
     tags:
         - attack.command_and_control
         - attack.t1001.001
+        - attack.g0001
+        - attack.s0001
     """)
     assert validator.validate(rule) == [ ]
 

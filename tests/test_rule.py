@@ -521,8 +521,30 @@ def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
         SigmaRule.from_dict({ "date": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
-def test_sigmarule_bad_date_collect_errors():
-    assert len(SigmaRule.from_dict({ "date": "bad" }, collect_errors=True).errors) > 0
+def test_sigmarule_collect_errors():
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    id: invalid
+    level: invalid
+    status: invalid
+    date: invalid
+    detections:
+    detection:
+        selection_1:
+            Image|test: test.exe
+        condition: selection
+    """, collect_errors=True)
+    assert {
+        error.__class__
+        for error in rule.errors
+    } == {
+        sigma_exceptions.SigmaIdentifierError,
+        sigma_exceptions.SigmaLevelError,
+        sigma_exceptions.SigmaStatusError,
+        sigma_exceptions.SigmaDateError,
+        sigma_exceptions.SigmaLogsourceError,
+        sigma_exceptions.SigmaModifierError,
+    }
 
 def test_sigmarule_no_logsource():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="must have a log source.*test.yml"):

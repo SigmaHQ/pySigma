@@ -11,7 +11,7 @@ from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_ma
 from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, ConditionFieldEqualsValueExpression, ConditionValueExpression, ParentChainMixin
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation, SigmaValueError
+from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaError
 
 class EnumLowercaseStringMixin:
     def __str__(self) -> str:
@@ -527,8 +527,11 @@ class SigmaRule(ProcessingItemTrackingMixin):
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
                 self.__setattr__(field, [])
-        if self.id is not None and not isinstance(self.id, UUID):
-            self.id = UUID(self.id)
+        if self.id is not None and not isinstance(self.id, UUID):   # Try to convert rule id into UUID object, but keep it if not possible
+            try:
+                self.id = UUID(self.id)
+            except ValueError:
+                pass
 
     @classmethod
     def from_dict(
@@ -580,18 +583,22 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     errors.append(sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd", source=source))
 
         # parse log source
+        logsource = None
         try:
             logsource = SigmaLogSource.from_dict(rule["logsource"], source)
         except KeyError:
             errors.append(sigma_exceptions.SigmaLogsourceError("Sigma rule must have a log source", source=source))
-            logsource = None
+        except SigmaError as e:
+            errors.append(e)
 
         # parse detections
+        detections = None
         try:
             detections = SigmaDetections.from_dict(rule["detection"], source)
         except KeyError:
             errors.append(sigma_exceptions.SigmaDetectionError("Sigma rule must have a detection definitions", source=source))
-            detections = None
+        except SigmaError as e:
+            errors.append(e)
 
         if not collect_errors and errors:
             raise errors[0]

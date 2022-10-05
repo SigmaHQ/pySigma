@@ -24,6 +24,7 @@ class ModifierAppliedMultipleIssue(SigmaValidationIssue):
     modifiers: Set[Type[SigmaModifier]]
 
 class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
+    """Detects invalid combinations of value modifiers."""
     def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
         issues = []
 

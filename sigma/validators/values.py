@@ -6,7 +6,6 @@ from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SpecialChars
 from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
-
 @dataclass
 class DoubleWildcardIssue(SigmaValidationIssue):
     description: ClassVar[str] = "String contains multiple consecutive * wildcards"
@@ -14,9 +13,7 @@ class DoubleWildcardIssue(SigmaValidationIssue):
     string : SigmaString
 
 class DoubleWildcardValidator(SigmaStringValueValidator):
-    """
-    Check strings for consecutive multi-character wildcards *.
-    """
+    """Check strings for consecutive multi-character wildcards *."""
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
         prev_wildcard = False
         for c in value.s:
@@ -36,9 +33,7 @@ class NumberAsStringIssue(SigmaValidationIssue):
     string : SigmaString
 
 class NumberAsStringValidator(SigmaStringValueValidator):
-    """
-    Check numbers that were expressed as strings.
-    """
+    """Check numbers that were expressed as strings."""
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
         if len(value.s) == 1 and isinstance(value.s[0], str):
             try:
@@ -91,6 +86,7 @@ class WildcardInsteadOfEndswithIssue(SigmaValidationIssue):
     detection_item: SigmaDetectionItem
 
 class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
+    """Check if wildcards were used where usage of startswith, endswith and contains modifiers would be possible."""
     def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
         if all((
             isinstance(value, SigmaString) and

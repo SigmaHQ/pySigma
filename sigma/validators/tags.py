@@ -11,6 +11,7 @@ class InvalidATTACKTagIssue(SigmaValidationIssue):
     tag: SigmaRuleTag
 
 class ATTACKTagValidator(SigmaTagValidator):
+    """Check for usage of valid MITRE ATT&CK tags."""
     def __init__(self) -> None:
         self.allowed_tags = {
             tactic.lower().replace("-", "_")

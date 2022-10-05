@@ -11,9 +11,7 @@ class DanglingDetectionIssue(SigmaValidationIssue):
     detection_name : str
 
 class DanglingDetectionValidator(SigmaRuleValidator):
-    """
-    Check for detection definitions not referenced from condition.
-    """
+    """Check for detection definitions not referenced from condition. """
     detection_names : Set[str]
 
     def condition_referenced_ids(self, cond : ConditionItem, detections : SigmaDetections) -> Set[str]:

@@ -221,8 +221,7 @@ def test_string_index_slice_empty_result(sigma_string):
     assert sigma_string[4:2] == SigmaString("")
 
 def test_string_index_slice_start_after_end(sigma_string):
-    with pytest.raises(IndexError, match="out of range"):
-        assert sigma_string[100:]
+    assert sigma_string[100:] == SigmaString("")
 
 def test_string_index_slice_open_start_negative_end(sigma_string):
     assert sigma_string[:-1] == SigmaString("*Test*Str\\*ing")

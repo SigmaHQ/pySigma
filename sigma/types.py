@@ -132,9 +132,9 @@ class SigmaString(SigmaType):
             end = length + end
 
         # Range checks
-        if start > end:
+        if start > end or start >= length:
             return SigmaString("")
-        if start < 0 or end < 0 or start >= length or (end != inf and end > length):
+        if start < 0 or end < 0 or (end != inf and end > length):
             raise IndexError("SigmaString index out of range")
 
         i = 0               # Pointer to SigmaString element

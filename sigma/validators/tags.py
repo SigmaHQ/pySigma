@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, List, Set
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.validators.base import SigmaRuleValidator, SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
-from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques, mitre_attack_intrusion_sets, mitre_attack_malwares
+from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques, mitre_attack_intrusion_sets, mitre_attack_software
 
 @dataclass
 class InvalidATTACKTagIssue(SigmaValidationIssue):
@@ -23,8 +23,8 @@ class ATTACKTagValidator(SigmaTagValidator):
             intrusion_set.lower()
             for intrusion_set in mitre_attack_intrusion_sets
         }).union({
-            malware.lower()
-            for malware in mitre_attack_malwares
+            software.lower()
+            for software in mitre_attack_software
         })
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:

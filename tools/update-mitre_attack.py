@@ -17,7 +17,7 @@ def get_attack_id(refs):
 tactics = dict()
 techniques = dict()
 intrusion_sets = dict()
-malwares = dict()
+software = dict()
 for stix_file in args.stix:
     stix = json.load(stix_file)
     for obj in stix["objects"]:     # iterate over all STIX objects
@@ -32,16 +32,16 @@ for stix_file in args.stix:
                 elif obj_type == "intrusion-set":
                     intrusion_set_id = get_attack_id(obj["external_references"])
                     intrusion_sets[intrusion_set_id] = obj["name"]
-                elif obj_type == "malware":
-                    malware_id = get_attack_id(obj["external_references"])
-                    malwares[malware_id] = obj["name"]
+                elif obj_type in ("malware", "tool"):
+                    software_id = get_attack_id(obj["external_references"])
+                    software[software_id] = obj["name"]
                 elif obj_type == "x-mitre-collection":
                     attack_version = obj["x_mitre_version"]
 
-print(f"Found { len(tactics) } tactics, { len(techniques) } techniques, { len(intrusion_sets) } intrusion sets and { len(malwares) } malwares.", file=stderr)
+print(f"Found { len(tactics) } tactics, { len(techniques) } techniques, { len(intrusion_sets) } intrusion sets and { len(software) } malwares.", file=stderr)
 print("from typing import Dict", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)
 print("mitre_attack_tactics: Dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_techniques: Dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_intrusion_sets: Dict[str, str] = " + pformat(intrusion_sets, indent=4, sort_dicts=True), file=args.output)
-print("mitre_attack_malwares: Dict[str, str] = " + pformat(malwares, indent=4, sort_dicts=True), file=args.output)
+print("mitre_attack_software: Dict[str, str] = " + pformat(software, indent=4, sort_dicts=True), file=args.output)

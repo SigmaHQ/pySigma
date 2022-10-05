@@ -480,6 +480,7 @@ def test_validator_valid_attack_tags():
         - attack.t1001.001
         - attack.g0001
         - attack.s0001
+        - attack.s0005
     """)
     assert validator.validate(rule) == [ ]
 

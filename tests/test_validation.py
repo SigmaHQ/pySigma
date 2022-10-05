@@ -48,8 +48,8 @@ def test_sigmavalidator_from_dict():
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
-        "c702c6c7-1393-40e5-93f8-91469f3445ad": { DanglingDetectionValidator },
-        "bf39335e-e666-4eaf-9416-47f1955b5fb3": {
+        UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): { DanglingDetectionValidator },
+        UUID("bf39335e-e666-4eaf-9416-47f1955b5fb3"): {
             ATTACKTagValidator,
             NumberAsStringValidator,
         }
@@ -71,8 +71,8 @@ def test_sigmavalidator_from_yaml():
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
-        "c702c6c7-1393-40e5-93f8-91469f3445ad": { DanglingDetectionValidator },
-        "bf39335e-e666-4eaf-9416-47f1955b5fb3": {
+        UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): { DanglingDetectionValidator },
+        UUID("bf39335e-e666-4eaf-9416-47f1955b5fb3"): {
             ATTACKTagValidator,
             NumberAsStringValidator,
         }

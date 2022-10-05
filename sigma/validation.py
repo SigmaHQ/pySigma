@@ -68,7 +68,7 @@ class SigmaValidator:
         # Build exclusion dict
         try:
             exclusions = {
-                rule_id: {
+                UUID(rule_id): {
                     validators[exclusion_name]      # main purpose of the generators: resolve identifiers into classes
                     for exclusion_name in (
                         rule_exclusions

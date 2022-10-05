@@ -652,8 +652,10 @@ def test_sigmarule_fromyaml(sigma_rule):
     falsepositives:
         - Everything
     level: low
+    custom: attribute
     """)
     assert sigmarule_from_yaml == sigma_rule
+    assert sigmarule_from_yaml.custom_attributes == { "custom": "attribute" }
 
 def test_sigmarule_to_dict(sigma_rule : SigmaRule):
     assert sigma_rule.to_dict() == {

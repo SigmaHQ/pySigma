@@ -1,6 +1,6 @@
 from dataclasses import InitVar, dataclass, field
 import dataclasses
-from typing import Dict, Optional, Union, Sequence, List, Mapping, Type
+from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date
@@ -522,6 +522,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
 
     errors : List[sigma_exceptions.SigmaError] = field(default_factory=list)
     source : Optional[SigmaRuleLocation] = field(default=None, compare=False)
+    custom_attributes : Dict[str, Any] = field(compare=False, default_factory=dict)
 
     def __post_init__(self):
         for field in ("references", "tags", "fields", "falsepositives"):
@@ -619,6 +620,11 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 falsepositives = rule.get("falsepositives", list()),
                 errors = errors,
                 source = source,
+                custom_attributes = {
+                    k: v
+                    for k, v in rule.items()
+                    if k not in set(cls.__dataclass_fields__.keys()) - {"errors", "source", "applied_processing_items"}
+                }
                 )
 
     @classmethod

@@ -652,6 +652,42 @@ def test_sigmarule_fromyaml(sigma_rule):
     falsepositives:
         - Everything
     level: low
+    """)
+    assert sigmarule_from_yaml == sigma_rule
+
+def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
+    sigmarule_from_yaml = SigmaRule.from_yaml("""
+    title: Test
+    id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+    status: test
+    description: This is a test
+    references:
+        - ref1
+        - ref2
+    tags:
+        - attack.execution
+        - attack.t1059
+    author: Thomas Patzke
+    date: 2020/07/12
+    logsource:
+        category: process_creation
+        product: windows
+    detection:
+        selection_1:
+            CommandLine|contains: test.exe
+        selection_2:
+            - CommandLine|contains: test.exe
+            - CommandLine|contains: cmd.exe
+        selection_3:
+            - keyword_1
+            - keyword_2
+        condition: 1 of them
+    fields:
+        - User
+        - CommandLine
+    falsepositives:
+        - Everything
+    level: low
     custom: attribute
     """)
     assert sigmarule_from_yaml == sigma_rule

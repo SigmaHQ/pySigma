@@ -207,19 +207,22 @@ definitions are available:
 
    "Identifier", "Class"
    "field_name_mapping", "FieldMappingTransformation"
+   "field_name_prefix_mapping", FieldPrefixMappingTransformation
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
-   "drop_detection_item", "DropDetectionItemTransformation",
+   "drop_detection_item", "DropDetectionItemTransformation"
    "wildcard_placeholders", "WildcardPlaceholderTransformation"
    "value_placeholders", "ValueListPlaceholderTransformation"
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
    "add_condition", "AddConditionTransformation"
    "change_logsource", "ChangeLogsourceTransformation"
    "replace_string", "ReplaceStringTransformation"
+   "set_state", SetStateTransformation
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
+.. autoclass:: sigma.processing.transformations.FieldPrefixMappingTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnameSuffixTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnamePrefixTransformation
 .. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
@@ -229,6 +232,7 @@ definitions are available:
 .. autoclass:: sigma.processing.transformations.AddConditionTransformation
 .. autoclass:: sigma.processing.transformations.ChangeLogsourceTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
+.. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
 

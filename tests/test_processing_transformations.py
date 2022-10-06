@@ -4,7 +4,7 @@ from sigma.conditions import ConditionOR, SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
 from sigma.processing import transformations
-from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, SetStateTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
+from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, FieldPrefixMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, SetStateTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingItemAppliedCondition, IncludeFieldCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -178,6 +178,64 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
     assert transformation.pipeline.field_mappings == {
         "field1": { "fieldA" },
         "field3": { "fieldC", "fieldD" },
+    }
+
+def test_field_prefix_mapping(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {
+            "category": "test"
+        },
+        "detection": {
+            "test": [{
+                "test1.field": "value1",
+                "test2.field": "value2",
+                "otherfield": "value3",
+            }],
+            "condition": "test",
+        },
+        "fields": [
+            "otherfield1",
+            "test1.field",
+            "test2.field",
+            "otherfield2",
+        ]
+    })
+    transformation = FieldPrefixMappingTransformation({
+        "test1.": "mapped1.",
+        "test2.": [ "mapped2a.", "mapped2b." ],
+    })
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("mapped1.field", [], [ SigmaString("value1") ]),
+            SigmaDetection([
+                SigmaDetectionItem("mapped2a.field", [], [ SigmaString("value2") ]),
+                SigmaDetectionItem("mapped2b.field", [], [ SigmaString("value2") ]),
+            ], item_linking=ConditionOR),
+            SigmaDetectionItem("otherfield", [], [ SigmaString("value3") ]),
+        ])
+    ])
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "mapped1.field",
+        "mapped2a.field",
+        "mapped2b.field",
+        "otherfield2",
+    ]
+    assert sigma_rule.was_processed_by("test")
+    assert transformation.pipeline.field_mappings == {
+        "test1.field": { "mapped1.field" },
+        "test2.field": {
+            "mapped2a.field",
+            "mapped2b.field",
+        }
     }
 
 def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeline):

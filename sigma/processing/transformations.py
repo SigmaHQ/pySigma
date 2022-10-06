@@ -192,12 +192,18 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
     mapping : Dict[str, Union[str, List[str]]]
 
+    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
+        if field in self.mapping:
+            mapping = self.mapping[field]
+            return mapping
+
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        if (field_name := detection_item.field) in self.mapping:
-            mapping = self.mapping[field_name]
-            self.pipeline.field_mappings.add_mapping(field_name, mapping)
+        field = detection_item.field
+        mapping = self.get_mapping(field)
+        if mapping is not None:
+            self.pipeline.field_mappings.add_mapping(field, mapping)
             if isinstance(mapping, str):    # 1:1 mapping, map field name of detection item directly
-                detection_item.field = self.mapping[field_name]
+                detection_item.field = mapping
                 self.processing_item_applied(detection_item)
             else:
                 return SigmaDetection([
@@ -206,11 +212,26 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
                 ], item_linking=ConditionOR)
 
     def apply_field_name(self, field: str) -> Union[str, List[str]]:
-        mapping = self.mapping.get(field, field)
+        mapping = self.get_mapping(field) or field
         if isinstance(mapping, str):
             return [mapping]
         else:
             return mapping
+
+@dataclass
+class FieldPrefixMappingTransformation(FieldMappingTransformation):
+    """Map a field name prefix to one or multiple different prefixes."""
+
+    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
+        for src, dest in self.mapping.items():
+            if field.startswith(src):      # found matching prefix
+                if isinstance(dest, str):
+                    return dest + field[len(src):]
+                else:
+                    return [
+                        dest_item + field[len(src):]
+                        for dest_item in dest
+                    ]
 
 @dataclass
 class DropDetectionItemTransformation(DetectionItemTransformation):
@@ -482,6 +503,7 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 
 transformations : Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
+    "field_name_prefix_mapping": FieldPrefixMappingTransformation,
     "drop_detection_item": DropDetectionItemTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
     "field_name_prefix": AddFieldnamePrefixTransformation,

@@ -1,6 +1,6 @@
 import pytest
 from sigma.conditions import ConditionItem, SigmaCondition, ConditionAND, ConditionOR, ConditionNOT, ConditionIdentifier, ConditionSelector, ConditionFieldEqualsValueExpression, ConditionValueExpression
-from sigma.rule import SigmaDetections, SigmaDetection, SigmaDetectionItem
+from sigma.rule import SigmaDetections, SigmaDetection, SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaString, SigmaNumber, SigmaNull, SigmaRegularExpression
 from sigma.exceptions import SigmaConditionError
 
@@ -272,3 +272,28 @@ def test_invalid_conditions(condition, sigma_simple_detections):
 def test_deprecated_pipe_syntax(sigma_simple_detections):
     with pytest.raises(SigmaConditionError, match="deprecated"):
         SigmaCondition("detection | count() by src_ip > 50", sigma_simple_detections).parsed
+
+
+def test_and_condition_has_parent(sigma_simple_detections):
+    """
+    Non-regression test related to issue #64
+    """
+    rule = SigmaRule.from_yaml("""
+title: rule
+id: cafecafe-0499-4d3f-9670-55cfc950e2dc
+status: stable
+level: critical
+description: rule
+logsource:
+  product: Windows
+detection:
+  selection:
+    Somefield: 'Somevalue'
+    Someotherfield: 'someothervalue'
+  selection2:
+    Thirdfield: 'thirdvalue'
+  condition: selection or selection2
+""")
+    or_condition = rule.detection.parsed_condition[0].parsed
+    assert or_condition.args[0].parent != None
+    assert or_condition.args[0].parent.parent == or_condition

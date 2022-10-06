@@ -439,7 +439,9 @@ class SigmaDetection(ParentChainMixin):
         if len(items) == 1:     # no boolean linking required, directly return single element
             return items[0]
         elif len(items) > 1:
-            return self.item_linking(items)
+            condition = self.item_linking(items)
+            condition.postprocess(detections, parent, self.source)
+            return condition
 
     def add_applied_processing_item(self, processing_item : Optional["sigma.processing.pipeline.ProcessingItem"]):
         """Propagate processing item to all contained detection items."""

@@ -35,7 +35,7 @@ class SigmaValidator:
 
         * validators: a list of validators to use or not to use, if prefixed with -. The name 'all'
           represents all known validators.
-        * Exclusion: a map between rule ids and lists of validator names or a single validator name
+        * exclusion: a map between rule ids and lists of validator names or a single validator name
           to define validation exclusions.
 
         :param d: Definition of the SigmaValidator.
@@ -125,8 +125,8 @@ class SigmaValidator:
         Validate Sigma rules. This method runs all validators on all rules and finalizes
         the validators at the end.
 
-        :param rule_collection: Rule collection that should be validated.
-        :type rule_collection: SigmaCollection
+        :param rules: Rule collection that should be validated.
+        :type rules: Iterator[SigmaRule]
         :return: A list of SigmaValidationIssue objects describing potential issues.
         :rtype: List[SigmaValidationIssue]
         """

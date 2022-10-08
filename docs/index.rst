@@ -8,6 +8,7 @@ pySigma Documentation
    Sigma_Rules
    Processing_Pipelines
    Backends
+   Rule_Validation
 
 Overview
 ********

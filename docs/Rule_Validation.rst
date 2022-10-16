@@ -163,7 +163,7 @@ Base Classes
 .. autoclass:: sigma.validators.base.SigmaStringValueValidator
     :members:
 
-.. autoclass:: sigma.validators.base.SigmaStringValueValidator
+.. autoclass:: sigma.validators.base.SigmaTagValidator
     :members:
 
 Checks Implemented in pySigma

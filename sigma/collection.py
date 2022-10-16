@@ -120,20 +120,20 @@ class SigmaCollection:
         ) -> "SigmaCollection":
         """
         Load a ruleset from a list of files or directories and construct a :class:`SigmaCollection`
-        object. If
+        object.
 
         :param inputs: List of strings and :class:`pathlib.Path` objects that reference files or
         directories that should be loaded.
         :param collect_errors: parse or verification errors are collected in :class:`SigmaRule`
-        objects instead of raising them immediately. Defaults to `False`.
+        objects instead of raising them immediately. Defaults to ``False``.
         :param on_beforeload: Optional function that is called for each path to a Sigma rule before the parsing and
         construction of the :class:`SigmaCollection` object is done. The path returned by this function is
-        used as input. A rule path is skipped if `None` is returned.
+        used as input. A rule path is skipped if ``None`` is returned.
         :param on_load: Optional function that is called after the :class:`SigmaCollection` was
         constructed from the path. The path and the SigmaCollection object are passed to this
         function and it is expected to return a :class:`SigmaCollection` object that is merged in
-        the collection of the ruleset or `None` if the generated collection should be skipped.
-        :param recursion_pattern: Pattern used to recurse into directories, defaults to `**/*.yml`.
+        the collection of the ruleset or ``None`` if the generated collection should be skipped.
+        :param recursion_pattern: Pattern used to recurse into directories, defaults to ``**/*.yml``.
 
         :return: :class:`SigmaCollection` of all sigma rules contained in given paths.
         """

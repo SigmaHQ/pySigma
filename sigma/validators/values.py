@@ -13,7 +13,7 @@ class DoubleWildcardIssue(SigmaValidationIssue):
     string : SigmaString
 
 class DoubleWildcardValidator(SigmaStringValueValidator):
-    """Check strings for consecutive multi-character wildcards *."""
+    """Check strings for consecutive multi-character wildcards."""
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
         prev_wildcard = False
         for c in value.s:

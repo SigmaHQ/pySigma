@@ -79,6 +79,90 @@ def logsource_windows_file_event():
         product="windows",
     )
 
+def logsource_windows_file_delete():
+    return LogsourceCondition(
+        category="file_delete",
+        product="windows",
+    )
+
+def logsource_windows_file_access():
+    return LogsourceCondition(
+        category="file_access",
+        product="windows",
+    )
+
+def logsource_windows_file_rename():
+    return LogsourceCondition(
+        category="file_rename",
+        product="windows",
+    )
+
+def logsource_windows_image_load():
+    return LogsourceCondition(
+        category="image_load",
+        product="windows",
+    )
+
+def logsource_windows_pipe_created():
+    return LogsourceCondition(
+        category="pipe_created",
+        product="windows",
+    )
+
+def logsource_windows_ps_classic_start():
+    return LogsourceCondition(
+        category="ps_classic_start",
+        product="windows",
+    )
+
+def logsource_windows_ps_module():
+    return LogsourceCondition(
+        category="ps_module",
+        product="windows",
+    )
+
+def logsource_windows_ps_script():
+    return LogsourceCondition(
+        category="ps_script",
+        product="windows",
+    )
+
+def logsource_windows_process_access():
+    return LogsourceCondition(
+        category="process_access",
+        product="windows",
+    )
+
+def logsource_windows_raw_access_thread():
+    return LogsourceCondition(
+        category="raw_access_thread",
+        product="windows",
+    )
+
+def logsource_windows_wmi_event():
+    return LogsourceCondition(
+        category="wmi_event",
+        product="windows",
+    )
+
+def logsource_windows_driver_load():
+    return LogsourceCondition(
+        category="driver_load",
+        product="windows",
+    )
+
+def logsource_windows_create_stream_hash():
+    return LogsourceCondition(
+        category="create_stream_hash",
+        product="windows",
+    )
+
+def logsource_windows_create_remote_thread():
+    return LogsourceCondition(
+        category="create_remote_thread",
+        product="windows",
+    )
+
 def logsource_windows_network_connection() -> LogsourceCondition:
     return LogsourceCondition(
         category="network_connection",
@@ -106,5 +190,11 @@ def logsource_linux_process_creation():
 def logsource_linux_network_connection() -> LogsourceCondition:
     return LogsourceCondition(
         category="network_connection",
+        product="linux",
+    )
+
+def logsource_linux_file_create():
+    return LogsourceCondition(
+        category="file_create",
         product="linux",
     )

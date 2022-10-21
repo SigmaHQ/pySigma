@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Dict, List
 from uuid import UUID
 from sigma.rule import SigmaRule
-from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
 
 @dataclass
 class IdentifierExistenceIssue(SigmaValidationIssue):
@@ -42,3 +42,5 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
             for id, rules in self.ids.items()
             if len(rules) > 1
         ]
+
+validators = validator_class_mapping(globals().items())

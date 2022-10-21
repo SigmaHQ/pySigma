@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, List, Set
 from sigma.conditions import ConditionIdentifier, ConditionItem, ConditionSelector
 from sigma.rule import SigmaDetections, SigmaRule
-from sigma.validators.base import SigmaValidationIssue, SigmaValidationIssueSeverity, SigmaRuleValidator
+from sigma.validators.base import SigmaValidationIssue, SigmaValidationIssueSeverity, SigmaRuleValidator, validator_class_mapping
 
 @dataclass
 class DanglingDetectionIssue(SigmaValidationIssue):
@@ -54,3 +54,5 @@ class DanglingDetectionValidator(SigmaRuleValidator):
             DanglingDetectionIssue([rule], name)
             for name in detection_names - referenced_ids
         ]
+
+validators = validator_class_mapping(globals().items())

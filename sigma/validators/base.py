@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-from typing import ClassVar, List, Optional, Set, Type
+import re
+from typing import ClassVar, Dict, List, Optional, Set, Type
+import sigma
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
 
@@ -231,3 +233,10 @@ class SigmaTagValidator(SigmaRuleValidator):
     @abstractmethod
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         """Validates a tag."""
+
+def validator_class_mapping(items) -> Dict[str, "sigma.validation.SigmaRuleValidator"]:
+    return {
+        re.sub("([A-Z]+)", "_\\1", name.replace("Validator", ""))[1:].lower(): cls    # NameOfSomeCheckValidator -> name_of_some_check
+        for name, cls in items
+        if name.endswith("Validator") and len(cls.__abstractmethods__) == 0
+    }

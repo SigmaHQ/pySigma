@@ -1,11 +1,10 @@
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, Iterator, List, Set, Type
+from typing import Callable, DefaultDict, Dict, Iterable, Iterator, List, Set, Type
 from uuid import UUID
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaConfigurationError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
-from sigma.validators import validators
 import yaml
 
 class SigmaValidator:
@@ -28,7 +27,7 @@ class SigmaValidator:
         self.exclusions = defaultdict(set, exclusions)
 
     @classmethod
-    def from_dict(cls, d : Dict) -> "SigmaValidator":
+    def from_dict(cls, d : Dict, validators : Dict[str, SigmaRuleValidator]) -> "SigmaValidator":
         """
         Instantiate SigmaValidator from dict definition. The dict should have the following
         elements:
@@ -40,6 +39,8 @@ class SigmaValidator:
 
         :param d: Definition of the SigmaValidator.
         :type d: Dict
+        :param validators: Mapping from string identifiers to validator classes.
+        :type validators: Dict[str, SigmaRuleValidator]
         :return: Instantiated SigmaValidator
         :rtype: SigmaValidator
         """
@@ -84,8 +85,8 @@ class SigmaValidator:
         return cls(validator_classes, exclusions)
 
     @classmethod
-    def from_yaml(cls, validator_config: str) -> "SigmaValidator":
-        return cls.from_dict(yaml.safe_load(validator_config))
+    def from_yaml(cls, validator_config: str, validators : Dict[str, SigmaRuleValidator]) -> "SigmaValidator":
+        return cls.from_dict(yaml.safe_load(validator_config), validators)
 
     def validate_rule(self, rule : SigmaRule) -> List[SigmaValidationIssue]:
         """

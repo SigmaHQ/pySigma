@@ -1,10 +1,9 @@
 from dataclasses import dataclass
-import string
 from typing import ClassVar, List
 from sigma.modifiers import SigmaContainsModifier, SigmaEndswithModifier, SigmaStartswithModifier
 from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SpecialChars
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
 
 @dataclass
 class DoubleWildcardIssue(SigmaValidationIssue):
@@ -112,3 +111,5 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [ WildcardInsteadOfStartswithIssue([ self.rule ], detection_item) ]
         else:
             return []
+
+validators = validator_class_mapping(globals().items())

@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Counter, List, Set, Type
 from sigma.modifiers import SigmaAllModifier, SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
 
 @dataclass
 class AllWithoutContainsModifierIssue(SigmaValidationIssue):
@@ -57,3 +57,5 @@ class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
             issues.append(ModifierAppliedMultipleIssue([ self.rule ], detection_item, multiple_modifiers))
 
         return issues
+
+validators = validator_class_mapping(globals().items())

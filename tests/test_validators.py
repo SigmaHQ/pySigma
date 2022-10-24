@@ -10,7 +10,7 @@ from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
-from sigma.validators.tags import ATTACKTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
+from sigma.validators.tags import ATTACKTagValidator, DuplicateTagIssue, DuplicateTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
 from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
 
 @pytest.fixture
@@ -518,3 +518,24 @@ def test_validator_tlp_tags(validator_class, tags, issue_tags):
         InvalidTLPTagIssue( [ rule ], SigmaRuleTag.from_str(tag))
         for tag in issue_tags
     ]
+
+def test_validator_duplicate_tags():
+    validator = DuplicateTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.command_and_control
+        - attack.t1001.001
+        - attack.g0001
+        - attack.g0001
+        - attack.s0001
+        - attack.s0005
+    """)
+    assert validator.validate(rule) == [ DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001")) ]

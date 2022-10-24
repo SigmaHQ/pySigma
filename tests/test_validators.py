@@ -2,11 +2,11 @@ from uuid import UUID
 from wsgiref.validate import validator
 
 import pytest
-from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaValueError
 from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaContainsModifier
 from sigma.rule import SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
+from sigma.validators.logsources import SysmonInsteadOfGenericLogsourceValidator, SysmonInsteadOfGenericLogsourceIssue
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import AllOfThemConditionIssue, AllOfThemConditionValidator, DanglingDetectionIssue, DanglingDetectionValidator, ThemConditionWithSingleDetectionIssue, ThemConditionWithSingleDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
@@ -585,3 +585,27 @@ def test_validator_duplicate_tags():
         - attack.s0005
     """)
     assert validator.validate(rule) == [ DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001")) ]
+
+def test_issue_sysmon_insteadof_generic_logsource():
+    assert SysmonInsteadOfGenericLogsourceIssue(event_id=1, rules=[]).generic_logsource == "process_creation"
+
+def test_validator_sysmon_insteadof_generic_logsource():
+    validator = SysmonInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: sysmon
+    detection:
+        sel:
+            EventID:
+               - 1
+               - 255
+               - 7
+        condition: sel
+    """)
+    assert validator.validate(rule) == [
+        SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=1),
+        SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=7),
+    ]

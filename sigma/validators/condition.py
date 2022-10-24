@@ -54,3 +54,18 @@ class DanglingDetectionValidator(SigmaRuleValidator):
             DanglingDetectionIssue([rule], name)
             for name in detection_names - referenced_ids
         ]
+
+@dataclass
+class ThemConditionWithSingleDetectionIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule refers to 'them' but has only one condition"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
+
+class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if any([
+                "them" in condition
+                for condition in rule.detection.condition
+            ]) and len(rule.detection.detections) == 1:
+            return [ ThemConditionWithSingleDetectionIssue([ rule ]) ]
+        else:
+            return []

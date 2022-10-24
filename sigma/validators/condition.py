@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from re import Pattern
+import re
 from typing import ClassVar, List, Set
 from sigma.conditions import ConditionIdentifier, ConditionItem, ConditionSelector
 from sigma.rule import SigmaDetections, SigmaRule
@@ -67,5 +69,22 @@ class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
                 for condition in rule.detection.condition
             ]) and len(rule.detection.detections) == 1:
             return [ ThemConditionWithSingleDetectionIssue([ rule ]) ]
+        else:
+            return []
+
+@dataclass
+class AllOfThemConditionIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule contains discouraged 'all of them' condition, use 'all of selection*' instead."
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+
+class AllOfThemConditionValidator(SigmaRuleValidator):
+    re_all_of_them : ClassVar[Pattern] = re.compile("all\\s+of\\s+them")
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if any([
+                self.re_all_of_them.search(condition)
+                for condition in rule.detection.condition
+            ]):
+            return [ AllOfThemConditionIssue([ rule ]) ]
         else:
             return []

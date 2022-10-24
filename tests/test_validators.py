@@ -8,7 +8,7 @@ from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaCo
 from sigma.rule import SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
-from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator, ThemConditionWithSingleDetectionIssue, ThemConditionWithSingleDetectionValidator
+from sigma.validators.condition import AllOfThemConditionIssue, AllOfThemConditionValidator, DanglingDetectionIssue, DanglingDetectionValidator, ThemConditionWithSingleDetectionIssue, ThemConditionWithSingleDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
 from sigma.validators.tags import ATTACKTagValidator, DuplicateTagIssue, DuplicateTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
 from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
@@ -179,6 +179,22 @@ def test_validator_them_condition_with_multiple_detection():
         condition: 1 of them
     """)
     assert validator.validate(rule) == []
+
+def test_validator_all_of_then():
+    validator = AllOfThemConditionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        selection1:
+            field1: val1
+        selection2:
+            field2: val2
+        condition: all of them
+    """)
+    assert validator.validate(rule) == [ AllOfThemConditionIssue([rule]) ]
 
 def test_validator_double_wildcard():
     validator = DoubleWildcardValidator()

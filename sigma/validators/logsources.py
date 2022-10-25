@@ -44,7 +44,10 @@ class SysmonInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
     generic_logsource: str = field(init=False, compare=False)
 
     def __post_init__(self):
-        self.generic_logsource = sysmon_to_generic_logsource_mapping.get(self.event_id, "unknwon")
+        try:
+            self.generic_logsource = sysmon_to_generic_logsource_mapping[self.event_id]
+        except KeyError:
+            raise ValueError(f"{ self.event_id } is not a disallowed Sysmon event identifier.")
         return super().__post_init__()
 
 class SysmonInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):

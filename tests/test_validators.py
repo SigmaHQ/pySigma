@@ -609,3 +609,7 @@ def test_validator_sysmon_insteadof_generic_logsource():
         SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=1),
         SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=7),
     ]
+
+def test_issue_sysmon_insteadof_generic_logsource_not_disallowed():
+    with pytest.raises(ValueError, match="not.*disallowed"):
+        SysmonInsteadOfGenericLogsourceIssue(event_id=255, rules=[])

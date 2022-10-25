@@ -29,6 +29,7 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "security-mitigations": ["Microsoft-Windows-Security-Mitigations/Kernel Mode", "Microsoft-Windows-Security-Mitigations/User Mode"],
     "diagnosis-scripted": "Microsoft-Windows-Diagnosis-Scripted/Operational",
     "shell-core": "Microsoft-Windows-Shell-Core/Operational",
+    "sshd": "OpenSSH/Operational",
 }
 
 def logsource_windows(service : str) -> LogsourceCondition:

@@ -92,6 +92,22 @@ def test_convert_value_str(test_backend):
         """)
     ) == ['mappedA="value" and \'field A\'="value"']
 
+def test_convert_value_str_empty(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                    fieldB: ''
+                condition: sel
+        """)
+    ) == ['mappedA="value" and mappedB=""']
+
 def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
     monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)
@@ -559,6 +575,24 @@ def test_convert_or_in_list(test_backend):
                 condition: sel
         """)
     ) == ['(mappedA in ("value1", "value2", "value3")) and (\'field A\' in ("value1", "value2", "value3"))']
+
+def test_convert_or_in_list_empty_string(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA:
+                        - value1
+                        - value2
+                        - ''
+                condition: sel
+        """)
+    ) == ['mappedA in ("value1", "value2", "")']
 
 def test_convert_or_in_list_with_wildcards(test_backend):
     assert test_backend.convert(

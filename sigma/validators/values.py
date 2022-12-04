@@ -35,7 +35,7 @@ class NumberAsStringIssue(SigmaValidationIssue):
 class NumberAsStringValidator(SigmaStringValueValidator):
     """Check numbers that were expressed as strings."""
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
-        if len(value.s) == 1 and isinstance(value.s[0], str):
+        if len(value.s) == 1 and isinstance(value.s[0], str) and not " " in value.s[0]:
             try:
                 int(value.s[0])
                 return [ NumberAsStringIssue(self.rule, value) ]

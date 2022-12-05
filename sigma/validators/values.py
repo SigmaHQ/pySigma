@@ -88,8 +88,10 @@ class WildcardInsteadOfEndswithIssue(SigmaValidationIssue):
 class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
     """Check if wildcards were used where usage of startswith, endswith and contains modifiers would be possible."""
     def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+        # Warning rule use a single '*' waiting for the `exists` modifier  so check len(value)>1 to allow it
         if all((
             isinstance(value, SigmaString) and
+            len(value)>1 and 
             value.startswith(SpecialChars.WILDCARD_MULTI) and
             value.endswith(SpecialChars.WILDCARD_MULTI) and
             not value[1:-1].contains_special()
@@ -98,6 +100,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [ WildcardsInsteadOfContainsModifierIssue([ self.rule ], detection_item) ]
         elif all((
             isinstance(value, SigmaString) and
+            len(value)>1 and
             value.startswith(SpecialChars.WILDCARD_MULTI) and
             not value[1:].contains_special()
             for value in detection_item.original_value
@@ -105,6 +108,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [ WildcardInsteadOfEndswithIssue([ self.rule ], detection_item) ]
         elif all((
             isinstance(value, SigmaString) and
+            len(value)>1 and 
             value.endswith(SpecialChars.WILDCARD_MULTI) and
             not value[:-1].contains_special()
             for value in detection_item.original_value

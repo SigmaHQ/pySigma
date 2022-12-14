@@ -4,9 +4,9 @@ from wsgiref.validate import validator
 import pytest
 from sigma.exceptions import SigmaValueError
 from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaContainsModifier
-from sigma.rule import SigmaDetectionItem, SigmaRule, SigmaRuleTag
+from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
-from sigma.validators.logsources import SysmonInsteadOfGenericLogsourceValidator, SysmonInsteadOfGenericLogsourceIssue
+from sigma.validators.logsources import SpecificInsteadOfGenericLogsourceValidator, SpecificInsteadOfGenericLogsourceIssue
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
 from sigma.validators.condition import AllOfThemConditionIssue, AllOfThemConditionValidator, DanglingDetectionIssue, DanglingDetectionValidator, ThemConditionWithSingleDetectionIssue, ThemConditionWithSingleDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
@@ -586,11 +586,8 @@ def test_validator_duplicate_tags():
     """)
     assert validator.validate(rule) == [ DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001")) ]
 
-def test_issue_sysmon_insteadof_generic_logsource():
-    assert SysmonInsteadOfGenericLogsourceIssue(event_id=1, rules=[]).generic_logsource == "process_creation"
-
 def test_validator_sysmon_insteadof_generic_logsource():
-    validator = SysmonInsteadOfGenericLogsourceValidator()
+    validator = SpecificInsteadOfGenericLogsourceValidator()
     rule = SigmaRule.from_yaml("""
     title: Test
     status: test
@@ -605,11 +602,8 @@ def test_validator_sysmon_insteadof_generic_logsource():
                - 7
         condition: sel
     """)
+    logsource_sysmon = SigmaLogSource(None, "windows", "sysmon")
     assert validator.validate(rule) == [
-        SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=1),
-        SysmonInsteadOfGenericLogsourceIssue(rules=[rule], event_id=7),
+        SpecificInsteadOfGenericLogsourceIssue(rules=[rule], logsource=logsource_sysmon, event_id=1, generic_logsource=SigmaLogSource("process_creation")),
+        SpecificInsteadOfGenericLogsourceIssue(rules=[rule], logsource=logsource_sysmon, event_id=7, generic_logsource=SigmaLogSource("image_load")),
     ]
-
-def test_issue_sysmon_insteadof_generic_logsource_not_disallowed():
-    with pytest.raises(ValueError, match="not.*disallowed"):
-        SysmonInsteadOfGenericLogsourceIssue(event_id=255, rules=[])

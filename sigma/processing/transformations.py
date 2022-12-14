@@ -207,7 +207,7 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
                 self.processing_item_applied(detection_item)
             else:
                 return SigmaDetection([
-                    dataclasses.replace(detection_item, field=field)
+                    dataclasses.replace(detection_item, field=field, auto_modifiers=False)
                     for field in mapping
                 ], item_linking=ConditionOR)
 

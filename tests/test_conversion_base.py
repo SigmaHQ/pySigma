@@ -437,6 +437,28 @@ def test_convert_value_regex(test_backend):
         """)
     ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*tern\\/foo\\bar/']
 
+def test_convert_value_regex_multi_mapping():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline([
+            ProcessingItem(FieldMappingTransformation({
+                "fieldB": ["mappedB1", "mappedB2"],
+            })),
+        ]),
+    )
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldB|re: pat.*tern/foobar
+                condition: sel
+        """)
+    ) == ['mappedB1=/pat.*tern\\/foo\\bar/ or mappedB2=/pat.*tern\\/foo\\bar/']
+
 def test_convert_value_regex_unbound(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

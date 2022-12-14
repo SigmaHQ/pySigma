@@ -49,7 +49,7 @@ class SigmaRuleTag:
     def __str__(self) -> str:
         return f"{self.namespace}.{self.name}"
 
-@dataclass
+@dataclass(frozen=True)
 class SigmaLogSource:
     category : Optional[str] = field(default=None)
     product : Optional[str] = field(default=None)

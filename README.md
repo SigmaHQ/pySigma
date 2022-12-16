@@ -136,6 +136,8 @@ To build your own package run `poetry build`.
 
 Pull requests are welcome. Please feel free to lodge any issues/PRs as discussion points.
 
+This [blog post](https://medium.com/@micahbabinski/creating-a-sigma-backend-for-fun-and-no-profit-ed16d20da142) by Micah Babinski explains the process from a developer's perspective. 
+
 ## Maintainers
 
 The project is currently maintained by:

@@ -1,8 +1,8 @@
 from collections import Counter
 from dataclasses import dataclass
 from typing import ClassVar, List, Set
-from sigma.rule import SigmaRuleTag
-from sigma.validators.base import SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
+from sigma.rule import SigmaRule, SigmaRuleTag
+from sigma.validators.base import SigmaRuleValidator, SigmaTagValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
 from sigma.data.mitre_attack import mitre_attack_tactics, mitre_attack_techniques, mitre_attack_intrusion_sets, mitre_attack_software
 
 @dataclass

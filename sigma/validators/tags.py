@@ -1,3 +1,4 @@
+from collections import Counter
 from dataclasses import dataclass
 from typing import ClassVar, List, Set
 from sigma.rule import SigmaRuleTag
@@ -67,5 +68,21 @@ class TLPv2TagValidator(TLPTagValidatorBase):
 class TLPTagValidator(TLPTagValidatorBase):
     """Validation of TLP tags from all versions of the TLP standard."""
     allowed_tags: Set[str] = TLPv1TagValidator.allowed_tags.union(TLPv2TagValidator.allowed_tags)
+
+@dataclass
+class DuplicateTagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "The same tag appears mutliple times"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+class DuplicateTagValidator(SigmaRuleValidator):
+    """Validate rule tag uniqueness."""
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        tags = Counter(rule.tags)
+        return [
+            DuplicateTagIssue([rule], tag)
+            for tag, count in tags.items()
+            if count > 1
+        ]
 
 validators = validator_class_mapping(globals().items())

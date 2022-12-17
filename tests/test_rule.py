@@ -9,6 +9,7 @@ from sigma.conditions import ConditionFieldEqualsValueExpression, ConditionValue
 import sigma.exceptions as sigma_exceptions
 from tests.test_processing_conditions import detection_item
 from tests.test_processing_pipeline import processing_item
+from yaml.error import YAMLError
 
 ### SigmaLevel and SigmaStatus tests ###
 def test_sigmalevel_str():
@@ -692,6 +693,24 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
     """)
     assert sigmarule_from_yaml == sigma_rule
     assert sigmarule_from_yaml.custom_attributes == { "custom": "attribute" }
+
+def test_sigmarule_fromyaml_duplicate_key():
+    with pytest.raises(YAMLError, match="Duplicate key"):
+        SigmaRule.from_yaml("""
+        title: Test
+        id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|contains: test.exe
+            selection:
+                - CommandLine|contains: test.exe
+                - CommandLine|contains: cmd.exe
+            condition: 1 of them
+        level: low
+        """)
 
 def test_sigmarule_to_dict(sigma_rule : SigmaRule):
     assert sigma_rule.to_dict() == {

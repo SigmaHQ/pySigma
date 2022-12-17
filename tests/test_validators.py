@@ -2,15 +2,15 @@ from uuid import UUID
 from wsgiref.validate import validator
 
 import pytest
-from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaValueError
 from sigma.modifiers import SigmaAllModifier, SigmaBase64OffsetModifier, SigmaContainsModifier
-from sigma.rule import SigmaDetectionItem, SigmaRule, SigmaRuleTag
+from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
+from sigma.validators.logsources import SpecificInsteadOfGenericLogsourceValidator, SpecificInsteadOfGenericLogsourceIssue
 from sigma.validators.metadata import IdentifierCollisionIssue, IdentifierExistenceIssue, IdentifierExistenceValidator, IdentifierUniquenessValidator
-from sigma.validators.condition import DanglingDetectionIssue, DanglingDetectionValidator
+from sigma.validators.condition import AllOfThemConditionIssue, AllOfThemConditionValidator, DanglingDetectionIssue, DanglingDetectionValidator, ThemConditionWithSingleDetectionIssue, ThemConditionWithSingleDetectionValidator
 from sigma.validators.modifiers import AllWithoutContainsModifierIssue, Base64OffsetWithoutContainsModifierIssue, InvalidModifierCombinationsValidator, ModifierAppliedMultipleIssue
-from sigma.validators.tags import ATTACKTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
+from sigma.validators.tags import ATTACKTagValidator, DuplicateTagIssue, DuplicateTagValidator, InvalidATTACKTagIssue, InvalidTLPTagIssue, TLPTagValidator, TLPv1TagValidator, TLPv2TagValidator
 from sigma.validators.values import ControlCharacterIssue, ControlCharacterValidator, DoubleWildcardIssue, DoubleWildcardValidator, NumberAsStringIssue, NumberAsStringValidator, WildcardInsteadOfEndswithIssue, WildcardInsteadOfStartswithIssue, WildcardsInsteadOfContainsModifierIssue, WildcardsInsteadOfModifiersValidator
 
 @pytest.fixture
@@ -149,6 +149,52 @@ def test_validator_dangling_detection_valid_x_of_them():
         condition: 1 of them
     """)
     assert validator.validate(rule) == []
+
+def test_validator_them_condition_with_single_detection():
+    validator = ThemConditionWithSingleDetectionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        selection:
+            field1: val1
+        condition: 1 of them
+    """)
+    assert validator.validate(rule) == [ ThemConditionWithSingleDetectionIssue([rule]) ]
+
+def test_validator_them_condition_with_multiple_detection():
+    validator = ThemConditionWithSingleDetectionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        selection1:
+            field1: val1
+        selection2:
+            field2: val2
+        condition: 1 of them
+    """)
+    assert validator.validate(rule) == []
+
+def test_validator_all_of_then():
+    validator = AllOfThemConditionValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        selection1:
+            field1: val1
+        selection2:
+            field2: val2
+        condition: all of them
+    """)
+    assert validator.validate(rule) == [ AllOfThemConditionIssue([rule]) ]
 
 def test_validator_double_wildcard():
     validator = DoubleWildcardValidator()
@@ -517,4 +563,47 @@ def test_validator_tlp_tags(validator_class, tags, issue_tags):
     assert validator.validate(rule) == [
         InvalidTLPTagIssue( [ rule ], SigmaRuleTag.from_str(tag))
         for tag in issue_tags
+    ]
+
+def test_validator_duplicate_tags():
+    validator = DuplicateTagValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.command_and_control
+        - attack.t1001.001
+        - attack.g0001
+        - attack.g0001
+        - attack.s0001
+        - attack.s0005
+    """)
+    assert validator.validate(rule) == [ DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001")) ]
+
+def test_validator_sysmon_insteadof_generic_logsource():
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: sysmon
+    detection:
+        sel:
+            EventID:
+               - 1
+               - 255
+               - 7
+        condition: sel
+    """)
+    logsource_sysmon = SigmaLogSource(None, "windows", "sysmon")
+    assert validator.validate(rule) == [
+        SpecificInsteadOfGenericLogsourceIssue(rules=[rule], logsource=logsource_sysmon, event_id=1, generic_logsource=SigmaLogSource("process_creation")),
+        SpecificInsteadOfGenericLogsourceIssue(rules=[rule], logsource=logsource_sysmon, event_id=7, generic_logsource=SigmaLogSource("image_load")),
     ]

@@ -31,7 +31,7 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
     HIGH          = auto()
     CRITICAL      = auto()
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class SigmaRuleTag:
     namespace : str
     name : str
@@ -49,7 +49,7 @@ class SigmaRuleTag:
     def __str__(self) -> str:
         return f"{self.namespace}.{self.name}"
 
-@dataclass
+@dataclass(frozen=True)
 class SigmaLogSource:
     category : Optional[str] = field(default=None)
     product : Optional[str] = field(default=None)
@@ -503,6 +503,19 @@ class SigmaDetections:
         """Get detection by name"""
         return self.detections[key]
 
+class SigmaYAMLLoader(yaml.SafeLoader):
+    """Custom YAML loader implementing additional functionality for Sigma."""
+    def construct_mapping(self, node, deep=...):
+        keys = set()
+        for k, v in node.value:
+            key = self.construct_object(k, deep=deep)
+            if key in keys:
+                raise yaml.error.YAMLError("Duplicate key '{k}'")
+            else:
+                keys.add(key)
+
+        return super().construct_mapping(node, deep)
+
 @dataclass
 class SigmaRule(ProcessingItemTrackingMixin):
     """
@@ -632,7 +645,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
     @classmethod
     def from_yaml(cls, rule : str, collect_errors : bool = False) -> "SigmaRule":
         """Convert YAML input string with single document into SigmaRule object."""
-        parsed_rule = yaml.safe_load(rule)
+        parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
     def to_dict(self) -> dict:

@@ -471,7 +471,10 @@ class TextQueryBackend(Backend):
 
     def convert_condition_group(self, cond : ConditionItem, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Group condition item."""
-        return self.group_expression.format(expr=self.convert_condition(cond, state))
+        expr = self.convert_condition(cond, state)
+        if expr is None or isinstance(expr, DeferredQueryExpression):
+            return expr
+        return self.group_expression.format(expr=expr)
 
     def convert_condition_or(self, cond : ConditionOR, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of OR conditions."""

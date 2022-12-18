@@ -2,10 +2,12 @@ from sigma.plugins import SigmaPlugins
 from sigma.backends.test import TextQueryTestBackend
 import sigma
 
-def test_autodiscover_backends_none():
+def test_autodiscover_backends():
     plugins = SigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
     assert plugins == SigmaPlugins(
-        backends=dict(),
+        backends={
+            "test": TextQueryTestBackend,
+        },
         pipelines=dict(),
         validators=dict(),
     )

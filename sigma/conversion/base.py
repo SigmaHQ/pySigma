@@ -16,6 +16,7 @@ class Backend(ABC):
     """
     Base class for Sigma conversion backends. A backend is made up from the following elements:
 
+    * Some metadata about the properties of the backend.
     * A processing pipeline stored in backend_processing_pipeline that is applied to each Sigma
       rule that is converted by the backend. This is the location where you add generic
       transformations that should be applied to all Sigma rules before conversion.
@@ -58,8 +59,11 @@ class Backend(ABC):
     * Use intermediate representations for queries and query sets for formats that require state information,
       e.g. if the target query language results in a different structure than given by the condition.
     """
-    name : ClassVar[str] = "Base backend"
-    formats : Dict[str, str] = dict()
+    name : ClassVar[str] = "Base backend"       # A descriptive name of the backend
+    formats : Dict[str, str] = {                # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
+        "default": "Default output format",
+    }
+    requires_pipeline : bool = False            # Does the backend requires that a processing pipeline is provided?
 
     processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()

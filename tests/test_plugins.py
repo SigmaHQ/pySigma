@@ -2,7 +2,6 @@ from uuid import UUID
 from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, SigmaPlugins
 from sigma.backends.test import TextQueryTestBackend
 import importlib.metadata
-import importlib.util
 from packaging.specifiers import Specifier
 import sigma
 import pytest
@@ -71,7 +70,16 @@ def test_sigma_plugin_version_incompatible(sigma_plugin):
     assert not sigma_plugin.is_compatible()
 
 def check_module(name : str) -> bool:
-    return bool(importlib.util.find_spec(name))
+    # This was the preferred way to test module existence, but it didn't worked in GitHub Actions:
+    #return bool(importlib.util.find_spec(name))
+    try:
+        version = importlib.metadata.version("pysigma-backend-splunk")
+        if isinstance(version, str):
+            return True
+        else:
+            return False
+    except importlib.metadata.PackageNotFoundError:
+        return False
 
 def test_sigma_plugin_installation():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()

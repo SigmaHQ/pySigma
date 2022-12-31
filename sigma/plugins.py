@@ -2,10 +2,14 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from importlib import import_module
 import importlib
+import importlib.metadata
 import pkgutil
+import pkg_resources
 from typing import Callable, Dict, Any, Optional, Set
 from uuid import UUID
 import requests
+from packaging.version import Version
+from packaging.specifiers import Specifier
 
 from sigma.conversion.base import Backend
 from sigma.processing.pipeline import ProcessingPipeline
@@ -85,7 +89,7 @@ class SigmaPlugin:
     project_url : str
     report_issue_url : str
     state : SigmaPluginState
-    pysigma_version : str
+    pysigma_version : Specifier
 
     @classmethod
     def from_dict(cls, d: Dict) -> "SigmaPlugin":
@@ -96,10 +100,17 @@ class SigmaPlugin:
             for k, v in d.items()
         }
         kwargs["uuid"] = UUID(kwargs["uuid"])
+        kwargs["pysigma_version"] = Specifier(kwargs["pysigma_version"])
         kwargs["type"] = SigmaPluginType[ kwargs["type"].upper() ]
         kwargs["state"] = SigmaPluginState[ kwargs["state"].upper() ]
 
         return cls(**kwargs)
+
+    def is_compatible(self):
+        """Checks if the pySigma version specifier of the plugin matches the used pySigma
+        version."""
+        pysigma_version = Version(importlib.metadata.version("pysigma"))
+        return pysigma_version in self.pysigma_version
 
 @dataclass
 class SigmaPluginDirectory:

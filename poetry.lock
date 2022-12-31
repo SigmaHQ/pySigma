@@ -245,7 +245,7 @@ python-versions = "*"
 name = "packaging"
 version = "22.0"
 description = "Core utilities for Python packages"
-category = "dev"
+category = "main"
 optional = false
 python-versions = ">=3.7"
 
@@ -589,7 +589,7 @@ testing = ["flake8 (<5)", "func-timeout", "jaraco.functools", "jaraco.itertools"
 [metadata]
 lock-version = "1.1"
 python-versions = "^3.8"
-content-hash = "33c35e81e060c0f42114564b37528f3500ed2ebbcb9bb0bba3a597d102fbf038"
+content-hash = "0038de1636409d444d21cbbf758ed57c1d67a6f9f2294b2fbb265246b492406e"
 
 [metadata.files]
 alabaster = [

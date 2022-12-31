@@ -1,6 +1,8 @@
 from uuid import UUID
 from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, SigmaPlugins
 from sigma.backends.test import TextQueryTestBackend
+import importlib.metadata
+from packaging.specifiers import Specifier
 import sigma
 import pytest
 
@@ -51,11 +53,16 @@ def sigma_plugin():
         project_url="https://github.com/SigmaHQ/pySigma-backend-test",
         report_issue_url="https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
         state=SigmaPluginState.TESTING,
-        pysigma_version=">=0.9.0",
+        pysigma_version=Specifier(">=0.9.0"),
     )
 
 def test_sigma_plugin_from_dict(sigma_plugin, sigma_plugin_dict):
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
+
+def test_sigma_plugin_version_compatible(sigma_plugin):
+    pysigma_version = importlib.metadata.version("pysigma")
+    sigma_plugin.pysigma_version = Specifier("~=" + (".".join(pysigma_version.split(".")[:-1] + ["0"])))
+    assert sigma_plugin.is_compatible()
 
 def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     sigma_plugin_dict_uuid = sigma_plugin_dict.pop("uuid")

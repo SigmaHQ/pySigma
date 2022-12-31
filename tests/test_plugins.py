@@ -2,6 +2,7 @@ from uuid import UUID
 from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, SigmaPlugins
 from sigma.backends.test import TextQueryTestBackend
 import importlib.metadata
+import importlib.util
 from packaging.specifiers import Specifier
 import sigma
 import pytest
@@ -69,6 +70,18 @@ def test_sigma_plugin_version_incompatible(sigma_plugin):
     sigma_plugin.pysigma_version = Specifier("<=0.1.0")
     assert not sigma_plugin.is_compatible()
 
+def check_module(name : str) -> bool:
+    return bool(importlib.util.find_spec(name))
+
+def test_sigma_plugin_installation():
+    plugin_dir = SigmaPluginDirectory.default_plugin_directory()
+    plugin = plugin_dir.plugins["4af37b53-f1ec-4567-8017-2fb9315397a1"]     # Splunk backend
+    assert not check_module("sigma.backends.splunk")        # ensure it's not already installed
+    plugin.install()
+    assert check_module("sigma.backends.splunk")
+    plugin.uninstall()
+    assert not check_module("sigma.backends.splunk")
+
 def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     sigma_plugin_dict_uuid = sigma_plugin_dict.pop("uuid")
     assert SigmaPluginDirectory.from_dict({
@@ -79,7 +92,7 @@ def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     }) == SigmaPluginDirectory(
         note="Test",
         plugins={
-            sigma_plugin.uuid: sigma_plugin
+            str(sigma_plugin.uuid): sigma_plugin
         }
     )
 

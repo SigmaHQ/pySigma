@@ -4,6 +4,8 @@ from importlib import import_module
 import importlib
 import importlib.metadata
 import pkgutil
+import subprocess
+import sys
 import pkg_resources
 from typing import Callable, Dict, Any, Optional, Set
 from uuid import UUID
@@ -112,11 +114,19 @@ class SigmaPlugin:
         pysigma_version = Version(importlib.metadata.version("pysigma"))
         return pysigma_version in self.pysigma_version
 
+    def install(self):
+        """Install plugin with pip."""
+        subprocess.check_call([sys.executable, "-m", "pip", "install", self.package])
+
+    def uninstall(self):
+        """Uninstall plugin with pip."""
+        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", self.package])
+
 @dataclass
 class SigmaPluginDirectory:
     """A directory of pySigma plugins that can be loaded from the pySigma-plugin-directory
     repository or an arbitrary location."""
-    plugins : Dict[UUID, SigmaPlugin] = field(default_factory=dict)
+    plugins : Dict[str, SigmaPlugin] = field(default_factory=dict)
     note : Optional[str] = None
 
     def register_plugin(self, plugin : SigmaPlugin):
@@ -126,7 +136,7 @@ class SigmaPluginDirectory:
     def from_dict(cls, d : Dict):
         return cls(
             plugins={
-                UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
+                uuid: SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
                 for uuid, plugin_dict in d["plugins"].items()
             },
             note=d.get("note", None),

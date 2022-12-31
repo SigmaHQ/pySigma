@@ -1,15 +1,21 @@
 from dataclasses import dataclass, field
+from enum import Enum, auto
 from importlib import import_module
 import importlib
 import pkgutil
-from typing import Callable, Dict, Any
+from typing import Callable, Dict, Any, Optional, Set
+from uuid import UUID
+import requests
 
 from sigma.conversion.base import Backend
 from sigma.processing.pipeline import ProcessingPipeline
+from sigma.rule import EnumLowercaseStringMixin
 from sigma.validators.base import SigmaRuleValidator
 import sigma.backends
 import sigma.pipelines
 import sigma.validators
+
+default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v0.json"
 
 @dataclass
 class SigmaPlugins:
@@ -55,3 +61,76 @@ class SigmaPlugins:
         validators = cls._discover_module_directories(sigma.validators, "validators", include_validators)
 
         return cls(backends, pipelines, validators)
+
+class SigmaPluginType(EnumLowercaseStringMixin, Enum):
+    BACKEND   = auto()
+    PIPELINE  = auto()
+    VALIDATOR = auto()
+
+class SigmaPluginState(EnumLowercaseStringMixin, Enum):
+    STABLE   = auto()
+    TESTING  = auto()
+    DEVEL    = auto()
+    BROKEN   = auto()
+    ORPHANED = auto()
+
+@dataclass
+class SigmaPlugin:
+    """Sigma plugin description corresponding to https://github.com/SigmaHQ/pySigma-plugin-directory#format"""
+    uuid : UUID
+    type : SigmaPluginType
+    id : str
+    description : str
+    package : str
+    project_url : str
+    report_issue_url : str
+    state : SigmaPluginState
+    pysigma_version : str
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "SigmaPlugin":
+        """Construct a SigmaPlugin object from a dict that results in parsing a plugin description
+        from the JSON format linked above."""
+        kwargs = {
+            k.replace("-", "_"): v
+            for k, v in d.items()
+        }
+        kwargs["uuid"] = UUID(kwargs["uuid"])
+        kwargs["type"] = SigmaPluginType[ kwargs["type"].upper() ]
+        kwargs["state"] = SigmaPluginState[ kwargs["state"].upper() ]
+
+        return cls(**kwargs)
+
+@dataclass
+class SigmaPluginDirectory:
+    """A directory of pySigma plugins that can be loaded from the pySigma-plugin-directory
+    repository or an arbitrary location."""
+    plugins : Dict[UUID, SigmaPlugin] = field(default_factory=dict)
+    note : Optional[str] = None
+
+    def register_plugin(self, plugin : SigmaPlugin):
+        self.plugins[plugin.uuid] = plugin
+
+    @classmethod
+    def from_dict(cls, d : Dict):
+        return cls(
+            plugins={
+                UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
+                for uuid, plugin_dict in d["plugins"].items()
+            },
+            note=d.get("note", None),
+        )
+
+    @classmethod
+    def from_url(cls, url : str, *args, **kwargs) -> "SigmaPluginDirectory":
+        """Loads the plugin directory from an arbitrary location. All further
+        arguments are passed to requests.get()."""
+        response = requests.get(url, *args, **kwargs)
+        response.raise_for_status()
+        return cls.from_dict(response.json())
+
+    @classmethod
+    def default_plugin_directory(cls, *args, **kwargs):
+        """Loads the plugin directory from the pySigma-plugin-directory repository. All further
+        arguments are passed to requests.get()."""
+        return cls.from_url(default_plugin_directory, *args, **kwargs)

@@ -64,6 +64,11 @@ def test_sigma_plugin_version_compatible(sigma_plugin):
     sigma_plugin.pysigma_version = Specifier("~=" + (".".join(pysigma_version.split(".")[:-1] + ["0"])))
     assert sigma_plugin.is_compatible()
 
+def test_sigma_plugin_version_incompatible(sigma_plugin):
+    pysigma_version = importlib.metadata.version("pysigma")
+    sigma_plugin.pysigma_version = Specifier("<=0.1.0")
+    assert not sigma_plugin.is_compatible()
+
 def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     sigma_plugin_dict_uuid = sigma_plugin_dict.pop("uuid")
     assert SigmaPluginDirectory.from_dict({

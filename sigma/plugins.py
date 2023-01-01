@@ -6,8 +6,7 @@ import importlib.metadata
 import pkgutil
 import subprocess
 import sys
-import pkg_resources
-from typing import Callable, Dict, Any, Optional, Set
+from typing import Callable, Dict, Any, List, Optional, Set, Union
 from uuid import UUID
 import requests
 from packaging.version import Version
@@ -20,6 +19,7 @@ from sigma.validators.base import SigmaRuleValidator
 import sigma.backends
 import sigma.pipelines
 import sigma.validators
+from sigma.exceptions import SigmaPluginNotFoundError
 
 default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v0.json"
 
@@ -126,7 +126,7 @@ class SigmaPlugin:
 class SigmaPluginDirectory:
     """A directory of pySigma plugins that can be loaded from the pySigma-plugin-directory
     repository or an arbitrary location."""
-    plugins : Dict[str, SigmaPlugin] = field(default_factory=dict)
+    plugins : Dict[UUID, SigmaPlugin] = field(default_factory=dict)
     note : Optional[str] = None
 
     def register_plugin(self, plugin : SigmaPlugin):
@@ -136,7 +136,7 @@ class SigmaPluginDirectory:
     def from_dict(cls, d : Dict):
         return cls(
             plugins={
-                uuid: SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
+                UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
                 for uuid, plugin_dict in d["plugins"].items()
             },
             note=d.get("note", None),
@@ -155,3 +155,32 @@ class SigmaPluginDirectory:
         """Loads the plugin directory from the pySigma-plugin-directory repository. All further
         arguments are passed to requests.get()."""
         return cls.from_url(default_plugin_directory, *args, **kwargs)
+
+    def plugin_count(self):
+        return len(self.plugins)
+
+    def get_plugins(
+        self,
+        plugin_types : Set[SigmaPluginType] = { t for t in SigmaPluginType },
+        plugin_states : Set[SigmaPluginState] = { s for s in SigmaPluginState },
+        ) -> List[SigmaPlugin]:
+        """Return a list of plugins with the specified type and state. Returns all plugins if not specified."""
+        return [
+            plugin
+            for plugin in self.plugins.values()
+            if plugin.type in plugin_types and plugin.state in plugin_states
+        ]
+
+    def get_plugin_by_uuid(self, uuid : Union[str, UUID]) -> SigmaPlugin:
+        if isinstance(uuid, str):
+            uuid = UUID(uuid)
+        try:
+            return self.plugins[uuid]
+        except KeyError:
+            raise SigmaPluginNotFoundError(f"Plugin with UUID {uuid} not found")
+
+    def get_plugin_by_id(self, id : str) -> SigmaPlugin:
+        for plugin in self.plugins.values():
+            if plugin.id == id:
+                return plugin
+        raise SigmaPluginNotFoundError(f"Plugin with identifier {id} not found")

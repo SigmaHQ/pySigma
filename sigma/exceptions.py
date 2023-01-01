@@ -95,3 +95,6 @@ class SigmaFeatureNotSupportedByBackendError(SigmaError):
 
 class SigmaTransformationError(SigmaError):
     """Error while transformation. Can be raised intentionally by FailureTransformation."""
+
+class SigmaPluginNotFoundError(SigmaError):
+    """Plugin was not found."""

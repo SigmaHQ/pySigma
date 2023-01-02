@@ -14,6 +14,7 @@ from packaging.specifiers import Specifier
 
 from sigma.conversion.base import Backend
 from sigma.processing.pipeline import ProcessingPipeline
+from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.rule import EnumLowercaseStringMixin
 from sigma.validators.base import SigmaRuleValidator
 import sigma.backends
@@ -24,15 +25,15 @@ from sigma.exceptions import SigmaPluginNotFoundError
 default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v0.json"
 
 @dataclass
-class SigmaPlugins:
+class InstalledSigmaPlugins:
     """Discovery and registrstion of installed backends, pipelines and validator checks as plugins.
 
     This class represents a set of the objects mentioned above that are available. Further it implements
     autodiscovery of them in the sigma.backends, sigma.pipelines and sigma.validators module namespaces.
     """
-    backends : Dict[str, Backend] = field(default_factory=list)
-    pipelines : Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=list)
-    validators : Dict[str, SigmaRuleValidator] = field(default_factory=list)
+    backends : Dict[str, Backend] = field(default_factory=dict)
+    pipelines : Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
+    validators : Dict[str, SigmaRuleValidator] = field(default_factory=dict)
 
     def register_backend(self, id : str, backend : Backend):
         self.backends[id] = backend
@@ -56,7 +57,6 @@ class SigmaPlugins:
                     pass
         return result
 
-
     @classmethod
     def autodiscover(cls, include_backends : bool = True, include_pipelines : bool = True, include_validators : bool = True):
         """Automatically discovers backends, pipelines and validators in their corresponding module
@@ -67,6 +67,13 @@ class SigmaPlugins:
         validators = cls._discover_module_directories(sigma.validators, "validators", include_validators)
 
         return cls(backends, pipelines, validators)
+
+    def get_pipeline_resolver(self) -> ProcessingPipelineResolver:
+        """Returns a ProcessingPipelineResolver object with all discovered pipelines."""
+        return ProcessingPipelineResolver({
+            identifier: pipeline_generator
+            for identifier, pipeline_generator in self.pipelines.items()
+        })
 
 class SigmaPluginType(EnumLowercaseStringMixin, Enum):
     BACKEND   = auto()

@@ -1,7 +1,7 @@
 from uuid import UUID
 import pytest
 from sigma.exceptions import SigmaConfigurationError
-from sigma.plugins import SigmaPlugins
+from sigma.plugins import InstalledSigmaPlugins
 from sigma.validation import SigmaValidator
 from sigma.validators.condition import DanglingDetectionValidator
 from sigma.validators.tags import ATTACKTagValidator, TLPv1TagValidator
@@ -12,7 +12,7 @@ from sigma.validators.metadata import IdentifierExistenceValidator, IdentifierUn
 
 @pytest.fixture
 def validators():
-    return SigmaPlugins.autodiscover().validators
+    return InstalledSigmaPlugins.autodiscover().validators
 
 def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with_id_collision):
     rules = SigmaCollection([rule_with_id, rule_without_id, *rules_with_id_collision])

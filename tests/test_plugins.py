@@ -1,15 +1,18 @@
 from uuid import UUID
 from sigma.exceptions import SigmaPluginNotFoundError
-from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, SigmaPlugins
+from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, InstalledSigmaPlugins
 from sigma.backends.test import TextQueryTestBackend
 import importlib.metadata
 from packaging.specifiers import Specifier
 import sigma
 import pytest
 
+from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from tests.test_processing_pipeline import TransformationAppend
+
 def test_autodiscover_backends():
-    plugins = SigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
-    assert plugins == SigmaPlugins(
+    plugins = InstalledSigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
+    assert plugins == InstalledSigmaPlugins(
         backends={
             "test": TextQueryTestBackend,
         },
@@ -18,16 +21,32 @@ def test_autodiscover_backends():
     )
 
 def test_autodiscover_pipelines_none():
-    plugins = SigmaPlugins.autodiscover(include_backends=False, include_validators=False)
-    assert plugins == SigmaPlugins(
+    plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_validators=False)
+    assert plugins == InstalledSigmaPlugins(
         backends=dict(),
         pipelines=dict(),
         validators=dict(),
     )
 
 def test_autodiscover_validators():
-    plugins = SigmaPlugins.autodiscover(include_backends=False, include_pipelines=False)
+    plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_pipelines=False)
     assert len(plugins.validators) > 10
+
+def test_installed_sigma_plugins_get_pipeline_resolver():
+    pipeline = ProcessingPipeline(
+        name="Test",
+        priority=10,
+        items=[
+            ProcessingItem(
+                transformation=TransformationAppend(s="Test"),
+                identifier="test",
+            )
+        ],
+    )
+    plugins = InstalledSigmaPlugins()
+    plugins.register_pipeline("test", pipeline)
+    pipeline_resolver = plugins.get_pipeline_resolver()
+    assert pipeline_resolver.resolve_pipeline("test") == pipeline
 
 @pytest.fixture
 def sigma_plugin_dict():

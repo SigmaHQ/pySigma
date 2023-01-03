@@ -11,6 +11,7 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "wmi": "Microsoft-Windows-WMI-Activity/Operational",
     "dns-server": "DNS Server",
     "dns-server-audit": "Microsoft-Windows-DNS-Server/Audit",
+    "dns-server-analytic": "Microsoft-Windows-DNS-Server/Analytical"
     "driver-framework": "Microsoft-Windows-DriverFrameworks-UserMode/Operational",
     "ntlm": "Microsoft-Windows-NTLM/Operational",
     "dhcp": "Microsoft-Windows-DHCP-Server/Operational",

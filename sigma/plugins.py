@@ -60,7 +60,7 @@ class InstalledSigmaPlugins:
     @classmethod
     def autodiscover(cls, include_backends : bool = True, include_pipelines : bool = True, include_validators : bool = True):
         """Automatically discovers backends, pipelines and validators in their corresponding module
-        namespaces and return a SigmaPlugins class containing all identified classes and generators.
+        namespaces and return a InstalledSigmaPlugins class containing all identified classes and generators.
         """
         backends = cls._discover_module_directories(sigma.backends, "backends", include_backends)
         pipelines = cls._discover_module_directories(sigma.pipelines, "pipelines", include_pipelines)

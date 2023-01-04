@@ -11,6 +11,7 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "wmi": "Microsoft-Windows-WMI-Activity/Operational",
     "dns-server": "DNS Server",
     "dns-server-audit": "Microsoft-Windows-DNS-Server/Audit",
+    "dns-server-analytic": "Microsoft-Windows-DNS-Server/Analytical",
     "driver-framework": "Microsoft-Windows-DriverFrameworks-UserMode/Operational",
     "ntlm": "Microsoft-Windows-NTLM/Operational",
     "dhcp": "Microsoft-Windows-DHCP-Server/Operational",
@@ -30,6 +31,7 @@ windows_logsource_mapping = {       # Mapping between Sigma log source services 
     "diagnosis-scripted": "Microsoft-Windows-Diagnosis-Scripted/Operational",
     "shell-core": "Microsoft-Windows-Shell-Core/Operational",
     "openssh": "OpenSSH/Operational",
+    "bitlocker": "Microsoft-Windows-BitLocker/BitLocker Management",
 }
 
 def logsource_windows(service : str) -> LogsourceCondition:

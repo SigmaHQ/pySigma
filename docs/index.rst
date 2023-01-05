@@ -87,7 +87,7 @@ initialization. Processing pipelines can be provided by:
 * A YAML-based file.
 * Included in pySigma or other libraries.
 
-The following example:::
+The following example::
 
    from sigma.pipelines.sysmon import sysmon_pipeline
    pipeline = sysmon_pipeline()
@@ -95,7 +95,7 @@ The following example:::
    rules = SigmaCollection.from_yaml(sigma_rule_yaml)
    print("Result: " + "\n".join(backend.convert(rules)))
 
-* Utilizes the Sysmon pipeline from the `pysigma-pipeline-sysmon <https://github.com/SigmaHQ/pySigma-pipeline-sysmon>` package that can be installed
+* Utilizes the Sysmon pipeline from the :doc:`pysigma-pipeline-sysmon <https://github.com/SigmaHQ/pySigma-pipeline-sysmon>` package that can be installed
   with pip.
 * instantiates a Splunk backend.
 * Converts a Sigma rule collection into a list of queries and prints it.

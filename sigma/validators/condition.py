@@ -63,6 +63,7 @@ class ThemConditionWithSingleDetectionIssue(SigmaValidationIssue):
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
 
 class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
+    """Detect conditions refering to 'them' with only one detection."""
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if any([
                 "them" in condition
@@ -78,6 +79,7 @@ class AllOfThemConditionIssue(SigmaValidationIssue):
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 class AllOfThemConditionValidator(SigmaRuleValidator):
+    """Find ocurrences of discouraged 'all of them' conditions."""
     re_all_of_them : ClassVar[Pattern] = re.compile("all\\s+of\\s+them")
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:

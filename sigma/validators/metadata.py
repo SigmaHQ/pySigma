@@ -25,7 +25,7 @@ class IdentifierCollisionIssue(SigmaValidationIssue):
     identifier : UUID
 
 class IdentifierUniquenessValidator(SigmaRuleValidator):
-    """Collect all rule identifiers and output rules with same identifier on finalization."""
+    """Check rule UUID uniqueness."""
     ids : Dict[UUID, List[SigmaRule]]
 
     def __init__(self):

@@ -51,6 +51,7 @@ class SpecificInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
     generic_logsource: SigmaLogSource
 
 class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
+    """Identify usage of specific Windows event identifiers where corresponding generic log sources exist."""
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         for logsource, eventid_mappings in specific_to_generic_logsource_mapping.items():
             if rule.logsource in logsource:

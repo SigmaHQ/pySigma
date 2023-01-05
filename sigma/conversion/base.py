@@ -60,10 +60,10 @@ class Backend(ABC):
       e.g. if the target query language results in a different structure than given by the condition.
     """
     name : ClassVar[str] = "Base backend"       # A descriptive name of the backend
-    formats : Dict[str, str] = {                # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
+    formats : ClassVar[Dict[str, str]] = {                # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
         "default": "Default output format",
     }
-    requires_pipeline : bool = False            # Does the backend requires that a processing pipeline is provided?
+    requires_pipeline : ClassVar[bool] = False            # Does the backend requires that a processing pipeline is provided?
 
     processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()

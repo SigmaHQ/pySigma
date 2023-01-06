@@ -418,6 +418,7 @@ class TextQueryBackend(Backend):
     re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
+    re_escape_escape_char : bool = True                 # If True, the escape character is also escaped
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -684,7 +685,7 @@ class TextQueryBackend(Backend):
 
     def convert_value_re(self, r : SigmaRegularExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Convert regular expression into string representation used in query."""
-        return r.escape(self.re_escape, self.re_escape_char)
+        return r.escape(self.re_escape, self.re_escape_char, self.re_escape_escape_char)
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""

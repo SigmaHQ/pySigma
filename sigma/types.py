@@ -493,9 +493,17 @@ class SigmaRegularExpression(SigmaType):
         except re.error as e:
             raise SigmaRegularExpressionError(f"Regular expression '{self.regexp}' is invalid: {str(e)}") from e
 
-    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\") -> str:
-        """Escape strings from escaped tuple as well as escape_char itself with escape_char."""
-        r = "|".join([ re.escape(e) for e in [*escaped, escape_char]])      # Generate regulear expressions from sequences that should be escaped and the escape char itself
+    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\", escape_escape_char : bool = True) -> str:
+        """Escape strings from escaped tuple as well as escape_char itself (can be disabled with
+        escape_escape_char) with escape_char."""
+        r = "|".join([      # Generate regulear expressions from sequences that should be escaped and the escape char itself
+            re.escape(e)
+            for e in [
+                *escaped,
+                escape_char if escape_escape_char else None
+            ]
+            if e is not None
+        ])
         pos = [     # determine positions of matches in regular expression
             m.start()
             for m in re.finditer(r, self.regexp)

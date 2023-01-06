@@ -432,10 +432,27 @@ def test_convert_value_regex(test_backend):
             detection:
                 sel:
                     fieldA|re: pat.*tern/foobar
-                    field A|re: pat.*tern/foobar
+                    field A|re: 'pat.*te\\rn/foobar'
                 condition: sel
         """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*tern\\/foo\\bar/']
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/']
+
+def test_convert_value_regex_not_escaped_escape(test_backend):
+    test_backend.re_escape_escape_char = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re: pat.*tern/foobar
+                    field A|re: 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*te\\rn\\/foo\\bar/']
 
 def test_convert_value_regex_multi_mapping():
     test_backend = TextQueryTestBackend(
@@ -469,10 +486,26 @@ def test_convert_value_regex_unbound(test_backend):
                 product: test_product
             detection:
                 sel:
-                    "|re": pat.*tern/foobar
+                    "|re": 'pat.*te\\rn/foobar'
                 condition: sel
         """)
-    ) == ['_=/pat.*tern\\/foo\\bar/']
+    ) == ['_=/pat.*te\\\\rn\\/foo\\bar/']
+
+def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
+    test_backend.re_escape_escape_char = False
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|re": 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['_=/pat.*te\\rn\\/foo\\bar/']
 
 def test_convert_value_cidr_wildcard_native(test_backend):
     assert test_backend.convert(

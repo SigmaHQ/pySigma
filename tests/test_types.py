@@ -266,6 +266,9 @@ def test_re_invalid():
 def test_re_escape():
     assert SigmaRegularExpression("foo\\d+bar-test").escape(("foo", "-", "t"), "\\") == "\\foo\\\\d+bar\\-\\tes\\t"
 
+def test_re_escape_without_escape():
+    assert SigmaRegularExpression("foo\\d+bar-test").escape(("foo", "-", "t"), "\\", False) == "\\foo\\d+bar\\-\\tes\\t"
+
 def test_bool():
     assert SigmaBool(True).boolean == True
 

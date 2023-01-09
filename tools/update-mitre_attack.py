@@ -3,8 +3,9 @@ import json
 from sys import stderr, stdout
 from pprint import pformat
 
-argparser = ArgumentParser(description="Generate MITRE ATT&CK content for pySigma from ATT&CK STIX definition.")
+argparser = ArgumentParser(description="Generate MITRE ATT&CK(r) content for pySigma from ATT&CK STIX definition.")
 argparser.add_argument("--output", "-o", type=FileType("w"), default=stdout, help="Output file")
+argparser.add_argument('--attack_version', type=str, default="12.1", help='Manually set the MITRE ATT&CK(r) version.')
 argparser.add_argument("stix", type=FileType("r"), nargs="+", help="Files with ATT&CK STIX definitions")
 args = argparser.parse_args()
 
@@ -38,6 +39,8 @@ for stix_file in args.stix:
                 elif obj_type == "x-mitre-collection":
                     attack_version = obj["x_mitre_version"]
 
+if not 'attack_version' in locals():
+    attack_version = args.attack_version
 print(f"Found { len(tactics) } tactics, { len(techniques) } techniques, { len(intrusion_sets) } intrusion sets and { len(software) } malwares.", file=stderr)
 print("from typing import Dict", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)

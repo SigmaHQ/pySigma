@@ -115,7 +115,7 @@ class SigmaPlugin:
 
         return cls(**kwargs)
 
-    def is_compatible(self):
+    def is_compatible(self) -> bool:
         """Checks if the pySigma version specifier of the plugin matches the used pySigma
         version."""
         pysigma_version = Version(importlib.metadata.version("pysigma"))
@@ -158,7 +158,7 @@ class SigmaPluginDirectory:
         return cls.from_dict(response.json())
 
     @classmethod
-    def default_plugin_directory(cls, *args, **kwargs):
+    def default_plugin_directory(cls, *args, **kwargs) -> "SigmaPluginDirectory":
         """Loads the plugin directory from the pySigma-plugin-directory repository. All further
         arguments are passed to requests.get()."""
         return cls.from_url(default_plugin_directory, *args, **kwargs)

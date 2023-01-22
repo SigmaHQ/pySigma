@@ -85,9 +85,15 @@ def test_sigma_plugin_version_compatible(sigma_plugin):
     assert sigma_plugin.is_compatible()
 
 def test_sigma_plugin_version_incompatible(sigma_plugin):
-    pysigma_version = importlib.metadata.version("pysigma")
     sigma_plugin.pysigma_version = Specifier("<=0.1.0")
     assert not sigma_plugin.is_compatible()
+
+def test_sigma_plugin_version_unknown(sigma_plugin, monkeypatch):
+    def version_replacement(m):
+        raise importlib.metadata.PackageNotFoundError
+    monkeypatch.setattr("importlib.metadata.version", version_replacement)
+    sigma_plugin.pysigma_version = Specifier("<=0.1.0")
+    assert sigma_plugin.is_compatible() is None
 
 def check_module(name : str) -> bool:
     # This was the preferred way to test module existence, but it didn't worked in GitHub Actions:
@@ -180,3 +186,14 @@ def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory : SigmaPlu
     plugins = plugin_directory.get_plugins(plugin_types={SigmaPluginType.BACKEND}, plugin_states={SigmaPluginState.TESTING})
     assert len(plugins) == 1
     assert plugins[0].id == "test"
+
+def test_sigma_plugin_directory_get_plugins_compatible(plugin_directory : SigmaPluginDirectory, sigma_plugin_dict : dict):
+    sigma_plugin_dict_incompatible = sigma_plugin_dict.copy()
+    sigma_plugin_dict_incompatible["uuid"] = "a350e4dd-6813-4549-a76d-b2c0d4925e62"
+    sigma_plugin_dict_incompatible["id"] = "incompatible"
+    sigma_plugin_dict_incompatible["description"] = "Incompatible plugin"
+    sigma_plugin_dict_incompatible["pysigma_version"] = "<0.1.0"
+
+    sigma_plugin = SigmaPlugin.from_dict(sigma_plugin_dict_incompatible)
+    plugin_directory.register_plugin(sigma_plugin)
+    assert plugin_directory.get_plugins(compatible_only=True) < plugin_directory.get_plugins()

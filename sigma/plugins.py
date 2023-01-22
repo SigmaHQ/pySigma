@@ -115,11 +115,15 @@ class SigmaPlugin:
 
         return cls(**kwargs)
 
-    def is_compatible(self) -> bool:
+    def is_compatible(self) -> Optional[bool]:
         """Checks if the pySigma version specifier of the plugin matches the used pySigma
-        version."""
-        pysigma_version = Version(importlib.metadata.version("pysigma"))
-        return pysigma_version in self.pysigma_version
+        version. Returns None if current version can't be determined, e.g. if pySigma was not
+        installed as package."""
+        try:
+            pysigma_version = Version(importlib.metadata.version("pysigma"))
+            return pysigma_version in self.pysigma_version
+        except importlib.metadata.PackageNotFoundError:
+            return None
 
     def install(self):
         """Install plugin with pip."""
@@ -170,12 +174,13 @@ class SigmaPluginDirectory:
         self,
         plugin_types : Set[SigmaPluginType] = { t for t in SigmaPluginType },
         plugin_states : Set[SigmaPluginState] = { s for s in SigmaPluginState },
+        compatible_only : bool = False,
         ) -> List[SigmaPlugin]:
         """Return a list of plugins with the specified type and state. Returns all plugins if not specified."""
         return [
             plugin
             for plugin in self.plugins.values()
-            if plugin.type in plugin_types and plugin.state in plugin_states
+            if plugin.type in plugin_types and plugin.state in plugin_states and (not compatible_only or bool(plugin.is_compatible()))
         ]
 
     def get_plugin_by_uuid(self, uuid : Union[str, UUID]) -> SigmaPlugin:

@@ -3,7 +3,7 @@ from typing import ClassVar, Dict, List, Tuple
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaNumber
 
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
 from sigma.rule import SigmaLogSource
 
 specific_to_generic_logsource_mapping: Dict[str, Tuple[SigmaLogSource, Dict[int, str]]] = {
@@ -70,3 +70,5 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
             ]
         else:
             return []
+
+validators = validator_class_mapping(globals().items())

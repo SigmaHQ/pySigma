@@ -1,4 +1,7 @@
+from typing import List
 from sigma.processing.conditions import LogsourceCondition, RuleContainsDetectionItemCondition
+from sigma.processing.pipeline import ProcessingItem
+from sigma.processing.transformations import AddConditionTransformation
 
 windows_logsource_mapping = {       # Mapping between Sigma log source services and Windows event log channel names
     "security": "Security",
@@ -199,3 +202,42 @@ def logsource_linux_file_create():
         category="file_create",
         product="linux",
     )
+
+def generate_windows_logsource_items(cond_field_template: str, cond_value_template: str, identifier_template: str = "windows_logsource_{service}") -> List[ProcessingItem]:
+    """Generate processing items for all Windows logsource mappings from templates. All templates
+    are defined as Python f-string ("{variable}"). Available variables in each template are:
+
+    * service: Sigma log source definition field 'service'. Example: security
+    * source: Windows log source name. Example: Microsoft-Windows-Sysmon/Operational
+
+    :param cond_field_template: Template for field name used in added condition. Usually some static
+        field name.
+    :type cond_field_template: str
+    :param cond_value_template: Template for value used in added condition. Usually contains source name.
+    :type cond_value_template: str
+    :param identifier_template: Template for processing item identifier. Usually, the defaults are
+        fine. Should contain service placeholder if changed.
+    :type identifier_template: str
+    :return: List of ProcessingItem that can be used in the items attribute of a ProcessingPipeline
+        object. Usually, an additional field name mapping between the Sigma taxonomy and the target
+        system field names is required.
+    :rtype: List[ProcessingItem]
+    """
+    return [
+        ProcessingItem(
+            identifier=identifier_template.format(service=service, source=source),
+            transformation=(
+                AddConditionTransformation({    # source is list
+                    cond_field_template.format(service=service, source=source): [
+                        cond_value_template.format(service=service, source=source_item)
+                        for source_item in source
+                    ]
+                }) if isinstance(source, list)
+                else AddConditionTransformation({       # source is plain string
+                    cond_field_template.format(service=service, source=source): cond_value_template.format(service=service, source=source)
+                })
+            ),
+            rule_conditions=[logsource_windows(service)],
+        )
+        for service, source in windows_logsource_mapping.items()
+    ]

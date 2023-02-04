@@ -43,7 +43,7 @@ The creation of a backend has become much easier with pySigma. We recommend usin
 |base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
 |wide|transforms value to UTF16-LE encoding|X|
 |re|value is handled as regular expression by backends|X|
-|cidr|value is handled as a IP CIDR by backends||
+|cidr|value is handled as an IPv4 CIDR by backends (IPv6 is not supported, yet)||
 |all|This modifier changes OR logic to AND|X|
 |lt|Field is less than the value||
 |lte|Field is less or egal than the value||

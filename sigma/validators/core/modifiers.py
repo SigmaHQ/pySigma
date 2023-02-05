@@ -2,7 +2,7 @@ from dataclasses import dataclass
 from typing import ClassVar, Counter, List, Set, Type
 from sigma.modifiers import SigmaAllModifier, SigmaBase64Modifier, SigmaBase64OffsetModifier, SigmaContainsModifier, SigmaModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
 @dataclass
 class AllWithoutContainsModifierIssue(SigmaValidationIssue):

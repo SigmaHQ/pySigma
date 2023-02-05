@@ -233,10 +233,3 @@ class SigmaTagValidator(SigmaRuleValidator):
     @abstractmethod
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         """Validates a tag."""
-
-def validator_class_mapping(items) -> Dict[str, "sigma.validation.SigmaRuleValidator"]:
-    return {
-        re.sub("([A-Z]+)", "_\\1", name.replace("Validator", ""))[1:].lower(): cls    # NameOfSomeCheckValidator -> name_of_some_check
-        for name, cls in items
-        if name.endswith("Validator") and len(cls.__abstractmethods__) == 0
-    }

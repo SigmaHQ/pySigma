@@ -4,7 +4,7 @@ import re
 from typing import ClassVar, List, Set
 from sigma.conditions import ConditionIdentifier, ConditionItem, ConditionSelector
 from sigma.rule import SigmaDetections, SigmaRule
-from sigma.validators.base import SigmaValidationIssue, SigmaValidationIssueSeverity, SigmaRuleValidator, validator_class_mapping
+from sigma.validators.base import SigmaValidationIssue, SigmaValidationIssueSeverity, SigmaRuleValidator
 
 @dataclass
 class DanglingDetectionIssue(SigmaValidationIssue):
@@ -90,5 +90,3 @@ class AllOfThemConditionValidator(SigmaRuleValidator):
             return [ AllOfThemConditionIssue([ rule ]) ]
         else:
             return []
-
-validators = validator_class_mapping(globals().items())

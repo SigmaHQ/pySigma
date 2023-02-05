@@ -3,7 +3,7 @@ from typing import ClassVar, List
 from sigma.modifiers import SigmaContainsModifier, SigmaEndswithModifier, SigmaStartswithModifier
 from sigma.rule import SigmaDetectionItem
 from sigma.types import SigmaString, SpecialChars
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity, validator_class_mapping
+from sigma.validators.base import SigmaDetectionItemValidator, SigmaStringValueValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
 
 @dataclass
 class DoubleWildcardIssue(SigmaValidationIssue):
@@ -90,7 +90,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
         # Warning rule use a single '*' waiting for the `exists` modifier  so check len(value)>1 to allow it
         if all((
             isinstance(value, SigmaString) and
-            len(value)>1 and 
+            len(value)>1 and
             value.startswith(SpecialChars.WILDCARD_MULTI) and
             value.endswith(SpecialChars.WILDCARD_MULTI) and
             not value[1:-1].contains_special()
@@ -107,7 +107,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [ WildcardInsteadOfEndswithIssue([ self.rule ], detection_item) ]
         elif all((
             isinstance(value, SigmaString) and
-            len(value)>1 and 
+            len(value)>1 and
             value.endswith(SpecialChars.WILDCARD_MULTI) and
             not value[:-1].contains_special()
             for value in detection_item.original_value
@@ -115,5 +115,3 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [ WildcardInsteadOfStartswithIssue([ self.rule ], detection_item) ]
         else:
             return []
-
-validators = validator_class_mapping(globals().items())

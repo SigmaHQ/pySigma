@@ -170,19 +170,19 @@ Checks Implemented in pySigma
 =============================
 This section lists all implemented validation check classes including their associated issue classes.
 
-.. automodule:: sigma.validators.condition
+.. automodule:: sigma.validators.core.condition
     :members:
 
-.. automodule:: sigma.validators.metadata
+.. automodule:: sigma.validators.core.metadata
     :members:
 
-.. automodule:: sigma.validators.modifiers
+.. automodule:: sigma.validators.core.modifiers
     :members:
 
-.. automodule:: sigma.validators.tags
+.. automodule:: sigma.validators.core.tags
     :members:
 
-.. automodule:: sigma.validators.values
+.. automodule:: sigma.validators.core.values
     :members:
 
 Issues

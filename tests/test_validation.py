@@ -3,12 +3,12 @@ import pytest
 from sigma.exceptions import SigmaConfigurationError
 from sigma.plugins import InstalledSigmaPlugins
 from sigma.validation import SigmaValidator
-from sigma.validators.condition import DanglingDetectionValidator
-from sigma.validators.tags import ATTACKTagValidator, TLPv1TagValidator
-from sigma.validators.values import NumberAsStringValidator
+from sigma.validators.core.condition import DanglingDetectionValidator
+from sigma.validators.core.tags import ATTACKTagValidator, TLPv1TagValidator
+from sigma.validators.core.values import NumberAsStringValidator
 from tests.test_validators import rule_with_id, rule_without_id, rules_with_id_collision
 from sigma.collection import SigmaCollection
-from sigma.validators.metadata import IdentifierExistenceValidator, IdentifierUniquenessValidator, IdentifierExistenceIssue, IdentifierCollisionIssue
+from sigma.validators.core.metadata import IdentifierExistenceValidator, IdentifierUniquenessValidator, IdentifierExistenceIssue, IdentifierCollisionIssue
 
 @pytest.fixture
 def validators():

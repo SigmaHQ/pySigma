@@ -57,5 +57,3 @@ class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
             issues.append(ModifierAppliedMultipleIssue([ self.rule ], detection_item, multiple_modifiers))
 
         return issues
-
-validators = validator_class_mapping(globals().items())

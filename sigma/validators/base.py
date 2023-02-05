@@ -1,7 +1,9 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-from typing import ClassVar, List, Optional, Set, Type
+import re
+from typing import ClassVar, Dict, List, Optional, Set, Type
+import sigma
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
 

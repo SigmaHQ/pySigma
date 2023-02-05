@@ -572,6 +572,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
         "newfield1": "test",
         "newfield2": 123,
         "newfield3": "$category",
+        "listfield": [ "value1", "value2" ]
     }, "additional")
     transformation.set_processing_item(
         ProcessingItem(
@@ -586,6 +587,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule : SigmaRule):
                 SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
                 SigmaDetectionItem("newfield2", [], [ SigmaNumber(123) ]),
                 SigmaDetectionItem("newfield3", [], [ SigmaString("$category") ]),
+                SigmaDetectionItem("listfield", [], [ SigmaString("value1"), SigmaString("value2") ]),
         ])
         and all(                                                                            # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")
@@ -598,6 +600,7 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule : SigmaR
     transformation = AddConditionTransformation({
         "newfield1": "$category",
         "newfield2": "$something",
+        "listfield": [ "$category", "value" ]
     }, "additional", template=True)
     transformation.set_processing_item(
         ProcessingItem(
@@ -611,6 +614,7 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule : SigmaR
         and sigma_rule.detection.detections["additional"] == SigmaDetection([               # additional detection item referred by condition
                 SigmaDetectionItem("newfield1", [], [ SigmaString("test") ]),
                 SigmaDetectionItem("newfield2", [], [ SigmaString("$something") ]),
+                SigmaDetectionItem("listfield", [], [ SigmaString("test"), SigmaString("value") ]),
         ])
         and all(                                                                            # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")

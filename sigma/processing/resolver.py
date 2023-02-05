@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Callable, Dict, Iterable, List, Union
+from typing import Callable, Dict, Iterable, List, Tuple, Union
 
 @dataclass
 class ProcessingPipelineResolver:
@@ -23,6 +23,13 @@ class ProcessingPipelineResolver:
             pipeline.name: pipeline
             for pipeline in pipelines
         })
+
+    def list_pipelines(self) -> Iterable[Tuple[str, ProcessingPipeline]]:
+        """List identifier/processing pipeline tuples."""
+        return (
+            (id, self.resolve_pipeline(id))
+            for id in self.pipelines.keys()
+        )
 
     def resolve_pipeline(self, spec : str) -> ProcessingPipeline:
         """Resolve single processing pipeline."""

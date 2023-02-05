@@ -405,8 +405,8 @@ class AddConditionTransformation(ConditionTransformation):
 
     * $category, $product and $service: with the corresponding values of the Sigma rule log source.
     """
-    conditions : Dict[str, str] = field(default_factory=dict)
-    name : Optional[str] = None
+    conditions : Dict[str, Union[str, List[str]]] = field(default_factory=dict)
+    name : Optional[str] = field(default=None, compare=False)
     template : bool = False
 
     def __post_init__(self):
@@ -416,10 +416,21 @@ class AddConditionTransformation(ConditionTransformation):
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
         if self.template:
             conditions = {
-                field: string.Template(value).safe_substitute(
-                    category=rule.logsource.category,
-                    product=rule.logsource.product,
-                    service=rule.logsource.service,
+                field: (
+                    [
+                        string.Template(item).safe_substitute(
+                            category=rule.logsource.category,
+                            product=rule.logsource.product,
+                            service=rule.logsource.service,
+                        )
+                        for item in value
+                    ]
+                    if isinstance(value, list) else
+                    string.Template(value).safe_substitute(
+                        category=rule.logsource.category,
+                        product=rule.logsource.product,
+                        service=rule.logsource.service,
+                    )
                 )
                 for field, value in self.conditions.items()
             }

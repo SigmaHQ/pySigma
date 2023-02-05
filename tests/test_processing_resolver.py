@@ -2,6 +2,7 @@ import pytest
 from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import AddFieldnameSuffixTransformation
+from collections.abc import Iterable
 
 @pytest.fixture
 def processing_pipeline_resolver():
@@ -91,3 +92,12 @@ def test_resolver_add_class_unnamed():
 
 def test_resolver_nothing(processing_pipeline_resolver : ProcessingPipelineResolver):
     assert processing_pipeline_resolver.resolve([]) == ProcessingPipeline()
+
+def test_resolver_list(processing_pipeline_resolver : ProcessingPipelineResolver):
+    pipelines = processing_pipeline_resolver.list_pipelines()
+    assert isinstance(pipelines, Iterable)
+    pipelines = list(pipelines)
+    assert len(pipelines) == 3
+    pipeline = pipelines[0]
+    assert pipeline[0] == "pipeline-1"
+    assert isinstance(pipeline[1], ProcessingPipeline)

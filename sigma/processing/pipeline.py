@@ -1,7 +1,7 @@
 from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import partial
-from typing import List, Literal, Mapping, Set, Any, Callable, Iterable, Dict, Tuple, Optional
+from typing import FrozenSet, List, Literal, Mapping, Set, Any, Callable, Iterable, Dict, Tuple, Optional
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
@@ -198,6 +198,7 @@ class ProcessingPipeline:
     vars  : Dict[str, Any] = field(default_factory=dict)
     priority : int = field(default=0)
     name : Optional[str] = field(default=None)
+    allowed_backends : FrozenSet[str] = field(default_factory=frozenset)                                     # Set of identifiers of backends (from the backends mapping) that are allowed to use this processing pipeline. This can be used by frontends like Sigma CLI to warn the user about inappropriate usage.
     # The following items are reset for each invocation of apply().
     # TODO: move this to parameters or return values of apply().
     applied : List[bool] = field(init=False, compare=False, default_factory=list)       # list of applied items as booleans. If True, the corresponding item at the same position was applied

@@ -22,7 +22,7 @@ import sigma.pipelines
 import sigma.validators
 from sigma.exceptions import SigmaPluginNotFoundError
 
-default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v0.json"
+default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v1.json"
 
 @dataclass
 class InstalledSigmaPlugins:

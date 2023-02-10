@@ -17,6 +17,9 @@ modules follow certain conventions.
 Implementing Plugins
 ********************
 
+Python Module
+=============
+
 Each module that wants to be recognized as pySigma plugin must provide a mapping between identifiers
 and their respecitve definitions in their module. Plugins are generally implemented as `namespace
 packages <https://packaging.python.org/en/latest/guides/packaging-namespace-packages/>`_ with
@@ -30,13 +33,49 @@ following conventions:
 * Rule validators reside in the namespace package :mod:`sigma.validators` and provide a dict
   `validators` with the mapping between identifiers and rule validator classes.
 
-THe most straightforward way is to import all classes that should be available as plugin class in
+The most straightforward way is to import all classes that should be available as plugin class in
 the :file:`__init__.py` of the module and add them to the mappings mentioned above.
+
+Plugin Directory
+================
+
+The `pySigma plugin directory <https://github.com/SigmaHQ/pySigma-plugin-directory>` is the central
+list of public available plugins for installation. It's format is described in the `README file of
+the project <https://github.com/SigmaHQ/pySigma-plugin-directory#format>`. The directory itself is
+consumed by the `Sigma CLI <https://github.com/SigmaHQ/sigma-cli>` for discovery. Therefore, each
+plugin that should be available for usage with the CLI must be added to the directory.
 
 Discover Available Plugins
 **************************
 
-tbd
+The :class:`sigma.plugins.SigmaPluginDirectory` class is an interface to the Sigma plugin directory.
+The following code instantiates an object of this class with the current content of the plugin
+directory::
+
+    plugins = SigmaPluginDirectory.default_plugin_directory()
+
+This class also allows to use alternative plugin directories with the
+:meth:`sigma.plugins.SigmaPluginDirectory.from_url()` method.
+
+A list of available plugins is then returned by this code::
+
+    plugins.get_plugins(
+        plugin_types={ SigmaPluginType.BACKEND },
+        plugin_state={ SigmaPluginState.STABLE },
+        compatible_only=True,
+    )
+
+This code returns all stable backends that are compatible with the used pySigma version as list of
+:class:`sigma.plugins.SigmaPlugin` objects. Instances of these classes can be used to install a
+plugin as follows::
+
+    plugin.install()
+
+.. autoclass:: sigma.plugins.SigmaPluginDirectory
+   :members:
+
+.. autoclass:: sigma.plugins.SigmaPlugin
+   :members:
 
 Discover Installed Plugins
 **************************

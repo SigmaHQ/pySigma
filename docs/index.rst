@@ -9,6 +9,7 @@ pySigma Documentation
    Processing_Pipelines
    Backends
    Rule_Validation
+   Plugin_System
 
 Overview
 ********

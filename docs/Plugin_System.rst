@@ -1,3 +1,5 @@
+.. py:currentmodule:: sigma.plugins
+
 Plugin System
 #############
 
@@ -10,12 +12,14 @@ from the core pySigma library:
 
 The plugin system resides in the :mod:`sigma.plugins` module and takes care of providing information
 about available plugins as well as their installation with the
-:class:`sigma.plugins.SigmaPluginDirectory` class. The :class:`sigma.plugins.InstalledSigmaPlugins`
+:class:`SigmaPluginDirectory` class. The :class:`InstalledSigmaPlugins`
 discovers classes provided by plugins and allows the usage via defined identifiers if the plugin
 modules follow certain conventions.
 
 Implementing Plugins
 ********************
+
+.. _plugin-metadata:
 
 Python Module
 =============
@@ -48,7 +52,7 @@ plugin that should be available for usage with the CLI must be added to the dire
 Discover Available Plugins
 **************************
 
-The :class:`sigma.plugins.SigmaPluginDirectory` class is an interface to the Sigma plugin directory.
+The :class:`SigmaPluginDirectory` class is an interface to the Sigma plugin directory.
 The following code instantiates an object of this class with the current content of the plugin
 directory::
 
@@ -66,7 +70,7 @@ A list of available plugins is then returned by this code::
     )
 
 This code returns all stable backends that are compatible with the used pySigma version as list of
-:class:`sigma.plugins.SigmaPlugin` objects. Instances of these classes can be used to install a
+:class:`SigmaPlugin` objects. Instances of these classes can be used to install a
 plugin as follows::
 
     plugin.install()
@@ -80,4 +84,22 @@ plugin as follows::
 Discover Installed Plugins
 **************************
 
-tbd
+The class :class:`InstalledSigmaPlugins` main purpose is the discovery of classes
+provided by plugins. It is usually instantiated with the following code::
+
+  plugins = InstalledSigmaPlugins.autodiscover()
+
+This initates the object with all classes found by the autodiscovery process that utilizes the
+mapping :ref:`described above <plugin-metadata>`. The plugin classes can then be referenced as
+follows::
+
+  plugins.backends["backend-indetifier"]
+  plugins.pipelines["pipeline-indetifier"]
+  plugins.validators["validator-indetifier"]
+
+Further, a :ref:`pipeline resolver <pipeline-resolvers>` can be instantiated with::
+
+  plugins.get_pipeline_resolver()
+
+.. autoclass:: sigma.plugins.InstalledSigmaPlugins
+   :members:

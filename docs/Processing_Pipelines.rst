@@ -7,6 +7,8 @@ transformation of Sigma rules.
 Sigma rules are tranformed to take care of differences between the Sigma rule and the target data
 model. Examples are differences in field naming schemes or value representation.
 
+.. _pipeline-resolvers:
+
 Resolvers
 *********
 

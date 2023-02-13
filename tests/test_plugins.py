@@ -1,7 +1,9 @@
 from uuid import UUID
 from sigma.exceptions import SigmaPluginNotFoundError
+from sigma.pipelines.test.pipeline import another_test_pipeline
 from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, InstalledSigmaPlugins
-from sigma.backends.test import TextQueryTestBackend
+from sigma.backends.test import TextQueryTestBackend, MandatoryPipelineTestBackend
+from sigma.pipelines.test import dummy_test_pipeline
 import importlib.metadata
 from packaging.specifiers import Specifier
 import sigma
@@ -15,16 +17,20 @@ def test_autodiscover_backends():
     assert plugins == InstalledSigmaPlugins(
         backends={
             "test": TextQueryTestBackend,
+            "test_mandatory": MandatoryPipelineTestBackend,
         },
         pipelines=dict(),
         validators=dict(),
     )
 
-def test_autodiscover_pipelines_none():
+def test_autodiscover_pipelines():
     plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends=dict(),
-        pipelines=dict(),
+        pipelines={
+            "test": dummy_test_pipeline,
+            "another_test": another_test_pipeline,
+        },
         validators=dict(),
     )
 

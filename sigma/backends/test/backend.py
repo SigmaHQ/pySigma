@@ -4,12 +4,23 @@ from typing import ClassVar, Dict, Optional, Pattern, Tuple
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
+from sigma.pipelines.test import dummy_test_pipeline
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import SigmaCompareExpression
 
 
 class TextQueryTestBackend(TextQueryBackend):
+    name : str = "Test backend"
+    formats : Dict[str, str] = {
+        "default": "Default format",
+        "test": "Dummy test format that equals default format",
+        "state": "Test format that obtains information from state",
+        "list_of_dict": "List of Dict",
+        "str": "Plain string",
+        "bytes": "Plain query as bytes",
+    }
+
     group_expression : ClassVar[str] = "({expr})"
 
     or_token : ClassVar[str] = "or"
@@ -68,11 +79,7 @@ class TextQueryTestBackend(TextQueryBackend):
     deferred_separator : ClassVar[str] = " | "
     deferred_only_query : ClassVar[str] = "*"
 
-    backend_processing_pipeline = ProcessingPipeline([
-        ProcessingItem(FieldMappingTransformation({
-            "fieldA": "mappedA",
-        }))
-    ])
+    backend_processing_pipeline = dummy_test_pipeline()
     output_format_processing_pipeline = defaultdict(ProcessingPipeline,
         test=ProcessingPipeline([
             ProcessingItem(FieldMappingTransformation({
@@ -92,3 +99,27 @@ class TextQueryTestBackend(TextQueryBackend):
 
     def finalize_output_state(self, queries):
         return self.finalize_output_default(queries)
+
+    def finalize_query_list_of_dict(self, rule, query, index, state):
+        return self.finalize_query_default(rule, query, index, state)
+
+    def finalize_output_list_of_dict(self, queries):
+        return [
+            { "query": query }
+            for query in self.finalize_output_default(queries)
+        ]
+
+    def finalize_query_bytes(self, rule, query, index, state):
+        return self.finalize_query_default(rule, query, index, state)
+
+    def finalize_output_bytes(self, queries):
+        return bytes("\x00".join(self.finalize_output_default(queries)), "utf-8")
+
+    def finalize_query_str(self, rule, query, index, state):
+        return self.finalize_query_default(rule, query, index, state)
+
+    def finalize_output_str(self, queries):
+        return "\n".join(self.finalize_output_default(queries))
+
+class MandatoryPipelineTestBackend(TextQueryTestBackend):
+    requires_pipeline : bool = True

@@ -127,11 +127,11 @@ class SigmaPlugin:
 
     def install(self):
         """Install plugin with pip."""
-        subprocess.check_call([sys.executable, "-m", "pip", "install", self.package])
+        subprocess.check_call([sys.executable, "-m", "pip", "-q", "install", self.package])
 
     def uninstall(self):
         """Uninstall plugin with pip."""
-        subprocess.check_call([sys.executable, "-m", "pip", "uninstall", "-y", self.package])
+        subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
 
 @dataclass
 class SigmaPluginDirectory:

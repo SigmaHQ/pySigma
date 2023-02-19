@@ -88,6 +88,10 @@ class TextQueryTestBackend(TextQueryBackend):
         ])
     )
 
+    def __init__(self, processing_pipeline: Optional[ProcessingPipeline] = None, collect_errors: bool = False, testparam: Optional[str] = None):
+        super().__init__(processing_pipeline, collect_errors)
+        self.testparam = testparam
+
     def finalize_query_test(self, rule, query, index, state):
         return self.finalize_query_default(rule, query, index, state)
 
@@ -105,7 +109,9 @@ class TextQueryTestBackend(TextQueryBackend):
 
     def finalize_output_list_of_dict(self, queries):
         return [
-            { "query": query }
+            { "query": query, "test": self.testparam }
+            if self.testparam is not None
+            else { "query": query }
             for query in self.finalize_output_default(queries)
         ]
 

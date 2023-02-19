@@ -78,10 +78,9 @@ class Backend(ABC):
     convert_and_as_in : ClassVar[bool] = False                    # Convert AND as in-expression
     in_expressions_allow_wildcards : ClassVar[bool] = False       # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
 
-    def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False, **kwargs):
+    def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False):
         self.processing_pipeline = processing_pipeline
         self.collect_errors = collect_errors
-        self.config = kwargs
 
     def convert(self, rule_collection : SigmaCollection, output_format : Optional[str] = None) -> Any:
         """

@@ -17,7 +17,6 @@ def test_backend():
             })),
             ProcessingItem(SetStateTransformation("index", "test")),
         ]),
-        testparam="testvalue",
     )
 
 def test_backend_pipeline():
@@ -72,9 +71,6 @@ def test_backend_custom_format_pipeline(test_backend):
         """),
         output_format="test",
     ) == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
-
-def test_init_config(test_backend):
-    assert test_backend.config == { "testparam": "testvalue" }
 
 def test_convert_value_str(test_backend):
     assert test_backend.convert(

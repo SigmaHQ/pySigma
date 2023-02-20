@@ -19,6 +19,10 @@ Conventions
   actionable output if she/he doesn't explicitely chooses a format.
 * Don't do any concatenation of simple queries in the basic default format, the CLI or other tools
   will take care of this.
+* Use backend specific options to control behavior of the backend. Backend options are provided as
+  additional keyword arguments to the `__init__` constructor of a backend. They can be passed to the
+  CLI with the `-O`` option. Numbers are automatically converted to int type. If a backend option is
+  specified multiple times in the CLI, all values are passed as arrays.
 * Don't print any output to the console or create files from the backend. Return text output as
   string or file output as bytes. The tools using your backend will take care of the proper handling
   of the result.

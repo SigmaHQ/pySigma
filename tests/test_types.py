@@ -1,3 +1,4 @@
+from ipaddress import IPv4Network, IPv6Network
 import re
 import pytest
 from sigma.types import SigmaBool, SigmaCompareExpression, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
@@ -328,34 +329,62 @@ def test_query_expression_wrong_id_type():
     with pytest.raises(SigmaTypeError, match="must be a string"):
         SigmaQueryExpression("123", 123)
 
-def test_cidr_ok():
-    assert SigmaCIDRExpression("192.168.1.0/24")
+def test_cidr_ipv4():
+    cidr_spec = "192.168.1.0/24"
+    assert SigmaCIDRExpression(cidr_spec).network == IPv4Network(cidr_spec)
+
+def test_cidr_ipv6():
+    cidr_spec = "::1/128"
+    assert SigmaCIDRExpression(cidr_spec).network == IPv6Network(cidr_spec)
 
 def test_cidr_to_plain():
     with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
         SigmaCIDRExpression("192.168.1.0/24").to_plain()
 
 def test_cidr_invalid():
-    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
-        SigmaCIDRExpression("::1/128")
+    with pytest.raises(SigmaTypeError, match="Invalid CIDR expression"):
+        SigmaCIDRExpression("1/132")
 
-def test_cidr_expand_31():
+def test_cidr_expand_ipv4_31():
     assert SigmaCIDRExpression("192.168.1.0/31").expand(wildcard='*') == ['192.168.1.0', '192.168.1.1']
 
-def test_cidr_expand_24():
+def test_cidr_expand_ipv4_24():
     assert SigmaCIDRExpression("192.168.1.0/24").expand(wildcard='*') == ['192.168.1.*']
 
-def test_cidr_expand_23():
+def test_cidr_expand_ipv4_23():
     assert SigmaCIDRExpression("192.168.0.0/23").expand(wildcard='*') == ['192.168.0.*', '192.168.1.*']
 
-def test_cidr_expand_14():
+def test_cidr_expand_ipv4_14():
     assert SigmaCIDRExpression("192.168.0.0/14").expand(wildcard='*') == ['192.168.*', '192.169.*', '192.170.*', '192.171.*']
 
-def test_cidr_expand_8():
+def test_cidr_expand_ipv4_8():
     assert SigmaCIDRExpression("192.0.0.0/8").expand(wildcard='*') == ['192.*']
 
+def test_cidr_expand_ipv6_0():
+    assert SigmaCIDRExpression("::/0").expand(wildcard='*') == ['*']
+
+def test_cidr_expand_ipv6_56():
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand(wildcard='*') == ['1234:5678:0:ab*']
+
+def test_cidr_expand_ipv6_58():
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand(wildcard='*') == [
+        '1234:5678:0:ab0*',
+        '1234:5678:0:ab1*',
+        '1234:5678:0:ab2*',
+        '1234:5678:0:ab3*',
+    ]
+
+def test_cidr_expand_ipv6_60():
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand(wildcard='*') == ['1234:5678:0:ab0*']
+
+def test_cidr_expand_ipv6_64():
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/64").expand(wildcard='*') == ['1234:5678:0:ab00:*']
+
+def test_cidr_expand_ipv6_128():
+    assert SigmaCIDRExpression("::1/128").expand(wildcard='*') == ['::1/128']
+
 def test_cidr_invalid():
-    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression"):
+    with pytest.raises(SigmaTypeError, match="Invalid CIDR expression"):
         SigmaCIDRExpression("192.168.1.2/24")
 
 def test_compare_to_plain():

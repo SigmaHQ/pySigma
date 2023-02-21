@@ -219,5 +219,5 @@ def test_cidr_with_other(dummy_detection_item):
         SigmaCIDRModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaString("192.168.1.0/24"))
 
 def test_cidr_invalid(dummy_detection_item):
-    with pytest.raises(SigmaTypeError, match="Invalid IPv4 CIDR expression.*test.yml"):
+    with pytest.raises(SigmaTypeError, match="Invalid CIDR expression.*test.yml"):
         SigmaCIDRModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).modify(SigmaString("192.168.1.1/24"))

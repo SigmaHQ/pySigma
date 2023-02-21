@@ -43,7 +43,7 @@ The creation of a backend has become much easier with pySigma. We recommend usin
 |base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
 |wide|transforms value to UTF16-LE encoding|X|
 |re|value is handled as regular expression by backends|X|
-|cidr|value is handled as an IPv4 CIDR by backends (IPv6 is not supported, yet)||
+|cidr|value is handled as an IPv4 CIDR by backends ||
 |all|This modifier changes OR logic to AND|X|
 |lt|Field is less than the value||
 |lte|Field is less or egal than the value||
@@ -136,7 +136,7 @@ To build your own package run `poetry build`.
 
 Pull requests are welcome. Please feel free to lodge any issues/PRs as discussion points.
 
-This [blog post](https://medium.com/@micahbabinski/creating-a-sigma-backend-for-fun-and-no-profit-ed16d20da142) by Micah Babinski explains the process from a developer's perspective. 
+This [blog post](https://medium.com/@micahbabinski/creating-a-sigma-backend-for-fun-and-no-profit-ed16d20da142) by Micah Babinski explains the process from a developer's perspective.
 
 ## Maintainers
 

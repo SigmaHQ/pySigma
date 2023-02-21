@@ -503,7 +503,7 @@ def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
         """)
     ) == ['_=/pat.*te\\rn\\/foo\\bar/']
 
-def test_convert_value_cidr_wildcard_native(test_backend):
+def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
             title: Test
@@ -519,7 +519,23 @@ def test_convert_value_cidr_wildcard_native(test_backend):
         """)
     ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") and cidrmatch(\'field A\', "192.168.0.0/14")']
 
-def test_convert_value_cidr_wildcard_native_template_network_prefixlen(test_backend, monkeypatch):
+def test_convert_value_cidr_wildcard_native_ipv6(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 1234:5678:0:ab00::/56
+                    field A|cidr: 1234:5678:0:ab00::/56
+                condition: sel
+        """)
+    ) == ['cidrmatch(\'mappedA\', "1234:5678:0:ab00::/56") and cidrmatch(\'field A\', "1234:5678:0:ab00::/56")']
+
+def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv4(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', {prefixlen})")
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -535,7 +551,23 @@ def test_convert_value_cidr_wildcard_native_template_network_prefixlen(test_back
         """)
     ) == ["cidrmatch('mappedA', '192.168.0.0', 14)"]
 
-def test_convert_value_cidr_wildcard_native_template_network_netmask(test_backend, monkeypatch):
+def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv6(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', {prefixlen})")
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 1234:5678:0:ab00::/56
+                condition: sel
+        """)
+    ) == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 56)"]
+
+def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv4(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', '{netmask}')")
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -551,7 +583,23 @@ def test_convert_value_cidr_wildcard_native_template_network_netmask(test_backen
         """)
     ) == ["cidrmatch('mappedA', '192.168.0.0', '255.252.0.0')"]
 
-def test_convert_value_cidr_wildcard_expression(test_backend, monkeypatch):
+def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv6(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', '{netmask}')")
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 1234:5678:0:ab00::/56
+                condition: sel
+        """)
+    ) == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 'ffff:ffff:ffff:ff00::')"]
+
+def test_convert_value_cidr_wildcard_expression_ipv4(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -567,6 +615,23 @@ def test_convert_value_cidr_wildcard_expression(test_backend, monkeypatch):
                 condition: sel
         """)
     ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") and \'field A\' in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
+
+def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", None)
+    monkeypatch.setattr(test_backend, "add_escaped", "")
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 1234:5678:0:ab00::/58
+                condition: sel
+        """)
+    ) == ['mappedA in ("1234:5678:0:ab0*", "1234:5678:0:ab1*", "1234:5678:0:ab2*", "1234:5678:0:ab3*")']
 
 def test_convert_compare(test_backend):
     assert test_backend.convert(

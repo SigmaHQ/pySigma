@@ -540,35 +540,26 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
-        if isinstance(self.network, IPv4Network):
-            subnet = int (str(self.cidr).split('/')[1])
-            if subnet <= 8 :
-                new_sub = 8
-                remp_old = '0.0.0/8'
-                remp_new = wildcard
-            elif subnet <= 16:
-                new_sub = 16
-                remp_old = '0.0/16'
-                remp_new = wildcard
-            elif subnet <= 24:
-                new_sub = 24
-                remp_old = '0/24'
-                remp_new = wildcard
-            elif subnet <= 32:
-                new_sub = 32
-                remp_old = '/32'
-                remp_new = ''
-            subnets = self.network.subnets(new_prefix=new_sub)
-            wildcarded_subnets = [str(ip_sub).replace(remp_old, remp_new) for ip_sub in subnets]
-            return wildcarded_subnets
-        else:   # IPv6, basic algorithm: each hex digit of an IPv6 address represents 4 bit. Therefore, we align to 4 bit boundaries and iterate over the remaining bits.
-            prefix_rem4 = self.network.prefixlen % 4        # This variable stores the number of bits exceeding thei previous 4 bit boundary
+        patterns = []
+        if isinstance(self.network, IPv4Network):           # IPv4, algorithm: each group of an IPv4 address represents 8 bit. Therefore, we align to 8 bit boundaries, iterate over the remaining bits and put a wildcard at the end (if not /32)
+            prefix_rem8 = self.network.prefixlen % 8        # This variable stores the number of bits exceeding the previous 8 bit boundary
+            prefix_diff = (8 - prefix_rem8) % 8             # We want the next 8 bit boundary to expand into smaller subnets, therefore the other side of the remainder is used.
+            for subnet in self.network.subnets(prefix_diff):        # Generate all the subnetworks where the prefix ends at the next 8 bit boundary
+                wildcard_group = (subnet.prefixlen // 8)    # Determine group that has to be replaced with wildcard: 8 bit boundary before prefix
+                subnet_groups = str(subnet.network_address).split(".")
+                if wildcard_group == 0:                       # Not all groups are static, add wildcard
+                    patterns.append(wildcard)
+                elif wildcard_group < 4:                       # Not all groups are static, add wildcard
+                    patterns.append(".".join(subnet_groups[:wildcard_group]) + "." + wildcard)
+                else:                                       # /32 - no wildcard is set
+                    patterns.append(str(subnet.network_address))            # Return single address subnet without wildcard
+        else:   # IPv6, algorithm: each hex digit of an IPv6 address represents 4 bit. Therefore, we align to 4 bit boundaries and iterate over the remaining bits.
+            prefix_rem4 = self.network.prefixlen % 4        # This variable stores the number of bits exceeding the previous 4 bit boundary
             prefix_diff = (4 - prefix_rem4) % 4             # We want the next 4 bit boundary to expand into smaller subnets, therefore the other side of the remainder is used.
-            patterns = []
             for subnet in self.network.subnets(prefix_diff):        # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
                 first_addr = str(subnet.network_address)
                 last_addr = str(subnet.broadcast_address)
-                wildcard = False
+                wildcard = False                            # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
                 for i in range(len(first_addr)):            # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
                     if first_addr[i] != last_addr[i]:
                         wildcard = True
@@ -576,8 +567,8 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                 if wildcard:
                     patterns.append(str(subnet)[:i] + "*")  # Generate pattern by cutting of at first difference
                 else:                                       # The /128 case - no differences
-                    patterns.append(str(subnet))        # Return the single address
-            return patterns
+                    patterns.append(str(subnet))            # Return the single address
+        return patterns
 
 @dataclass
 class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):

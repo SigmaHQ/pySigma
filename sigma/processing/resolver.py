@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
+from sigma.exceptions import SigmaPipelineNotAllowedForBackendError, SigmaPipelineNotFoundError
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Callable, Dict, Iterable, List, Tuple, Union
+from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
 
 @dataclass
 class ProcessingPipelineResolver:
@@ -31,21 +32,24 @@ class ProcessingPipelineResolver:
             for id in self.pipelines.keys()
         )
 
-    def resolve_pipeline(self, spec : str) -> ProcessingPipeline:
+    def resolve_pipeline(self, spec : str, target : Optional[str] = None) -> ProcessingPipeline:
         """Resolve single processing pipeline."""
         try:
             pipeline = self.pipelines[spec]
             if isinstance(pipeline, Callable):
-                return pipeline()
+                resolved_pipeline = pipeline()
             else:
-                return pipeline
+                resolved_pipeline = pipeline
+            if target is not None and not (len(resolved_pipeline.allowed_backends) == 0 or target in resolved_pipeline.allowed_backends):
+                raise SigmaPipelineNotAllowedForBackendError(spec)
+            return resolved_pipeline
         except KeyError:        # identifier not found, try it as path
             try:
                 return ProcessingPipeline.from_yaml(open(spec, "r").read())
             except OSError as e:
-                raise ValueError(f"Failed to handle specifier as identifier and file name ({ str(e) })")
+                raise SigmaPipelineNotFoundError(spec)
 
-    def resolve(self, pipeline_specs : List[str]) -> ProcessingPipeline:
+    def resolve(self, pipeline_specs : List[str], target : Optional[str] = None) -> ProcessingPipeline:
         """
         Resolve a list of
 
@@ -56,7 +60,7 @@ class ProcessingPipelineResolver:
         """
         return sum(
                 sorted([
-                    self.resolve_pipeline(spec)
+                    self.resolve_pipeline(spec, target)
                     for spec in pipeline_specs
                 ],
                 key=lambda p: p.priority

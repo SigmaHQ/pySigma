@@ -1,4 +1,5 @@
 import pytest
+from sigma.exceptions import SigmaPipelineNotAllowedForBackendError, SigmaPipelineNotFoundError
 from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import AddFieldnameSuffixTransformation
@@ -29,6 +30,7 @@ def processing_pipeline_resolver():
             )
         ],
         name="pipeline-3",
+        allowed_backends={"some_backend"},
         priority=20,
         ),
     ])
@@ -74,9 +76,16 @@ def test_resolve_callable():
     })
     assert resolver.resolve_pipeline("test") == pipeline
 
-def test_resolve_failed(processing_pipeline_resolver : ProcessingPipelineResolver):
-    with pytest.raises(ValueError, match="Failed to handle specifier"):
-        processing_pipeline_resolver.resolve_pipeline("error")
+def test_resolve_failed_not_found(processing_pipeline_resolver : ProcessingPipelineResolver):
+    with pytest.raises(SigmaPipelineNotFoundError, match="pipeline.*notexisting.*not found"):
+        processing_pipeline_resolver.resolve_pipeline("notexisting")
+
+def test_resolve_failed_incompatible(processing_pipeline_resolver : ProcessingPipelineResolver):
+    with pytest.raises(SigmaPipelineNotAllowedForBackendError, match="not allowed for backend.*pipeline-3"):
+        processing_pipeline_resolver.resolve_pipeline("pipeline-3", "test")
+
+def test_resolve_backend_compatible(processing_pipeline_resolver : ProcessingPipelineResolver):
+    assert processing_pipeline_resolver.resolve_pipeline("pipeline-3", "some_backend").name == "pipeline-3"
 
 def test_resolver_add_class():
     resolver = ProcessingPipelineResolver()

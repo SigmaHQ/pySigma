@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+from pyparsing import List
+
 @dataclass
 class SigmaRuleLocation:
     """Describes a Sigma source file and optionally a location inside it."""
@@ -92,6 +94,25 @@ class SigmaConfigurationError(SigmaError):
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
     pass
+
+class SigmaPipelineNotFoundError(SigmaError, ValueError):
+    """An attempt to resolve a processing pipeline from a specifier failed because it was not
+    found."""
+    def __init__(self, spec : str, *args, **kwargs):
+        self.spec = spec
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return f"Processing pipeline '{self.spec}' not found"
+
+class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
+    """One or multiple processing pipelines doesn't matches the given backend."""
+    def __init__(self, spec : str, *args, **kwargs):
+        self.wrong_pipeline = spec
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return "Processing pipelines not allowed for backend: " + self.wrong_pipeline
 
 class SigmaTransformationError(SigmaError):
     """Error while transformation. Can be raised intentionally by FailureTransformation."""

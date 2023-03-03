@@ -33,7 +33,15 @@ class ProcessingPipelineResolver:
         )
 
     def resolve_pipeline(self, spec : str, target : Optional[str] = None) -> ProcessingPipeline:
-        """Resolve single processing pipeline."""
+        """
+        Resolve single processing pipeline. It first tries to find a pipeline with this identifier
+        in the registered pipelines. If this fails, *spec* is treated as file name. If this fails
+        too, a *SigmaPipelineNotFoundError* is raised.
+
+        If *target* is specified, an additional check of the compatibility of the specified backend
+        to the resolved pipeline is conducted. A *SigmaPipelineNotAllowedForBackendError* is raised
+        if this check fails.
+        """
         try:
             pipeline = self.pipelines[spec]
             if isinstance(pipeline, Callable):
@@ -57,6 +65,9 @@ class ProcessingPipelineResolver:
         * file paths containing processing pipeline YAML definitions
 
         into a consolidated processing piepline.
+
+        If *target* is specified this is passed in each *resolve_pipeline* call to perform a
+        compatibility check for the usage of the specified backend with the pipeline.
         """
         return sum(
                 sorted([

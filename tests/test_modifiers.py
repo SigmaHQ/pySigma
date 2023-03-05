@@ -206,9 +206,15 @@ def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
 
 def test_exists(dummy_detection_item):
+    dummy_detection_item.field = "test"
     assert SigmaExistsModifier(dummy_detection_item, []).modify(SigmaBool(True)) == SigmaExists(True)
 
+def test_exists_without_field(dummy_detection_item):
+    with pytest.raises(SigmaValueError, match="must be applied to field.*test.yml"):
+        SigmaExistsModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).modify(SigmaBool(True)) == SigmaExists(True)
+
 def test_exists_with_other(dummy_detection_item):
+    dummy_detection_item.field = "test"
     with pytest.raises(SigmaValueError, match="only applicable to unmodified boolean values.*test.yml"):
         SigmaExistsModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaBool(True))
 

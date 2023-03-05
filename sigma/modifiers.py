@@ -219,6 +219,8 @@ class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
 class SigmaExistsModifier(SigmaValueModifier):
     """Modifies to check if the field name provided as value exists in the matched event."""
     def modify(self, val : SigmaBool) -> SigmaExists:
+        if self.detection_item.field is None:
+            raise SigmaValueError("Exists modifier must be applied to field", source=self.source)
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Exists modifier only applicable to unmodified boolean values", source=self.source)
         return SigmaExists(val.boolean)

@@ -47,6 +47,9 @@ class TextQueryTestBackend(TextQueryBackend):
     contains_expression   : ClassVar[str] = "{field} contains {value}"
     wildcard_match_expression : ClassVar[str] = "{field} match {value}"
 
+    field_exists_expression     : ClassVar[str] = "exists({field})"
+    field_not_exists_expression : ClassVar[str] = "notexists({field})"
+
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ("/", "bar")

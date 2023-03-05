@@ -55,6 +55,14 @@ class SigmaNull(SigmaType):
     def __eq__(self, other : "SigmaNull") -> bool:
         return isinstance(other, self.__class__)
 
+@dataclass
+class SigmaExists(SigmaType):
+    """Field existence check."""
+    exists : bool
+
+    def __bool__(self):
+        return self.exists
+
 class SigmaString(SigmaType):
     """
     Strings in Sigma detection values containing wildcards.
@@ -477,6 +485,9 @@ class SigmaBool(SigmaType):
 
     def __str__(self):
         return str(self.boolean)
+
+    def __bool__(self):
+        return self.boolean
 
 @dataclass
 class SigmaRegularExpression(SigmaType):

@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import Placeholder, SigmaExpansion, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
@@ -216,6 +216,13 @@ class SigmaGreaterThanModifier(SigmaCompareModifier):
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GTE
 
+class SigmaExistsModifier(SigmaValueModifier):
+    """Modifies to check if the field name provided as value exists in the matched event."""
+    def modify(self, val : SigmaBool) -> SigmaExists:
+        if len(self.applied_modifiers) > 0:
+            raise SigmaValueError("Exists modifier only applicable to unmodified boolean values", source=self.source)
+        return SigmaExists(val.boolean)
+
 class SigmaExpandModifier(SigmaValueModifier):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
@@ -230,6 +237,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "contains"      : SigmaContainsModifier,
     "startswith"    : SigmaStartswithModifier,
     "endswith"      : SigmaEndswithModifier,
+    "exists"        : SigmaExistsModifier,
     "base64"        : SigmaBase64Modifier,
     "base64offset"  : SigmaBase64OffsetModifier,
     "wide"          : SigmaWideModifier,

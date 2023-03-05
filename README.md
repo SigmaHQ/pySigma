@@ -39,6 +39,7 @@ The creation of a backend has become much easier with pySigma. We recommend usin
 |contains|the value is matched anywhere in the field (strings and regular expressions)|X|
 |startswith|The value is expected at the beginning of the field's content (strings and regular expressions)|X|
 |endswith|The value is expected at the end of the field's content (strings and regular expressions)|X|
+|exists|The field exists (yes/true) in the matched event or doesn't exist (no/false)||
 |base64|The value is encoded with Base64|X|
 |base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
 |wide|transforms value to UTF16-LE encoding|X|

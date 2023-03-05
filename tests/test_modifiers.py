@@ -1,6 +1,7 @@
 import pytest
 from typing import Union, Sequence, List
 from sigma.modifiers import \
+    SigmaExistsModifier, \
     SigmaModifier, \
     SigmaContainsModifier, \
     SigmaStartswithModifier, \
@@ -18,7 +19,7 @@ from sigma.modifiers import \
     SigmaExpandModifier, \
     SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaExpansion, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -203,6 +204,13 @@ def test_gt(dummy_detection_item):
 
 def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
+
+def test_exists(dummy_detection_item):
+    assert SigmaExistsModifier(dummy_detection_item, []).modify(SigmaBool(True)) == SigmaExists(True)
+
+def test_exists_with_other(dummy_detection_item):
+    with pytest.raises(SigmaValueError, match="only applicable to unmodified boolean values.*test.yml"):
+        SigmaExistsModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaBool(True))
 
 def test_compare_string(dummy_detection_item):
     with pytest.raises(SigmaTypeError, match="expects number.*test.yml"):

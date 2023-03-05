@@ -9,7 +9,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaExpansion, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -77,6 +77,9 @@ class Backend(ABC):
     convert_or_as_in : ClassVar[bool] = False                     # Convert OR as in-expression
     convert_and_as_in : ClassVar[bool] = False                    # Convert AND as in-expression
     in_expressions_allow_wildcards : ClassVar[bool] = False       # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
+
+    # not exists: convert as "not exists-expression" or as dedicated expression
+    explicit_not_exists_expression : ClassVar[bool] = False
 
     def __init__(self, processing_pipeline : Optional[ProcessingPipeline] = None, collect_errors : bool = False):
         self.processing_pipeline = processing_pipeline
@@ -231,6 +234,27 @@ class Backend(ABC):
         """Conversion of field is null expression value expressions"""
 
     @abstractmethod
+    def convert_condition_field_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field exists expressions"""
+
+    @abstractmethod
+    def convert_condition_field_not_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field not exists expressions"""
+
+    def convert_condition_field_eq_val_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Dispatch conversion of field exists expressions to appropriate method."""
+        if self.explicit_not_exists_expression:     # Call distinguished methods if there is an explicit expression for field existence and non-existence.
+            if cond.value:
+                return self.convert_condition_field_exists(cond, state)
+            else:
+                return self.convert_condition_field_not_exists(cond, state)
+        else:           # If there are no distinguished expressions for field (non-)existence in the target query language, just negate the expression if necessary.
+            if cond.value:
+                return self.convert_condition_field_exists(cond, state)
+            else:
+                return self.convert_condition_not(ConditionNOT([ConditionFieldEqualsValueExpression(cond.field, SigmaExists(True))], cond.source), state)
+
+    @abstractmethod
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of query expressions bound to a field."""
 
@@ -263,6 +287,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_null(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
             return self.convert_condition_field_eq_query_expr(cond, state)
+        elif isinstance(cond.value, SigmaExists):
+            return self.convert_condition_field_eq_val_exists(cond, state)
         elif isinstance(cond.value, SigmaExpansion):
             return self.convert_condition_field_eq_expansion(cond, state)
         else:       # pragma: no cover
@@ -434,6 +460,10 @@ class TextQueryBackend(Backend):
     # Null/None expressions
     field_null_expression : ClassVar[Optional[str]] = None          # Expression for field has null value as format string with {field} placeholder for field name
 
+    # Field existence condition expressions.
+    field_exists_expression : ClassVar[Optional[str]] = None        # Expression for field existence as format string with {field} placeholder for field name
+    field_not_exists_expression : ClassVar[Optional[str]] = None    # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
+
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
     field_in_list_expression : ClassVar[Optional[str]] = None       # Expression for field in list of values as format string with placeholders {field}, {op} and {list}
     or_in_operator : ClassVar[Optional[str]] = None      # Operator used to convert OR into in-expressions. Must be set if convert_or_as_in is set
@@ -449,6 +479,11 @@ class TextQueryBackend(Backend):
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
     deferred_separator : ClassVar[Optional[str]] = None             # String used to join multiple deferred query parts
     deferred_only_query : ClassVar[Optional[str]] = None            # String used as query if final query only contains deferred expression
+
+    def __new__(cls, *args, **kwargs):
+        c = super().__new__(cls)
+        c.explicit_not_exists_expression = (c.field_not_exists_expression is not None)
+        return c
 
     def compare_precedence(self, outer : ConditionItem, inner : ConditionItem) -> bool:
         """
@@ -728,6 +763,14 @@ class TextQueryBackend(Backend):
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
         return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
+
+    def convert_condition_field_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field exists expressions"""
+        return self.field_exists_expression.format(field=self.escape_and_quote_field(cond.field))
+
+    def convert_condition_field_not_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field not exists expressions"""
+        return self.field_not_exists_expression.format(field=self.escape_and_quote_field(cond.field))
 
     def convert_condition_field_eq_query_expr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""

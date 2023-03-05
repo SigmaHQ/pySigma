@@ -378,6 +378,56 @@ def test_convert_value_null(test_backend):
         """)
     ) == ['mappedA is null and \'field A\' is null']
 
+def test_convert_field_existence(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|exists: yes
+                    field A|exists: yes
+                condition: sel
+        """)
+    ) == ['exists(mappedA) and exists(\'field A\')']
+
+def test_convert_field_nonexistence_explicit(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|exists: no
+                    field A|exists: no
+                condition: sel
+        """)
+    ) == ['notexists(mappedA) and notexists(\'field A\')']
+
+def test_convert_field_nonexistence_implicit(monkeypatch):
+    monkeypatch.setattr(TextQueryTestBackend, "field_not_exists_expression", None)
+    test_backend = TextQueryTestBackend()
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|exists: no
+                    field A|exists: no
+                condition: sel
+        """)
+    ) == ['not exists(mappedA) and not exists(\'field A\')']
+
 def test_convert_query_expr():
     pipeline = ProcessingPipeline([
         ProcessingItem(QueryExpressionPlaceholderTransformation(expression="{field} in list({id})"))

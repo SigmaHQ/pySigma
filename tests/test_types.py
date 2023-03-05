@@ -273,6 +273,20 @@ def test_re_escape_without_escape():
 def test_bool():
     assert SigmaBool(True).boolean == True
 
+def test_bool_true_cond():
+    b = SigmaBool(True)
+    if b:
+        assert True
+    else:
+        assert False
+
+def test_bool_false_cond():
+    b = SigmaBool(False)
+    if b:
+        assert False
+    else:
+        assert True
+
 def test_bool_str():
     assert str(SigmaBool(True)) == "True"
 

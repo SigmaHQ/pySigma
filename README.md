@@ -44,6 +44,12 @@ The creation of a backend has become much easier with pySigma. We recommend usin
 |base64offset|If a value might appear somewhere in a base64-encoded value the representation might change depending on the position in the overall value|X|
 |wide|transforms value to UTF16-LE encoding|X|
 |re|value is handled as regular expression by backends|X|
+|i|Regular expression ignore case modifier||
+|ignorecase|Regular expression ignore case modifier||
+|m|Regular expression multiline modifier||
+|multiline|Regular expression multiline modifier||
+|s|Regular expression dot matches all modifier||
+|dotall|Regular expression dot matches all modifier||
 |cidr|value is handled as an IPv4 CIDR by backends ||
 |all|This modifier changes OR logic to AND|X|
 |lt|Field is less than the value||

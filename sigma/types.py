@@ -1,6 +1,6 @@
 from math import inf
 from enum import Enum, auto
-from typing import ClassVar, Pattern, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
+from typing import ClassVar, Dict, Pattern, Set, Union, List, Tuple, Optional, Any, Iterable, Callable, Iterator
 from abc import ABC
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -489,24 +489,47 @@ class SigmaBool(SigmaType):
     def __bool__(self):
         return self.boolean
 
+class SigmaRegularExpressionFlag(Enum):
+    IGNORECASE = auto()
+    MULTILINE  = auto()
+    DOTALL     = auto()
+
 @dataclass
 class SigmaRegularExpression(SigmaType):
     """Regular expression type"""
     regexp : str
+    flags : Set[SigmaRegularExpressionFlag] = field(default_factory=set)
+    sigma_to_python_flags : ClassVar[Dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
+        SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
+        SigmaRegularExpressionFlag.MULTILINE: re.MULTILINE,
+        SigmaRegularExpressionFlag.DOTALL: re.DOTALL,
+    }
+    sigma_to_re_flag : ClassVar[Dict[SigmaRegularExpressionFlag, str]] = {
+        SigmaRegularExpressionFlag.IGNORECASE: "i",
+        SigmaRegularExpressionFlag.MULTILINE: "m",
+        SigmaRegularExpressionFlag.DOTALL: "s",
+    }
 
     def __post_init__(self):
         self.compile()
 
+    def add_flag(self, flag : SigmaRegularExpressionFlag):
+        self.flags.add(flag)
+
     def compile(self):
         """Verify if regular expression is valid by compiling it"""
         try:
-            re.compile(self.regexp)
+            flags = 0
+            for flag in self.flags:
+                flags |= self.sigma_to_python_flags[flag]
+            re.compile(self.regexp, flags)
         except re.error as e:
             raise SigmaRegularExpressionError(f"Regular expression '{self.regexp}' is invalid: {str(e)}") from e
 
-    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\", escape_escape_char : bool = True) -> str:
+    def escape(self, escaped : Tuple[str] = (), escape_char : str = "\\", escape_escape_char : bool = True, flag_prefix : bool = True) -> str:
         """Escape strings from escaped tuple as well as escape_char itself (can be disabled with
-        escape_escape_char) with escape_char."""
+        escape_escape_char) with escape_char. Prepends a (?...) expression with set flags (i, m and
+        s) if flag_prefix is set."""
         r = "|".join([      # Generate regulear expressions from sequences that should be escaped and the escape char itself
             re.escape(e)
             for e in [
@@ -521,7 +544,20 @@ class SigmaRegularExpression(SigmaType):
         ]
         ranges = zip([None, *pos], [*pos, None])    # string chunk ranges with escapes in between
         ranges = list(ranges)
-        return escape_char.join([
+
+        if flag_prefix and self.flags:
+            prefix = (
+                "(?" +
+                "".join(sorted((
+                    self.sigma_to_re_flag[flag]
+                    for flag in self.flags
+                ))) +
+                ")"
+            )
+        else:
+            prefix = ""
+
+        return prefix + escape_char.join([
             self.regexp[i:j]
             for i,j in ranges
         ])

@@ -2,6 +2,8 @@ from abc import ABC, abstractmethod
 from collections import defaultdict
 import re
 
+from pyparsing import Set
+
 from sigma.exceptions import SigmaError, SigmaValueError
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Pattern, Union, ClassVar, Optional, Tuple, List, Dict, Any
@@ -9,7 +11,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -444,10 +446,19 @@ class TextQueryBackend(Backend):
     wildcard_match_expression : ClassVar[Optional[str]] = None      # Special expression if wildcards can't be matched with the eq_token operator
 
     # Regular expressions
-    re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field} and {regex}
+    re_expression : ClassVar[Optional[str]] = None      # Regular expression query as format string with placeholders {field}, {regex}, {flag_x}
+                                                        # where x is one of the flags shortcuts
+                                                        # supported by Sigma (currently i, m and s)
+                                                        # and refers to the token stored in the class variable re_flags.
     re_escape_char : ClassVar[Optional[str]] = None     # Character used for escaping in regular expressions
     re_escape : ClassVar[Tuple[str]] = ()               # List of strings that are escaped
     re_escape_escape_char : bool = True                 # If True, the escape character is also escaped
+    re_flag_prefix : bool = True                        # If True, the flags are prepended as (?x) group at the beginning of the regular expression, e.g. (?i). If this is not supported by the target, it should be set to False.
+    # Mapping from SigmaRegularExpressionFlag values to static string templates that are used in
+    # flag_x placeholders in re_expression template.
+    # By default, i, m and s are defined. If a flag is not supported by the target query language,
+    # remove it from re_flags or don't define it to ensure proper error handling in case of appearance.
+    re_flags : Dict[SigmaRegularExpressionFlag, str] = SigmaRegularExpression.sigma_to_re_flag
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -473,7 +484,7 @@ class TextQueryBackend(Backend):
     # Value not bound to a field
     unbound_value_str_expression : ClassVar[Optional[str]] = None   # Expression for string value not bound to a field as format string with placeholder {value}
     unbound_value_num_expression : ClassVar[Optional[str]] = None   # Expression for number value not bound to a field as format string with placeholder {value}
-    unbound_value_re_expression : ClassVar[Optional[str]] = None   # Expression for regular expression not bound to a field as format string with placeholder {value}
+    unbound_value_re_expression : ClassVar[Optional[str]] = None    # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
 
     # Query finalization: appending and concatenating deferred query part
     deferred_start : ClassVar[Optional[str]] = None                 # String used as separator between main query and deferred parts
@@ -723,20 +734,40 @@ class TextQueryBackend(Backend):
 
     def convert_value_re(self, r : SigmaRegularExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Convert regular expression into string representation used in query."""
-        return r.escape(self.re_escape, self.re_escape_char, self.re_escape_escape_char)
+        return r.escape(self.re_escape, self.re_escape_char, self.re_escape_escape_char, self.re_flag_prefix)
+
+    def get_flag_template(self, r : SigmaRegularExpression) -> Dict[str, str]:
+        """Return the flag_x template variales used for regular expression templates as dict that
+        maps flag_x template variable names to the static template if flag is set in regular
+        expression r or an empty string if flag is not set."""
+        try:
+            return {
+                f"flag_{c}": (
+                    self.re_flags[flag]
+                    if flag in r.flags else
+                    ""
+                )
+                for flag, c in SigmaRegularExpression.sigma_to_re_flag.items()
+            }
+        except KeyError as e:
+            raise NotImplementedError(f"Regular expression flag {e.args[0]} not supported by the backend.")
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""
+        flag_kwargs = self.get_flag_template(cond.value)
         return self.re_expression.format(
             field=self.escape_and_quote_field(cond.field),
             regex=self.convert_value_re(cond.value, state),
+            **flag_kwargs,
         )
 
     def convert_condition_field_eq_val_re_contains(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only regular expressions."""
+        flag_kwargs = self.get_flag_template(cond.value)
         return self.re_expression.format(
             field=self.escape_and_quote_field(cond.field),
             regex=self.convert_value_re(cond.value, state),
+            **flag_kwargs,
         )
 
     def convert_condition_field_eq_val_cidr(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
@@ -786,7 +817,8 @@ class TextQueryBackend(Backend):
 
     def convert_condition_val_re(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only regular expressions."""
-        return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value, state))
+        flag_kwargs = self.get_flag_template(cond.value)
+        return self.unbound_value_re_expression.format(value=self.convert_value_re(cond.value, state), **flag_kwargs)
 
     def convert_condition_query_expr(self, cond : ConditionValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only plain query expressions."""

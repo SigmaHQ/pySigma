@@ -1,7 +1,7 @@
 from ipaddress import IPv4Network, IPv6Network
 import re
 import pytest
-from sigma.types import SigmaBool, SigmaCompareExpression, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaCompareExpression, SigmaRegularExpressionFlag, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 @pytest.fixture
@@ -254,8 +254,17 @@ def test_number_invalid():
     with pytest.raises(SigmaValueError):
         SigmaNumber("test")
 
-def test_re_ok():
+def test_re():
     assert SigmaRegularExpression("test.*")
+
+def test_re_flags():
+    r = SigmaRegularExpression("test.*", { flag for flag in SigmaRegularExpressionFlag })
+    assert len(r.flags) == len(SigmaRegularExpressionFlag)
+
+def test_re_add_flags():
+    r = SigmaRegularExpression("test.*")
+    r.add_flag(SigmaRegularExpressionFlag.IGNORECASE)
+    assert r.flags == {SigmaRegularExpressionFlag.IGNORECASE}
 
 def test_re_to_plain():
     assert SigmaRegularExpression("test.*").to_plain() == "test.*"

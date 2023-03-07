@@ -4,6 +4,9 @@ from sigma.modifiers import \
     SigmaExistsModifier, \
     SigmaModifier, \
     SigmaContainsModifier, \
+    SigmaRegularExpressionIgnoreCaseFlagModifier, \
+    SigmaRegularExpressionMultilineFlagModifier, \
+    SigmaRegularExpressionDotAllFlagModifier, \
     SigmaStartswithModifier, \
     SigmaEndswithModifier, \
     SigmaBase64Modifier, \
@@ -19,7 +22,7 @@ from sigma.modifiers import \
     SigmaExpandModifier, \
     SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -138,6 +141,23 @@ def test_windash(dummy_detection_item):
 
 def test_re(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString("foo?bar.*")) == SigmaRegularExpression("foo?bar.*")
+
+@pytest.fixture
+def sigma_regex():
+    return SigmaRegularExpression("foo.*bar")
+
+@pytest.fixture
+def re_detection_item(sigma_regex):
+    return SigmaDetectionItem("test", [], [sigma_regex])
+
+def test_re_modifier_ignorecase(re_detection_item, sigma_regex):
+    assert SigmaRegularExpressionIgnoreCaseFlagModifier(re_detection_item, []).modify(sigma_regex) == SigmaRegularExpression("foo.*bar", {SigmaRegularExpressionFlag.IGNORECASE})
+
+def test_re_modifier_multiline(re_detection_item, sigma_regex):
+    assert SigmaRegularExpressionMultilineFlagModifier(re_detection_item, []).modify(sigma_regex) == SigmaRegularExpression("foo.*bar", {SigmaRegularExpressionFlag.MULTILINE})
+
+def test_re_modifier_dotall(re_detection_item, sigma_regex):
+    assert SigmaRegularExpressionDotAllFlagModifier(re_detection_item, []).modify(sigma_regex) == SigmaRegularExpression("foo.*bar", {SigmaRegularExpressionFlag.DOTALL})
 
 def test_do_not_escape_regular_expressions(dummy_detection_item):
     assert SigmaRegularExpressionModifier(dummy_detection_item, []).modify(SigmaString(r"foo\\bar")) == SigmaRegularExpression(r"foo\\bar")

@@ -8,6 +8,8 @@ from sigma.processing.transformations import DropDetectionItemTransformation, Fi
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 import pytest
 
+from sigma.types import SigmaRegularExpression
+
 @pytest.fixture
 def test_backend():
     return TextQueryTestBackend(
@@ -483,6 +485,41 @@ def test_convert_value_regex(test_backend):
         """)
     ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/']
 
+def test_convert_value_regex_flag_prefix(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re|i|m|s: pat.*tern/foobar
+                    field A|re|i|m|s: 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['mappedA=/(?ims)pat.*tern\\/foo\\bar/ and \'field A\'=/(?ims)pat.*te\\\\rn\\/foo\\bar/']
+
+def test_convert_value_regex_flag_explicit(test_backend):
+    test_backend.re_flag_prefix = False
+    test_backend.re_flags = SigmaRegularExpression.sigma_to_re_flag
+    test_backend.re_expression += "{flag_i}{flag_m}{flag_s}"
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re|i|m|s: pat.*tern/foobar
+                    field A|re|i|m|s: 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/ims and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/ims']
+
 def test_convert_value_regex_not_escaped_escape(test_backend):
     test_backend.re_escape_escape_char = False
     assert test_backend.convert(
@@ -536,6 +573,39 @@ def test_convert_value_regex_unbound(test_backend):
                 condition: sel
         """)
     ) == ['_=/pat.*te\\\\rn\\/foo\\bar/']
+
+def test_convert_value_regex_unbound_flag_prefix(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|re|i|m|s": 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['_=/(?ims)pat.*te\\\\rn\\/foo\\bar/']
+
+def test_convert_value_regex_unbound_flag_explicit(test_backend):
+    test_backend.re_flag_prefix = False
+    test_backend.re_flags = SigmaRegularExpression.sigma_to_re_flag
+    test_backend.unbound_value_re_expression += "{flag_i}{flag_m}{flag_s}"
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "|re|i|m|s": 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['_=/pat.*te\\\\rn\\/foo\\bar/ims']
 
 def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
     test_backend.re_escape_escape_char = False

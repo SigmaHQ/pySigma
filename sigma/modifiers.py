@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
@@ -186,6 +186,23 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values", source=self.source)
         return SigmaRegularExpression(val.original)
 
+class SigmaRegularExpressionFlagModifier(SigmaValueModifier):
+    """Generic base class for setting a regular expression flag including checks"""
+    flag : ClassVar[SigmaRegularExpressionFlag]
+
+    def modify(self, val: SigmaRegularExpression) -> SigmaRegularExpression:
+        val.add_flag(self.flag)
+        return val
+
+class SigmaRegularExpressionIgnoreCaseFlagModifier(SigmaRegularExpressionFlagModifier):
+    flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.IGNORECASE
+
+class SigmaRegularExpressionMultilineFlagModifier(SigmaRegularExpressionFlagModifier):
+    flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.MULTILINE
+
+class SigmaRegularExpressionDotAllFlagModifier(SigmaRegularExpressionFlagModifier):
+    flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.DOTALL
+
 class SigmaCIDRModifier(SigmaValueModifier):
     def modify(self, val : SigmaString) -> SigmaCIDRExpression:
         if len(self.applied_modifiers) > 0:
@@ -245,6 +262,12 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "wide"          : SigmaWideModifier,
     "windash"       : SigmaWindowsDashModifier,
     "re"            : SigmaRegularExpressionModifier,
+    "i"             : SigmaRegularExpressionIgnoreCaseFlagModifier,
+    "ignorecase"    : SigmaRegularExpressionIgnoreCaseFlagModifier,
+    "m"             : SigmaRegularExpressionMultilineFlagModifier,
+    "multiline"     : SigmaRegularExpressionMultilineFlagModifier,
+    "s"             : SigmaRegularExpressionDotAllFlagModifier,
+    "dotall"        : SigmaRegularExpressionDotAllFlagModifier,
     "cidr"          : SigmaCIDRModifier,
     "all"           : SigmaAllModifier,
     "lt"            : SigmaLessThanModifier,

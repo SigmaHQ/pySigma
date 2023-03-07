@@ -750,7 +750,7 @@ class TextQueryBackend(Backend):
                 for flag, c in SigmaRegularExpression.sigma_to_re_flag.items()
             }
         except KeyError as e:
-            raise NotImplementedError(f"Regular expression flag {e.args[0]} not supported by the backend.")
+            raise NotImplementedError(f"Regular expression flag {e.args[0].name} not supported by the backend.")
 
     def convert_condition_field_eq_val_re(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field matches regular expression value expressions."""

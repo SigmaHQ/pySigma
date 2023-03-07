@@ -8,7 +8,7 @@ from sigma.processing.transformations import DropDetectionItemTransformation, Fi
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 import pytest
 
-from sigma.types import SigmaRegularExpression
+from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
 
 @pytest.fixture
 def test_backend():
@@ -519,6 +519,44 @@ def test_convert_value_regex_flag_explicit(test_backend):
                 condition: sel
         """)
     ) == ['mappedA=/pat.*tern\\/foo\\bar/ims and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/ims']
+
+def test_convert_value_regex_flag_explicit_partial_support(test_backend):
+    test_backend.re_flag_prefix = False
+    test_backend.re_flags = { SigmaRegularExpressionFlag.IGNORECASE: "i" }
+    test_backend.re_expression += "{flag_i}"
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re|i: pat.*tern/foobar
+                    field A|re|i: 'pat.*te\\rn/foobar'
+                condition: sel
+        """)
+    ) == ['mappedA=/pat.*tern\\/foo\\bar/i and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/i']
+
+def test_convert_value_regex_flag_explicit_unsupported(test_backend):
+    test_backend.re_flag_prefix = False
+    test_backend.re_flags = { SigmaRegularExpressionFlag.IGNORECASE: "i" }
+    test_backend.re_expression += "{flag_i}"
+    with pytest.raises(NotImplementedError, match="flag MULTILINE not supported"):
+        test_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|re|i|m: pat.*tern/foobar
+                    condition: sel
+            """)
+        )
 
 def test_convert_value_regex_not_escaped_escape(test_backend):
     test_backend.re_escape_escape_char = False

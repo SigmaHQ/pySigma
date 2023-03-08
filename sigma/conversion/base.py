@@ -795,11 +795,11 @@ class TextQueryBackend(Backend):
         """Conversion of field is null expression value expressions"""
         return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
 
-    def convert_condition_field_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+    def convert_condition_field_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field exists expressions"""
         return self.field_exists_expression.format(field=self.escape_and_quote_field(cond.field))
 
-    def convert_condition_field_not_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+    def convert_condition_field_not_exists(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field not exists expressions"""
         return self.field_not_exists_expression.format(field=self.escape_and_quote_field(cond.field))
 

@@ -95,7 +95,7 @@ On 2022/04/10
 |limacharlie|LimaCharlie D&R rules|
 |logiq|LOGIQ event rule api payload|
 |logpoint|LogPoint query|
-|mdatp|Microsoft Defender ATP Hunting Queries|
+|mdatp|Microsoft Defender ATP Hunting Queries|[pySigma-backend-microsoft365defender](https://github.com/AttackIQ/pySigma-backend-microsoft365defender)|
 |netwitness|NetWitness saved search|
 |netwitness-epl|RSA NetWitness EPL|
 |es-qs (proxied)|OpenSearch search query string. Only searches, no aggregations|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch) (proxied by [pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)) |

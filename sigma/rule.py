@@ -354,7 +354,7 @@ class SigmaDetection(ParentChainMixin):
             detection_item.to_plain()
             for detection_item in self.detection_items
         ]
-        # Filter out where to_plain() returns None, which causes errors merging errors.
+        # Filter out where to_plain() returns None, which causes merging errors.
         # We will have to handle the condition as well in conditions.py
         detection_items = [detection_item for detection_item in detection_items if detection_item is not None]
         detection_items_types = {   # create set of types for decision what has to be returned

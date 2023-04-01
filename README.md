@@ -22,6 +22,35 @@ poetry add pysigma
 
 Documentation with some usage examples can be found [here](https://sigmahq-pysigma.readthedocs.io/).
 
+## Autodiscovery and Migration of Backend Plugins
+
+Recently, the backend plugin [autodiscovery](https://github.com/SigmaHQ/pySigma/blob/800c3e1be3670bab39767fd19d6d7fdd3effb8e6/sigma/plugins.py#L61) functionality has been added, eliminating the need for manual registration of plugins in [sigma-cli](https://github.com/SigmaHQ/sigma-cli). However, some backends may not function with the updated sigma-cli version. To address this issue, plugin developers should make the following changes to their backends:
+
+1. In the `sigma/backends/my_awesome_backend/__init__.py` file, add a `backends` global variable that references the backend class:
+
+    ```python
+    from .my_awesome_backend import MyAwesomeBackend
+
+    backends = {
+        "my_awesome_backend": MyAwesomeBackend,
+    }
+    ```
+
+2. In the `sigma/pipelines/my_awesome_pipelines/__init__.py` file, add a `pipelines` global variable that lists the available pipelines:
+
+    ```python
+    from .my_awesome_pipelines import pipeline_1, pipeline_2
+
+    pipelines = {
+        "pipeline_1": pipeline_1,
+        "pipeline_2": pipeline_2,
+    }
+    ```
+
+3. Finally, submit a pull request to the [pySigma-plugin-directory](https://github.com/SigmaHQ/pySigma-plugin-directory/blob/main/pySigma-plugins-v1.json) and update the version compatibility of your backend plugin with pySigma.
+
+By following these steps, your backend plugin will be compatible with newer versions of pySigma and sigma-cli, allowing for autodiscovery and migration of backend plugins.
+
 ## Create Your Own Backend for pySigma
 
 The creation of a backend has become much easier with pySigma. We recommend using the "Cookie Cutter Template" and reviewing the existing backends listed in the "Related Projects" section of this README.
@@ -95,7 +124,7 @@ On 2022/04/10
 |limacharlie|LimaCharlie D&R rules|
 |logiq|LOGIQ event rule api payload|
 |logpoint|LogPoint query|
-|mdatp|Microsoft Defender ATP Hunting Queries|
+|mdatp|Microsoft Defender ATP Hunting Queries|[pySigma-backend-microsoft365defender](https://github.com/AttackIQ/pySigma-backend-microsoft365defender)|
 |netwitness|NetWitness saved search|
 |netwitness-epl|RSA NetWitness EPL|
 |es-qs (proxied)|OpenSearch search query string. Only searches, no aggregations|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch) (proxied by [pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)) |

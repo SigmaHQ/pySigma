@@ -86,7 +86,7 @@ class ConditionItem(ParentChainMixin, ABC):
         super().postprocess(detections, parent, source)
         self.args = [
             arg.postprocess(detections, self, source)
-            for arg in self.args
+            for arg in self.args if arg is not None  # Need to filter None before postprocess as well
         ]
         self.args = list(       # filter all None entries from argument list. These can be caused by empty detection items from applied transformations.
             filter(

@@ -446,6 +446,9 @@ def test_processingpipeline_fromyaml(processing_item_dict, processing_item, proc
     assert ProcessingPipeline.from_yaml("""
         name: Test
         priority: 10
+        allowed_backends:
+            - test-a
+            - test-b
         transformations:
             - id: test
               rule_conditions:
@@ -470,6 +473,7 @@ def test_processingpipeline_fromyaml(processing_item_dict, processing_item, proc
         priority=10,
         items=[ processing_item ],
         vars=processing_pipeline_vars,
+        allowed_backends={"test-a", "test-b"},
     )
 
 def test_processingpipeline_fromdict_error(processing_item_dict_with_error):

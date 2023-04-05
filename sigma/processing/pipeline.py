@@ -224,8 +224,9 @@ class ProcessingPipeline:
                 raise SigmaConfigurationError(f"Error in processing rule { i + 1 }: { str(e) }") from e
         priority = d.get("priority", 0)
         name = d.get("name", None)
+        allowed_backends = frozenset(d.get("allowed_backends", frozenset()))
 
-        return cls(processing_items, vars, priority, name)
+        return cls(processing_items, vars, priority, name, allowed_backends)
 
     @classmethod
     def from_yaml(cls, processing_pipeline : str) -> "ProcessingPipeline":

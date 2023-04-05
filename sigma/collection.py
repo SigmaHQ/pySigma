@@ -158,11 +158,18 @@ class SigmaCollection:
     @classmethod
     def merge(cls, collections : Iterable["SigmaCollection"]) -> "SigmaCollection":
         """Merge multiple SigmaCollection objects into one and return it."""
-        return cls([
-            rule
-            for collection in collections
-            for rule in collection
-        ])
+        return cls(
+            rules=[
+                rule
+                for collection in collections
+                for rule in collection
+            ],
+            errors=[
+                error
+                for collection in collections
+                for error in collection.errors
+            ]
+        )
 
     def __iter__(self):
         return iter(self.rules)

@@ -1,7 +1,7 @@
 from pathlib import Path
 import re
 import pytest
-from sigma.exceptions import SigmaDetectionError, SigmaRuleLocation
+from sigma.exceptions import SigmaDetectionError, SigmaRuleLocation, SigmaError
 
 @pytest.fixture
 def sigma_path():
@@ -36,3 +36,15 @@ def test_sigmalocation_file_with_line_and_char(sigma_rule_location_with_line_and
 def test_exception_with_location(sigma_rule_location_with_line_and_char):
     errstr = str(SigmaDetectionError("Test", source=sigma_rule_location_with_line_and_char))
     assert errstr == "Test in /path/to/sigma_rule.yml:5:3" or re.match("Test in \\w:\\\\path\\\\to\\\\sigma_rule.yml:5:3", errstr)
+
+def test_exception_equalness():
+    assert SigmaError("A") == SigmaError("A")
+
+def test_exception_unequalness_same_type():
+    assert SigmaError("A") != SigmaError("B")
+
+def test_exception_unequalness_different_type():
+    assert SigmaDetectionError("A") != SigmaError("A")
+
+def test_exception_unequalness_incompatible_type():
+    assert SigmaDetectionError("A") != ValueError("A")

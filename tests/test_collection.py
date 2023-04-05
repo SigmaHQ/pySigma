@@ -4,7 +4,7 @@ import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.rule import SigmaRule, SigmaLogSource
 from sigma.types import SigmaString
-from sigma.exceptions import SigmaCollectionError, SigmaModifierError, SigmaRuleLocation
+from sigma.exceptions import SigmaCollectionError, SigmaModifierError, SigmaRuleLocation, SigmaError
 
 def test_single_rule():
     rule = {
@@ -39,12 +39,19 @@ def test_merge():
         for i in ["1", "2"]
     ]
 
+    collection_1 = SigmaCollection.from_dicts([ rules[0] ])
+    collection_1.errors = [ SigmaError("Test Error 1") ]
+    collection_2 = SigmaCollection.from_dicts([ rules[1] ])
+    collection_2.errors = [ SigmaError("Test Error 2") ]
     assert SigmaCollection.merge([
-        SigmaCollection.from_dicts([ rules[0] ]),
-        SigmaCollection.from_dicts([ rules[1] ]),
+        collection_1,
+        collection_2,
     ]) == SigmaCollection([
         SigmaRule.from_dict(rules[0]),
         SigmaRule.from_dict(rules[1]),
+    ], errors=[
+        SigmaError("Test Error 1"),
+        SigmaError("Test Error 2"),
     ])
 
 def test_deep_dict_update_disjunct():

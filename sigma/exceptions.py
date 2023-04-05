@@ -39,6 +39,12 @@ class SigmaError(ValueError):
         else:
             return super().__str__()
 
+    def __eq__(self, other: object) -> bool:
+        try:
+            return type(self) is type(other) and self.source == other.source and self.args == other.args
+        except AttributeError:
+            return False
+
 class SigmaLogsourceError(SigmaError):
     """Error in Sigma rule logosurce specification"""
     pass

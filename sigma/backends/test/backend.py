@@ -64,6 +64,8 @@ class TextQueryTestBackend(TextQueryBackend):
         SigmaCompareExpression.CompareOperators.GTE : ">=",
     }
 
+    field_equals_field_expression : ClassVar[str] = "{field1}=fieldref({field2})"
+
     field_null_expression : ClassVar[str] = "{field} is null"
 
     convert_or_as_in : ClassVar[bool] = True

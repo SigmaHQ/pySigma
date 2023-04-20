@@ -10,7 +10,7 @@ import re
 import sigma
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import SigmaRegularExpressionError, SigmaTransformationError, SigmaValueError, SigmaConfigurationError
-from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression
+from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression, SigmaFieldReference
 
 ### Base Classes ###
 @dataclass
@@ -105,6 +105,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             return [ field ]
 
     def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+        """Apply field name transformations to Sigma rule field names listed in 'fields' attribute."""
         _apply_field_name = partial(self._apply_field_name, pipeline)
         rule.fields = [
             item
@@ -112,6 +113,25 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             for item in mapping
         ]
         return super().apply(pipeline, rule)
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
+        """Apply field name transformations to field references in detection item values."""
+        new_values = []
+        match = False
+        for value in detection_item.value:
+            if self.processing_item is not None and self.processing_item.match_field_in_value(self.pipeline, value):
+                new_values.extend((
+                    SigmaFieldReference(mapped_field)
+                    for mapped_field in self._apply_field_name(self.pipeline, value.field)
+                ))
+                match = True
+            else:
+                new_values.append(value)
+
+        if match:       # replace value only if something matched
+            detection_item.value = new_values
+
+        return super().apply_detection_item(detection_item)
 
 @dataclass
 class ValueTransformation(DetectionItemTransformation):
@@ -198,9 +218,10 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
             return mapping
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
+        super().apply_detection_item(detection_item)
         field = detection_item.field
         mapping = self.get_mapping(field)
-        if mapping is not None:
+        if mapping is not None and self.processing_item.match_field_name(self.pipeline, field):
             self.pipeline.field_mappings.add_mapping(field, mapping)
             if isinstance(mapping, str):    # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
@@ -221,7 +242,6 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
 @dataclass
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
-
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         for src, dest in self.mapping.items():
             if field.startswith(src):      # found matching prefix
@@ -263,7 +283,8 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
     suffix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        if type(orig_field := detection_item.field) is str:
+        super().apply_detection_item(detection_item)
+        if type(orig_field := detection_item.field) is str and (self.processing_item is None or self.processing_item.match_field_name(self.pipeline, orig_field)):
             detection_item.field += self.suffix
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
@@ -279,7 +300,8 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
     prefix : str
 
     def apply_detection_item(self, detection_item : SigmaDetectionItem):
-        if type(orig_field := detection_item.field) is str:
+        super().apply_detection_item(detection_item)
+        if type(orig_field := detection_item.field) is str and (self.processing_item is None or self.processing_item.match_field_name(self.pipeline, orig_field)):
             detection_item.field = self.prefix + detection_item.field
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)

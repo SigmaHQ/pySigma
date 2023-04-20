@@ -11,7 +11,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -232,6 +232,10 @@ class Backend(ABC):
         """Conversion of field matches regular expression value expressions"""
 
     @abstractmethod
+    def convert_condition_field_eq_field(self, cond : SigmaFieldReference, state : ConversionState) -> Any:
+        """Conversion of field equals another field expressions."""
+
+    @abstractmethod
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field is null expression value expressions"""
 
@@ -285,6 +289,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_cidr(cond, state)
         elif isinstance(cond.value, SigmaCompareExpression):
             return self.convert_condition_field_compare_op_val(cond, state)
+        elif isinstance(cond.value, SigmaFieldReference):
+            return self.convert_condition_field_eq_field(cond, state)
         elif isinstance(cond.value, SigmaNull):
             return self.convert_condition_field_eq_val_null(cond, state)
         elif isinstance(cond.value, SigmaQueryExpression):
@@ -467,6 +473,10 @@ class TextQueryBackend(Backend):
     # Numeric comparison operators
     compare_op_expression : ClassVar[Optional[str]] = None      # Compare operation query as format string with placeholders {field}, {operator} and {value}
     compare_operators : ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = None       # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
+
+    # Expression for comparing two event fields
+    field_equals_field_expression : ClassVar[Optional[str]] = None  # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
+    field_equals_field_escaping_quoting : Tuple[bool, bool] = (True, True)   # If regular field-escaping/quoting is applied to field1 and field2. A custom escaping/quoting can be implemented in the convert_condition_field_eq_field_escape_and_quote method.
 
     # Null/None expressions
     field_null_expression : ClassVar[Optional[str]] = None          # Expression for field has null value as format string with {field} placeholder for field name
@@ -789,6 +799,25 @@ class TextQueryBackend(Backend):
             field=self.escape_and_quote_field(cond.field),
             operator=self.compare_operators[cond.value.op],
             value=cond.value.number,
+        )
+
+    def convert_condition_field_eq_field_escape_and_quote(self, field1 : str, field2 : str) -> Tuple[str, str]:
+        """Escape and quote field names of a field-quals-field expression."""
+        return (
+            self.escape_and_quote_field(field1)
+            if self.field_equals_field_escaping_quoting[0] else
+            field1,
+            self.escape_and_quote_field(field2)
+            if self.field_equals_field_escaping_quoting[1] else
+            field2
+        )
+
+    def convert_condition_field_eq_field(self, cond : SigmaFieldReference, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of comparision of two fields."""
+        field1, field2 = self.convert_condition_field_eq_field_escape_and_quote(cond.field, cond.value.field)
+        return self.field_equals_field_expression.format(
+            field1=field1,
+            field2=field2,
         )
 
     def convert_condition_field_eq_val_null(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:

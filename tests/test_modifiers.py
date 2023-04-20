@@ -2,6 +2,7 @@ import pytest
 from typing import Union, Sequence, List
 from sigma.modifiers import \
     SigmaExistsModifier, \
+    SigmaFieldReferenceModifier, \
     SigmaModifier, \
     SigmaContainsModifier, \
     SigmaRegularExpressionIgnoreCaseFlagModifier, \
@@ -22,7 +23,7 @@ from sigma.modifiers import \
     SigmaExpandModifier, \
     SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -224,6 +225,13 @@ def test_gt(dummy_detection_item):
 
 def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(SigmaNumber(123)) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
+
+def test_fieldref(dummy_detection_item):
+    assert SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field")) == SigmaFieldReference("field")
+
+def test_fieldref_wildcard(dummy_detection_item):
+    with pytest.raises(SigmaValueError, match="must not contain wildcards"):
+        SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field*"))
 
 def test_exists(dummy_detection_item):
     dummy_detection_item.field = "test"

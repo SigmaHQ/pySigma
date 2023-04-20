@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import sigma
-from sigma.types import SigmaString, SigmaType, sigma_type
+from sigma.types import SigmaFieldReference, SigmaString, SigmaType, sigma_type
 from typing import Dict, List, Pattern, Literal, Optional, Union
 import re
 from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
@@ -28,12 +28,42 @@ class FieldNameProcessingCondition(ABC):
     def match_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> bool:
         "The method match is called for each field name and must return a bool result."
 
-    def match_detection_item(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item : SigmaDetectionItem):
+    def match_detection_item(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
         """
-        Match field name condition on detection item by default by match on the field name
-        contained in the detection item.
+        Field names can be contained in the detection item field as well as in field references in
+        detection item values. The detection item matching returns True for both cases, but in
+        subsequent processing it has to be verified which part of the detection item has matched and
+        should be subject of processing actions (e.g. field name mapping). This can be done with the
+        methods
+
+        * `match_detection_item_field` for the field of a detection item
+        * `match_detection_item_value` for the whole value list of a detection item and
+        * `match_value` for single detection items values.
         """
+        return self.match_detection_item_field(pipeline, detection_item) or self.match_detection_item_value(pipeline, detection_item)
+
+    def match_detection_item_field(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
+        """Returns True if the field of the detection item matches the implemented field name condition."""
         return self.match_field_name(pipeline, detection_item.field)
+
+    def match_detection_item_value(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", detection_item : SigmaDetectionItem) -> bool:
+        """Returns True if any value of a detection item contains a field reference to a field name
+        matching the implemented field name condition. Processing actions must only be applied to
+        matching individual values determined by `match_value`."""
+        return any((
+            self.match_value(pipeline, value)
+            for value in detection_item.value
+        ))
+
+    def match_value(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value : SigmaType) -> bool:
+        """
+        Checks if a detection item value matches the field name condition implemented in
+        `match_field_name` if it is a field reference. For all other types the method returns False.
+        """
+        if isinstance(value, SigmaFieldReference):
+            return self.match_field_name(pipeline, value.field)
+        else:
+            return False
 
 @dataclass
 class DetectionItemProcessingCondition(ABC):

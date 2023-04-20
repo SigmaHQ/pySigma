@@ -619,6 +619,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
 @dataclass
 class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
+    """Type for numeric comparison."""
     class CompareOperators(Enum):
         LT  = auto()    # <
         LTE = auto()    # <=
@@ -632,6 +633,11 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     def __post_init__(self):
         if not isinstance(self.number, SigmaNumber):
             raise SigmaTypeError("Compare operator expects number", source=self.source)
+
+@dataclass
+class SigmaFieldReference(NoPlainConversionMixin, SigmaType):
+    """Type for referencing to other fields for comparison between them."""
+    field : str
 
 @dataclass
 class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):

@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaRegularExpressionFlag, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
@@ -233,6 +233,13 @@ class SigmaGreaterThanModifier(SigmaCompareModifier):
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GTE
 
+class SigmaFieldReferenceModifier(SigmaValueModifier):
+    """Modifiers a plain string into the field reference type."""
+    def modify(self, val : SigmaString) -> SigmaFieldReference:
+        if val.contains_special():
+            raise SigmaValueError("Field references must not contain wildcards", source=self.source)
+        return SigmaFieldReference(val.to_plain())
+
 class SigmaExistsModifier(SigmaValueModifier):
     """Modifies to check if the field name provided as value exists in the matched event."""
     def modify(self, val : SigmaBool) -> SigmaExists:
@@ -274,6 +281,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "lte"           : SigmaLessThanEqualModifier,
     "gt"            : SigmaGreaterThanModifier,
     "gte"           : SigmaGreaterThanEqualModifier,
+    "fieldref"      : SigmaFieldReferenceModifier,
     "expand"        : SigmaExpandModifier,
 }
 

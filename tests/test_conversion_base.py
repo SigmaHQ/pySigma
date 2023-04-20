@@ -4,7 +4,7 @@ from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import DropDetectionItemTransformation, FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
+from sigma.processing.transformations import AddFieldnamePrefixTransformation, AddFieldnameSuffixTransformation, DropDetectionItemTransformation, FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 import pytest
 
@@ -17,6 +17,14 @@ def test_backend():
             ProcessingItem(FieldMappingTransformation({
                 "fieldB": "mappedB",
             })),
+            ProcessingItem(
+                AddFieldnameSuffixTransformation(".test"),
+                field_name_conditions=[ IncludeFieldCondition(["suffix"]) ],
+            ),
+            ProcessingItem(
+                AddFieldnamePrefixTransformation("test."),
+                field_name_conditions=[ IncludeFieldCondition(["prefix"]) ],
+            ),
             ProcessingItem(SetStateTransformation("index", "test")),
         ]),
     )
@@ -812,6 +820,88 @@ def test_convert_compare(test_backend):
                 condition: sel
         """)
     ) == ['mappedA<123 and \'field A\'<123 and mappedB<=123 and \'field B\'<=123 and fieldC>123 and \'field C\'>123 and fieldD>=123 and \'field D\'>=123']
+
+def test_convert_compare_fields(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|fieldref: "field B"
+                    field A|fieldref: fieldB
+                condition: sel
+        """)
+    ) == ['mappedA=fieldref(\'field B\') and \'field A\'=fieldref(mappedB)']
+
+def test_convert_compare_fields_noquote(test_backend : TextQueryTestBackend):
+    test_backend.field_equals_field_expression = "`{field1}`=`{field2}`"
+    test_backend.field_equals_field_escaping_quoting = (False, False)
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|fieldref: "field B"
+                    field A|fieldref: fieldB
+                condition: sel
+        """)
+    ) == ['`mappedA`=`field B` and `field A`=`mappedB`']
+
+def test_convert_compare_fields_differentiation_suffix(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|fieldref: suffix
+                    suffix|fieldref: field
+                condition: sel
+        """)
+    ) == ['field=fieldref(\'suffix.test\') and \'suffix.test\'=fieldref(field)']
+
+def test_convert_compare_fields_differentiation_prefix(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|fieldref: prefix
+                    prefix|fieldref: field
+                condition: sel
+        """)
+    ) == ['field=fieldref(\'test.prefix\') and \'test.prefix\'=fieldref(field)']
+
+def test_convert_compare_fields_wrong_type(test_backend):
+    with pytest.raises(SigmaTypeError):
+        assert test_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|re|fieldref: "field B"
+                    condition: sel
+            """)
+        )
 
 def test_convert_compare_str(test_backend):
     with pytest.raises(SigmaTypeError, match="incompatible to value type"):

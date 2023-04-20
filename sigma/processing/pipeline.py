@@ -9,6 +9,8 @@ from sigma.processing.conditions import rule_conditions, RuleProcessingCondition
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 import yaml
 
+from sigma.types import SigmaFieldReference, SigmaType
+
 @dataclass
 class ProcessingItem:
     """
@@ -179,6 +181,22 @@ class ProcessingItem:
             field_name_cond_result = not field_name_cond_result
 
         return field_name_cond_result
+
+    def match_field_in_value(self, pipeline : "ProcessingPipeline", value : SigmaType) -> bool:
+        """
+        Evaluate field name conditions in field reference values and return result.
+        """
+        if isinstance(value, SigmaFieldReference):
+            field_name_cond_result = self.field_name_condition_linking([
+                condition.match_value(pipeline, value)
+                for condition in self.field_name_conditions
+            ])
+            if self.field_name_condition_negation:
+                field_name_cond_result = not field_name_cond_result
+
+            return field_name_cond_result
+        else:
+            return False
 
 @dataclass
 class ProcessingPipeline:

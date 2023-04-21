@@ -6,7 +6,7 @@ import pytest
 from sigma.processing import transformations
 from sigma.processing.transformations import AddConditionTransformation, ChangeLogsourceTransformation, ConditionTransformation, DetectionItemFailureTransformation, DropDetectionItemTransformation, RuleFailureTransformation, FieldMappingTransformation, FieldPrefixMappingTransformation, AddFieldnameSuffixTransformation, AddFieldnamePrefixTransformation, SetStateTransformation, Transformation, WildcardPlaceholderTransformation, ValueListPlaceholderTransformation, QueryExpressionPlaceholderTransformation, ReplaceStringTransformation
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingItemAppliedCondition, IncludeFieldCondition
+from sigma.processing.conditions import DetectionItemProcessingItemAppliedCondition, FieldNameProcessingItemAppliedCondition, IncludeFieldCondition, RuleContainsDetectionItemCondition, RuleProcessingItemAppliedCondition
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import Placeholder, SigmaNumber, SigmaQueryExpression, SigmaString, SpecialChars
 from sigma.modifiers import SigmaExpandModifier
@@ -244,7 +244,44 @@ def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeli
         transformation,
         field_name_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    processing_item.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("value1") ]),
+            SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
+        ])
+    ])
+
+def test_drop_detection_item_transformation_with_set_state(sigma_rule : SigmaRule):
+    pipeline = ProcessingPipeline([
+        ProcessingItem(
+            identifier="test",
+            transformation=SetStateTransformation("state", "test"),
+            rule_conditions=[
+                RuleContainsDetectionItemCondition("field2", "value2")
+            ],
+        ),
+        ProcessingItem(
+            transformation=DropDetectionItemTransformation(),
+            field_name_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
+            rule_conditions=[ RuleProcessingItemAppliedCondition("test") ],
+        ),
+    ])
+    pipeline.apply(sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection([
+        SigmaDetection([
+            SigmaDetectionItem("field1", [], [ SigmaString("value1") ]),
+            SigmaDetectionItem("field3", [], [ SigmaString("value3") ]),
+        ])
+    ])
+
+def test_drop_detection_item_transformation(sigma_rule : SigmaRule, dummy_pipeline):
+    transformation = DropDetectionItemTransformation()
+    processing_item = ProcessingItem(
+        transformation,
+        field_name_conditions=[ IncludeFieldCondition(fields=["field2"]) ],
+    )
+    processing_item.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection([
         SigmaDetection([
             SigmaDetectionItem("field1", [], [ SigmaString("value1") ]),
@@ -680,8 +717,15 @@ def test_replace_string_invalid():
 
 def test_set_state(dummy_pipeline, sigma_rule : SigmaRule):
     transformation = SetStateTransformation("testkey", "testvalue")
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
     transformation.apply(dummy_pipeline, sigma_rule)
     assert dummy_pipeline.state == { "testkey": "testvalue" }
+    assert sigma_rule.was_processed_by("test")
 
 def test_rule_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = RuleFailureTransformation("Test")

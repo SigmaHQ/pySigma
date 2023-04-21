@@ -1,5 +1,5 @@
 import pytest
-from datetime import date
+from datetime import date, datetime
 from uuid import UUID
 from sigma import conditions
 from sigma.rule import SigmaRuleTag, SigmaLogSource, SigmaDetectionItem, SigmaDetection, SigmaDetections, SigmaStatus, SigmaLevel, SigmaRule
@@ -521,6 +521,42 @@ def test_sigmarule_bad_status():
 def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
         SigmaRule.from_dict({ "date": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+def test_sigmarule_date():
+    expected_date = date(3000,1,2)
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    id: cafedead-beef-0000-1111-0123456789ab
+    level: medium
+    status: test
+    date: 3000-01-02
+    logsource:
+        product: foobar
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """)
+    assert rule is not None
+    assert rule.date == expected_date
+
+def test_sigmarule_datetime():
+    expected_date = datetime(3000,1,2,3,4,5)
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    id: cafedead-beef-0000-1111-123456789abc
+    level: medium
+    status: test
+    date: 3000-01-02T03:04:05
+    logsource:
+        product: foobar
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """)
+    assert rule is not None
+    assert rule.date == expected_date
+
 
 def test_sigmarule_collect_errors():
     rule = SigmaRule.from_yaml("""

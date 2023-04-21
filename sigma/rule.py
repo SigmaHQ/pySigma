@@ -3,7 +3,7 @@ import dataclasses
 from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
-from datetime import date
+from datetime import date, datetime
 import yaml
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
@@ -593,13 +593,14 @@ class SigmaRule(ProcessingItemTrackingMixin):
         # parse rule date if existing
         rule_date = rule.get("date")
         if rule_date is not None:
-            try:
-                rule_date = date(*(int(i) for i in rule_date.split("/")))
-            except ValueError:
+            if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
                 try:
-                    rule_date = date(*(int(i) for i in rule_date.split("-")))
+                    rule_date = date(*(int(i) for i in rule_date.split("/")))
                 except ValueError:
-                    errors.append(sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd", source=source))
+                    try:
+                        rule_date = date(*(int(i) for i in rule_date.split("-")))
+                    except ValueError:
+                        errors.append(sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd", source=source))
 
         # parse log source
         logsource = None

@@ -181,6 +181,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
         )
 
 class SigmaRegularExpressionModifier(SigmaValueModifier):
+    """Treats string value as (case-sensitive) regular expression."""
     def modify(self, val : SigmaString) -> SigmaRegularExpression:
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("Regular expression modifier only applicable to unmodified values", source=self.source)
@@ -195,21 +196,26 @@ class SigmaRegularExpressionFlagModifier(SigmaValueModifier):
         return val
 
 class SigmaRegularExpressionIgnoreCaseFlagModifier(SigmaRegularExpressionFlagModifier):
+    """Match regular expression case-insensitive."""
     flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.IGNORECASE
 
 class SigmaRegularExpressionMultilineFlagModifier(SigmaRegularExpressionFlagModifier):
+    """Match regular expression across multiple lines."""
     flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.MULTILINE
 
 class SigmaRegularExpressionDotAllFlagModifier(SigmaRegularExpressionFlagModifier):
+    """Regular expression dot matches all characters."""
     flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.DOTALL
 
 class SigmaCIDRModifier(SigmaValueModifier):
+    """Treat value as IP (v4 or v6) CIDR network."""
     def modify(self, val : SigmaString) -> SigmaCIDRExpression:
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError("CIDR expression modifier only applicable to unmodified values", source=self.source)
         return SigmaCIDRExpression(str(val), source=self.source)
 
 class SigmaAllModifier(SigmaListModifier):
+    """Match all values of a list instead of any pf them."""
     def modify(self, val : Sequence[SigmaType]) -> List[SigmaType]:
         self.detection_item.value_linking = ConditionAND
         return val
@@ -222,15 +228,19 @@ class SigmaCompareModifier(SigmaValueModifier):
         return SigmaCompareExpression(val, self.op, self.source)
 
 class SigmaLessThanModifier(SigmaCompareModifier):
+    """Numeric less than (<) matching."""
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.LT
 
 class SigmaLessThanEqualModifier(SigmaCompareModifier):
+    """Numeric less than or equal (<=) matching."""
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.LTE
 
 class SigmaGreaterThanModifier(SigmaCompareModifier):
+    """Numeric greater than (>) matching."""
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GT
 
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
+    """Numeric greater than or equal (>=) matching."""
     op : ClassVar[SigmaCompareExpression.CompareOperators] = SigmaCompareExpression.CompareOperators.GTE
 
 class SigmaFieldReferenceModifier(SigmaValueModifier):

@@ -127,7 +127,10 @@ class SigmaPlugin:
 
     def install(self):
         """Install plugin with pip."""
-        subprocess.check_call([sys.executable, "-m", "pip", "-q", "install", self.package])
+        if sys.prefix == sys.base_prefix:       # not in a virtual environment
+            subprocess.check_call([sys.executable, "-m", "pip", "-q", "--disable-pip-version-check", "install", self.package])
+        else:
+            subprocess.check_call([sys.executable, "-m", "pip", "-q", "--disable-pip-version-check", "install", "--no-user", self.package])
 
     def uninstall(self):
         """Uninstall plugin with pip."""

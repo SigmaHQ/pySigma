@@ -47,7 +47,16 @@ Recently, the backend plugin [autodiscovery](https://github.com/SigmaHQ/pySigma/
     }
     ```
 
-3. Finally, submit a pull request to the [pySigma-plugin-directory](https://github.com/SigmaHQ/pySigma-plugin-directory/blob/main/pySigma-plugins-v1.json) and update the version compatibility of your backend plugin with pySigma.
+3. (Optional) If your backend has [Validators](https://github.com/SigmaHQ/pySigma/tree/main/sigma/validators) (used with `sigma check`): In the `sigma/pipelines/my_awesome_validators/__init__.py` file, add a `validators` global variable that lists the available pipelines:
+
+    ```python
+    validators = {
+        "validator_1": MyFirstValidator,
+        "validator_2": MySecondValidator,
+    }
+    ```
+
+4. Finally, submit a pull request to the [pySigma-plugin-directory](https://github.com/SigmaHQ/pySigma-plugin-directory/blob/main/pySigma-plugins-v1.json) and update the version compatibility of your backend plugin with pySigma.
 
 By following these steps, your backend plugin will be compatible with newer versions of pySigma and sigma-cli, allowing for autodiscovery and migration of backend plugins.
 

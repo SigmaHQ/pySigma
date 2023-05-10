@@ -17,6 +17,7 @@ def get_attack_id(refs):
 
 tactics = dict()
 techniques = dict()
+techniques_tactics_mapping = dict()
 intrusion_sets = dict()
 software = dict()
 for stix_file in args.stix:
@@ -30,6 +31,11 @@ for stix_file in args.stix:
                 elif obj_type == "attack-pattern":                          # Technique
                     technique_id = get_attack_id(obj["external_references"])
                     techniques[technique_id] = obj["name"]
+                    techniques_tactics_mapping[technique_id] = [
+                        phase["phase_name"]
+                        for phase in obj["kill_chain_phases"]
+                        if phase["kill_chain_name"] == "mitre-attack"
+                    ]
                 elif obj_type == "intrusion-set":
                     intrusion_set_id = get_attack_id(obj["external_references"])
                     intrusion_sets[intrusion_set_id] = obj["name"]
@@ -41,10 +47,11 @@ for stix_file in args.stix:
 
 if not 'attack_version' in locals():
     attack_version = args.attack_version
-print(f"Found { len(tactics) } tactics, { len(techniques) } techniques, { len(intrusion_sets) } intrusion sets and { len(software) } malwares.", file=stderr)
-print("from typing import Dict", file=args.output)
+print(f"Found { len(tactics) } tactics, { len(techniques) } techniques ({ len(techniques_tactics_mapping) } mapped to tactics), { len(intrusion_sets) } intrusion sets and { len(software) } malwares.", file=stderr)
+print("from typing import Dict, List", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)
 print("mitre_attack_tactics: Dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_techniques: Dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True), file=args.output)
+print("mitre_attack_techniques_tactics_mapping: Dict[str, List[str]] = " + pformat(techniques_tactics_mapping, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_intrusion_sets: Dict[str, str] = " + pformat(intrusion_sets, indent=4, sort_dicts=True), file=args.output)
 print("mitre_attack_software: Dict[str, str] = " + pformat(software, indent=4, sort_dicts=True), file=args.output)

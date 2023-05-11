@@ -4,7 +4,7 @@ from sys import stderr, stdout
 from pprint import pformat
 
 argparser = ArgumentParser(description="Generate MITRE ATT&CK(r) content for pySigma from ATT&CK STIX definition.")
-argparser.add_argument("--output", "-o", type=FileType("w"), default=stdout, help="Output file")
+argparser.add_argument("--output", "-o", type=FileType("wt", encoding="utf-8"), default=stdout, help="Output file")
 argparser.add_argument('--attack_version', type=str, default="12.1", help='Manually set the MITRE ATT&CK(r) version.')
 argparser.add_argument("stix", type=FileType("r"), nargs="+", help="Files with ATT&CK STIX definitions")
 args = argparser.parse_args()

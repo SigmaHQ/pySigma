@@ -1,7 +1,7 @@
 from ipaddress import IPv4Network, IPv6Network
 import re
 import pytest
-from sigma.types import SigmaBool, SigmaCompareExpression, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaCasedString, SigmaCompareExpression, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, Placeholder, SpecialChars, SigmaNumber, SigmaNull, SigmaRegularExpression, SigmaQueryExpression, sigma_type, SigmaCIDRExpression
 from sigma.exceptions import SigmaTypeError, SigmaValueError, SigmaRegularExpressionError
 
 @pytest.fixture
@@ -234,6 +234,9 @@ def test_string_index_invalid_type(sigma_string):
 def test_string_index_slice_with_step(sigma_string):
     with pytest.raises(IndexError, match="slice index with step"):
         sigma_string[2:8:2]
+
+def test_cased_string(sigma_string):
+    assert SigmaCasedString.from_sigma_string(sigma_string) == SigmaCasedString("*Test*Str\\*ing*")
 
 def test_number_int():
     assert SigmaNumber(123).number == 123

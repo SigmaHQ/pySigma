@@ -11,7 +11,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import ConditionItem, ConditionOR, ConditionAND, ConditionNOT, ConditionFieldEqualsValueExpression, ConditionValueExpression, ConditionType
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
+from sigma.types import SigmaBool, SigmaCasedString, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaNull, SigmaQueryExpression, SigmaCIDRExpression, SpecialChars
 from sigma.conversion.state import ConversionState
 
 class Backend(ABC):
@@ -212,6 +212,10 @@ class Backend(ABC):
         """Conversion of field = string value expressions"""
 
     @abstractmethod
+    def convert_condition_field_eq_val_str_case_sensitive(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
+        """Conversion of field = cased string value expressions"""
+
+    @abstractmethod
     def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion of field = number value expressions"""
 
@@ -277,7 +281,9 @@ class Backend(ABC):
 
     def convert_condition_field_eq_val(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
-        if isinstance(cond.value, SigmaString):
+        if isinstance(cond.value, SigmaCasedString):
+            return self.convert_condition_field_eq_val_str_case_sensitive(cond, state)
+        elif isinstance(cond.value, SigmaString):
             return self.convert_condition_field_eq_val_str(cond, state)
         elif isinstance(cond.value, SigmaNumber):
             return self.convert_condition_field_eq_val_num(cond, state)
@@ -465,6 +471,15 @@ class TextQueryBackend(Backend):
     # By default, i, m and s are defined. If a flag is not supported by the target query language,
     # remove it from re_flags or don't define it to ensure proper error handling in case of appearance.
     re_flags : Dict[SigmaRegularExpressionFlag, str] = SigmaRegularExpression.sigma_to_re_flag
+
+    # Case sensitive string matching expression. String is quoted/escaped like a normal string.
+    # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
+    case_sensitive_match_expression : ClassVar[Optional[str]] = None
+    # Case sensitive string matching operators similar to standard string matching. If not provided,
+    # case_sensitive_match_expression is used.
+    case_sensitive_startswith_expression : ClassVar[Optional[str]] = None
+    case_sensitive_endswith_expression   : ClassVar[Optional[str]] = None
+    case_sensitive_contains_expression   : ClassVar[Optional[str]] = None
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -727,6 +742,40 @@ class TextQueryBackend(Backend):
             return expr.format(field=self.escape_and_quote_field(cond.field), value=self.convert_value_str(value, state))
         except TypeError:       # pragma: no cover
             raise NotImplementedError("Field equals string value expressions with strings are not supported by the backend.")
+
+    def convert_condition_field_eq_val_str_case_sensitive(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
+        """Conversion of case-sensitive field = string value expressions"""
+        try:
+            if (                                                                # Check conditions for usage of 'startswith' operator
+                self.case_sensitive_startswith_expression is not None                            # 'startswith' operator is defined in backend
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)            # String ends with wildcard
+                and not cond.value[:-1].contains_special()                      # Remainder of string doesn't contains special characters
+                ):
+                expr = self.case_sensitive_startswith_expression                               # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                value = cond.value[:-1]
+            elif (                                                              # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
+                self.case_sensitive_endswith_expression is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:].contains_special()
+                ):
+                expr = self.case_sensitive_endswith_expression
+                value = cond.value[1:]
+            elif (                                                              # contains: string starts and ends with wildcard
+                self.case_sensitive_contains_expression is not None
+                and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
+                and not cond.value[1:-1].contains_special()
+                ):
+                expr = self.case_sensitive_contains_expression
+                value = cond.value[1:-1]
+            elif self.case_sensitive_match_expression is not None:
+                expr = self.case_sensitive_match_expression
+                value = cond.value
+            else:
+                raise NotImplementedError("Case-sensitive string matching is not supported by backend.")
+            return expr.format(field=self.escape_and_quote_field(cond.field), value=self.convert_value_str(value, state))
+        except TypeError:       # pragma: no cover
+            raise NotImplementedError("Case-sensitive field equals string value expressions with strings are not supported by the backend.")
 
     def convert_condition_field_eq_val_num(self, cond : ConditionFieldEqualsValueExpression, state : ConversionState) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = number value expressions"""

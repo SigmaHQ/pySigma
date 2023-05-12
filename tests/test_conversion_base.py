@@ -98,6 +98,22 @@ def test_convert_value_str(test_backend):
         """)
     ) == ['mappedA="value" and \'field A\'="value"']
 
+def test_convert_value_str_cased(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cased: value
+                    field A|cased: value
+                condition: sel
+        """)
+    ) == ['mappedA casematch "value" and \'field A\' casematch "value"']
+
 def test_convert_value_str_empty(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -180,6 +196,22 @@ def test_convert_value_str_startswith(test_backend):
         """)
     ) == ['mappedA startswith "value" and \'field A\' startswith "value"']
 
+def test_convert_value_str_startswith_cased(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith|cased: "value"
+                    field A|startswith|cased: "value"
+                condition: sel
+        """)
+    ) == ['mappedA startswith_cased "value" and \'field A\' startswith_cased "value"']
+
 def test_convert_value_str_startswith_further_wildcard(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -228,6 +260,22 @@ def test_convert_value_str_endswith(test_backend):
         """)
     ) == ['mappedA endswith "value" and \'field A\' endswith "value"']
 
+def test_convert_value_str_endswith_cased(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith|cased: "value"
+                    field A|endswith|cased: "value"
+                condition: sel
+        """)
+    ) == ['mappedA endswith_cased "value" and \'field A\' endswith_cased "value"']
+
 def test_convert_value_str_endswith_further_wildcard(test_backend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""
@@ -275,6 +323,22 @@ def test_convert_value_str_contains(test_backend):
                 condition: sel
         """)
     ) == ['mappedA contains "value" and \'field A\' contains "value"']
+
+def test_convert_value_str_contains_cased(test_backend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains|cased: "value"
+                    field A|contains|cased: "value"
+                condition: sel
+        """)
+    ) == ['mappedA contains_cased "value" and \'field A\' contains_cased "value"']
 
 def test_convert_value_str_contains_further_wildcard(test_backend):
     assert test_backend.convert(

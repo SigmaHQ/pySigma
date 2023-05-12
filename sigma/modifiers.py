@@ -3,7 +3,7 @@ import re
 from typing import ClassVar, Optional, Union, List, Sequence, Dict, Type, get_origin, get_args, get_type_hints
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
-from sigma.types import Placeholder, SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import Placeholder, SigmaBool, SigmaCasedString, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaType, SigmaString, SigmaNumber, SpecialChars, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
@@ -207,6 +207,10 @@ class SigmaRegularExpressionDotAllFlagModifier(SigmaRegularExpressionFlagModifie
     """Regular expression dot matches all characters."""
     flag : ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.DOTALL
 
+class SigmaCaseSensitiveModifier(SigmaValueModifier):
+    def modify(self, val: SigmaString) -> SigmaCasedString:
+        return SigmaCasedString.from_sigma_string(val)
+
 class SigmaCIDRModifier(SigmaValueModifier):
     """Treat value as IP (v4 or v6) CIDR network."""
     def modify(self, val : SigmaString) -> SigmaCIDRExpression:
@@ -285,6 +289,7 @@ modifier_mapping : Dict[str, Type[SigmaModifier]] = {
     "multiline"     : SigmaRegularExpressionMultilineFlagModifier,
     "s"             : SigmaRegularExpressionDotAllFlagModifier,
     "dotall"        : SigmaRegularExpressionDotAllFlagModifier,
+    "cased"         : SigmaCaseSensitiveModifier,
     "cidr"          : SigmaCIDRModifier,
     "all"           : SigmaAllModifier,
     "lt"            : SigmaLessThanModifier,

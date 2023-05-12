@@ -1,6 +1,7 @@
 import pytest
 from typing import Union, Sequence, List
 from sigma.modifiers import \
+    SigmaCaseSensitiveModifier, \
     SigmaExistsModifier, \
     SigmaFieldReferenceModifier, \
     SigmaModifier, \
@@ -23,7 +24,7 @@ from sigma.modifiers import \
     SigmaExpandModifier, \
     SigmaWindowsDashModifier
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaBool, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
+from sigma.types import SigmaBool, SigmaCasedString, SigmaExists, SigmaExpansion, SigmaFieldReference, SigmaRegularExpressionFlag, SigmaString, Placeholder, SigmaNumber, SigmaRegularExpression, SigmaCompareExpression, SigmaCIDRExpression
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
@@ -205,6 +206,9 @@ def test_re_startswith_endswith_wildcard(dummy_detection_item):
 def test_re_with_other(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="only applicable to unmodified values.*test.yml"):
         SigmaRegularExpressionModifier(dummy_detection_item, [SigmaBase64Modifier], SigmaRuleLocation("test.yml")).modify(SigmaString("foo?bar.*"))
+
+def test_cased(dummy_detection_item):
+    assert SigmaCaseSensitiveModifier(dummy_detection_item, []).modify(SigmaString("FooBar")) == SigmaCasedString("FooBar")
 
 def test_all(dummy_detection_item):
     values = [

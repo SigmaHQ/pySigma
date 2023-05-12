@@ -9,7 +9,6 @@ from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import SigmaCompareExpression
 
-
 class TextQueryTestBackend(TextQueryBackend):
     name : str = "Test backend"
     formats : Dict[str, str] = {
@@ -53,6 +52,11 @@ class TextQueryTestBackend(TextQueryBackend):
     re_expression : ClassVar[str] = "{field}=/{regex}/"
     re_escape_char : ClassVar[str] = "\\"
     re_escape : ClassVar[Tuple[str]] = ("/", "bar")
+
+    case_sensitive_match_expression = "{field} casematch {value}"
+    case_sensitive_startswith_expression : ClassVar[str] = "{field} startswith_cased {value}"
+    case_sensitive_endswith_expression   : ClassVar[str] = "{field} endswith_cased {value}"
+    case_sensitive_contains_expression   : ClassVar[str] = "{field} contains_cased {value}"
 
     cidr_expression : ClassVar[str] = "cidrmatch('{field}', \"{value}\")"
 

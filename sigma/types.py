@@ -449,6 +449,14 @@ class SigmaString(SigmaType):
                         raise SigmaValueError("Single-character wildcard not specified for conversion")
         return s
 
+class SigmaCasedString(SigmaString):
+    """Case-sensitive string matching."""
+    @classmethod
+    def from_sigma_string(cls, s : SigmaString) -> "SigmaCasedString":
+        cs = cls(s.original)
+        cs.s = s.s
+        return cs
+
 @dataclass
 class SigmaNumber(SigmaType):
     """Numeric value type"""

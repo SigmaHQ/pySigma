@@ -7,11 +7,12 @@ import inspect
 import pkgutil
 import subprocess
 import sys
-from typing import Callable, Dict, Any, List, Optional, Set, Union
+from typing import Callable, Dict, Any, List, Optional, Set, Union, get_type_hints
 from uuid import UUID
 import requests
 from packaging.version import Version
 from packaging.specifiers import Specifier
+import warnings
 
 from sigma.conversion.base import Backend
 from sigma.processing.pipeline import ProcessingPipeline
@@ -55,14 +56,37 @@ class InstalledSigmaPlugins:
                 # attempt to merge backend directory from module into collected backend directory
                 try:
                     imported_module = importlib.import_module(mod.name)
-                    if directory_name in ["pipelines", "validators"]:
-                        directory = imported_module.__dict__[directory_name]
-                        result.update(directory)
-                    else:
+                    submodules = imported_module.__dict__[directory_name]
+                    # Pipelines and validators reside in submodules
+                    if directory_name == "pipelines":
+                        for obj_name in submodules:
+                            possible_func_obj = submodules[obj_name]
+                            if inspect.isfunction(possible_func_obj):
+                                if (
+                                    not get_type_hints(possible_func_obj).get("return")
+                                    == ProcessingPipeline
+                                ):
+                                    # TODO: This should be a hard error in the future
+                                    warnings.warn(
+                                        f"Function {mod.name}.{obj_name} does not have a return type hint of ProcessingPipeline."
+                                    )
+                                result[obj_name] = possible_func_obj
+                    elif directory_name == "validators":
+                        for cls_name in submodules:
+                            if inspect.isclass(submodules[cls_name]) and issubclass(
+                                submodules[cls_name], SigmaRuleValidator
+                            ):
+                                result[cls_name] = submodules[cls_name]
+                    elif directory_name == "backends":
+                        # Backends reside on the module level
                         for cls_name in imported_module.__dict__:
                             klass = getattr(imported_module, cls_name)
                             if inspect.isclass(klass) and issubclass(klass, Backend):
                                 result.update({cls_name: klass})
+                    else:
+                        raise ValueError(
+                            f"Unknown directory name {directory_name} for module {mod.name}"
+                        )
                 except KeyError:
                     pass
         return result

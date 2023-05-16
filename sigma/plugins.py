@@ -3,6 +3,7 @@ from enum import Enum, auto
 from importlib import import_module
 import importlib
 import importlib.metadata
+import inspect
 import pkgutil
 import subprocess
 import sys
@@ -48,11 +49,20 @@ class InstalledSigmaPlugins:
     def _discover_module_directories(cls, module, directory_name : str, include : bool) -> Dict[str, Any]:
         result = dict()
         if include:
-            for module in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
-                try:        # attempt to merge backend directory from module into collected backend directory
-                    imported_module = importlib.import_module(module.name)
-                    directory = imported_module.__dict__[directory_name]
-                    result.update(directory)
+            for mod in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
+                if ".test" in mod.name:
+                    continue
+                # attempt to merge backend directory from module into collected backend directory
+                try:
+                    imported_module = importlib.import_module(mod.name)
+                    if directory_name in ["pipelines", "validators"]:
+                        directory = imported_module.__dict__[directory_name]
+                        result.update(directory)
+                    else:
+                        for cls_name in imported_module.__dict__:
+                            klass = getattr(imported_module, cls_name)
+                            if inspect.isclass(klass) and issubclass(klass, Backend):
+                                result.update({cls_name: klass})
                 except KeyError:
                     pass
         return result

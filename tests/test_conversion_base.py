@@ -16,7 +16,7 @@ def test_backend():
         ProcessingPipeline([
             ProcessingItem(FieldMappingTransformation({
                 "fieldB": "mappedB",
-            })),
+            }), identifier="mappingB"),
             ProcessingItem(
                 AddFieldnameSuffixTransformation(".test"),
                 field_name_conditions=[ IncludeFieldCondition(["suffix"]) ],
@@ -63,6 +63,7 @@ def test_backend_and_custom_pipeline(test_backend):
                 condition: sel
         """)
     ) == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+    assert "mappingB" in test_backend.last_processing_pipeline.applied_ids
 
 def test_backend_custom_format_pipeline(test_backend):
     assert test_backend.convert(

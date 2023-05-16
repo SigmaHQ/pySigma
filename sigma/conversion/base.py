@@ -68,6 +68,7 @@ class Backend(ABC):
     requires_pipeline : ClassVar[bool] = False            # Does the backend requires that a processing pipeline is provided?
 
     processing_pipeline : ProcessingPipeline
+    last_processing_pipeline : ProcessingPipeline
     backend_processing_pipeline : ClassVar[ProcessingPipeline] = ProcessingPipeline()
     output_format_processing_pipeline : ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(ProcessingPipeline)
     config : Dict[str, Any]
@@ -106,11 +107,11 @@ class Backend(ABC):
         """
         state = ConversionState()
         try:
-            processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
+            self.last_processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
 
             error_state = "applying processing pipeline on"
-            processing_pipeline.apply(rule)             # 1. Apply transformations
-            state.processing_state = processing_pipeline.state
+            self.last_processing_pipeline.apply(rule)             # 1. Apply transformations
+            state.processing_state = self.last_processing_pipeline.state
 
             error_state = "converting"
             queries = [                                 # 2. Convert condition

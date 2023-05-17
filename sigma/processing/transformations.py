@@ -389,7 +389,9 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
         if { isinstance(item, (str, int, float)) for item in values } != { True }:
             raise SigmaValueError(f"Replacement variable '{ p.name }' contains value which is not a string or number.")
 
-        return [ str(v) for v in values ]
+        return [
+            SigmaString(str(v)) for v in values
+        ]
 
 @dataclass
 class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):

@@ -505,13 +505,13 @@ def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule :
 
 def test_valuelist_placeholders(sigma_rule_placeholders_simple : SigmaRule):
     transformation = ValueListPlaceholderTransformation()
-    pipeline = ProcessingPipeline([], { "var1": ["val1", 123], "var2": "val3"})
+    pipeline = ProcessingPipeline([], { "var1": ["val1", 123], "var2": "val3*"})
     transformation.apply(pipeline, sigma_rule_placeholders_simple)
     assert sigma_rule_placeholders_simple.detection.detections["test"] == SigmaDetection([
         SigmaDetection([
             SigmaDetectionItem("field", [SigmaExpandModifier], [
-                SigmaString("valueval1testval3end"),
-                SigmaString("value123testval3end"),
+                SigmaString("valueval1testval3*end"),
+                SigmaString("value123testval3*end"),
             ]),
         ])
     ])

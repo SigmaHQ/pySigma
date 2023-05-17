@@ -131,7 +131,7 @@ On 2022/04/10
 |es-dsl (proxied)|OpenSearch DSL query|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch) (proxied by [pySigma-backend-elasticsearch](https://github.com/SigmaHQ/pySigma-backend-elasticsearch)) |
 |opensearch-monitor|OpenSearch monitors and ElasticRule are in Elastic Common Schema|[pySigma-backend-opensearch](https://github.com/SigmaHQ/pySigma-backend-opensearch)|
 |powershell|PowerShell event log cmdlets|
-|qradar|Qradar saved search|
+|qradar|IBM Qradar AQL|[pySigma-backend-QRadar-AQL](https://github.com/IBM/pySigma-backend-QRadar-AQL)
 |qualys|Qualys saved search|
 |sentinel-rule|Azure Sentinel scheduled alert rule ARM template|
 |splunk|Splunk Search Processing Language (SPL)|[pySigma-backend-splunk](https://github.com/SigmaHQ/pySigma-backend-splunk)|

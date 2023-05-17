@@ -51,8 +51,6 @@ class InstalledSigmaPlugins:
         result = dict()
         if include:
             for mod in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
-                if ".test" in mod.name:
-                    continue
                 # attempt to merge backend directory from module into collected backend directory
                 try:
                     imported_module = importlib.import_module(mod.name)

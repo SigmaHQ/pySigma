@@ -16,8 +16,8 @@ def test_autodiscover_backends():
     plugins = InstalledSigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends={
-            "test": TextQueryTestBackend,
-            "test_mandatory": MandatoryPipelineTestBackend,
+            "TextQueryTestBackend": TextQueryTestBackend,
+            "MandatoryPipelineTestBackend": MandatoryPipelineTestBackend,
         },
         pipelines=dict(),
         validators=dict(),
@@ -30,7 +30,7 @@ def test_autodiscover_pipelines():
         pipelines={
             "test": dummy_test_pipeline,
             "another_test": another_test_pipeline,
-        },
+       },
         validators=dict(),
     )
 

@@ -73,7 +73,7 @@ class SigmaLogSource:
 
     def to_dict(self) -> dict:
         return {
-            field.name: value
+            field.name: str(value)
             for field in dataclasses.fields(self)
             if (value := self.__getattribute__(field.name)) is not None
         }

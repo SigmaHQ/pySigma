@@ -675,4 +675,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
         if self.date is not None:
             d["date"] = self.date.isoformat()
 
+        # custom attributes
+        d.update(self.custom_attributes)
+
         return d

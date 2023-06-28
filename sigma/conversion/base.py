@@ -105,23 +105,26 @@ class Backend(ABC):
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
-        state = ConversionState()
         try:
             self.last_processing_pipeline = self.backend_processing_pipeline + self.processing_pipeline + self.output_format_processing_pipeline[output_format or self.default_format]
 
             error_state = "applying processing pipeline on"
             self.last_processing_pipeline.apply(rule)             # 1. Apply transformations
-            state.processing_state = self.last_processing_pipeline.state
 
+            # 2. Convert conditions
             error_state = "converting"
-            queries = [                                 # 2. Convert condition
-                self.convert_condition(cond.parsed, state)
-                for cond in rule.detection.parsed_condition
+            states = [
+                ConversionState(processing_state=dict(self.last_processing_pipeline.state))
+                for _ in rule.detection.parsed_condition
+            ]
+            queries = [
+                self.convert_condition(cond.parsed, states[index])
+                for index, cond in enumerate(rule.detection.parsed_condition)
             ]
 
             error_state = "finalizing query for"
             return [                                    # 3. Postprocess generated query
-                self.finalize_query(rule, query, index, state, output_format or self.default_format)
+                self.finalize_query(rule, query, index, states[index], output_format or self.default_format)
                 for index, query in enumerate(queries)
             ]
         except SigmaError as e:

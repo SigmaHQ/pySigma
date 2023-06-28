@@ -83,6 +83,28 @@ def test_deferred_conversion_or(test_backend : TextQueryTestBackend):
         """)
     ) == ['fieldB="foo" or fieldC="bar" | mappedA="foo.*bar"']
 
+def test_deferred_conversion_multiple_cond(test_backend : TextQueryTestBackend):
+    assert test_backend.convert(
+        SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA|re: foo.*bar
+                sel2:
+                    fieldB|re: foo.*
+                sel3:
+                    fieldC|re: .*bar
+                condition:
+                    - sel1
+                    - sel2
+                    - sel3
+        """)
+    ) == ['* | mappedA="foo.*bar"', '* | fieldB="foo.*"', '* | fieldC=".*bar"']
+
 def test_deferred_conversion_not(test_backend : TextQueryTestBackend):
     assert test_backend.convert(
         SigmaCollection.from_yaml("""

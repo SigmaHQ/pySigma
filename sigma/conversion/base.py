@@ -114,7 +114,7 @@ class Backend(ABC):
             # 2. Convert conditions
             error_state = "converting"
             states = [
-                ConversionState(processing_state=self.last_processing_pipeline.state)
+                ConversionState(processing_state=dict(self.last_processing_pipeline.state))
                 for _ in rule.detection.parsed_condition
             ]
             queries = [

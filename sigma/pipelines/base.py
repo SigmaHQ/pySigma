@@ -31,7 +31,7 @@ class Pipeline:
         When the class is called, we call the function if set,
         otherwise we return the class itself.
         """
-        if getattr(self, "apply"):
+        if getattr(self, "apply") and not self.apply.__isabstractmethod__:
             return self.apply(*args, **kwargs)
         return self.func(*args, **kwargs) if self.func is not None else self
 

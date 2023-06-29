@@ -75,7 +75,6 @@ class InstalledSigmaPlugins:
                     if imported_module.__name__ in [
                         "sigma.pipelines.base",
                         "sigma.pipelines.common",
-                        "sigma.pipelines.test",
                     ]:
                         continue
 

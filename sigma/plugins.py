@@ -57,7 +57,7 @@ class InstalledSigmaPlugins:
         def is_pipeline(obj):
             return any(
                 [
-                    issubclass(obj.__class__, Pipeline),
+                    inspect.isclass(obj) and issubclass(obj, Pipeline),
                     isinstance(obj, Pipeline),
                     inspect.isfunction(obj)
                     and get_type_hints(obj).get("return") == ProcessingPipeline,

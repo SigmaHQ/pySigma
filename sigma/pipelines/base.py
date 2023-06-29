@@ -40,18 +40,18 @@ class Pipeline:
         Use the singleton pattern to ensure that only one instance of the class
         is created. This is necessary to ensure that the pipelines are registered
         only once if the class is inherited.
-        
+
         Args:
             cls ([type]): The class itself.
             *args: The arguments to be passed to the class constructor.
-        
+
         Keyword Arguments:
             **kwargs: The keyword arguments to be passed to the class constructor.
 
         Returns:
             Pipeline: The class instance.
         """
-        if not hasattr(cls, '_instance'):
+        if not hasattr(cls, "_instance"):
             cls._instance = super(Pipeline, cls).__new__(cls)
         return cls._instance
 

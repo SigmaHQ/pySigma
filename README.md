@@ -53,7 +53,7 @@ class Pipeline_2(Pipeline):
         )
 ```
 
-Both pipelines can still be used in the same manner as before. There is no difference between the two approaches because the `Pipeline_2` class can be instantiated and used as a pipeline object. In other words, when the class is instantiated, the `apply` method is automatically called, which returns a `ProcessingPipeline` object. This behavior aligns with the functionality of the `pipeline_1` function, which also returns a `ProcessingPipeline` object. This consistency results in a cleaner and more streamlined approach for autodiscovery and facilitates the gradual migration of pipeline functions to classes.
+Both pipelines can still be used in the same manner as before. There is no difference between the two approaches because the `Pipeline_2` class can be instantiated and used as a pipeline object, like `Pipeline_2()()` or `Pipeline_2().apply()`. In other words, when the class is instantiated, an object of the `Pipeline` class is returned. Calling the object itself will automatically run the `apply` method, which returns a `ProcessingPipeline` object. This behavior aligns with the functionality of the `pipeline_1` function, which also returns a `ProcessingPipeline` object. This consistency results in a cleaner and more streamlined approach for autodiscovery and facilitates the gradual migration of pipeline functions to classes.
 
 ### pySigma before v0.9.11
 

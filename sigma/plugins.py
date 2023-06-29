@@ -94,9 +94,13 @@ class InstalledSigmaPlugins:
                             {
                                 k: v
                                 for k, v in imported_module.__dict__.items()
-                                if k in imported_module.__dict__["__all__"]
-                                and k not in builtins.__dict__
-                                and v not in submodules.values()
+                                if all(
+                                    [
+                                        k in imported_module.__dict__["__all__"],
+                                        k not in builtins.__dict__,
+                                        v not in submodules.values(),
+                                    ]
+                                )
                             }
                         )
                     # There is no __all__, so add all objects that are not private, not in builtins,
@@ -124,8 +128,11 @@ class InstalledSigmaPlugins:
                                 result[obj_name] = possible_obj
                     elif directory_name == "validators":
                         for cls_name in submodules:
-                            if inspect.isclass(submodules[cls_name]) and issubclass(
-                                submodules[cls_name], SigmaRuleValidator
+                            if (
+                                inspect.isclass(submodules[cls_name])
+                                and issubclass(submodules[cls_name], SigmaRuleValidator)
+                                and submodules[cls_name].__module__
+                                != "sigma.validators.base"
                             ):
                                 result[cls_name] = submodules[cls_name]
                     elif directory_name == "backends":

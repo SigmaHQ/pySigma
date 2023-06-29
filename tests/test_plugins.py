@@ -30,8 +30,8 @@ def test_autodiscover_pipelines():
         pipelines={
             "test": dummy_test_pipeline,
             "another_test": another_test_pipeline,
-            "yet_another_test": YetAnotherTestPipeline()
-       },
+            "YetAnotherTestPipeline": YetAnotherTestPipeline
+        },
         validators=dict(),
     )
 

@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Callable
+from typing import Optional, Callable
 
 from sigma.processing.pipeline import ProcessingPipeline
 
@@ -14,14 +14,14 @@ class Pipeline:
 
     def __init__(
         self,
-        func: Callable[[], ProcessingPipeline] | None = None,
+        func: Optional[Callable[[], ProcessingPipeline]] = None,
     ):
         """
         Initialize the pipeline. If the function is set, then it is a class decorator.
         Otherwise, it is an inherited class, so we return the class itself.
 
         Keyword Arguments:
-            func (Callable[[], ProcessingPipeline] | None): The function to be
+            func (Optional[Callable[[], ProcessingPipeline]]): The function to be
                 decorated. If None, the class is inherited. Defaults to None.
         """
         self.func = func

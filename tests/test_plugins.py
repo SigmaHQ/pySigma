@@ -1,6 +1,6 @@
 from uuid import UUID
 from sigma.exceptions import SigmaPluginNotFoundError
-from sigma.pipelines.test.pipeline import another_test_pipeline
+from sigma.pipelines.test.pipeline import another_test_pipeline, YetAnotherTestPipeline
 from sigma.plugins import SigmaPlugin, SigmaPluginDirectory, SigmaPluginState, SigmaPluginType, InstalledSigmaPlugins
 from sigma.backends.test import TextQueryTestBackend, MandatoryPipelineTestBackend
 from sigma.pipelines.test import dummy_test_pipeline
@@ -30,6 +30,7 @@ def test_autodiscover_pipelines():
         pipelines={
             "test": dummy_test_pipeline,
             "another_test": another_test_pipeline,
+            "yet_another_test": YetAnotherTestPipeline()
        },
         validators=dict(),
     )

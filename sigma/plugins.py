@@ -1,6 +1,6 @@
+import builtins
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from importlib import import_module
 import importlib
 import importlib.metadata
 import inspect
@@ -12,9 +12,9 @@ from uuid import UUID
 import requests
 from packaging.version import Version
 from packaging.specifiers import Specifier
-import warnings
 
 from sigma.conversion.base import Backend
+from sigma.pipelines.base import Pipeline
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.rule import EnumLowercaseStringMixin
@@ -26,6 +26,7 @@ from sigma.exceptions import SigmaPluginNotFoundError
 
 default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-plugin-directory/main/pySigma-plugins-v1.json"
 
+
 @dataclass
 class InstalledSigmaPlugins:
     """Discovery and registrstion of installed backends, pipelines and validator checks as plugins.
@@ -33,46 +34,108 @@ class InstalledSigmaPlugins:
     This class represents a set of the objects mentioned above that are available. Further it implements
     autodiscovery of them in the sigma.backends, sigma.pipelines and sigma.validators module namespaces.
     """
-    backends : Dict[str, Backend] = field(default_factory=dict)
-    pipelines : Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
-    validators : Dict[str, SigmaRuleValidator] = field(default_factory=dict)
 
-    def register_backend(self, id : str, backend : Backend):
+    backends: Dict[str, Backend] = field(default_factory=dict)
+    pipelines: Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
+    validators: Dict[str, SigmaRuleValidator] = field(default_factory=dict)
+
+    def register_backend(self, id: str, backend: Backend):
         self.backends[id] = backend
 
-    def register_pipeline(self, id : str, pipeline : Callable[[], ProcessingPipeline]):
+    def register_pipeline(self, id: str, pipeline: Callable[[], ProcessingPipeline]):
         self.pipelines[id] = pipeline
 
-    def register_validator(self, id : str, validator : SigmaRuleValidator):
+    def register_validator(self, id: str, validator: SigmaRuleValidator):
         self.validators[id] = validator
 
     @classmethod
-    def _discover_module_directories(cls, module, directory_name : str, include : bool) -> Dict[str, Any]:
+    def _discover_module_directories(
+        cls, module, directory_name: str, include: bool
+    ) -> Dict[str, Any]:
         result = dict()
+
+        def is_pipeline(obj):
+            return any(
+                [
+                    inspect.isclass(obj) and issubclass(obj, Pipeline),
+                    isinstance(obj, Pipeline),
+                    inspect.isfunction(obj)
+                    and get_type_hints(obj).get("return") == ProcessingPipeline,
+                ]
+            )
+
         if include:
             for mod in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
                 # attempt to merge backend directory from module into collected backend directory
                 try:
                     imported_module = importlib.import_module(mod.name)
-                    submodules = imported_module.__dict__[directory_name]
+                    submodules: Dict[str, Any] = {}
+
+                    # Skip base, common and test pipelines
+                    if imported_module.__name__ in [
+                        "sigma.pipelines.base",
+                        "sigma.pipelines.common",
+                    ]:
+                        continue
+
+                    # Add exported objects to submodules
+                    # This is to ensure backwards compatibility with older plugins
+                    # that do not use __all__ to export their objects, but instead
+                    # rely on gloal variables that map function/class names to objects
+                    # The global variable name is the "directory_name" in this case,
+                    # which is either "backends", "pipelines" or "validators".
+                    if directory_name in imported_module.__dict__:
+                        submodules.update(imported_module.__dict__[directory_name])
+
+                    # Look for __all__ at the root (__init__) and
+                    # add all objects that are in __all__ :D
+                    if "__all__" in imported_module.__dict__:
+                        submodules.update(
+                            {
+                                k: v
+                                for k, v in imported_module.__dict__.items()
+                                if all(
+                                    [
+                                        k in imported_module.__dict__["__all__"],
+                                        k not in builtins.__dict__,
+                                        v not in submodules.values(),
+                                    ]
+                                )
+                            }
+                        )
+                    # There is no __all__, so add all objects that are not private, not in builtins,
+                    # and not already in submodules (to avoid duplicates)
+                    else:
+                        submodules.update(
+                            {
+                                k: v
+                                for k, v in imported_module.__dict__.items()
+                                if not k.startswith("_")
+                                and k not in builtins.__dict__
+                                and v not in submodules.values()
+                            }
+                        )
+
                     # Pipelines and validators reside in submodules
                     if directory_name == "pipelines":
                         for obj_name in submodules:
-                            possible_func_obj = submodules[obj_name]
-                            if inspect.isfunction(possible_func_obj):
-                                if (
-                                    not get_type_hints(possible_func_obj).get("return")
-                                    == ProcessingPipeline
-                                ):
-                                    # TODO: This should be a hard error in the future
-                                    warnings.warn(
-                                        f"Function {mod.name}.{obj_name} does not have a return type hint of ProcessingPipeline."
-                                    )
-                                result[obj_name] = possible_func_obj
+                            possible_obj = submodules[obj_name]
+
+                            # OR'd condition ensures backwards compatibility with older plugins
+                            if is_pipeline(possible_obj) or inspect.isfunction(
+                                possible_obj
+                            ):
+                                if inspect.isclass(possible_obj) and issubclass(possible_obj, Pipeline):
+                                    result[obj_name] = possible_obj()
+                                else:
+                                    result[obj_name] = possible_obj
                     elif directory_name == "validators":
                         for cls_name in submodules:
-                            if inspect.isclass(submodules[cls_name]) and issubclass(
-                                submodules[cls_name], SigmaRuleValidator
+                            if (
+                                inspect.isclass(submodules[cls_name])
+                                and issubclass(submodules[cls_name], SigmaRuleValidator)
+                                and submodules[cls_name].__module__
+                                != "sigma.validators.base"
                             ):
                                 result[cls_name] = submodules[cls_name]
                     elif directory_name == "backends":
@@ -90,60 +153,74 @@ class InstalledSigmaPlugins:
         return result
 
     @classmethod
-    def autodiscover(cls, include_backends : bool = True, include_pipelines : bool = True, include_validators : bool = True):
+    def autodiscover(
+        cls,
+        include_backends: bool = True,
+        include_pipelines: bool = True,
+        include_validators: bool = True,
+    ):
         """Automatically discovers backends, pipelines and validators in their corresponding module
         namespaces and return a InstalledSigmaPlugins class containing all identified classes and generators.
         """
-        backends = cls._discover_module_directories(sigma.backends, "backends", include_backends)
-        pipelines = cls._discover_module_directories(sigma.pipelines, "pipelines", include_pipelines)
-        validators = cls._discover_module_directories(sigma.validators, "validators", include_validators)
+        backends = cls._discover_module_directories(
+            sigma.backends, "backends", include_backends
+        )
+        pipelines = cls._discover_module_directories(
+            sigma.pipelines, "pipelines", include_pipelines
+        )
+        validators = cls._discover_module_directories(
+            sigma.validators, "validators", include_validators
+        )
 
         return cls(backends, pipelines, validators)
 
     def get_pipeline_resolver(self) -> ProcessingPipelineResolver:
         """Returns a ProcessingPipelineResolver object with all discovered pipelines."""
-        return ProcessingPipelineResolver({
-            identifier: pipeline_generator
-            for identifier, pipeline_generator in self.pipelines.items()
-        })
+        return ProcessingPipelineResolver(
+            {
+                identifier: pipeline_generator
+                for identifier, pipeline_generator in self.pipelines.items()
+            }
+        )
+
 
 class SigmaPluginType(EnumLowercaseStringMixin, Enum):
-    BACKEND   = auto()
-    PIPELINE  = auto()
+    BACKEND = auto()
+    PIPELINE = auto()
     VALIDATOR = auto()
 
+
 class SigmaPluginState(EnumLowercaseStringMixin, Enum):
-    STABLE   = auto()
-    TESTING  = auto()
-    DEVEL    = auto()
-    BROKEN   = auto()
+    STABLE = auto()
+    TESTING = auto()
+    DEVEL = auto()
+    BROKEN = auto()
     ORPHANED = auto()
+
 
 @dataclass
 class SigmaPlugin:
     """Sigma plugin description corresponding to https://github.com/SigmaHQ/pySigma-plugin-directory#format"""
-    uuid : UUID
-    type : SigmaPluginType
-    id : str
-    description : str
-    package : str
-    project_url : str
-    report_issue_url : str
-    state : SigmaPluginState
-    pysigma_version : Specifier
+
+    uuid: UUID
+    type: SigmaPluginType
+    id: str
+    description: str
+    package: str
+    project_url: str
+    report_issue_url: str
+    state: SigmaPluginState
+    pysigma_version: Specifier
 
     @classmethod
     def from_dict(cls, d: Dict) -> "SigmaPlugin":
         """Construct a SigmaPlugin object from a dict that results in parsing a plugin description
         from the JSON format linked above."""
-        kwargs = {
-            k.replace("-", "_"): v
-            for k, v in d.items()
-        }
+        kwargs = {k.replace("-", "_"): v for k, v in d.items()}
         kwargs["uuid"] = UUID(kwargs["uuid"])
         kwargs["pysigma_version"] = Specifier(kwargs["pysigma_version"])
-        kwargs["type"] = SigmaPluginType[ kwargs["type"].upper() ]
-        kwargs["state"] = SigmaPluginState[ kwargs["state"].upper() ]
+        kwargs["type"] = SigmaPluginType[kwargs["type"].upper()]
+        kwargs["state"] = SigmaPluginState[kwargs["state"].upper()]
 
         return cls(**kwargs)
 
@@ -159,27 +236,52 @@ class SigmaPlugin:
 
     def install(self):
         """Install plugin with pip."""
-        if sys.prefix == sys.base_prefix:       # not in a virtual environment
-            subprocess.check_call([sys.executable, "-m", "pip", "-q", "--disable-pip-version-check", "install", self.package])
+        if sys.prefix == sys.base_prefix:  # not in a virtual environment
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "-q",
+                    "--disable-pip-version-check",
+                    "install",
+                    self.package,
+                ]
+            )
         else:
-            subprocess.check_call([sys.executable, "-m", "pip", "-q", "--disable-pip-version-check", "install", "--no-user", self.package])
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "-q",
+                    "--disable-pip-version-check",
+                    "install",
+                    "--no-user",
+                    self.package,
+                ]
+            )
 
     def uninstall(self):
         """Uninstall plugin with pip."""
-        subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package]
+        )
+
 
 @dataclass
 class SigmaPluginDirectory:
     """A directory of pySigma plugins that can be loaded from the pySigma-plugin-directory
     repository or an arbitrary location."""
-    plugins : Dict[UUID, SigmaPlugin] = field(default_factory=dict)
-    note : Optional[str] = None
 
-    def register_plugin(self, plugin : SigmaPlugin):
+    plugins: Dict[UUID, SigmaPlugin] = field(default_factory=dict)
+    note: Optional[str] = None
+
+    def register_plugin(self, plugin: SigmaPlugin):
         self.plugins[plugin.uuid] = plugin
 
     @classmethod
-    def from_dict(cls, d : Dict):
+    def from_dict(cls, d: Dict):
         return cls(
             plugins={
                 UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
@@ -189,7 +291,7 @@ class SigmaPluginDirectory:
         )
 
     @classmethod
-    def from_url(cls, url : str, *args, **kwargs) -> "SigmaPluginDirectory":
+    def from_url(cls, url: str, *args, **kwargs) -> "SigmaPluginDirectory":
         """Loads the plugin directory from an arbitrary location. All further
         arguments are passed to requests.get()."""
         response = requests.get(url, *args, **kwargs)
@@ -207,18 +309,20 @@ class SigmaPluginDirectory:
 
     def get_plugins(
         self,
-        plugin_types : Set[SigmaPluginType] = { t for t in SigmaPluginType },
-        plugin_states : Set[SigmaPluginState] = { s for s in SigmaPluginState },
-        compatible_only : bool = False,
-        ) -> List[SigmaPlugin]:
+        plugin_types: Set[SigmaPluginType] = {t for t in SigmaPluginType},
+        plugin_states: Set[SigmaPluginState] = {s for s in SigmaPluginState},
+        compatible_only: bool = False,
+    ) -> List[SigmaPlugin]:
         """Return a list of plugins with the specified type and state. Returns all plugins if not specified."""
         return [
             plugin
             for plugin in self.plugins.values()
-            if plugin.type in plugin_types and plugin.state in plugin_states and (not compatible_only or bool(plugin.is_compatible()))
+            if plugin.type in plugin_types
+            and plugin.state in plugin_states
+            and (not compatible_only or bool(plugin.is_compatible()))
         ]
 
-    def get_plugin_by_uuid(self, uuid : Union[str, UUID]) -> SigmaPlugin:
+    def get_plugin_by_uuid(self, uuid: Union[str, UUID]) -> SigmaPlugin:
         if isinstance(uuid, str):
             uuid = UUID(uuid)
         try:
@@ -226,7 +330,7 @@ class SigmaPluginDirectory:
         except KeyError:
             raise SigmaPluginNotFoundError(f"Plugin with UUID {uuid} not found")
 
-    def get_plugin_by_id(self, id : str) -> SigmaPlugin:
+    def get_plugin_by_id(self, id: str) -> SigmaPlugin:
         for plugin in self.plugins.values():
             if plugin.id == id:
                 return plugin

@@ -3,11 +3,17 @@ from typing import ClassVar, Dict, List, Tuple
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaNumber
 
-from sigma.validators.base import SigmaDetectionItemValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import (
+    SigmaDetectionItemValidator,
+    SigmaValidationIssue,
+    SigmaValidationIssueSeverity,
+)
 from sigma.rule import SigmaLogSource
 
-specific_to_generic_logsource_mapping: Dict[str, Tuple[SigmaLogSource, Dict[int, str]]] = {
-    #"Sysmon": (SigmaLogSource(None, None, "sysmon"), {
+specific_to_generic_logsource_mapping: Dict[
+    str, Tuple[SigmaLogSource, Dict[int, str]]
+] = {
+    # "Sysmon": (SigmaLogSource(None, None, "sysmon"), {
     SigmaLogSource(None, "windows", "sysmon"): {
         1: "process_creation",
         2: "file_change",
@@ -42,6 +48,7 @@ specific_to_generic_logsource_mapping: Dict[str, Tuple[SigmaLogSource, Dict[int,
     },
 }
 
+
 @dataclass
 class SpecificInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Usage of specific instead of generic log source"
@@ -50,10 +57,15 @@ class SpecificInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
     event_id: int
     generic_logsource: SigmaLogSource
 
+
 class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
     """Identify usage of specific Windows event identifiers where corresponding generic log sources exist."""
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        for logsource, eventid_mappings in specific_to_generic_logsource_mapping.items():
+        for (
+            logsource,
+            eventid_mappings,
+        ) in specific_to_generic_logsource_mapping.items():
             if rule.logsource in logsource:
                 self.logsource = logsource
                 self.eventid_mappings = eventid_mappings
@@ -61,12 +73,22 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
                 return super().validate(rule)
         return []
 
-    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+    def validate_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> List[SigmaValidationIssue]:
         if detection_item.field == "EventID":
             return [
-                SpecificInsteadOfGenericLogsourceIssue(rules=[ self.rule ], logsource=self.logsource, event_id=event_id.number, generic_logsource=SigmaLogSource(self.eventid_mappings[event_id.number]))
+                SpecificInsteadOfGenericLogsourceIssue(
+                    rules=[self.rule],
+                    logsource=self.logsource,
+                    event_id=event_id.number,
+                    generic_logsource=SigmaLogSource(
+                        self.eventid_mappings[event_id.number]
+                    ),
+                )
                 for event_id in detection_item.value
-                if isinstance(event_id, SigmaNumber) and event_id.number in self.disallowed_logsource_event_ids
+                if isinstance(event_id, SigmaNumber)
+                and event_id.number in self.disallowed_logsource_event_ids
             ]
         else:
             return []

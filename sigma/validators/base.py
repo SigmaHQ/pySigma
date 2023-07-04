@@ -7,6 +7,7 @@ import sigma
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
 
+
 class SigmaValidationIssueSeverity(Enum):
     """
     Severity of a Sigma rule validation issue:
@@ -18,9 +19,11 @@ class SigmaValidationIssueSeverity(Enum):
     * High: issue will cause problems. It is certain that the intention of the rule author and the
       rule logic deviate or the rule doesn't matches anything.
     """
-    LOW           = auto()
-    MEDIUM        = auto()
-    HIGH          = auto()
+
+    LOW = auto()
+    MEDIUM = auto()
+    HIGH = auto()
+
 
 @dataclass
 class SigmaValidationIssue(ABC):
@@ -30,9 +33,10 @@ class SigmaValidationIssue(ABC):
     information defined statically for the class. Additional issue information should be provided by
     additional fields that are automatically rendered in the representation methods.
     """
-    description : ClassVar[str] = "Sigma rule validation issue"
-    severity    : ClassVar[SigmaValidationIssueSeverity]
-    rules       : List[SigmaRule]
+
+    description: ClassVar[str] = "Sigma rule validation issue"
+    severity: ClassVar[SigmaValidationIssueSeverity]
+    rules: List[SigmaRule]
 
     def __post_init__(self):
         """Ensure that self.rules contains a list, even when a single rule was provided."""
@@ -40,17 +44,23 @@ class SigmaValidationIssue(ABC):
             self.rules = [self.rules]
 
     def __str__(self):
-        rules = ", ".join([
-            str(rule.source) if rule.source is not None
-            else str(rule.id) or rule.title
-            for rule in self.rules
-        ])
-        additional_fields = " ".join([
-            f"{field.name}={self.__getattribute__(field.name) or '-'}"
-            for field in fields(self)
-            if field.name not in ("rules", "severity", "description")
-        ])
-        return f"issue={self.__class__.__name__} severity={self.severity.name.lower()} description=\"{self.description}\" rules=[{rules}] {additional_fields}"
+        rules = ", ".join(
+            [
+                str(rule.source)
+                if rule.source is not None
+                else str(rule.id) or rule.title
+                for rule in self.rules
+            ]
+        )
+        additional_fields = " ".join(
+            [
+                f"{field.name}={self.__getattribute__(field.name) or '-'}"
+                for field in fields(self)
+                if field.name not in ("rules", "severity", "description")
+            ]
+        )
+        return f'issue={self.__class__.__name__} severity={self.severity.name.lower()} description="{self.description}" rules=[{rules}] {additional_fields}'
+
 
 class SigmaRuleValidator(ABC):
     """
@@ -60,8 +70,9 @@ class SigmaRuleValidator(ABC):
     at the end of the validation of multiple rules and can return issues that apply across multiple
     rules, e.g. violation of uniqueness constraints.
     """
+
     @abstractmethod
-    def validate(self, rule : SigmaRule) -> List[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
@@ -80,6 +91,7 @@ class SigmaRuleValidator(ABC):
         """
         return []
 
+
 class SigmaDetectionValidator(SigmaRuleValidator):
     """
     A detection validator class implements a check for detection definitions contained in Sigma
@@ -94,6 +106,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
     The validation state stored in the object should be reset as required to prevent undesired side
     effects in implementations of them methods mentioned above.
     """
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """
         Iterate over all detections and call validate_detection() for each.
@@ -106,7 +119,9 @@ class SigmaDetectionValidator(SigmaRuleValidator):
         ]
 
     @abstractmethod
-    def validate_detection(self, name : str, detection : SigmaDetection) -> List[SigmaValidationIssue]:
+    def validate_detection(
+        self, name: str, detection: SigmaDetection
+    ) -> List[SigmaValidationIssue]:
         """Implementation of the detection validation. It is invoked for each detection.
 
         :param name: Name of the validated detection.
@@ -116,6 +131,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
+
 
 class SigmaDetectionItemValidator(SigmaDetectionValidator):
     """
@@ -131,7 +147,10 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
     The validation state stored in the object should be reset as required to prevent undesired side
     effects in implementations of them methods mentioned above.
     """
-    def validate_detection(self, name: Optional[str], detection: SigmaDetection) -> List[SigmaValidationIssue]:
+
+    def validate_detection(
+        self, name: Optional[str], detection: SigmaDetection
+    ) -> List[SigmaValidationIssue]:
         """
         Iterate over all detection items of a detection definition and call
         validate_detection_item() method on each detection item or this method itself recursively
@@ -141,13 +160,16 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
             issue
             for item in detection.detection_items
             for issue in (
-                self.validate_detection_item(item) if isinstance(item, SigmaDetectionItem)
+                self.validate_detection_item(item)
+                if isinstance(item, SigmaDetectionItem)
                 else self.validate_detection(None, item)
-                )
+            )
         ]
 
     @abstractmethod
-    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+    def validate_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> List[SigmaValidationIssue]:
         """Implementation of the detection item validation. It is invoked for each detection item.
 
         :param detection_item: detection item that should be validated.
@@ -155,6 +177,7 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
+
 
 class SigmaValueValidator(SigmaDetectionItemValidator):
     """
@@ -171,9 +194,12 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
     The validation state stored in the object should be reset as required to prevent undesired side
     effects in implementations of them methods mentioned above.
     """
-    validated_types : ClassVar[Set[Type[SigmaType]]] = { SigmaType }
 
-    def validate_detection_item(self, detection_item: SigmaDetectionItem) -> List[SigmaValidationIssue]:
+    validated_types: ClassVar[Set[Type[SigmaType]]] = {SigmaType}
+
+    def validate_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> List[SigmaValidationIssue]:
         """
         Iterate over all values of a detection item and call validate_value() method for each of
         them if they are contained in the validated_types class attribute.
@@ -182,10 +208,8 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
             issue
             for value in detection_item.value
             for issue in (
-                self.validate_value(value) if any((
-                    isinstance(value, t)
-                    for t in self.validated_types
-                    ))
+                self.validate_value(value)
+                if any((isinstance(value, t) for t in self.validated_types))
                 else []
             )
         ]
@@ -199,6 +223,7 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
+
 
 class SigmaStringValueValidator(SigmaValueValidator):
     """
@@ -215,20 +240,19 @@ class SigmaStringValueValidator(SigmaValueValidator):
     The validation state stored in the object should be reset as required to prevent undesired side
     effects in implementations of them methods mentioned above.
     """
-    validated_types : ClassVar[Set[Type[SigmaType]]] = { SigmaString }
+
+    validated_types: ClassVar[Set[Type[SigmaType]]] = {SigmaString}
+
 
 class SigmaTagValidator(SigmaRuleValidator):
     """
     The tag validator iterates over all tags from the rule and calls the method validate_tag() for
     each tag.
     """
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         super().validate(rule)
-        return [
-            issue
-            for tag in rule.tags
-            for issue in self.validate_tag(tag)
-        ]
+        return [issue for tag in rule.tags for issue in self.validate_tag(tag)]
 
     @abstractmethod
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:

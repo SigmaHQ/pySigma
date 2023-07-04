@@ -3,30 +3,40 @@ from dataclasses import dataclass
 from typing import ClassVar, Dict, List
 from uuid import UUID
 from sigma.rule import SigmaRule
-from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue, SigmaValidationIssueSeverity
+from sigma.validators.base import (
+    SigmaRuleValidator,
+    SigmaValidationIssue,
+    SigmaValidationIssueSeverity,
+)
+
 
 @dataclass
 class IdentifierExistenceIssue(SigmaValidationIssue):
     description = "Rule has no identifier (UUID)"
     severity = SigmaValidationIssueSeverity.MEDIUM
 
+
 class IdentifierExistenceValidator(SigmaRuleValidator):
     """Checks if rule has identifier."""
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if rule.id is None:
-            return [ IdentifierExistenceIssue([rule]) ]
+            return [IdentifierExistenceIssue([rule])]
         else:
             return []
 
+
 @dataclass
 class IdentifierCollisionIssue(SigmaValidationIssue):
-    description : ClassVar[str] = "Rule identifier used by multiple rules"
-    severity : ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
-    identifier : UUID
+    description: ClassVar[str] = "Rule identifier used by multiple rules"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    identifier: UUID
+
 
 class IdentifierUniquenessValidator(SigmaRuleValidator):
     """Check rule UUID uniqueness."""
-    ids : Dict[UUID, List[SigmaRule]]
+
+    ids: Dict[UUID, List[SigmaRule]]
 
     def __init__(self):
         self.ids = defaultdict(list)

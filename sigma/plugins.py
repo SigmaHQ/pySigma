@@ -125,7 +125,9 @@ class InstalledSigmaPlugins:
                             if is_pipeline(possible_obj) or inspect.isfunction(
                                 possible_obj
                             ):
-                                if inspect.isclass(possible_obj) and issubclass(possible_obj, Pipeline):
+                                if inspect.isclass(possible_obj) and issubclass(
+                                    possible_obj, Pipeline
+                                ):
                                     result[obj_name] = possible_obj()
                                 else:
                                     result[obj_name] = possible_obj

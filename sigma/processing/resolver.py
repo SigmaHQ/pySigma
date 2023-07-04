@@ -1,7 +1,11 @@
 from dataclasses import dataclass, field
-from sigma.exceptions import SigmaPipelineNotAllowedForBackendError, SigmaPipelineNotFoundError
+from sigma.exceptions import (
+    SigmaPipelineNotAllowedForBackendError,
+    SigmaPipelineNotFoundError,
+)
 from sigma.processing.pipeline import ProcessingPipeline
 from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+
 
 @dataclass
 class ProcessingPipelineResolver:
@@ -9,30 +13,31 @@ class ProcessingPipelineResolver:
     A processing pipeline resolver resolves a list of pipeline specifiers into one summarized processing pipeline.
     It takes care of sorting by priority and resolution of filenames as well as pipeline name identifiers.
     """
-    pipelines : Dict[str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]] = field(default_factory=dict)
 
-    def add_pipeline_class(self, pipeline : ProcessingPipeline) -> None:
+    pipelines: Dict[
+        str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]
+    ] = field(default_factory=dict)
+
+    def add_pipeline_class(self, pipeline: ProcessingPipeline) -> None:
         """Add named processing pipeline object to resolver. This pipeline can be resolved by the name."""
         if pipeline.name is None:
             raise ValueError("Processing pipeline must be named to be resolvable.")
         self.pipelines[pipeline.name] = pipeline
 
     @classmethod
-    def from_pipeline_list(cls, pipelines : Iterable[ProcessingPipeline]) -> "ProcessingPipelineResolver":
+    def from_pipeline_list(
+        cls, pipelines: Iterable[ProcessingPipeline]
+    ) -> "ProcessingPipelineResolver":
         """Instantiate processing pipeline resolver from list of pipeline objects."""
-        return cls({
-            pipeline.name: pipeline
-            for pipeline in pipelines
-        })
+        return cls({pipeline.name: pipeline for pipeline in pipelines})
 
     def list_pipelines(self) -> Iterable[Tuple[str, ProcessingPipeline]]:
         """List identifier/processing pipeline tuples."""
-        return (
-            (id, self.resolve_pipeline(id))
-            for id in self.pipelines.keys()
-        )
+        return ((id, self.resolve_pipeline(id)) for id in self.pipelines.keys())
 
-    def resolve_pipeline(self, spec : str, target : Optional[str] = None) -> ProcessingPipeline:
+    def resolve_pipeline(
+        self, spec: str, target: Optional[str] = None
+    ) -> ProcessingPipeline:
         """
         Resolve single processing pipeline. It first tries to find a pipeline with this identifier
         in the registered pipelines. If this fails, *spec* is treated as file name. If this fails
@@ -48,16 +53,21 @@ class ProcessingPipelineResolver:
                 resolved_pipeline = pipeline()
             else:
                 resolved_pipeline = pipeline
-            if target is not None and not (len(resolved_pipeline.allowed_backends) == 0 or target in resolved_pipeline.allowed_backends):
+            if target is not None and not (
+                len(resolved_pipeline.allowed_backends) == 0
+                or target in resolved_pipeline.allowed_backends
+            ):
                 raise SigmaPipelineNotAllowedForBackendError(spec)
             return resolved_pipeline
-        except KeyError:        # identifier not found, try it as path
+        except KeyError:  # identifier not found, try it as path
             try:
                 return ProcessingPipeline.from_yaml(open(spec, "r").read())
             except OSError as e:
                 raise SigmaPipelineNotFoundError(spec)
 
-    def resolve(self, pipeline_specs : List[str], target : Optional[str] = None) -> ProcessingPipeline:
+    def resolve(
+        self, pipeline_specs: List[str], target: Optional[str] = None
+    ) -> ProcessingPipeline:
         """
         Resolve a list of
 
@@ -69,11 +79,12 @@ class ProcessingPipelineResolver:
         If *target* is specified this is passed in each *resolve_pipeline* call to perform a
         compatibility check for the usage of the specified backend with the pipeline.
         """
-        return sum(
-                sorted([
-                    self.resolve_pipeline(spec, target)
-                    for spec in pipeline_specs
-                ],
-                key=lambda p: p.priority
+        return (
+            sum(
+                sorted(
+                    [self.resolve_pipeline(spec, target) for spec in pipeline_specs],
+                    key=lambda p: p.priority,
+                )
             )
-        ) or ProcessingPipeline()
+            or ProcessingPipeline()
+        )

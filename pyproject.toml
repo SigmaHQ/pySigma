@@ -29,6 +29,7 @@ requests = "^2.28.1"
 [tool.poetry.dev-dependencies]
 black = "^23.3.0"
 mypy = "^0.931"
+pre-commit = "^3.3.3"
 pylint = "^2.15.7"
 pytest = "^6.2.2"
 pytest-cov = "^2.11.1"

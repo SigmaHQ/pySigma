@@ -1,2 +1,5 @@
 # Reformatting by black
 a6b11efb3455b0d13d4d712413052061580d43c4
+# Set line-length to 100 for black
+17185b23e5d18f0977eaf0f96bd941fb6c8d53f1
+

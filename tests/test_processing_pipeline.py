@@ -45,9 +45,7 @@ class RuleConditionFalse(RuleProcessingCondition):
 class DetectionItemConditionTrue(DetectionItemProcessingCondition):
     dummy: str
 
-    def match(
-        self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem
-    ) -> bool:
+    def match(self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem) -> bool:
         return True
 
 
@@ -55,9 +53,7 @@ class DetectionItemConditionTrue(DetectionItemProcessingCondition):
 class DetectionItemConditionFalse(DetectionItemProcessingCondition):
     dummy: str
 
-    def match(
-        self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem
-    ) -> bool:
+    def match(self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem) -> bool:
         return False
 
 
@@ -289,9 +285,7 @@ def test_processingitem_apply(processing_item, dummy_processing_pipeline, sigma_
     assert applied and sigma_rule.title == "TestTest"
 
 
-def test_processingitem_apply_notapplied_all_with_false(
-    dummy_processing_pipeline, sigma_rule
-):
+def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_linking=all,
@@ -328,9 +322,7 @@ def test_processingitem_apply_negated_false(dummy_processing_pipeline, sigma_rul
     assert applied and sigma_rule.title == "TestTest"
 
 
-def test_processingitem_apply_notapplied_all_with_false(
-    dummy_processing_pipeline, sigma_rule
-):
+def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_linking=all,
@@ -352,10 +344,7 @@ def test_processingitem_match_detection_item(dummy_processing_pipeline, detectio
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert (
-        processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
-        == True
-    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == True
 
 
 def test_processingitem_match_detection_item_all_with_false(
@@ -369,10 +358,7 @@ def test_processingitem_match_detection_item_all_with_false(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert (
-        processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
-        == False
-    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
 
 
 def test_processingitem_match_detection_item_any_without_true(
@@ -386,10 +372,7 @@ def test_processingitem_match_detection_item_any_without_true(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert (
-        processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
-        == False
-    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
 
 
 def test_processingitem_match_detection_item_negated_true(
@@ -402,10 +385,7 @@ def test_processingitem_match_detection_item_negated_true(
             DetectionItemConditionTrue(dummy="test-true"),
         ],
     )
-    assert (
-        processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
-        == False
-    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
 
 
 def test_processingitem_match_detection_item_negated_false(
@@ -418,9 +398,7 @@ def test_processingitem_match_detection_item_negated_false(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert processing_item.match_detection_item(
-        dummy_processing_pipeline, detection_item
-    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
 
 
 def test_processingitem_rule_condition_nolist():
@@ -434,9 +412,7 @@ def test_processingitem_rule_condition_nolist():
 def test_processingitem_detection_item_condition_nolist():
     with pytest.raises(SigmaTypeError, match="Detection item processing conditions"):
         ProcessingItem(
-            detection_item_conditions=DetectionItemProcessingItemAppliedCondition(
-                "test"
-            ),
+            detection_item_conditions=DetectionItemProcessingItemAppliedCondition("test"),
             transformation=SetStateTransformation("test", True),
         )
 
@@ -556,12 +532,8 @@ def test_processingpipeline_error_direct_transofrmations(sigma_rule):
 def test_processingpipeline_apply(sigma_rule):
     pipeline = ProcessingPipeline(
         items=[
-            ProcessingItem(
-                transformation=TransformationPrepend(s="Pre"), identifier="pre"
-            ),
-            ProcessingItem(
-                transformation=TransformationAppend(s="Appended"), identifier="append"
-            ),
+            ProcessingItem(transformation=TransformationPrepend(s="Pre"), identifier="pre"),
+            ProcessingItem(transformation=TransformationAppend(s="Appended"), identifier="append"),
         ]
     )
     result_rule = pipeline.apply(sigma_rule)
@@ -580,9 +552,7 @@ def test_processingpipeline_apply_partial(sigma_rule):
                 rule_conditions=[RuleConditionFalse(dummy="test")],
                 identifier="pre",
             ),
-            ProcessingItem(
-                transformation=TransformationAppend(s="Appended"), identifier="append"
-            ),
+            ProcessingItem(transformation=TransformationAppend(s="Appended"), identifier="append"),
         ]
     )
     result_rule = pipeline.apply(sigma_rule)
@@ -595,15 +565,11 @@ def test_processingpipeline_apply_partial(sigma_rule):
 
 def test_processingpipeline_field_processing_item_tracking():
     pipeline = ProcessingPipeline()
-    pipeline.track_field_processing_items(
-        "field1", ["fieldA", "fieldB"], "processing_item_1"
-    )
+    pipeline.track_field_processing_items("field1", ["fieldA", "fieldB"], "processing_item_1")
     pipeline.track_field_processing_items(
         "fieldA", ["fieldA", "fieldC", "fieldD"], "processing_item_2"
     )
-    pipeline.track_field_processing_items(
-        "fieldB", ["fieldD", "fieldE"], "processing_item_3"
-    )
+    pipeline.track_field_processing_items("fieldB", ["fieldD", "fieldE"], "processing_item_3")
     pipeline.track_field_processing_items("fieldE", ["fieldF"], None)
     assert pipeline.field_name_applied_ids == {
         "fieldA": {"processing_item_1", "processing_item_2"},
@@ -613,10 +579,7 @@ def test_processingpipeline_field_processing_item_tracking():
     }
     assert pipeline.field_was_processed_by("fieldF", "processing_item_3") == True
     assert pipeline.field_was_processed_by("fieldF", "processing_item_2") == False
-    assert (
-        pipeline.field_was_processed_by("nonexistingfield", "processing_item_2")
-        == False
-    )
+    assert pipeline.field_was_processed_by("nonexistingfield", "processing_item_2") == False
     assert pipeline.field_was_processed_by(None, "processing_item_3") == False
 
 

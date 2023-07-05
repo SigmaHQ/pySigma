@@ -114,8 +114,7 @@ def rules_with_id_collision():
 def test_validator_identifier_existence(rule_without_id):
     validator = IdentifierExistenceValidator()
     assert (
-        validator.validate(rule_without_id)
-        == [IdentifierExistenceIssue([rule_without_id])]
+        validator.validate(rule_without_id) == [IdentifierExistenceIssue([rule_without_id])]
         and validator.finalize() == []
     )
 
@@ -292,9 +291,7 @@ def test_validator_double_wildcard():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [
-        DoubleWildcardIssue([rule], SigmaString("te**st"))
-    ]
+    assert validator.validate(rule) == [DoubleWildcardIssue([rule], SigmaString("te**st"))]
 
 
 def test_validator_double_wildcard_valid():
@@ -348,9 +345,7 @@ def test_validator_control_characters():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [
-        ControlCharacterIssue([rule], SigmaString("\temp"))
-    ]
+    assert validator.validate(rule) == [ControlCharacterIssue([rule], SigmaString("\temp"))]
 
 
 def test_validator_wildcards_instead_of_contains():
@@ -492,9 +487,7 @@ def test_validator_all_without_contains():
     assert validator.validate(rule) == [
         AllWithoutContainsModifierIssue(
             [rule],
-            SigmaDetectionItem(
-                "field", [SigmaAllModifier], ["value1", "value2", "value3"]
-            ),
+            SigmaDetectionItem("field", [SigmaAllModifier], ["value1", "value2", "value3"]),
         )
     ]
 
@@ -744,9 +737,7 @@ def test_validator_duplicate_tags():
         - attack.s0005
     """
     )
-    assert validator.validate(rule) == [
-        DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001"))
-    ]
+    assert validator.validate(rule) == [DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001"))]
 
 
 def test_validator_sysmon_insteadof_generic_logsource():

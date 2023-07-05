@@ -36,9 +36,7 @@ class Base64OffsetWithoutContainsModifierIssue(SigmaValidationIssue):
 @dataclass
 class ModifierAppliedMultipleIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Modifiers shouldn't be applied multiple times"
-    severity: ClassVar[
-        SigmaValidationIssueSeverity
-    ] = SigmaValidationIssueSeverity.MEDIUM
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     detection_item: SigmaDetectionItem
     modifiers: Set[Type[SigmaModifier]]
 
@@ -64,9 +62,7 @@ class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
             SigmaBase64OffsetModifier in detection_item.modifiers
             and SigmaContainsModifier not in detection_item.modifiers
         ):
-            issues.append(
-                Base64OffsetWithoutContainsModifierIssue([self.rule], detection_item)
-            )
+            issues.append(Base64OffsetWithoutContainsModifierIssue([self.rule], detection_item))
 
         # Check for multiple appliance of modifiers
         mod_count = Counter(detection_item.modifiers)
@@ -77,9 +73,7 @@ class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
         }
         if multiple_modifiers:
             issues.append(
-                ModifierAppliedMultipleIssue(
-                    [self.rule], detection_item, multiple_modifiers
-                )
+                ModifierAppliedMultipleIssue([self.rule], detection_item, multiple_modifiers)
             )
 
         return issues

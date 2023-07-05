@@ -79,9 +79,7 @@ class ConditionItem(ParentChainMixin, ABC):
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
-    def from_parsed(
-        cls, s: str, l: int, t: Union[ParseResults, list]
-    ) -> "ConditionItem":
+    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list]) -> "ConditionItem":
         """Create condition object from parse result"""
         if cls.arg_count == 1:
             if cls.token_list:
@@ -185,9 +183,7 @@ class ConditionSelector(ConditionItem):
             self.cond_class = ConditionAND
         self.pattern = self.args[1]
 
-    def resolve_referenced_detections(
-        self, detections: "sigma.rule.SigmaDetections"
-    ) -> List[str]:
+    def resolve_referenced_detections(self, detections: "sigma.rule.SigmaDetections") -> List[str]:
         """
         Resolve all detection identifiers referenced by the selector.
         """

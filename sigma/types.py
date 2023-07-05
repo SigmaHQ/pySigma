@@ -119,9 +119,7 @@ class SigmaString(SigmaType):
 
         r = list()
         acc = ""  # string accumulation until special character appears
-        escaped = (
-            False  # escape mode flag: characters in this mode are always accumulated
-        )
+        escaped = False  # escape mode flag: characters in this mode are always accumulated
         for c in s:
             if escaped:  # escaping mode?
                 if (
@@ -131,9 +129,7 @@ class SigmaString(SigmaType):
                 else:  # accumulate escaping and current character (this allows to use plain backslashes in values)
                     acc += escape_char + c
                 escaped = False
-            elif (
-                c == escape_char
-            ):  # escaping character? enable escaped mode for next character
+            elif c == escape_char:  # escaping character? enable escaped mode for next character
                 escaped = True
             else:  # "normal" string parsing
                 if c in char_mapping:  # character is special character?
@@ -141,9 +137,7 @@ class SigmaString(SigmaType):
                         r.append(
                             acc
                         )  # append accumulated string to parsed result if there was something
-                    r.append(
-                        char_mapping[c]
-                    )  # append special character to parsed result
+                    r.append(char_mapping[c])  # append special character to parsed result
                     acc = ""  # accumulation reset
                 else:  # characters without special meaning aren't accumulated
                     acc += c
@@ -231,9 +225,7 @@ class SigmaString(SigmaType):
 
             i += 1
 
-        if (
-            len(result) == 0
-        ):  # Special case: start begins after string - return empty string
+        if len(result) == 0:  # Special case: start begins after string - return empty string
             return SigmaString("")
         else:  # Return calculated result
             s = SigmaString()
@@ -249,9 +241,7 @@ class SigmaString(SigmaType):
         for part in self.s:  # iterate over all parts and...
             if isinstance(part, str):  # ...search in strings...
                 lastpos = 0
-                for m in re.finditer(
-                    "(?<!\\\\)%(?P<name>\\w+)%", part
-                ):  # ...for placeholders
+                for m in re.finditer("(?<!\\\\)%(?P<name>\\w+)%", part):  # ...for placeholders
                     s = part[lastpos : m.start()].replace("\\%", "%")
                     if s != "":
                         res.append(
@@ -272,9 +262,7 @@ class SigmaString(SigmaType):
 
         return self
 
-    def replace_with_placeholder(
-        self, regex: Pattern, placeholder_name: str
-    ) -> "SigmaString":
+    def replace_with_placeholder(self, regex: Pattern, placeholder_name: str) -> "SigmaString":
         """
         Replace all occurrences of string part matching regular expression with placeholder.
 
@@ -330,9 +318,7 @@ class SigmaString(SigmaType):
         self.s = tuple(res)
         return self
 
-    def __add__(
-        self, other: Union["SigmaString", str, SpecialChars, Placeholder]
-    ) -> "SigmaString":
+    def __add__(self, other: Union["SigmaString", str, SpecialChars, Placeholder]) -> "SigmaString":
         s = self.__class__()
         if isinstance(other, self.__class__):
             s.s = self.s + other.s
@@ -361,9 +347,7 @@ class SigmaString(SigmaType):
             )
 
     def __str__(self) -> str:
-        return "".join(
-            s if isinstance(s, str) else special_char_mapping[s] for s in self.s
-        )
+        return "".join(s if isinstance(s, str) else special_char_mapping[s] for s in self.s)
 
     def __repr__(self) -> str:
         return str(self.s)
@@ -436,9 +420,7 @@ class SigmaString(SigmaType):
 
     def replace_placeholders(
         self,
-        callback: Callable[
-            [Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]
-        ],
+        callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]],
     ) -> List["SigmaString"]:
         """
         Iterate over all placeholders and call the callback for each one. The callback is called with the placeholder instance
@@ -458,9 +440,7 @@ class SigmaString(SigmaType):
 
         s = self.s
         for i in range(len(s)):
-            if isinstance(
-                s[i], Placeholder
-            ):  # Placeholder instance at index, do replacement
+            if isinstance(s[i], Placeholder):  # Placeholder instance at index, do replacement
                 prefix = SigmaString()
                 prefix.s = s[:i]
                 placeholder = s[i]
@@ -504,9 +484,7 @@ class SigmaString(SigmaType):
         of these characters in a string will raise a SigmaValueError.
         """
         s = ""
-        escaped_chars = frozenset(
-            (wildcard_multi or "") + (wildcard_single or "") + add_escaped
-        )
+        escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
 
         for c in self:
             if isinstance(c, str):  # c is plain character
@@ -648,16 +626,12 @@ class SigmaRegularExpression(SigmaType):
         pos = [  # determine positions of matches in regular expression
             m.start() for m in re.finditer(r, self.regexp)
         ]
-        ranges = zip(
-            [None, *pos], [*pos, None]
-        )  # string chunk ranges with escapes in between
+        ranges = zip([None, *pos], [*pos, None])  # string chunk ranges with escapes in between
         ranges = list(ranges)
 
         if flag_prefix and self.flags:
             prefix = (
-                "(?"
-                + "".join(sorted((self.sigma_to_re_flag[flag] for flag in self.flags)))
-                + ")"
+                "(?" + "".join(sorted((self.sigma_to_re_flag[flag] for flag in self.flags))) + ")"
             )
         else:
             prefix = ""
@@ -678,9 +652,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         try:
             self.network = ip_network(self.cidr)
         except ValueError as e:
-            raise SigmaTypeError(
-                "Invalid CIDR expression: " + str(e), source=self.source
-            )
+            raise SigmaTypeError("Invalid CIDR expression: " + str(e), source=self.source)
 
     def expand(
         self,
@@ -713,9 +685,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                 if wildcard_group == 0:  # Not all groups are static, add wildcard
                     patterns.append(wildcard)
                 elif wildcard_group < 4:  # Not all groups are static, add wildcard
-                    patterns.append(
-                        ".".join(subnet_groups[:wildcard_group]) + "." + wildcard
-                    )
+                    patterns.append(".".join(subnet_groups[:wildcard_group]) + "." + wildcard)
                 else:  # /32 - no wildcard is set
                     patterns.append(
                         str(subnet.network_address)
@@ -792,9 +762,7 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
         if not isinstance(self.expr, str):
             raise SigmaTypeError("SigmaQueryExpression expression must be a string")
         if not isinstance(self.id, str):
-            raise SigmaTypeError(
-                "SigmaQueryExpression placeholder identifier must be a string"
-            )
+            raise SigmaTypeError("SigmaQueryExpression placeholder identifier must be a string")
 
     def __str__(self):
         return self.expr

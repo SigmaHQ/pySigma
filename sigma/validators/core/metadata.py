@@ -48,7 +48,5 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
 
     def finalize(self) -> List[SigmaValidationIssue]:
         return [
-            IdentifierCollisionIssue(rules, id)
-            for id, rules in self.ids.items()
-            if len(rules) > 1
+            IdentifierCollisionIssue(rules, id) for id, rules in self.ids.items() if len(rules) > 1
         ]

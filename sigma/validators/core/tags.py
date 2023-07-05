@@ -19,9 +19,7 @@ from sigma.data.mitre_attack import (
 @dataclass
 class InvalidATTACKTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid MITRE ATT&CK tagging"
-    severity: ClassVar[
-        SigmaValidationIssueSeverity
-    ] = SigmaValidationIssueSeverity.MEDIUM
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 
 
@@ -30,14 +28,9 @@ class ATTACKTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {
-                tactic.lower().replace("-", "_")
-                for tactic in mitre_attack_tactics.values()
-            }
+            {tactic.lower().replace("-", "_") for tactic in mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
-            .union(
-                {intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets}
-            )
+            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets})
             .union({software.lower() for software in mitre_attack_software})
         )
 
@@ -50,9 +43,7 @@ class ATTACKTagValidator(SigmaTagValidator):
 @dataclass
 class InvalidTLPTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid TLP tagging"
-    severity: ClassVar[
-        SigmaValidationIssueSeverity
-    ] = SigmaValidationIssueSeverity.MEDIUM
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 
 
@@ -91,17 +82,13 @@ class TLPv2TagValidator(TLPTagValidatorBase):
 class TLPTagValidator(TLPTagValidatorBase):
     """Validation of TLP tags from all versions of the TLP standard."""
 
-    allowed_tags: Set[str] = TLPv1TagValidator.allowed_tags.union(
-        TLPv2TagValidator.allowed_tags
-    )
+    allowed_tags: Set[str] = TLPv1TagValidator.allowed_tags.union(TLPv2TagValidator.allowed_tags)
 
 
 @dataclass
 class DuplicateTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "The same tag appears mutliple times"
-    severity: ClassVar[
-        SigmaValidationIssueSeverity
-    ] = SigmaValidationIssueSeverity.MEDIUM
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 
 
@@ -110,6 +97,4 @@ class DuplicateTagValidator(SigmaRuleValidator):
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         tags = Counter(rule.tags)
-        return [
-            DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1
-        ]
+        return [DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1]

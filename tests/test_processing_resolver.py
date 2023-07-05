@@ -79,9 +79,7 @@ def test_resolve_callable():
 def test_resolve_failed_not_found(
     processing_pipeline_resolver: ProcessingPipelineResolver,
 ):
-    with pytest.raises(
-        SigmaPipelineNotFoundError, match="pipeline.*notexisting.*not found"
-    ):
+    with pytest.raises(SigmaPipelineNotFoundError, match="pipeline.*notexisting.*not found"):
         processing_pipeline_resolver.resolve_pipeline("notexisting")
 
 

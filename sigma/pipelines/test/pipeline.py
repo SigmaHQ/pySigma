@@ -46,13 +46,9 @@ class YetAnotherTestPipeline(Pipeline):
             allowed_backends={"another"},
             items=[
                 ProcessingItem(
-                    transformation=AddConditionTransformation(
-                        conditions={"EventID": 1}
-                    ),
+                    transformation=AddConditionTransformation(conditions={"EventID": 1}),
                     rule_conditions=[
-                        LogsourceCondition(
-                            category="process_creation", product="windows"
-                        )
+                        LogsourceCondition(category="process_creation", product="windows")
                     ],
                 ),
             ],

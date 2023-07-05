@@ -158,9 +158,9 @@ def test_string_placeholders_replace():
     def callback(p):
         yield from ["A", SpecialChars.WILDCARD_MULTI]
 
-    assert SigmaString(
-        "test%var1%something%var2%end"
-    ).insert_placeholders().replace_placeholders(callback) == [
+    assert SigmaString("test%var1%something%var2%end").insert_placeholders().replace_placeholders(
+        callback
+    ) == [
         SigmaString("testAsomethingAend"),
         SigmaString("testAsomething*end"),
         SigmaString("test*somethingAend"),
@@ -169,9 +169,11 @@ def test_string_placeholders_replace():
 
 
 def test_string_placeholders_escape():
-    assert SigmaString(
-        "\\%test1\\%test2\\%%var%\\%test3\\%"
-    ).insert_placeholders().s == ("%test1%test2%", Placeholder("var"), "%test3%")
+    assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == (
+        "%test1%test2%",
+        Placeholder("var"),
+        "%test3%",
+    )
 
 
 def test_string_contains_placeholders():
@@ -179,9 +181,7 @@ def test_string_contains_placeholders():
 
 
 def test_string_contains_placeholders_none():
-    assert (
-        SigmaString("test1test2").insert_placeholders().contains_placeholder() == False
-    )
+    assert SigmaString("test1test2").insert_placeholders().contains_placeholder() == False
 
 
 def test_string_contains_placeholders_included():
@@ -338,10 +338,7 @@ def test_strings_iter():
 
 
 def test_strings_convert():
-    assert (
-        SigmaString("foo?\\*bar*").convert(add_escaped="f", filter_chars="o")
-        == "\\f?\\*bar*"
-    )
+    assert SigmaString("foo?\\*bar*").convert(add_escaped="f", filter_chars="o") == "\\f?\\*bar*"
 
 
 def test_strings_convert_no_multiwildcard():
@@ -425,9 +422,7 @@ def test_string_index_slice_with_step(sigma_string):
 
 
 def test_cased_string(sigma_string):
-    assert SigmaCasedString.from_sigma_string(sigma_string) == SigmaCasedString(
-        "*Test*Str\\*ing*"
-    )
+    assert SigmaCasedString.from_sigma_string(sigma_string) == SigmaCasedString("*Test*Str\\*ing*")
 
 
 def test_number_int():
@@ -563,17 +558,11 @@ def test_conversion_none():
 
 
 def test_query_expression():
-    assert (
-        str(SigmaQueryExpression("test\\test*test?test[]", "id"))
-        == "test\\test*test?test[]"
-    )
+    assert str(SigmaQueryExpression("test\\test*test?test[]", "id")) == "test\\test*test?test[]"
 
 
 def test_query_expression_finalize():
-    assert (
-        SigmaQueryExpression("{field} in list({id})", "id").finalize("xxx")
-        == "xxx in list(id)"
-    )
+    assert SigmaQueryExpression("{field} in list({id})", "id").finalize("xxx") == "xxx in list(id)"
 
 
 def test_query_expression_finalize_nofield_error():
@@ -582,9 +571,7 @@ def test_query_expression_finalize_nofield_error():
 
 
 def test_query_expression_to_plain():
-    with pytest.raises(
-        SigmaValueError, match="can't be converted into a plain representation"
-    ):
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
         SigmaQueryExpression("test", "id").to_plain()
 
 
@@ -609,9 +596,7 @@ def test_cidr_ipv6():
 
 
 def test_cidr_to_plain():
-    with pytest.raises(
-        SigmaValueError, match="can't be converted into a plain representation"
-    ):
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
         SigmaCIDRExpression("192.168.1.0/24").to_plain()
 
 
@@ -668,9 +653,7 @@ def test_cidr_expand_ipv6_0():
 
 
 def test_cidr_expand_ipv6_56():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand(wildcard="*") == [
-        "1234:5678:0:ab*"
-    ]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand(wildcard="*") == ["1234:5678:0:ab*"]
 
 
 def test_cidr_expand_ipv6_58():
@@ -683,9 +666,7 @@ def test_cidr_expand_ipv6_58():
 
 
 def test_cidr_expand_ipv6_60():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand(wildcard="*") == [
-        "1234:5678:0:ab0*"
-    ]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand(wildcard="*") == ["1234:5678:0:ab0*"]
 
 
 def test_cidr_expand_ipv6_64():
@@ -704,9 +685,7 @@ def test_cidr_invalid():
 
 
 def test_compare_to_plain():
-    with pytest.raises(
-        SigmaValueError, match="can't be converted into a plain representation"
-    ):
+    with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
         SigmaCompareExpression(
             SigmaNumber(123), SigmaCompareExpression.CompareOperators.LTE
         ).to_plain()

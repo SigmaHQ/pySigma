@@ -20,9 +20,7 @@ from tests.test_processing_pipeline import TransformationAppend
 
 
 def test_autodiscover_backends():
-    plugins = InstalledSigmaPlugins.autodiscover(
-        include_pipelines=False, include_validators=False
-    )
+    plugins = InstalledSigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends={
             "TextQueryTestBackend": TextQueryTestBackend,
@@ -34,9 +32,7 @@ def test_autodiscover_backends():
 
 
 def test_autodiscover_pipelines():
-    plugins = InstalledSigmaPlugins.autodiscover(
-        include_backends=False, include_validators=False
-    )
+    plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends=dict(),
         pipelines={
@@ -49,9 +45,7 @@ def test_autodiscover_pipelines():
 
 
 def test_autodiscover_validators():
-    plugins = InstalledSigmaPlugins.autodiscover(
-        include_backends=False, include_pipelines=False
-    )
+    plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_pipelines=False)
     assert len(plugins.validators) > 10
 
 
@@ -143,12 +137,8 @@ def check_module(name: str) -> bool:
 
 def test_sigma_plugin_installation():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()
-    plugin = plugin_dir.get_plugin_by_uuid(
-        "4af37b53-f1ec-4567-8017-2fb9315397a1"
-    )  # Splunk backend
-    assert not check_module(
-        "sigma.backends.splunk"
-    )  # ensure it's not already installed
+    plugin = plugin_dir.get_plugin_by_uuid("4af37b53-f1ec-4567-8017-2fb9315397a1")  # Splunk backend
+    assert not check_module("sigma.backends.splunk")  # ensure it's not already installed
     plugin.install()
     assert check_module("sigma.backends.splunk")
     plugin.uninstall()
@@ -202,9 +192,7 @@ def test_sigma_plugin_directory_count(plugin_directory: SigmaPluginDirectory):
 
 def test_sigma_plugin_directory_get_by_uuid(plugin_directory: SigmaPluginDirectory):
     assert (
-        plugin_directory.get_plugin_by_uuid(
-            UUID("09b0cefd-f3d9-49d2-894b-2920e10a9f73")
-        ).id
+        plugin_directory.get_plugin_by_uuid(UUID("09b0cefd-f3d9-49d2-894b-2920e10a9f73")).id
         == "test_pipeline"
     )
 
@@ -232,9 +220,7 @@ def test_sigma_plugin_directory_get_by_id(plugin_directory: SigmaPluginDirectory
 def test_sigma_plugin_directory_get_by_id_not_found(
     plugin_directory: SigmaPluginDirectory,
 ):
-    with pytest.raises(
-        SigmaPluginNotFoundError, match="Plugin with identifier.*not found"
-    ):
+    with pytest.raises(SigmaPluginNotFoundError, match="Plugin with identifier.*not found"):
         plugin_directory.get_plugin_by_id("not_existing")
 
 
@@ -263,7 +249,4 @@ def test_sigma_plugin_directory_get_plugins_compatible(
 
     sigma_plugin = SigmaPlugin.from_dict(sigma_plugin_dict_incompatible)
     plugin_directory.register_plugin(sigma_plugin)
-    assert (
-        plugin_directory.get_plugins(compatible_only=True)
-        < plugin_directory.get_plugins()
-    )
+    assert plugin_directory.get_plugins(compatible_only=True) < plugin_directory.get_plugins()

@@ -122,9 +122,7 @@ class InstalledSigmaPlugins:
                             possible_obj = submodules[obj_name]
 
                             # OR'd condition ensures backwards compatibility with older plugins
-                            if is_pipeline(possible_obj) or inspect.isfunction(
-                                possible_obj
-                            ):
+                            if is_pipeline(possible_obj) or inspect.isfunction(possible_obj):
                                 if inspect.isclass(possible_obj) and issubclass(
                                     possible_obj, Pipeline
                                 ):
@@ -136,8 +134,7 @@ class InstalledSigmaPlugins:
                             if (
                                 inspect.isclass(submodules[cls_name])
                                 and issubclass(submodules[cls_name], SigmaRuleValidator)
-                                and submodules[cls_name].__module__
-                                != "sigma.validators.base"
+                                and submodules[cls_name].__module__ != "sigma.validators.base"
                             ):
                                 result[cls_name] = submodules[cls_name]
                     elif directory_name == "backends":
@@ -164,9 +161,7 @@ class InstalledSigmaPlugins:
         """Automatically discovers backends, pipelines and validators in their corresponding module
         namespaces and return a InstalledSigmaPlugins class containing all identified classes and generators.
         """
-        backends = cls._discover_module_directories(
-            sigma.backends, "backends", include_backends
-        )
+        backends = cls._discover_module_directories(sigma.backends, "backends", include_backends)
         pipelines = cls._discover_module_directories(
             sigma.pipelines, "pipelines", include_pipelines
         )
@@ -266,9 +261,7 @@ class SigmaPlugin:
 
     def uninstall(self):
         """Uninstall plugin with pip."""
-        subprocess.check_call(
-            [sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package]
-        )
+        subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
 
 
 @dataclass

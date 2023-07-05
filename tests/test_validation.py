@@ -21,13 +21,9 @@ def validators():
     return InstalledSigmaPlugins.autodiscover().validators
 
 
-def test_sigmavalidator_validate_rules(
-    rule_with_id, rule_without_id, rules_with_id_collision
-):
+def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with_id_collision):
     rules = SigmaCollection([rule_with_id, rule_without_id, *rules_with_id_collision])
-    validator = SigmaValidator(
-        {IdentifierExistenceValidator, IdentifierUniquenessValidator}
-    )
+    validator = SigmaValidator({IdentifierExistenceValidator, IdentifierUniquenessValidator})
     issues = validator.validate_rules(rules)
     assert issues == [
         IdentifierExistenceIssue([rule_without_id]),
@@ -37,9 +33,7 @@ def test_sigmavalidator_validate_rules(
     ]
 
 
-def test_sigmavalidator_exclusions(
-    rule_with_id, rule_without_id, rules_with_id_collision
-):
+def test_sigmavalidator_exclusions(rule_with_id, rule_without_id, rules_with_id_collision):
     rules = SigmaCollection([rule_with_id, rule_without_id, *rules_with_id_collision])
     exclusions = {
         UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37"): {IdentifierUniquenessValidator},
@@ -127,9 +121,7 @@ def test_sigmavalidator_fromdict_explicit_validator(validators):
 
 
 def test_sigmavalidator_fromdict_remove_nonexisting(validators):
-    with pytest.raises(
-        SigmaConfigurationError, match="Attempting to remove.*identifier_existence"
-    ):
+    with pytest.raises(SigmaConfigurationError, match="Attempting to remove.*identifier_existence"):
         SigmaValidator.from_dict(
             {
                 "validators": [
@@ -142,9 +134,7 @@ def test_sigmavalidator_fromdict_remove_nonexisting(validators):
 
 
 def test_sigmavalidator_fromdict_unknown_validator_in_validators(validators):
-    with pytest.raises(
-        SigmaConfigurationError, match="Unknown validator 'non_existing'"
-    ):
+    with pytest.raises(SigmaConfigurationError, match="Unknown validator 'non_existing'"):
         SigmaValidator.from_dict(
             {
                 "validators": [
@@ -156,9 +146,7 @@ def test_sigmavalidator_fromdict_unknown_validator_in_validators(validators):
 
 
 def test_sigmavalidator_fromdict_unknown_validator_in_exclusions(validators):
-    with pytest.raises(
-        SigmaConfigurationError, match="Unknown validator 'non_existing'"
-    ):
+    with pytest.raises(SigmaConfigurationError, match="Unknown validator 'non_existing'"):
         SigmaValidator.from_dict(
             {
                 "validators": [

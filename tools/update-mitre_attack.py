@@ -40,9 +40,7 @@ software = dict()
 for stix_file in args.stix:
     stix = json.load(stix_file)
     for obj in stix["objects"]:  # iterate over all STIX objects
-        if not (
-            obj.get("revoked") or obj.get("x_mitre_deprecated")
-        ):  # ignore deprecated items
+        if not (obj.get("revoked") or obj.get("x_mitre_deprecated")):  # ignore deprecated items
             if (obj_type := obj.get("type")) is not None:
                 if obj_type == "x-mitre-tactic":  # Tactic
                     tactic_id = get_attack_id(obj["external_references"])
@@ -73,13 +71,11 @@ print(
 print("from typing import Dict, List", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)
 print(
-    "mitre_attack_tactics: Dict[str, str] = "
-    + pformat(tactics, indent=4, sort_dicts=True),
+    "mitre_attack_tactics: Dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
-    "mitre_attack_techniques: Dict[str, str] = "
-    + pformat(techniques, indent=4, sort_dicts=True),
+    "mitre_attack_techniques: Dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
@@ -93,7 +89,6 @@ print(
     file=args.output,
 )
 print(
-    "mitre_attack_software: Dict[str, str] = "
-    + pformat(software, indent=4, sort_dicts=True),
+    "mitre_attack_software: Dict[str, str] = " + pformat(software, indent=4, sort_dicts=True),
     file=args.output,
 )

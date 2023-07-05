@@ -30,9 +30,7 @@ class SigmaValidator:
         self.exclusions = defaultdict(set, exclusions)
 
     @classmethod
-    def from_dict(
-        cls, d: Dict, validators: Dict[str, SigmaRuleValidator]
-    ) -> "SigmaValidator":
+    def from_dict(cls, d: Dict, validators: Dict[str, SigmaRuleValidator]) -> "SigmaValidator":
         """
         Instantiate SigmaValidator from dict definition. The dict should have the following
         elements:
@@ -78,9 +76,7 @@ class SigmaValidator:
                         exclusion_name
                     ]  # main purpose of the generators: resolve identifiers into classes
                     for exclusion_name in (
-                        rule_exclusions
-                        if isinstance(rule_exclusions, list)
-                        else [rule_exclusions]
+                        rule_exclusions if isinstance(rule_exclusions, list) else [rule_exclusions]
                     )
                 }
                 for rule_id, rule_exclusions in d.get("exclusions", dict()).items()
@@ -112,9 +108,7 @@ class SigmaValidator:
         issues: List[SigmaValidationIssue] = []
         exclusions = self.exclusions[rule.id]
         for validator in self.validators:
-            if (
-                not validator.__class__ in exclusions
-            ):  # Skip if validator is excluded for this rule
+            if not validator.__class__ in exclusions:  # Skip if validator is excluded for this rule
                 issues.extend(validator.validate(rule))
         return issues
 
@@ -125,9 +119,7 @@ class SigmaValidator:
         :return: a list of all issues emitted by rule validators on finalization.
         :rtype: List[SigmaValidationIssue]
         """
-        return [
-            issue for validator in self.validators for issue in validator.finalize()
-        ]
+        return [issue for validator in self.validators for issue in validator.finalize()]
 
     def validate_rules(self, rules: Iterator[SigmaRule]) -> List[SigmaValidationIssue]:
         """
@@ -139,6 +131,4 @@ class SigmaValidator:
         :return: A list of SigmaValidationIssue objects describing potential issues.
         :rtype: List[SigmaValidationIssue]
         """
-        return [
-            issue for rule in rules for issue in self.validate_rule(rule)
-        ] + self.finalize()
+        return [issue for rule in rules for issue in self.validate_rule(rule)] + self.finalize()

@@ -14,9 +14,9 @@ class ProcessingPipelineResolver:
     It takes care of sorting by priority and resolution of filenames as well as pipeline name identifiers.
     """
 
-    pipelines: Dict[
-        str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]
-    ] = field(default_factory=dict)
+    pipelines: Dict[str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]] = field(
+        default_factory=dict
+    )
 
     def add_pipeline_class(self, pipeline: ProcessingPipeline) -> None:
         """Add named processing pipeline object to resolver. This pipeline can be resolved by the name."""
@@ -35,9 +35,7 @@ class ProcessingPipelineResolver:
         """List identifier/processing pipeline tuples."""
         return ((id, self.resolve_pipeline(id)) for id in self.pipelines.keys())
 
-    def resolve_pipeline(
-        self, spec: str, target: Optional[str] = None
-    ) -> ProcessingPipeline:
+    def resolve_pipeline(self, spec: str, target: Optional[str] = None) -> ProcessingPipeline:
         """
         Resolve single processing pipeline. It first tries to find a pipeline with this identifier
         in the registered pipelines. If this fails, *spec* is treated as file name. If this fails

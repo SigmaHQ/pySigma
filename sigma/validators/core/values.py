@@ -74,9 +74,7 @@ class ControlCharacterValidator(SigmaStringValueValidator):
     """
 
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
-        if any(
-            (ord(c) < 31 for s in value.s for c in (s if isinstance(s, str) else ""))
-        ):
+        if any((ord(c) < 31 for s in value.s for c in (s if isinstance(s, str) else ""))):
             return [ControlCharacterIssue([self.rule], value)]
         else:
             return []
@@ -129,9 +127,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             )
             and SigmaContainsModifier not in detection_item.modifiers
         ):
-            return [
-                WildcardsInsteadOfContainsModifierIssue([self.rule], detection_item)
-            ]
+            return [WildcardsInsteadOfContainsModifierIssue([self.rule], detection_item)]
         elif (
             all(
                 (

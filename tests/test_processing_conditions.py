@@ -59,9 +59,7 @@ def test_logsource_match(dummy_processing_pipeline, sigma_rule):
 
 
 def test_logsource_no_match(dummy_processing_pipeline, sigma_rule):
-    assert not LogsourceCondition(
-        category="test_category", product="other_product"
-    ).match(
+    assert not LogsourceCondition(category="test_category", product="other_product").match(
         dummy_processing_pipeline,
         sigma_rule,
     )
@@ -113,9 +111,7 @@ def test_include_field_condition_match(dummy_processing_pipeline, detection_item
     )
 
 
-def test_include_field_condition_match_nofield(
-    dummy_processing_pipeline, detection_item_nofield
-):
+def test_include_field_condition_match_nofield(dummy_processing_pipeline, detection_item_nofield):
     assert (
         IncludeFieldCondition(["field", "otherfield"]).match_field_name(
             dummy_processing_pipeline, None
@@ -278,9 +274,7 @@ def test_detection_item_processing_item_applied(
 def test_detection_item_processing_item_not_applied(
     dummy_processing_pipeline, processing_item, detection_item: SigmaDetectionItem
 ):
-    assert not DetectionItemProcessingItemAppliedCondition(
-        processing_item_id="test"
-    ).match(
+    assert not DetectionItemProcessingItemAppliedCondition(processing_item_id="test").match(
         dummy_processing_pipeline,
         detection_item,
     )
@@ -289,9 +283,7 @@ def test_detection_item_processing_item_not_applied(
 @pytest.fixture
 def pipeline_field_tracking():
     pipeline = ProcessingPipeline()
-    pipeline.track_field_processing_items(
-        "field1", ["fieldA", "fieldB"], "processing_item"
-    )
+    pipeline.track_field_processing_items("field1", ["fieldA", "fieldB"], "processing_item")
     return pipeline
 
 

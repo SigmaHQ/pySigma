@@ -163,9 +163,9 @@ def test_field_mapping_from_dict():
             "multi_mapping_2",
         ],
     }
-    assert FieldMappingTransformation.from_dict(
-        {"mapping": mapping}
-    ) == FieldMappingTransformation(mapping)
+    assert FieldMappingTransformation.from_dict({"mapping": mapping}) == FieldMappingTransformation(
+        mapping
+    )
 
 
 @pytest.fixture
@@ -217,9 +217,7 @@ def test_field_mapping(field_mapping_transformation_sigma_rule):
 
 def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
     transformation, sigma_rule = field_mapping_transformation_sigma_rule
-    detection_items = (
-        sigma_rule.detection.detections["test"].detection_items[0].detection_items
-    )
+    detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
     updated_detection_items = {
         detection_item.field: detection_item.was_processed_by("test")
         for detection_item in detection_items
@@ -289,12 +287,8 @@ def test_field_prefix_mapping(dummy_pipeline):
                     SigmaDetectionItem("mapped1.field", [], [SigmaString("value1")]),
                     SigmaDetection(
                         [
-                            SigmaDetectionItem(
-                                "mapped2a.field", [], [SigmaString("value2")]
-                            ),
-                            SigmaDetectionItem(
-                                "mapped2b.field", [], [SigmaString("value2")]
-                            ),
+                            SigmaDetectionItem("mapped2a.field", [], [SigmaString("value2")]),
+                            SigmaDetectionItem("mapped2b.field", [], [SigmaString("value2")]),
                         ],
                         item_linking=ConditionOR,
                     ),
@@ -345,9 +339,7 @@ def test_drop_detection_item_transformation_with_set_state(sigma_rule: SigmaRule
             ProcessingItem(
                 identifier="test",
                 transformation=SetStateTransformation("state", "test"),
-                rule_conditions=[
-                    RuleContainsDetectionItemCondition("field2", "value2")
-                ],
+                rule_conditions=[RuleContainsDetectionItemCondition("field2", "value2")],
             ),
             ProcessingItem(
                 transformation=DropDetectionItemTransformation(),
@@ -392,14 +384,10 @@ def test_drop_detection_item_transformation_all(sigma_rule: SigmaRule, dummy_pip
     transformation = DropDetectionItemTransformation()
     processing_item = ProcessingItem(
         transformation,
-        field_name_conditions=[
-            IncludeFieldCondition(fields=["field1", "field2", "field3"])
-        ],
+        field_name_conditions=[IncludeFieldCondition(fields=["field1", "field2", "field3"])],
     )
     transformation.apply(dummy_pipeline, sigma_rule)
-    assert (
-        sigma_rule.detection.detections["test"].detection_items[0].detection_items == []
-    )
+    assert sigma_rule.detection.detections["test"].detection_items[0].detection_items == []
 
 
 @pytest.fixture
@@ -411,9 +399,7 @@ def add_fieldname_suffix_transformation():
     )
 
 
-def test_add_fieldname_suffix(
-    dummy_pipeline, sigma_rule, add_fieldname_suffix_transformation
-):
+def test_add_fieldname_suffix(dummy_pipeline, sigma_rule, add_fieldname_suffix_transformation):
     add_fieldname_suffix_transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
@@ -463,21 +449,19 @@ def test_add_fieldname_suffix_tracking(
         identifier="test",
     )
     processing_item.apply(dummy_pipeline, sigma_rule)
-    detection_items = (
-        sigma_rule.detection.detections["test"].detection_items[0].detection_items
-    )
+    detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
     assert detection_items == [
         SigmaDetectionItem("field1.test", [], [SigmaString("value1")]),
         SigmaDetectionItem("field2", [], [SigmaString("value2")]),
         SigmaDetectionItem("field3", [], [SigmaString("value3")]),
     ]
-    assert [
-        detection_item.was_processed_by("test") for detection_item in detection_items
-    ] == [True, False, False]
+    assert [detection_item.was_processed_by("test") for detection_item in detection_items] == [
+        True,
+        False,
+        False,
+    ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {
-        "field1": {"field1.test"}
-    }
+    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"field1.test"}}
 
 
 @pytest.fixture
@@ -489,9 +473,7 @@ def add_fieldname_prefix_transformation():
     )
 
 
-def test_add_fieldname_prefix(
-    dummy_pipeline, sigma_rule, add_fieldname_prefix_transformation
-):
+def test_add_fieldname_prefix(dummy_pipeline, sigma_rule, add_fieldname_prefix_transformation):
     add_fieldname_prefix_transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
@@ -541,21 +523,19 @@ def test_add_fieldname_prefix_tracking(
         identifier="test",
     )
     processing_item.apply(dummy_pipeline, sigma_rule)
-    detection_items = (
-        sigma_rule.detection.detections["test"].detection_items[0].detection_items
-    )
+    detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
     assert detection_items == [
         SigmaDetectionItem("test.field1", [], [SigmaString("value1")]),
         SigmaDetectionItem("field2", [], [SigmaString("value2")]),
         SigmaDetectionItem("field3", [], [SigmaString("value3")]),
     ]
-    assert [
-        detection_item.was_processed_by("test") for detection_item in detection_items
-    ] == [True, False, False]
+    assert [detection_item.was_processed_by("test") for detection_item in detection_items] == [
+        True,
+        False,
+        False,
+    ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {
-        "field1": {"test.field1"}
-    }
+    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"test.field1"}}
 
 
 def test_fields_list_mapping_with_detection_item_condition(sigma_rule: SigmaRule):
@@ -617,14 +597,10 @@ def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders: SigmaRul
 
 def test_wildcard_placeholders_include_and_exclude_error():
     with pytest.raises(SigmaConfigurationError, match="exclusively"):
-        WildcardPlaceholderTransformation(
-            include=["included_field"], exclude=["excluded_field"]
-        )
+        WildcardPlaceholderTransformation(include=["included_field"], exclude=["excluded_field"])
 
 
-def test_wildcard_placeholders_included(
-    dummy_pipeline, sigma_rule_placeholders: SigmaRule
-):
+def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders: SigmaRule):
     transformation = WildcardPlaceholderTransformation(include=["var1"])
     transformation.set_processing_item(
         ProcessingItem(
@@ -634,9 +610,7 @@ def test_wildcard_placeholders_included(
     )
     transformation.apply(dummy_pipeline, sigma_rule_placeholders)
     detection_items = (
-        sigma_rule_placeholders.detection.detections["test"]
-        .detection_items[0]
-        .detection_items
+        sigma_rule_placeholders.detection.detections["test"].detection_items[0].detection_items
     )
     assert (
         detection_items[0].value[0] == SigmaString("value*test")
@@ -659,9 +633,7 @@ def test_wildcard_placeholders_included(
     )
 
 
-def test_wildcard_placeholders_excluded(
-    dummy_pipeline, sigma_rule_placeholders: SigmaRule
-):
+def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders: SigmaRule):
     transformation = WildcardPlaceholderTransformation(exclude=["var2", "var3"])
     transformation.set_processing_item(
         ProcessingItem(
@@ -671,9 +643,7 @@ def test_wildcard_placeholders_excluded(
     )
     transformation.apply(dummy_pipeline, sigma_rule_placeholders)
     detection_items = (
-        sigma_rule_placeholders.detection.detections["test"]
-        .detection_items[0]
-        .detection_items
+        sigma_rule_placeholders.detection.detections["test"].detection_items[0].detection_items
     )
     assert (
         detection_items[0].value[0] == SigmaString("value*test")
@@ -696,9 +666,7 @@ def test_wildcard_placeholders_excluded(
     )
 
 
-def test_wildcard_placeholders_without_placeholders(
-    dummy_pipeline, sigma_rule: SigmaRule
-):
+def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = WildcardPlaceholderTransformation()
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
@@ -718,9 +686,7 @@ def test_valuelist_placeholders(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
     pipeline = ProcessingPipeline([], {"var1": ["val1", 123], "var2": "val3*"})
     transformation.apply(pipeline, sigma_rule_placeholders_simple)
-    assert sigma_rule_placeholders_simple.detection.detections[
-        "test"
-    ] == SigmaDetection(
+    assert sigma_rule_placeholders_simple.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
                 [
@@ -752,9 +718,7 @@ def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple: Sigma
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
 
 
-def test_queryexpr_placeholders(
-    dummy_pipeline, sigma_rule_placeholders_only: SigmaRule
-):
+def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only: SigmaRule):
     expr = "{field} lookup {id}"
     transformation = QueryExpressionPlaceholderTransformation(
         expression=expr, mapping={"var2": "placeholder2"}
@@ -788,9 +752,7 @@ def test_queryexpr_placeholders(
     )
 
 
-def test_queryexpr_placeholders_without_placeholders(
-    dummy_pipeline, sigma_rule: SigmaRule
-):
+def test_queryexpr_placeholders_without_placeholders(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = QueryExpressionPlaceholderTransformation(
         expression="{field} lookup {id}",
     )
@@ -808,9 +770,7 @@ def test_queryexpr_placeholders_without_placeholders(
     )
 
 
-def test_queryexpr_placeholders_mixed_string(
-    dummy_pipeline, sigma_rule_placeholders: SigmaRule
-):
+def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placeholders: SigmaRule):
     transformation = QueryExpressionPlaceholderTransformation(
         expression="{field} lookup {id}",
     )
@@ -844,9 +804,7 @@ def test_conditiontransformation_tracking_change(dummy_pipeline, sigma_rule: Sig
     ) and sigma_rule.was_processed_by("test")
 
 
-def test_conditiontransformation_tracking_nochange(
-    dummy_pipeline, sigma_rule: SigmaRule
-):
+def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = DummyConditionTransformation(False)
     transformation.set_processing_item(
         ProcessingItem(
@@ -887,16 +845,12 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
                 SigmaDetectionItem("newfield1", [], [SigmaString("test")]),
                 SigmaDetectionItem("newfield2", [], [SigmaNumber(123)]),
                 SigmaDetectionItem("newfield3", [], [SigmaString("$category")]),
-                SigmaDetectionItem(
-                    "listfield", [], [SigmaString("value1"), SigmaString("value2")]
-                ),
+                SigmaDetectionItem("listfield", [], [SigmaString("value1"), SigmaString("value2")]),
             ]
         )
         and all(  # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")
-            for detection_item in sigma_rule.detection.detections[
-                "additional"
-            ].detection_items
+            for detection_item in sigma_rule.detection.detections["additional"].detection_items
         )
         and sigma_rule.was_processed_by("test")
     )
@@ -927,16 +881,12 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
             [  # additional detection item referred by condition
                 SigmaDetectionItem("newfield1", [], [SigmaString("test")]),
                 SigmaDetectionItem("newfield2", [], [SigmaString("$something")]),
-                SigmaDetectionItem(
-                    "listfield", [], [SigmaString("test"), SigmaString("value")]
-                ),
+                SigmaDetectionItem("listfield", [], [SigmaString("test"), SigmaString("value")]),
             ]
         )
         and all(  # detection items are marked as processed by processing item
             detection_item.was_processed_by("test")
-            for detection_item in sigma_rule.detection.detections[
-                "additional"
-            ].detection_items
+            for detection_item in sigma_rule.detection.detections["additional"].detection_items
         )
         and sigma_rule.was_processed_by("test")
     )
@@ -1008,9 +958,7 @@ def test_replace_string_wildcard(dummy_pipeline):
 
 
 def test_replace_string_invalid():
-    with pytest.raises(
-        SigmaRegularExpressionError, match="Regular expression.*invalid"
-    ):
+    with pytest.raises(SigmaRegularExpressionError, match="Regular expression.*invalid"):
         ReplaceStringTransformation("*", "test")
 
 

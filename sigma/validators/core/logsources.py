@@ -10,9 +10,7 @@ from sigma.validators.base import (
 )
 from sigma.rule import SigmaLogSource
 
-specific_to_generic_logsource_mapping: Dict[
-    str, Tuple[SigmaLogSource, Dict[int, str]]
-] = {
+specific_to_generic_logsource_mapping: Dict[str, Tuple[SigmaLogSource, Dict[int, str]]] = {
     # "Sysmon": (SigmaLogSource(None, None, "sysmon"), {
     SigmaLogSource(None, "windows", "sysmon"): {
         1: "process_creation",
@@ -82,9 +80,7 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
                     rules=[self.rule],
                     logsource=self.logsource,
                     event_id=event_id.number,
-                    generic_logsource=SigmaLogSource(
-                        self.eventid_mappings[event_id.number]
-                    ),
+                    generic_logsource=SigmaLogSource(self.eventid_mappings[event_id.number]),
                 )
                 for event_id in detection_item.value
                 if isinstance(event_id, SigmaNumber)

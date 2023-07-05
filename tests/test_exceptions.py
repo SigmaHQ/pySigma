@@ -36,9 +36,7 @@ def test_sigmalocation_file(sigma_rule_location):
 
 def test_sigmalocation_file_with_line(sigma_rule_location_with_line):
     locstr = str(sigma_rule_location_with_line)
-    assert locstr == "/path/to/sigma_rule.yml:5" or locstr.endswith(
-        "\\path\\to\\sigma_rule.yml:5"
-    )
+    assert locstr == "/path/to/sigma_rule.yml:5" or locstr.endswith("\\path\\to\\sigma_rule.yml:5")
 
 
 def test_sigmalocation_file_with_line_and_char(sigma_rule_location_with_line_and_char):
@@ -49,9 +47,7 @@ def test_sigmalocation_file_with_line_and_char(sigma_rule_location_with_line_and
 
 
 def test_exception_with_location(sigma_rule_location_with_line_and_char):
-    errstr = str(
-        SigmaDetectionError("Test", source=sigma_rule_location_with_line_and_char)
-    )
+    errstr = str(SigmaDetectionError("Test", source=sigma_rule_location_with_line_and_char))
     assert errstr == "Test in /path/to/sigma_rule.yml:5:3" or re.match(
         "Test in \\w:\\\\path\\\\to\\\\sigma_rule.yml:5:3", errstr
     )

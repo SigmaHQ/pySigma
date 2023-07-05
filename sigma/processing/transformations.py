@@ -46,12 +46,12 @@ class Transformation(ABC):
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
         """Apply transformation on Sigma rule."""
-        self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = pipeline  # make pipeline accessible from all further options in class property
+        self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
+            pipeline  # make pipeline accessible from all further options in class property
+        )
         self.processing_item_applied(rule)
 
-    def set_processing_item(
-        self, processing_item: "sigma.processing.pipeline.ProcessingItem"
-    ):
+    def set_processing_item(self, processing_item: "sigma.processing.pipeline.ProcessingItem"):
         self.processing_item = processing_item
 
     def processing_item_applied(
@@ -87,16 +87,12 @@ class DetectionItemTransformation(Transformation):
 
     def apply_detection(self, detection: SigmaDetection):
         for i, detection_item in enumerate(detection.detection_items):
-            if isinstance(
-                detection_item, SigmaDetection
-            ):  # recurse into nested detection items
+            if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
                 self.apply_detection(detection_item)
             else:
                 if (
                     self.processing_item is None
-                    or self.processing_item.match_detection_item(
-                        self.pipeline, detection_item
-                    )
+                    or self.processing_item.match_detection_item(self.pipeline, detection_item)
                 ) and (r := self.apply_detection_item(detection_item)) is not None:
                     if isinstance(r, SigmaDetectionItem):
                         r.disable_conversion_to_plain()
@@ -132,9 +128,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         Evaluate field name conditions and perform transformation with apply_field_name() method if
         condition matches, else return original value.
         """
-        if self.processing_item is None or self.processing_item.match_field_name(
-            pipeline, field
-        ):
+        if self.processing_item is None or self.processing_item.match_field_name(pipeline, field):
             result = self.apply_field_name(field)
             if self.processing_item is not None:
                 pipeline.track_field_processing_items(
@@ -149,9 +143,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     ) -> None:
         """Apply field name transformations to Sigma rule field names listed in 'fields' attribute."""
         _apply_field_name = partial(self._apply_field_name, pipeline)
-        rule.fields = [
-            item for mapping in map(_apply_field_name, rule.fields) for item in mapping
-        ]
+        rule.fields = [item for mapping in map(_apply_field_name, rule.fields) for item in mapping]
         return super().apply(pipeline, rule)
 
     def apply_detection_item(
@@ -161,16 +153,13 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         new_values = []
         match = False
         for value in detection_item.value:
-            if (
-                self.processing_item is not None
-                and self.processing_item.match_field_in_value(self.pipeline, value)
+            if self.processing_item is not None and self.processing_item.match_field_in_value(
+                self.pipeline, value
             ):
                 new_values.extend(
                     (
                         SigmaFieldReference(mapped_field)
-                        for mapped_field in self._apply_field_name(
-                            self.pipeline, value.field
-                        )
+                        for mapped_field in self._apply_field_name(self.pipeline, value.field)
                     )
                 )
                 match = True
@@ -260,9 +249,7 @@ class ConditionTransformation(Transformation):
         for i, condition in enumerate(rule.detection.parsed_condition):
             condition_before = condition.condition
             self.apply_condition(condition)
-            if (
-                condition.condition != condition_before
-            ):  # Condition was changed by transformation,
+            if condition.condition != condition_before:  # Condition was changed by transformation,
                 self.processing_item_applied(
                     condition
                 )  # mark as processed by processing item containing this transformation
@@ -290,21 +277,15 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         field = detection_item.field
         mapping = self.get_mapping(field)
-        if mapping is not None and self.processing_item.match_field_name(
-            self.pipeline, field
-        ):
+        if mapping is not None and self.processing_item.match_field_name(self.pipeline, field):
             self.pipeline.field_mappings.add_mapping(field, mapping)
-            if isinstance(
-                mapping, str
-            ):  # 1:1 mapping, map field name of detection item directly
+            if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)
             else:
                 return SigmaDetection(
                     [
-                        dataclasses.replace(
-                            detection_item, field=field, auto_modifiers=False
-                        )
+                        dataclasses.replace(detection_item, field=field, auto_modifiers=False)
                         for field in mapping
                     ],
                     item_linking=ConditionOR,
@@ -425,9 +406,7 @@ class PlaceholderIncludeExcludeMixin:
 
 
 @dataclass
-class BasePlaceholderTransformation(
-    PlaceholderIncludeExcludeMixin, ValueTransformation
-):
+class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
     """
     Placeholder base transformation. The parameters include and exclude can contain variable names that
     are handled by this transformation. Unhandled placeholders are left as they are and must be handled by
@@ -494,9 +473,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
         try:
             values = self.pipeline.vars[p.name]
         except KeyError:
-            raise SigmaValueError(
-                f"Placeholder replacement variable '{ p.name }' doesn't exists."
-            )
+            raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
 
         if not isinstance(values, List):
             values = [values]
@@ -510,9 +487,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
 
 
 @dataclass
-class QueryExpressionPlaceholderTransformation(
-    PlaceholderIncludeExcludeMixin, ValueTransformation
-):
+class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
     """
     Replaces a placeholder with a plain query containing the placeholder or an identifier
     mapped from the placeholder name. The main purpose is the generation of arbitrary
@@ -532,14 +507,10 @@ class QueryExpressionPlaceholderTransformation(
         self, field: str, val: SigmaString
     ) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder():
-            if (
-                len(val.s) == 1
-            ):  # Sigma string must only contain placeholder, nothing else.
+            if len(val.s) == 1:  # Sigma string must only contain placeholder, nothing else.
                 p = val.s[0]
                 if self.is_handled_placeholder(p):
-                    return SigmaQueryExpression(
-                        self.expression, self.mapping.get(p.name) or p.name
-                    )
+                    return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)
             else:  # SigmaString contains placeholder as well as other parts
                 raise SigmaValueError(
                     f"Placeholder query expression transformation only allows placeholder-only strings."
@@ -564,9 +535,7 @@ class AddConditionTransformation(ConditionTransformation):
 
     def __post_init__(self):
         if self.name is None:  # generate random detection item name if none is given
-            self.name = "_cond_" + (
-                "".join(random.choices(string.ascii_lowercase, k=10))
-            )
+            self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
     def apply(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
@@ -594,9 +563,7 @@ class AddConditionTransformation(ConditionTransformation):
         else:
             conditions = self.conditions
 
-        rule.detection.detections[self.name] = SigmaDetection.from_definition(
-            conditions
-        )
+        rule.detection.detections[self.name] = SigmaDetection.from_definition(conditions)
         self.processing_item_applied(rule.detection.detections[self.name])
         super().apply(pipeline, rule)
 
@@ -653,9 +620,7 @@ class SetStateTransformation(Transformation):
     key: str
     val: Any
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule
-    ) -> None:
+    def apply(self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule) -> None:
         super().apply(pipeline, rule)
         pipeline.state[self.key] = self.val
 

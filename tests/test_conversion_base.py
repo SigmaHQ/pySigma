@@ -699,9 +699,7 @@ def test_convert_query_expr():
     pipeline = ProcessingPipeline(
         [
             ProcessingItem(
-                QueryExpressionPlaceholderTransformation(
-                    expression="{field} in list({id})"
-                )
+                QueryExpressionPlaceholderTransformation(expression="{field} in list({id})")
             )
         ]
     )
@@ -729,11 +727,7 @@ def test_convert_query_expr():
 
 def test_convert_query_expr_unbound():
     pipeline = ProcessingPipeline(
-        [
-            ProcessingItem(
-                QueryExpressionPlaceholderTransformation(expression="_ in list({id})")
-            )
-        ]
+        [ProcessingItem(QueryExpressionPlaceholderTransformation(expression="_ in list({id})"))]
     )
     backend = TextQueryTestBackend(pipeline)
     assert (
@@ -796,9 +790,7 @@ def test_convert_value_regex_flag_prefix(test_backend):
         """
             )
         )
-        == [
-            "mappedA=/(?ims)pat.*tern\\/foo\\bar/ and 'field A'=/(?ims)pat.*te\\\\rn\\/foo\\bar/"
-        ]
+        == ["mappedA=/(?ims)pat.*tern\\/foo\\bar/ and 'field A'=/(?ims)pat.*te\\\\rn\\/foo\\bar/"]
     )
 
 
@@ -823,9 +815,7 @@ def test_convert_value_regex_flag_explicit(test_backend):
         """
             )
         )
-        == [
-            "mappedA=/pat.*tern\\/foo\\bar/ims and 'field A'=/pat.*te\\\\rn\\/foo\\bar/ims"
-        ]
+        == ["mappedA=/pat.*tern\\/foo\\bar/ims and 'field A'=/pat.*te\\\\rn\\/foo\\bar/ims"]
     )
 
 
@@ -1039,9 +1029,7 @@ def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
         """
             )
         )
-        == [
-            "cidrmatch('mappedA', \"192.168.0.0/14\") and cidrmatch('field A', \"192.168.0.0/14\")"
-        ]
+        == ["cidrmatch('mappedA', \"192.168.0.0/14\") and cidrmatch('field A', \"192.168.0.0/14\")"]
     )
 
 
@@ -1789,9 +1777,7 @@ def test_convert_unbound_values(test_backend):
 
 
 def test_convert_invalid_unbound_bool(test_backend):
-    with pytest.raises(
-        SigmaValueError, match="Boolean values can't appear as standalone"
-    ):
+    with pytest.raises(SigmaValueError, match="Boolean values can't appear as standalone"):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
@@ -1992,9 +1978,7 @@ def test_convert_precedence(test_backend):
         """
             )
         )
-        == [
-            '(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")'
-        ]
+        == ['(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")']
     )
 
 
@@ -2077,9 +2061,7 @@ def test_convert_list_cidr_wildcard_none(test_backend):
         """
             )
         )
-        == [
-            "cidrmatch('mappedA', \"192.168.0.0/14\") or cidrmatch('mappedA', \"10.10.10.0/24\")"
-        ]
+        == ["cidrmatch('mappedA', \"192.168.0.0/14\") or cidrmatch('mappedA', \"10.10.10.0/24\")"]
     )
 
 
@@ -2209,38 +2191,40 @@ quote_escape_config = (
 quote_always_escape_quote_config = ("'", None, True, "\\", True, None)
 quote_only_config = ("'", re.compile("^.*\s"), False, None, False, None)
 escape_only_config = (None, None, True, "\\", False, re.compile("[\s]"))
-quoting_escaping_testcases = {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
-    "escape_quote_nothing": (quote_escape_config, "foo.bar", "foo.bar"),
-    "escape_quote_quoteonly": (quote_escape_config, "foo bar", "'foo bar'"),
-    "escape_quote_quote_and_escape": (
-        quote_escape_config,
-        "foo bar;foo;bar",
-        "'foo bar\\;foo\\;bar'",
-    ),
-    "escape_quote_escapeonly": (
-        quote_escape_config,
-        "foobar;foo;bar",
-        "foobar\\;foo\\;bar",
-    ),
-    "escape_quote_escapeonly_start_end": (
-        quote_escape_config,
-        ";foo;bar;",
-        "\\;foo\\;bar\\;",
-    ),
-    "escape_quote_quote_and_escape_quotechar": (
-        quote_escape_config,
-        "foo bar';foo;bar",
-        "'foo bar\\'\\;foo\\;bar'",
-    ),
-    "quote_always_escape_quote_only": (
-        quote_always_escape_quote_config,
-        "foo 'bar'",
-        "'foo \\'bar\\''",
-    ),
-    "quote_only": (quote_only_config, "foo bar", "'foo bar'"),
-    "escape_only": (escape_only_config, "foo bar", "foo\\ bar"),
-    "escape_only_start_end": (escape_only_config, " foo bar ", "\\ foo\\ bar\\ "),
-}
+quoting_escaping_testcases = (
+    {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
+        "escape_quote_nothing": (quote_escape_config, "foo.bar", "foo.bar"),
+        "escape_quote_quoteonly": (quote_escape_config, "foo bar", "'foo bar'"),
+        "escape_quote_quote_and_escape": (
+            quote_escape_config,
+            "foo bar;foo;bar",
+            "'foo bar\\;foo\\;bar'",
+        ),
+        "escape_quote_escapeonly": (
+            quote_escape_config,
+            "foobar;foo;bar",
+            "foobar\\;foo\\;bar",
+        ),
+        "escape_quote_escapeonly_start_end": (
+            quote_escape_config,
+            ";foo;bar;",
+            "\\;foo\\;bar\\;",
+        ),
+        "escape_quote_quote_and_escape_quotechar": (
+            quote_escape_config,
+            "foo bar';foo;bar",
+            "'foo bar\\'\\;foo\\;bar'",
+        ),
+        "quote_always_escape_quote_only": (
+            quote_always_escape_quote_config,
+            "foo 'bar'",
+            "'foo \\'bar\\''",
+        ),
+        "quote_only": (quote_only_config, "foo bar", "'foo bar'"),
+        "escape_only": (escape_only_config, "foo bar", "foo\\ bar"),
+        "escape_only_start_end": (escape_only_config, " foo bar ", "\\ foo\\ bar\\ "),
+    }
+)
 
 
 @pytest.mark.parametrize(

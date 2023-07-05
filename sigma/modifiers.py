@@ -52,27 +52,21 @@ class SigmaModifier(ABC):
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(
-        self, val: Union[SigmaType, Sequence[SigmaType]], explicit_type=None
-    ) -> bool:
+    def type_check(self, val: Union[SigmaType, Sequence[SigmaType]], explicit_type=None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
         to = get_origin(th)  # get possible generic type of type hint
         if to is None:  # Plain type in annotation
             return isinstance(val, th)
-        elif (
-            to is Union
-        ):  # type hint is Union of multiple types, check if val is one of them
+        elif to is Union:  # type hint is Union of multiple types, check if val is one of them
             for t in get_args(th):
                 if isinstance(val, t):
                     return True
             return False
         elif to is SequenceABC:  # type hint is sequence
             inner_type = get_args(th)[0]
-            return all(
-                [self.type_check(item, explicit_type=inner_type) for item in val]
-            )
+            return all([self.type_check(item, explicit_type=inner_type) for item in val])
 
     @abstractmethod
     def modify(
@@ -87,9 +81,7 @@ class SigmaModifier(ABC):
         * Ensure returned value is a list
         * Handle values of SigmaExpansion objects separately.
         """
-        if isinstance(
-            val, SigmaExpansion
-        ):  # Handle each SigmaExpansion item separately
+        if isinstance(val, SigmaExpansion):  # Handle each SigmaExpansion item separately
             return [SigmaExpansion([va for v in val.values for va in self.apply(v)])]
         else:
             if not self.type_check(val):
@@ -223,9 +215,7 @@ class SigmaWideModifier(SigmaValueModifier):
             ):  # put 0x00 after each character by encoding it to utf-16le and decoding it as utf-8
                 try:
                     r.append(item.encode("utf-16le").decode("utf-8"))
-                except (
-                    UnicodeDecodeError
-                ):  # this method only works for ascii characters
+                except UnicodeDecodeError:  # this method only works for ascii characters
                     raise SigmaValueError(
                         f"Wide modifier only allowed for ascii strings, input string '{str(val)}' isn't one",
                         source=self.source,
@@ -253,9 +243,9 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
                 yield p
 
         return SigmaExpansion(
-            val.replace_with_placeholder(
-                re.compile("\\B[-/]\\b"), "_windash"
-            ).replace_placeholders(callback)
+            val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash").replace_placeholders(
+                callback
+            )
         )
 
 
@@ -370,9 +360,7 @@ class SigmaFieldReferenceModifier(SigmaValueModifier):
 
     def modify(self, val: SigmaString) -> SigmaFieldReference:
         if val.contains_special():
-            raise SigmaValueError(
-                "Field references must not contain wildcards", source=self.source
-            )
+            raise SigmaValueError("Field references must not contain wildcards", source=self.source)
         return SigmaFieldReference(val.to_plain())
 
 
@@ -381,9 +369,7 @@ class SigmaExistsModifier(SigmaValueModifier):
 
     def modify(self, val: SigmaBool) -> SigmaExists:
         if self.detection_item.field is None:
-            raise SigmaValueError(
-                "Exists modifier must be applied to field", source=self.source
-            )
+            raise SigmaValueError("Exists modifier must be applied to field", source=self.source)
         if len(self.applied_modifiers) > 0:
             raise SigmaValueError(
                 "Exists modifier only applicable to unmodified boolean values",
@@ -433,6 +419,5 @@ modifier_mapping: Dict[str, Type[SigmaModifier]] = {
 
 # Mapping from modifier class to identifier
 reverse_modifier_mapping: Dict[str, str] = {
-    modifier_class.__name__: identifier
-    for identifier, modifier_class in modifier_mapping.items()
+    modifier_class.__name__: identifier for identifier, modifier_class in modifier_mapping.items()
 }

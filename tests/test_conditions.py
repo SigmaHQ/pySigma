@@ -183,9 +183,9 @@ def test_and(sigma_simple_detections):
 
 
 def test_not(sigma_simple_detections):
-    assert SigmaCondition(
-        "not detection1", sigma_simple_detections
-    ).parsed == ConditionNOT([ConditionValueExpression(SigmaString("val1"))])
+    assert SigmaCondition("not detection1", sigma_simple_detections).parsed == ConditionNOT(
+        [ConditionValueExpression(SigmaString("val1"))]
+    )
 
 
 def test_3or(sigma_simple_detections):
@@ -228,17 +228,10 @@ def test_precedence_parent_chain_condition_classes(sigma_simple_detections):
         sigma_simple_detections,
     ).parsed
     assert (
-        parsed.args[0].args[0].parent_chain_condition_classes()
-        == [ConditionAND, ConditionOR]
-        and parsed.args[0]  # detection1
-        .args[1]
-        .args[0]
-        .parent_chain_condition_classes()
+        parsed.args[0].args[0].parent_chain_condition_classes() == [ConditionAND, ConditionOR]
+        and parsed.args[0].args[1].args[0].parent_chain_condition_classes()  # detection1
         == [ConditionNOT, ConditionAND, ConditionOR]
-        and parsed.args[1]  # detection2
-        .args[0]
-        .args[0]
-        .parent_chain_condition_classes()
+        and parsed.args[1].args[0].args[0].parent_chain_condition_classes()  # detection2
         == [ConditionNOT, ConditionAND, ConditionOR]
         and parsed.args[1].args[1].parent_chain_condition_classes()  # detection3
         == [ConditionAND, ConditionOR]  # detection_4
@@ -309,9 +302,7 @@ def test_precedence_parenthesis_parent_chain_condition_classes(sigma_simple_dete
 
 
 def test_selector_1(sigma_simple_detections):
-    assert SigmaCondition(
-        "1 of detection*", sigma_simple_detections
-    ).parsed == ConditionOR(
+    assert SigmaCondition("1 of detection*", sigma_simple_detections).parsed == ConditionOR(
         [
             ConditionValueExpression(SigmaString("val1")),
             ConditionValueExpression(SigmaString("val2")),
@@ -345,9 +336,7 @@ def test_selector_1_of_them(sigma_simple_detections):
 
 
 def test_selector_any(sigma_simple_detections):
-    assert SigmaCondition(
-        "any of detection*", sigma_simple_detections
-    ).parsed == ConditionOR(
+    assert SigmaCondition("any of detection*", sigma_simple_detections).parsed == ConditionOR(
         [
             ConditionValueExpression(SigmaString("val1")),
             ConditionValueExpression(SigmaString("val2")),
@@ -370,9 +359,7 @@ def test_selector_any_of_them(sigma_simple_detections):
 
 
 def test_selector_all(sigma_simple_detections):
-    assert SigmaCondition(
-        "all of detection*", sigma_simple_detections
-    ).parsed == ConditionAND(
+    assert SigmaCondition("all of detection*", sigma_simple_detections).parsed == ConditionAND(
         [
             ConditionValueExpression(SigmaString("val1")),
             ConditionValueExpression(SigmaString("val2")),
@@ -383,9 +370,7 @@ def test_selector_all(sigma_simple_detections):
 
 
 def test_selector_all_of_them(sigma_simple_detections):
-    assert SigmaCondition(
-        "all of them", sigma_simple_detections
-    ).parsed == ConditionAND(
+    assert SigmaCondition("all of them", sigma_simple_detections).parsed == ConditionAND(
         [
             ConditionValueExpression(SigmaString("val1")),
             ConditionValueExpression(SigmaString("val2")),
@@ -435,9 +420,7 @@ def test_field_value_detection(sigma_detections):
 
 
 def test_field_valuelist_with_wildcards_detection(sigma_detections):
-    assert SigmaCondition(
-        "field-valuelist-wildcards", sigma_detections
-    ).parsed == ConditionOR(
+    assert SigmaCondition("field-valuelist-wildcards", sigma_detections).parsed == ConditionOR(
         [
             ConditionFieldEqualsValueExpression("field", SigmaString("simple-value")),
             ConditionFieldEqualsValueExpression("field", SigmaString("*wildcards*")),
@@ -446,14 +429,10 @@ def test_field_valuelist_with_wildcards_detection(sigma_detections):
 
 
 def test_field_valuelist_with_regex_detection(sigma_detections):
-    assert SigmaCondition(
-        "field-valuelist-regex", sigma_detections
-    ).parsed == ConditionOR(
+    assert SigmaCondition("field-valuelist-regex", sigma_detections).parsed == ConditionOR(
         [
             ConditionFieldEqualsValueExpression("field", SigmaString("simple-value")),
-            ConditionFieldEqualsValueExpression(
-                "field", SigmaRegularExpression("reg.*ex")
-            ),
+            ConditionFieldEqualsValueExpression("field", SigmaRegularExpression("reg.*ex")),
         ]
     )
 
@@ -495,9 +474,7 @@ def test_invalid_conditions(condition, sigma_simple_detections):
 
 def test_deprecated_pipe_syntax(sigma_simple_detections):
     with pytest.raises(SigmaConditionError, match="deprecated"):
-        SigmaCondition(
-            "detection | count() by src_ip > 50", sigma_simple_detections
-        ).parsed
+        SigmaCondition("detection | count() by src_ip > 50", sigma_simple_detections).parsed
 
 
 def test_and_condition_has_parent(sigma_simple_detections):

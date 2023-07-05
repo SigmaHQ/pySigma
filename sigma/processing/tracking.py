@@ -11,9 +11,7 @@ class ProcessingItemTrackingMixin:
     like detection items and conditions.
     """
 
-    applied_processing_items: Set[str] = field(
-        init=False, compare=False, default_factory=set
-    )
+    applied_processing_items: Set[str] = field(init=False, compare=False, default_factory=set)
 
     def add_applied_processing_item(
         self, processing_item: Optional["sigma.processing.pipeline.ProcessingItem"]

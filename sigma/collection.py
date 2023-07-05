@@ -13,17 +13,13 @@ class SigmaCollection:
 
     rules: List[SigmaRule]
     errors: List[SigmaError] = field(default_factory=list)
-    ids_to_rules: Dict[str, SigmaRule] = field(
-        init=False, repr=False, hash=False, compare=False
-    )
+    ids_to_rules: Dict[str, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
 
     def __post_init__(self):
         """
         Map rule identifiers to rules.
         """
-        self.ids_to_rules = {
-            str(rule.id): rule for rule in self.rules if rule.id is not None
-        }
+        self.ids_to_rules = {str(rule.id): rule for rule in self.rules if rule.id is not None}
 
     @classmethod
     def from_dicts(
@@ -70,9 +66,7 @@ class SigmaCollection:
                     action == "repeat"
                 ):  # add content of current rule to previous rule and parse it
                     prev_rule = deep_dict_update(prev_rule, rule)
-                    parsed_rules.append(
-                        SigmaRule.from_dict(prev_rule, collect_errors, source)
-                    )
+                    parsed_rules.append(SigmaRule.from_dict(prev_rule, collect_errors, source))
                 else:
                     exception = SigmaCollectionError(
                         f"Unknown Sigma collection action '{ action }' in rule { i }",
@@ -98,9 +92,7 @@ class SigmaCollection:
         If the collect_errors parameters is set, exceptions are not raised while parsing but collected
         in the errors property individually for each Sigma rule and the whole SigmaCollection.
         """
-        return cls.from_dicts(
-            list(yaml.safe_load_all(yaml_str)), collect_errors, source
-        )
+        return cls.from_dicts(list(yaml.safe_load_all(yaml_str)), collect_errors, source)
 
     @classmethod
     def resolve_paths(
@@ -118,9 +110,7 @@ class SigmaCollection:
         paths = (  # Recurse into directories if provided
             path.glob(recursion_pattern) if path.is_dir() else (path,) for path in paths
         )
-        return (  # Flatten the list
-            subpath for subpaths in paths for subpath in subpaths
-        )
+        return (subpath for subpaths in paths for subpath in subpaths)  # Flatten the list
 
     @classmethod
     def load_ruleset(
@@ -128,9 +118,7 @@ class SigmaCollection:
         inputs: List[Union[str, Path]],
         collect_errors: bool = False,
         on_beforeload: Optional[Callable[[Path], Optional[Path]]] = None,
-        on_load: Optional[
-            Callable[[Path, "SigmaCollection"], Optional["SigmaCollection"]]
-        ] = None,
+        on_load: Optional[Callable[[Path, "SigmaCollection"], Optional["SigmaCollection"]]] = None,
         recursion_pattern: str = "**/*.yml",
     ) -> "SigmaCollection":
         """

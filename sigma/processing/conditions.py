@@ -72,9 +72,7 @@ class FieldNameProcessingCondition(ABC):
         """Returns True if any value of a detection item contains a field reference to a field name
         matching the implemented field name condition. Processing actions must only be applied to
         matching individual values determined by `match_value`."""
-        return any(
-            (self.match_value(pipeline, value) for value in detection_item.value)
-        )
+        return any((self.match_value(pipeline, value) for value in detection_item.value))
 
     def match_value(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
@@ -180,9 +178,7 @@ class RuleContainsDetectionItemCondition(RuleProcessingCondition):
                 return True
         return False
 
-    def find_detection_item(
-        self, detection: Union[SigmaDetectionItem, SigmaDetection]
-    ) -> bool:
+    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
         if isinstance(detection, SigmaDetection):
             for detection_item in detection.detection_items:
                 if self.find_detection_item(detection_item):
@@ -196,9 +192,7 @@ class RuleContainsDetectionItemCondition(RuleProcessingCondition):
             ):
                 return True
         else:
-            raise TypeError(
-                "Parameter of type SigmaDetection or SigmaDetectionItem expected."
-            )
+            raise TypeError("Parameter of type SigmaDetection or SigmaDetectionItem expected.")
 
         return False
 

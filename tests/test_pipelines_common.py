@@ -104,9 +104,7 @@ def test_logsource_windows_network_connection_initiated(initiated, result):
 
 
 def test_generate_windows_logsource_items():
-    items = generate_windows_logsource_items(
-        "logsource", "Windows:{source}", "test-{service}"
-    )
+    items = generate_windows_logsource_items("logsource", "Windows:{source}", "test-{service}")
     assert items[0] == ProcessingItem(
         identifier="test-security",
         transformation=AddConditionTransformation({"logsource": "Windows:Security"}),

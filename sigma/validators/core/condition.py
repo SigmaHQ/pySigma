@@ -13,9 +13,7 @@ from sigma.validators.base import (
 
 @dataclass
 class DanglingDetectionIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "Rule defines detection that is not referenced from condition"
+    description: ClassVar[str] = "Rule defines detection that is not referenced from condition"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     detection_name: str
 
@@ -40,13 +38,8 @@ class DanglingDetectionValidator(SigmaRuleValidator):
         """
         if isinstance(cond, ConditionIdentifier):  # Only one id referenced.
             return {cond.identifier}
-        elif isinstance(
-            cond, ConditionSelector
-        ):  # Resolve all referenced ids and return
-            return {
-                cond.identifier
-                for cond in cond.resolve_referenced_detections(detections)
-            }
+        elif isinstance(cond, ConditionSelector):  # Resolve all referenced ids and return
+            return {cond.identifier for cond in cond.resolve_referenced_detections(detections)}
         elif isinstance(cond, ConditionItem):  # Traverse into subconditions
             ids = set()
             for arg in cond.args:
@@ -62,14 +55,9 @@ class DanglingDetectionValidator(SigmaRuleValidator):
         referenced_ids = set()
         for condition in rule.detection.parsed_condition:
             parsed_condition = condition.parse(False)
-            referenced_ids.update(
-                self.condition_referenced_ids(parsed_condition, rule.detection)
-            )
+            referenced_ids.update(self.condition_referenced_ids(parsed_condition, rule.detection))
 
-        return [
-            DanglingDetectionIssue([rule], name)
-            for name in detection_names - referenced_ids
-        ]
+        return [DanglingDetectionIssue([rule], name) for name in detection_names - referenced_ids]
 
 
 @dataclass
@@ -96,9 +84,7 @@ class AllOfThemConditionIssue(SigmaValidationIssue):
     description: ClassVar[
         str
     ] = "Rule contains discouraged 'all of them' condition, use 'all of selection*' instead."
-    severity: ClassVar[
-        SigmaValidationIssueSeverity
-    ] = SigmaValidationIssueSeverity.MEDIUM
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class AllOfThemConditionValidator(SigmaRuleValidator):
@@ -107,12 +93,7 @@ class AllOfThemConditionValidator(SigmaRuleValidator):
     re_all_of_them: ClassVar[Pattern] = re.compile("all\\s+of\\s+them")
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if any(
-            [
-                self.re_all_of_them.search(condition)
-                for condition in rule.detection.condition
-            ]
-        ):
+        if any([self.re_all_of_them.search(condition) for condition in rule.detection.condition]):
             return [AllOfThemConditionIssue([rule])]
         else:
             return []

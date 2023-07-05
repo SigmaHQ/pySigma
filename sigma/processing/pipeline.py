@@ -45,18 +45,12 @@ class ProcessingItem:
     rule_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
     rule_condition_negation: bool = False
     rule_conditions: List[RuleProcessingCondition] = field(default_factory=list)
-    detection_item_condition_linking: Callable[
-        [Iterable[bool]], bool
-    ] = all  # any or all
+    detection_item_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
     detection_item_condition_negation: bool = False
-    detection_item_conditions: List[DetectionItemProcessingCondition] = field(
-        default_factory=list
-    )
+    detection_item_conditions: List[DetectionItemProcessingCondition] = field(default_factory=list)
     field_name_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
     field_name_condition_negation: bool = False
-    field_name_conditions: List[FieldNameProcessingCondition] = field(
-        default_factory=list
-    )
+    field_name_conditions: List[FieldNameProcessingCondition] = field(default_factory=list)
     identifier: Optional[str] = None
 
     @classmethod
@@ -70,9 +64,7 @@ class ProcessingItem:
         for condition_class_mapping, cond_defs, conds in (
             (  # Condition item processing items are defined as follows:
                 rule_conditions,  # Dict containing mapping between names used in configuration and classes.
-                d.get(
-                    "rule_conditions", list()
-                ),  # List of conditions in configuration dict
+                d.get("rule_conditions", list()),  # List of conditions in configuration dict
                 rule_conds := list(),  # List where condition classes for ProcessingItem initialization are collected
             ),
             (
@@ -189,29 +181,21 @@ class ProcessingItem:
                     f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition"
                 )
         if not isinstance(self.detection_item_conditions, list):
-            raise SigmaTypeError(
-                "Detection item processing conditions must be provided as list"
-            )
+            raise SigmaTypeError("Detection item processing conditions must be provided as list")
         for detection_item_condition in self.detection_item_conditions:
-            if not isinstance(
-                detection_item_condition, DetectionItemProcessingCondition
-            ):
+            if not isinstance(detection_item_condition, DetectionItemProcessingCondition):
                 raise SigmaTypeError(
                     f"Detection item processing condition '{str(detection_item_condition)}' is not a DetectionItemProcessingCondition"
                 )
         if not isinstance(self.field_name_conditions, list):
-            raise SigmaTypeError(
-                "Field name processing conditions must be provided as list"
-            )
+            raise SigmaTypeError("Field name processing conditions must be provided as list")
         for field_name_condition in self.field_name_conditions:
             if not isinstance(field_name_condition, FieldNameProcessingCondition):
                 raise SigmaTypeError(
                     f"Detection item processing condition '{str(field_name_condition)}' is not a FieldNameProcessingCondition"
                 )
 
-    def apply(
-        self, pipeline: "ProcessingPipeline", rule: SigmaRule
-    ) -> Tuple[SigmaRule, bool]:
+    def apply(self, pipeline: "ProcessingPipeline", rule: SigmaRule) -> Tuple[SigmaRule, bool]:
         """
         Matches condition against rule and performs transformation if condition is true or not present.
         Returns Sigma rule and bool if transformation was applied.
@@ -256,9 +240,7 @@ class ProcessingItem:
 
         return detection_item_cond_result and field_name_cond_result
 
-    def match_field_name(
-        self, pipeline: "ProcessingPipeline", field: Optional[str]
-    ) -> bool:
+    def match_field_name(self, pipeline: "ProcessingPipeline", field: Optional[str]) -> bool:
         """
         Evaluate field name conditions on field names and return result.
         """
@@ -273,18 +255,13 @@ class ProcessingItem:
 
         return field_name_cond_result
 
-    def match_field_in_value(
-        self, pipeline: "ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_field_in_value(self, pipeline: "ProcessingPipeline", value: SigmaType) -> bool:
         """
         Evaluate field name conditions in field reference values and return result.
         """
         if isinstance(value, SigmaFieldReference):
             field_name_cond_result = self.field_name_condition_linking(
-                [
-                    condition.match_value(pipeline, value)
-                    for condition in self.field_name_conditions
-                ]
+                [condition.match_value(pipeline, value) for condition in self.field_name_conditions]
             )
             if self.field_name_condition_negation:
                 field_name_cond_result = not field_name_cond_result
@@ -387,9 +364,7 @@ class ProcessingPipeline:
         the set of applied processing items from src_field and assigns a copy of this set ass
         tracking set to all fields in dest_field.
         """
-        if [
-            src_field
-        ] != dest_field:  # Only add if source field was mapped to something different.
+        if [src_field] != dest_field:  # Only add if source field was mapped to something different.
             applied_identifiers: Set = self.field_name_applied_ids[src_field]
             if processing_item_id is not None:
                 applied_identifiers.add(processing_item_id)
@@ -397,9 +372,7 @@ class ProcessingPipeline:
             for field in dest_field:
                 self.field_name_applied_ids[field] = applied_identifiers.copy()
 
-    def field_was_processed_by(
-        self, field: Optional[str], processing_item_id: str
-    ) -> bool:
+    def field_was_processed_by(self, field: Optional[str], processing_item_id: str) -> bool:
         """
         Check if field name was processed by a particular processing item.
         """
@@ -413,9 +386,7 @@ class ProcessingPipeline:
             return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
-        return self.__class__(
-            items=self.items + other.items, vars={**self.vars, **other.vars}
-        )
+        return self.__class__(items=self.items + other.items, vars={**self.vars, **other.vars})
 
     def __radd__(self, other: Literal[0]) -> "ProcessingPipeline":
         """Ignore integer 0 on addition to make sum of list of ProcessingPipelines working."""

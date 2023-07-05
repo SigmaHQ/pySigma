@@ -22,9 +22,7 @@ def test_single_rule():
         },
     }
 
-    assert SigmaCollection.from_dicts([rule]) == SigmaCollection(
-        [SigmaRule.from_dict(rule)]
-    )
+    assert SigmaCollection.from_dicts([rule]) == SigmaCollection([SigmaRule.from_dict(rule)])
 
 
 def test_merge():
@@ -151,9 +149,7 @@ def test_action_reset():
         ]
     )
     assert (
-        len(c) == 1
-        and c[0].title == "Test"
-        and c[0].logsource == SigmaLogSource(service="testsvc")
+        len(c) == 1 and c[0].title == "Test" and c[0].logsource == SigmaLogSource(service="testsvc")
     )
 
 
@@ -256,9 +252,7 @@ def test_load_ruleset_path():
 
 
 def test_load_ruleset_with_error():
-    with pytest.raises(
-        SigmaModifierError, match="Unknown modifier.*test_rule_with_error.yml"
-    ):
+    with pytest.raises(SigmaModifierError, match="Unknown modifier.*test_rule_with_error.yml"):
         SigmaCollection.load_ruleset([Path("tests/files/ruleset_with_errors")])
 
 
@@ -275,11 +269,7 @@ def test_load_ruleset_onbeforeload():
             return p
 
     assert (
-        len(
-            SigmaCollection.load_ruleset(
-                ["tests/files/ruleset"], on_beforeload=onbeforeload
-            ).rules
-        )
+        len(SigmaCollection.load_ruleset(["tests/files/ruleset"], on_beforeload=onbeforeload).rules)
         == 1
     )
 
@@ -292,13 +282,8 @@ def test_load_ruleset_onload():
             sc.rules[0].title = "changed"
             return sc
 
-    sigma_collection = SigmaCollection.load_ruleset(
-        ["tests/files/ruleset"], on_load=onload
-    )
-    assert (
-        len(sigma_collection.rules) == 1
-        and sigma_collection.rules[0].title == "changed"
-    )
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/ruleset"], on_load=onload)
+    assert len(sigma_collection.rules) == 1 and sigma_collection.rules[0].title == "changed"
 
 
 def test_index_rule_by_position(ruleset):

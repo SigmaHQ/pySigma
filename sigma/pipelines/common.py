@@ -281,9 +281,7 @@ def generate_windows_logsource_items(
                 AddConditionTransformation(
                     {  # source is list
                         cond_field_template.format(service=service, source=source): [
-                            cond_value_template.format(
-                                service=service, source=source_item
-                            )
+                            cond_value_template.format(service=service, source=source_item)
                             for source_item in source
                         ]
                     }

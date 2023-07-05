@@ -55,9 +55,7 @@ class SigmaRuleTag:
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
-    def from_str(
-        cls, tag: str, source: Optional[SigmaRuleLocation] = None
-    ) -> "SigmaRuleTag":
+    def from_str(cls, tag: str, source: Optional[SigmaRuleLocation] = None) -> "SigmaRuleTag":
         """Build SigmaRuleTag class from plain text tag string."""
         try:
             ns, n = tag.split(".", maxsplit=1)
@@ -174,9 +172,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             if isinstance(
                 modifier_instance, SigmaValueModifier
             ):  # Value modifiers are applied to each value separately
-                self.value = [
-                    item for val in self.value for item in modifier_instance.apply(val)
-                ]
+                self.value = [item for val in self.value for item in modifier_instance.apply(val)]
             elif isinstance(
                 modifier_instance, SigmaListModifier
             ):  # List modifiers are applied to the whole value list at once
@@ -207,9 +203,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         The value accepts plain values as well as lists of values and resolves them into
         the value list always contained in a SigmaDetectionItem instance.
         """
-        if (
-            key is None
-        ):  # no key at all means pure keyword detection without value modifiers
+        if key is None:  # no key at all means pure keyword detection without value modifiers
             field = None
             modifier_ids = list()
         else:  # key-value detection
@@ -220,13 +214,9 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         try:
             modifiers = [modifier_mapping[mod_id] for mod_id in modifier_ids]
         except KeyError as e:
-            raise sigma_exceptions.SigmaModifierError(
-                f"Unknown modifier {str(e)}", source=source
-            )
+            raise sigma_exceptions.SigmaModifierError(f"Unknown modifier {str(e)}", source=source)
 
-        if isinstance(
-            val, (int, float, str)
-        ):  # value is plain, convert into single element list
+        if isinstance(val, (int, float, str)):  # value is plain, convert into single element list
             val = [val]
         elif val is None:
             val = [None]
@@ -284,8 +274,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                 self.field or ""
             )  # field name is empty in case of keyword detection items with modifiers
             modifier_ids = [  # list of modifier identifiers from reverse mapping
-                reverse_modifier_mapping[modifier.__name__]
-                for modifier in self.modifiers
+                reverse_modifier_mapping[modifier.__name__] for modifier in self.modifiers
             ]
             if len(modifier_ids) > 0:
                 modifiers_prefix = "|"
@@ -310,31 +299,24 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                     "Null value must be bound to a field", source=self.source
                 )
             else:
-                return ConditionFieldEqualsValueExpression(
-                    self.field, SigmaNull()
-                ).postprocess(detections, self, self.source)
-        if (
-            len(self.value) == 1
-        ):  # single value: return key/value or value-only expression
+                return ConditionFieldEqualsValueExpression(self.field, SigmaNull()).postprocess(
+                    detections, self, self.source
+                )
+        if len(self.value) == 1:  # single value: return key/value or value-only expression
             if self.field is None:
                 return ConditionValueExpression(self.value[0]).postprocess(
                     detections, self, self.source
                 )
             else:
-                return ConditionFieldEqualsValueExpression(
-                    self.field, self.value[0]
-                ).postprocess(detections, self, self.source)
+                return ConditionFieldEqualsValueExpression(self.field, self.value[0]).postprocess(
+                    detections, self, self.source
+                )
         else:  # more than one value, return logically linked values or an "in" expression
             if self.field is None:  # no field - only values
-                cond = self.value_linking(
-                    [ConditionValueExpression(v) for v in self.value]
-                )
+                cond = self.value_linking([ConditionValueExpression(v) for v in self.value])
             else:  # with field - field/value pairs
                 cond = self.value_linking(
-                    [
-                        ConditionFieldEqualsValueExpression(self.field, v)
-                        for v in self.value
-                    ]
+                    [ConditionFieldEqualsValueExpression(self.field, v) for v in self.value]
                 )
             cond.postprocess(detections, parent, self.source)
             return cond
@@ -364,9 +346,7 @@ class SigmaDetection(ParentChainMixin):
     def __post_init__(self):
         """Check detection validity."""
         if len(self.detection_items) == 0:
-            raise sigma_exceptions.SigmaDetectionError(
-                "Detection is empty", source=self.source
-            )
+            raise sigma_exceptions.SigmaDetectionError("Detection is empty", source=self.source)
 
         if self.item_linking is None:
             type_set = {type(item) for item in self.detection_items}
@@ -416,23 +396,17 @@ class SigmaDetection(ParentChainMixin):
 
     def to_plain(self) -> Union[Dict[str, Union[str, int, None]], List[str]]:
         """Returns a dictionary or list representation of the detection."""
-        detection_items = (
-            [  # first convert all detection items into a Python representation.
-                detection_item.to_plain() for detection_item in self.detection_items
-            ]
-        )
+        detection_items = [  # first convert all detection items into a Python representation.
+            detection_item.to_plain() for detection_item in self.detection_items
+        ]
         # Filter out where to_plain() returns None, which causes merging errors.
         # We will have to handle the condition as well in conditions.py
         detection_items = [
-            detection_item
-            for detection_item in detection_items
-            if detection_item is not None
+            detection_item for detection_item in detection_items if detection_item is not None
         ]
-        detection_items_types = (
-            {  # create set of types for decision what has to be returned
-                type(detection_item) for detection_item in detection_items
-            }
-        )
+        detection_items_types = {  # create set of types for decision what has to be returned
+            type(detection_item) for detection_item in detection_items
+        }
 
         if len(detection_items) == 0:  # pragma: no cover
             return None  # This case is catched by the post init check, so it shouldn't happen.
@@ -460,9 +434,7 @@ class SigmaDetection(ParentChainMixin):
                     detection_items, self.detection_items
                 ):
                     for k, v in detection_item_converted.items():
-                        if (
-                            k not in merged
-                        ):  # key doesn't exists in merged dict: just add
+                        if k not in merged:  # key doesn't exists in merged dict: just add
                             merged[k] = v
                         else:  # key collision, now the things get complicated...
                             if "|all" in k:  # key contains 'all' modifier
@@ -471,9 +443,7 @@ class SigmaDetection(ParentChainMixin):
                                 ):  # make list from existing all-modified value if it's a plain value
                                     merged[k] = [merged[k]]
 
-                                if isinstance(
-                                    v, list
-                                ):  # merging two and-linked lists is possible
+                                if isinstance(v, list):  # merging two and-linked lists is possible
                                     merged[k].extend(v)
                                 else:
                                     merged[k].append(v)
@@ -534,12 +504,9 @@ class SigmaDetection(ParentChainMixin):
         """Convert detection item into condition tree element"""
         super().postprocess(detections, parent)
         items = [
-            detection_item.postprocess(detections, self)
-            for detection_item in self.detection_items
+            detection_item.postprocess(detections, self) for detection_item in self.detection_items
         ]
-        if (
-            len(items) == 1
-        ):  # no boolean linking required, directly return single element
+        if len(items) == 1:  # no boolean linking required, directly return single element
             return items[0]
         elif len(items) > 1:
             condition = self.item_linking(items)
@@ -568,9 +535,7 @@ class SigmaDetections:
             raise sigma_exceptions.SigmaDetectionError(
                 "No detections defined in Sigma rule", source=self.source
             )
-        self.parsed_condition = [
-            SigmaCondition(cond, self, self.source) for cond in self.condition
-        ]
+        self.parsed_condition = [SigmaCondition(cond, self, self.source) for cond in self.condition]
 
     @classmethod
     def from_dict(
@@ -598,8 +563,7 @@ class SigmaDetections:
 
     def to_dict(self) -> dict:
         detections = {
-            identifier: detection.to_plain()
-            for identifier, detection in self.detections.items()
+            identifier: detection.to_plain() for identifier, detection in self.detections.items()
         }
         if len(self.condition) > 1:
             condition = self.condition

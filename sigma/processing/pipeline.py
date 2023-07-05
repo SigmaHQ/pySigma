@@ -7,7 +7,7 @@ from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation
 from sigma.processing.conditions import rule_conditions, RuleProcessingCondition, detection_item_conditions, DetectionItemProcessingCondition, field_name_conditions, FieldNameProcessingCondition
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
-import yaml
+from sigma import yaml
 
 from sigma.types import SigmaFieldReference, SigmaType
 

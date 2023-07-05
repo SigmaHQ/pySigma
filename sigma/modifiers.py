@@ -56,6 +56,7 @@ class SigmaModifier(ABC):
                 ])
             ]
         else:
+            print(val)
             if not self.type_check(val):
                 raise SigmaTypeError(f"Modifier {self.__class__.__name__} incompatible to value type of '{ val }'", source=self.source)
             r = self.modify(val)

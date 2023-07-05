@@ -521,6 +521,8 @@ def test_sigmarule_bad_status():
 def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
         SigmaRule.from_dict({ "date": "bad" }, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
 def test_sigmarule_date():
     expected_date = date(3000,1,2)
     rule = SigmaRule.from_yaml("""
@@ -538,6 +540,7 @@ def test_sigmarule_date():
     """)
     assert rule is not None
     assert rule.date == expected_date
+
 
 def test_sigmarule_datetime():
     expected_date = datetime(3000,1,2,3,4,5)

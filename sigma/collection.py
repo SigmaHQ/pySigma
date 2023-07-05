@@ -4,7 +4,8 @@ from pathlib import Path
 
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError, SigmaError, SigmaRuleLocation
-import yaml
+from sigma import yaml
+
 
 @dataclass
 class SigmaCollection:

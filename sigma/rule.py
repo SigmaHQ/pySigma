@@ -4,7 +4,6 @@ from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date, datetime
-import yaml
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import SigmaModifier, modifier_mapping, reverse_modifier_mapping, SigmaValueModifier, SigmaListModifier
@@ -12,6 +11,8 @@ from sigma.conditions import SigmaCondition, ConditionAND, ConditionOR, Conditio
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaError
+from sigma import yaml
+
 
 class EnumLowercaseStringMixin:
     def __str__(self) -> str:
@@ -506,18 +507,6 @@ class SigmaDetections:
         """Get detection by name"""
         return self.detections[key]
 
-class SigmaYAMLLoader(yaml.SafeLoader):
-    """Custom YAML loader implementing additional functionality for Sigma."""
-    def construct_mapping(self, node, deep=...):
-        keys = set()
-        for k, v in node.value:
-            key = self.construct_object(k, deep=deep)
-            if key in keys:
-                raise yaml.error.YAMLError("Duplicate key '{k}'")
-            else:
-                keys.add(key)
-
-        return super().construct_mapping(node, deep)
 
 @dataclass
 class SigmaRule(ProcessingItemTrackingMixin):
@@ -595,12 +584,16 @@ class SigmaRule(ProcessingItemTrackingMixin):
         if rule_date is not None:
             if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
                 try:
-                    rule_date = date(*(int(i) for i in rule_date.split("/")))
+                    rule_date = datetime.strptime(rule_date, "%Y-%m-%dT%H:%M:%S")
                 except ValueError:
                     try:
-                        rule_date = date(*(int(i) for i in rule_date.split("-")))
+                        rule_date = date(*(int(i) for i in rule_date.split("/")))
                     except ValueError:
-                        errors.append(sigma_exceptions.SigmaDateError(f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd", source=source))
+                        try:
+                            rule_date = date(*(int(i) for i in rule_date.split("-")))
+                        except ValueError:
+                            msg = f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd, yyyy-mm-dd or yyyy-mm-ddTHH:MM:SS"
+                            errors.append(sigma_exceptions.SigmaDateError(msg, source=source))
 
         # parse log source
         logsource = None
@@ -649,7 +642,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
     @classmethod
     def from_yaml(cls, rule : str, collect_errors : bool = False) -> "SigmaRule":
         """Convert YAML input string with single document into SigmaRule object."""
-        parsed_rule = yaml.load(rule, SigmaYAMLLoader)
+        parsed_rule = yaml.load(rule)
         return cls.from_dict(parsed_rule, collect_errors)
 
     def to_dict(self) -> dict:

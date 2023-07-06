@@ -162,9 +162,11 @@ class InstalledSigmaPlugins:
                                     # If there is a duplicate, use the class name instead.
                                     # This prevents the backend from being overwritten.
                                     warnings.warn(
-                                        f"A duplicate backend name '{name}' is found for module '{klass.__name__}'. Consider setting the 'name' attribute to a unique name for this backend. Original backend is overwritten: '{result[name].__name__}'",
+                                        f"The '{klass.__name__}' wanted to overwrite the class '{result[name].__name__}' registered as '{name}'. Consider setting the 'name' attribute on the '{result[name].__name__}'. Ignoring the '{klass.__name__}'.",
                                     )
-                                result.update({name: klass})
+                                else:
+                                    # Ignore duplicate backends.
+                                    result.update({name: klass})
                     else:
                         raise ValueError(
                             f"Unknown directory name {directory_name} for module {mod.name}"

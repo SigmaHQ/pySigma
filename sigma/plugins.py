@@ -68,12 +68,10 @@ class InstalledSigmaPlugins:
 
         def is_validator(obj):
             """Checks if an object is a validator."""
-            return all(
-                [
-                    inspect.isclass(obj),
-                    issubclass(obj, SigmaRuleValidator),
-                    obj.__module__ != "sigma.validators.base",
-                ]
+            return (
+                inspect.isclass(obj)
+                and issubclass(obj, SigmaRuleValidator)
+                and obj.__module__ != "sigma.validators.base"
             )
 
         def is_backend(obj):

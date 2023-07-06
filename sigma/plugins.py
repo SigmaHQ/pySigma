@@ -13,6 +13,7 @@ from uuid import UUID
 import requests
 from packaging.version import Version
 from packaging.specifiers import Specifier
+import warnings
 
 from sigma.conversion.base import Backend
 from sigma.pipelines.base import Pipeline
@@ -78,6 +79,9 @@ class InstalledSigmaPlugins:
             """Checks if an object is a backend."""
             return inspect.isclass(obj) and issubclass(obj, Backend)
 
+        def is_duplicate(container, klass, name):
+            return name in container and container[name] != klass
+
         if include:
             for mod in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
                 # attempt to merge backend directory from module into collected backend directory
@@ -137,6 +141,7 @@ class InstalledSigmaPlugins:
 
                             # OR'd condition ensures backwards compatibility with older plugins
                             if is_pipeline(possible_obj) or inspect.isfunction(possible_obj):
+                                # Instantiate the pipeline if it is a class.
                                 if inspect.isclass(possible_obj) and issubclass(
                                     possible_obj, Pipeline
                                 ):
@@ -151,14 +156,15 @@ class InstalledSigmaPlugins:
                         # Backends reside on the module level
                         for cls_name in imported_module.__dict__:
                             klass = getattr(imported_module, cls_name)
+                            name = InstalledSigmaPlugins._get_backend_name(klass, cls_name)
                             if is_backend(klass):
-                                result.update(
-                                    {
-                                        InstalledSigmaPlugins._get_backend_name(
-                                            klass, cls_name
-                                        ): klass
-                                    }
-                                )
+                                if is_duplicate(result, klass, name):
+                                    # If there is a duplicate, use the class name instead.
+                                    # This prevents the backend from being overwritten.
+                                    warnings.warn(
+                                        f"A duplicate backend name '{name}' is found for module '{klass.__name__}'. Consider setting the 'name' attribute to a unique name for this backend. Original backend is overwritten: '{result[name].__name__}'",
+                                    )
+                                result.update({name: klass})
                     else:
                         raise ValueError(
                             f"Unknown directory name {directory_name} for module {mod.name}"
@@ -211,26 +217,39 @@ class InstalledSigmaPlugins:
             The name of the backend object in snake_case or the default name.
         """
         try:
+            # 1. Try to get the obj.name attribute.
             name = getattr(obj, "name", None)
-            if name:
+            # Base backend is a special case, as it is not a backend but a base class,
+            # so we don't want to return it as a backend.
+            if name and name != "Base backend":
                 return name
 
-            name = (
-                getattr(obj, "__name__", None) or getattr(obj, "__class__", None)
-                if name is None
-                else name
-            )
+            # 2. Try to get the obj.__name__ attribute.
+            if not name:
+                name = getattr(obj, "__name__", None)
 
+            # 3. Try to get the obj.__class__.__name__ attribute.
+            if not name:
+                name = getattr(obj, "__class__", None)
+                if name:
+                    name = name.__name__
+
+            # 4. Convert the name to snake_case while removing the "Backend" suffix.
             if name:
                 name = name.removesuffix("Backend")
                 words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", name)
                 if len(words) == 0:
                     return name.lower()
                 rebuilt_name = "_".join(words).lower()
+                # 5. If we still have the "base" backend, return the module name instead.
+                if rebuilt_name == "base":
+                    return obj.__module__.split(".")[-1].lower()
                 return rebuilt_name
             else:
+                # 6. If we still don't have a name, return the default.
                 return default
-        except:
+        except Exception:
+            # 7. If anything goes wrong, return the default.
             return default
 
 

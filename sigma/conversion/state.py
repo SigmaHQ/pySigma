@@ -2,6 +2,7 @@ from dataclasses import dataclass, field
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Any, List, Mapping
 
+
 @dataclass
 class ConversionState:
     """
@@ -17,10 +18,11 @@ class ConversionState:
     In addition to deferred query expressions, ConversionState objects can be used to pass state
     down or up the parse tree.
     """
-    deferred : List[DeferredQueryExpression] = field(default_factory=list)
-    processing_state : Mapping[str, Any] = field(default_factory=dict)
 
-    def add_deferred_expression(self, deferred : DeferredQueryExpression) -> None:
+    deferred: List[DeferredQueryExpression] = field(default_factory=list)
+    processing_state: Mapping[str, Any] = field(default_factory=dict)
+
+    def add_deferred_expression(self, deferred: DeferredQueryExpression) -> None:
         self.deferred.append(deferred)
 
     def has_deferred(self) -> bool:

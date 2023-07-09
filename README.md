@@ -210,6 +210,12 @@ pySigma uses pytest as testing framework. Simply run `pytest` to run all tests. 
 
 To build your own package run `poetry build`.
 
+## Linting
+
+To lint the code run `poetry run black`. To check for linting errors run `poetry run black --check`.
+
+This project also uses [pre-commit](https://pre-commit.com/), which is installed by poetry as part of dev dependencies. To install the git hooks run `poetry run pre-commit install` after cloning the repository and installing the dependencies.
+
 ## Contributing
 
 Pull requests are welcome. Please feel free to lodge any issues/PRs as discussion points.

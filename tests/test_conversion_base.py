@@ -4,35 +4,53 @@ from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import AddFieldnamePrefixTransformation, AddFieldnameSuffixTransformation, DropDetectionItemTransformation, FieldMappingTransformation, QueryExpressionPlaceholderTransformation, SetStateTransformation
+from sigma.processing.transformations import (
+    AddFieldnamePrefixTransformation,
+    AddFieldnameSuffixTransformation,
+    DropDetectionItemTransformation,
+    FieldMappingTransformation,
+    QueryExpressionPlaceholderTransformation,
+    SetStateTransformation,
+)
 from sigma.exceptions import SigmaTypeError, SigmaValueError
 import pytest
 
 from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
 
+
 @pytest.fixture
 def test_backend():
     return TextQueryTestBackend(
-        ProcessingPipeline([
-            ProcessingItem(FieldMappingTransformation({
-                "fieldB": "mappedB",
-            }), identifier="mappingB"),
-            ProcessingItem(
-                AddFieldnameSuffixTransformation(".test"),
-                field_name_conditions=[ IncludeFieldCondition(["suffix"]) ],
-            ),
-            ProcessingItem(
-                AddFieldnamePrefixTransformation("test."),
-                field_name_conditions=[ IncludeFieldCondition(["prefix"]) ],
-            ),
-            ProcessingItem(SetStateTransformation("index", "test")),
-        ]),
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldB": "mappedB",
+                        }
+                    ),
+                    identifier="mappingB",
+                ),
+                ProcessingItem(
+                    AddFieldnameSuffixTransformation(".test"),
+                    field_name_conditions=[IncludeFieldCondition(["suffix"])],
+                ),
+                ProcessingItem(
+                    AddFieldnamePrefixTransformation("test."),
+                    field_name_conditions=[IncludeFieldCondition(["prefix"])],
+                ),
+                ProcessingItem(SetStateTransformation("index", "test")),
+            ]
+        ),
     )
+
 
 def test_backend_pipeline():
     test_backend = TextQueryTestBackend()
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -44,12 +62,18 @@ def test_backend_pipeline():
                     fieldB: valueB
                     fieldC: valueC
                 condition: sel
-        """)
-    ) == ['mappedA="valueA" and fieldB="valueB" and fieldC="valueC"']
+        """
+            )
+        )
+        == ['mappedA="valueA" and fieldB="valueB" and fieldC="valueC"']
+    )
+
 
 def test_backend_and_custom_pipeline(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -61,13 +85,19 @@ def test_backend_and_custom_pipeline(test_backend):
                     fieldB: valueB
                     fieldC: valueC
                 condition: sel
-        """)
-    ) == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+        """
+            )
+        )
+        == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+    )
     assert "mappingB" in test_backend.last_processing_pipeline.applied_ids
 
+
 def test_backend_custom_format_pipeline(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -79,13 +109,19 @@ def test_backend_custom_format_pipeline(test_backend):
                     fieldB: valueB
                     fieldC: valueC
                 condition: sel
-        """),
-        output_format="test",
-    ) == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
+        """
+            ),
+            output_format="test",
+        )
+        == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
+    )
+
 
 def test_convert_value_str(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -96,12 +132,18 @@ def test_convert_value_str(test_backend):
                     fieldA: value
                     field A: value
                 condition: sel
-        """)
-    ) == ['mappedA="value" and \'field A\'="value"']
+        """
+            )
+        )
+        == ['mappedA="value" and \'field A\'="value"']
+    )
+
 
 def test_convert_value_str_cased(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -112,12 +154,18 @@ def test_convert_value_str_cased(test_backend):
                     fieldA|cased: value
                     field A|cased: value
                 condition: sel
-        """)
-    ) == ['mappedA casematch "value" and \'field A\' casematch "value"']
+        """
+            )
+        )
+        == ['mappedA casematch "value" and \'field A\' casematch "value"']
+    )
+
 
 def test_convert_value_str_empty(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -128,14 +176,20 @@ def test_convert_value_str_empty(test_backend):
                     fieldA: value
                     fieldB: ''
                 condition: sel
-        """)
-    ) == ['mappedA="value" and mappedB=""']
+        """
+            )
+        )
+        == ['mappedA="value" and mappedB=""']
+    )
+
 
 def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
     monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -145,14 +199,20 @@ def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
                 sel:
                     fieldA: test value
                 condition: sel
-        """)
-    ) == ['mappedA="test value"']
+        """
+            )
+        )
+        == ['mappedA="test value"']
+    )
+
 
 def test_convert_value_str_quote_pattern_nomatch(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
     monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -162,13 +222,19 @@ def test_convert_value_str_quote_pattern_nomatch(test_backend, monkeypatch):
                 sel:
                     fieldA: value
                 condition: sel
-        """)
-    ) == ['mappedA=value']
+        """
+            )
+        )
+        == ["mappedA=value"]
+    )
+
 
 def test_convert_value_str_quote_pattern_negated(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^\\w+$"))
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -178,12 +244,18 @@ def test_convert_value_str_quote_pattern_negated(test_backend, monkeypatch):
                 sel:
                     fieldA: value
                 condition: sel
-        """)
-    ) == ['mappedA=value']
+        """
+            )
+        )
+        == ["mappedA=value"]
+    )
+
 
 def test_convert_value_str_startswith(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -194,12 +266,18 @@ def test_convert_value_str_startswith(test_backend):
                     fieldA|startswith: "value"
                     field A|startswith: "value"
                 condition: sel
-        """)
-    ) == ['mappedA startswith "value" and \'field A\' startswith "value"']
+        """
+            )
+        )
+        == ['mappedA startswith "value" and \'field A\' startswith "value"']
+    )
+
 
 def test_convert_value_str_startswith_cased(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -210,12 +288,18 @@ def test_convert_value_str_startswith_cased(test_backend):
                     fieldA|startswith|cased: "value"
                     field A|startswith|cased: "value"
                 condition: sel
-        """)
-    ) == ['mappedA startswith_cased "value" and \'field A\' startswith_cased "value"']
+        """
+            )
+        )
+        == ['mappedA startswith_cased "value" and \'field A\' startswith_cased "value"']
+    )
+
 
 def test_convert_value_str_startswith_further_wildcard(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -226,13 +310,19 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
                     fieldA|startswith: "va*lue"
                     field A|startswith: "va*lue"
                 condition: sel
-        """)
-    ) == ['mappedA match "va*lue*" and \'field A\' match "va*lue*"']
+        """
+            )
+        )
+        == ['mappedA match "va*lue*" and \'field A\' match "va*lue*"']
+    )
+
 
 def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "startswith_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -242,12 +332,18 @@ def test_convert_value_str_startswith_expression_not_defined(test_backend, monke
                 sel:
                     fieldA|startswith: "value"
                 condition: sel
-        """)
-    ) == ['mappedA match "value*"']
+        """
+            )
+        )
+        == ['mappedA match "value*"']
+    )
+
 
 def test_convert_value_str_endswith(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -258,12 +354,18 @@ def test_convert_value_str_endswith(test_backend):
                     fieldA|endswith: "value"
                     field A|endswith: "value"
                 condition: sel
-        """)
-    ) == ['mappedA endswith "value" and \'field A\' endswith "value"']
+        """
+            )
+        )
+        == ['mappedA endswith "value" and \'field A\' endswith "value"']
+    )
+
 
 def test_convert_value_str_endswith_cased(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -274,12 +376,18 @@ def test_convert_value_str_endswith_cased(test_backend):
                     fieldA|endswith|cased: "value"
                     field A|endswith|cased: "value"
                 condition: sel
-        """)
-    ) == ['mappedA endswith_cased "value" and \'field A\' endswith_cased "value"']
+        """
+            )
+        )
+        == ['mappedA endswith_cased "value" and \'field A\' endswith_cased "value"']
+    )
+
 
 def test_convert_value_str_endswith_further_wildcard(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -290,13 +398,19 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
                     fieldA|endswith: "va*lue"
                     field A|endswith: "va*lue"
                 condition: sel
-        """)
-    ) == ['mappedA match "*va*lue" and \'field A\' match "*va*lue"']
+        """
+            )
+        )
+        == ['mappedA match "*va*lue" and \'field A\' match "*va*lue"']
+    )
+
 
 def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "endswith_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -306,12 +420,18 @@ def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeyp
                 sel:
                     fieldA|endswith: "value"
                 condition: sel
-        """)
-    ) == ['mappedA match "*value"']
+        """
+            )
+        )
+        == ['mappedA match "*value"']
+    )
+
 
 def test_convert_value_str_contains(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -322,12 +442,18 @@ def test_convert_value_str_contains(test_backend):
                     fieldA|contains: "value"
                     field A|contains: "value"
                 condition: sel
-        """)
-    ) == ['mappedA contains "value" and \'field A\' contains "value"']
+        """
+            )
+        )
+        == ['mappedA contains "value" and \'field A\' contains "value"']
+    )
+
 
 def test_convert_value_str_contains_cased(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -338,12 +464,18 @@ def test_convert_value_str_contains_cased(test_backend):
                     fieldA|contains|cased: "value"
                     field A|contains|cased: "value"
                 condition: sel
-        """)
-    ) == ['mappedA contains_cased "value" and \'field A\' contains_cased "value"']
+        """
+            )
+        )
+        == ['mappedA contains_cased "value" and \'field A\' contains_cased "value"']
+    )
+
 
 def test_convert_value_str_contains_further_wildcard(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -353,13 +485,19 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
                 sel:
                     fieldA|contains: "va*lue"
                 condition: sel
-        """)
-    ) == ['mappedA match "*va*lue*"']
+        """
+            )
+        )
+        == ['mappedA match "*va*lue*"']
+    )
+
 
 def test_convert_value_str_contains_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "contains_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -369,13 +507,19 @@ def test_convert_value_str_contains_expression_not_defined(test_backend, monkeyp
                 sel:
                     fieldA|contains: "value"
                 condition: sel
-        """)
-    ) == ['mappedA match "*value*"']
+        """
+            )
+        )
+        == ['mappedA match "*value*"']
+    )
+
 
 def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "wildcard_match_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -385,12 +529,18 @@ def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
                 sel:
                     fieldA: val*ue
                 condition: sel
-        """)
-    ) == ['mappedA="val*ue"']
+        """
+            )
+        )
+        == ['mappedA="val*ue"']
+    )
+
 
 def test_convert_value_expansion_with_all(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
         title: Testrule
         logsource:
             category: process_creation
@@ -401,12 +551,20 @@ def test_convert_value_expansion_with_all(test_backend):
                     - -foo
                     - -bar
             condition: selection
-        """)
-    ) == ['(CommandLine contains "-foo" or CommandLine contains "/foo") and (CommandLine contains "-bar" or CommandLine contains "/bar")']
+        """
+            )
+        )
+        == [
+            '(CommandLine contains "-foo" or CommandLine contains "/foo") and (CommandLine contains "-bar" or CommandLine contains "/bar")'
+        ]
+    )
+
 
 def test_convert_value_num(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -417,12 +575,18 @@ def test_convert_value_num(test_backend):
                     fieldA: 123
                     field A: 123
                 condition: sel
-        """)
-    ) == ['mappedA=123 and \'field A\'=123']
+        """
+            )
+        )
+        == ["mappedA=123 and 'field A'=123"]
+    )
+
 
 def test_convert_value_bool(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -434,12 +598,18 @@ def test_convert_value_bool(test_backend):
                     fieldB: false
                     field B: false
                 condition: sel
-        """)
-    ) == ['mappedA=1 and mappedB=0 and \'field B\'=0']
+        """
+            )
+        )
+        == ["mappedA=1 and mappedB=0 and 'field B'=0"]
+    )
+
 
 def test_convert_value_null(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -450,12 +620,18 @@ def test_convert_value_null(test_backend):
                     fieldA: null
                     field A: null
                 condition: sel
-        """)
-    ) == ['mappedA is null and \'field A\' is null']
+        """
+            )
+        )
+        == ["mappedA is null and 'field A' is null"]
+    )
+
 
 def test_convert_field_existence(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -466,12 +642,18 @@ def test_convert_field_existence(test_backend):
                     fieldA|exists: yes
                     field A|exists: yes
                 condition: sel
-        """)
-    ) == ['exists(mappedA) and exists(\'field A\')']
+        """
+            )
+        )
+        == ["exists(mappedA) and exists('field A')"]
+    )
+
 
 def test_convert_field_nonexistence_explicit(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -482,14 +664,20 @@ def test_convert_field_nonexistence_explicit(test_backend):
                     fieldA|exists: no
                     field A|exists: no
                 condition: sel
-        """)
-    ) == ['notexists(mappedA) and notexists(\'field A\')']
+        """
+            )
+        )
+        == ["notexists(mappedA) and notexists('field A')"]
+    )
+
 
 def test_convert_field_nonexistence_implicit(monkeypatch):
     monkeypatch.setattr(TextQueryTestBackend, "field_not_exists_expression", None)
     test_backend = TextQueryTestBackend()
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -500,16 +688,26 @@ def test_convert_field_nonexistence_implicit(monkeypatch):
                     fieldA|exists: no
                     field A|exists: no
                 condition: sel
-        """)
-    ) == ['not exists(mappedA) and not exists(\'field A\')']
+        """
+            )
+        )
+        == ["not exists(mappedA) and not exists('field A')"]
+    )
+
 
 def test_convert_query_expr():
-    pipeline = ProcessingPipeline([
-        ProcessingItem(QueryExpressionPlaceholderTransformation(expression="{field} in list({id})"))
-    ])
+    pipeline = ProcessingPipeline(
+        [
+            ProcessingItem(
+                QueryExpressionPlaceholderTransformation(expression="{field} in list({id})")
+            )
+        ]
+    )
     backend = TextQueryTestBackend(pipeline)
-    assert backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -520,16 +718,22 @@ def test_convert_query_expr():
                     fieldA|expand: "%test%"
                     field A|expand: "%test%"
                 condition: sel
-        """)
-    ) == ['mappedA in list(test) and \'field A\' in list(test)']
+        """
+            )
+        )
+        == ["mappedA in list(test) and 'field A' in list(test)"]
+    )
+
 
 def test_convert_query_expr_unbound():
-    pipeline = ProcessingPipeline([
-        ProcessingItem(QueryExpressionPlaceholderTransformation(expression="_ in list({id})"))
-    ])
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(QueryExpressionPlaceholderTransformation(expression="_ in list({id})"))]
+    )
     backend = TextQueryTestBackend(pipeline)
-    assert backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -539,12 +743,18 @@ def test_convert_query_expr_unbound():
                 sel:
                     "|expand": "%test%"
                 condition: sel
-        """)
-    ) == ['_ in list(test)']
+        """
+            )
+        )
+        == ["_ in list(test)"]
+    )
+
 
 def test_convert_value_regex(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -555,12 +765,18 @@ def test_convert_value_regex(test_backend):
                     fieldA|re: pat.*tern/foobar
                     field A|re: 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["mappedA=/pat.*tern\\/foo\\bar/ and 'field A'=/pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_flag_prefix(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -571,15 +787,21 @@ def test_convert_value_regex_flag_prefix(test_backend):
                     fieldA|re|i|m|s: pat.*tern/foobar
                     field A|re|i|m|s: 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['mappedA=/(?ims)pat.*tern\\/foo\\bar/ and \'field A\'=/(?ims)pat.*te\\\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["mappedA=/(?ims)pat.*tern\\/foo\\bar/ and 'field A'=/(?ims)pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_flag_explicit(test_backend):
     test_backend.re_flag_prefix = False
     test_backend.re_flags = SigmaRegularExpression.sigma_to_re_flag
     test_backend.re_expression += "{flag_i}{flag_m}{flag_s}"
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -590,15 +812,21 @@ def test_convert_value_regex_flag_explicit(test_backend):
                     fieldA|re|i|m|s: pat.*tern/foobar
                     field A|re|i|m|s: 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/ims and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/ims']
+        """
+            )
+        )
+        == ["mappedA=/pat.*tern\\/foo\\bar/ims and 'field A'=/pat.*te\\\\rn\\/foo\\bar/ims"]
+    )
+
 
 def test_convert_value_regex_flag_explicit_partial_support(test_backend):
     test_backend.re_flag_prefix = False
-    test_backend.re_flags = { SigmaRegularExpressionFlag.IGNORECASE: "i" }
+    test_backend.re_flags = {SigmaRegularExpressionFlag.IGNORECASE: "i"}
     test_backend.re_expression += "{flag_i}"
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -609,16 +837,21 @@ def test_convert_value_regex_flag_explicit_partial_support(test_backend):
                     fieldA|re|i: pat.*tern/foobar
                     field A|re|i: 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/i and \'field A\'=/pat.*te\\\\rn\\/foo\\bar/i']
+        """
+            )
+        )
+        == ["mappedA=/pat.*tern\\/foo\\bar/i and 'field A'=/pat.*te\\\\rn\\/foo\\bar/i"]
+    )
+
 
 def test_convert_value_regex_flag_explicit_unsupported(test_backend):
     test_backend.re_flag_prefix = False
-    test_backend.re_flags = { SigmaRegularExpressionFlag.IGNORECASE: "i" }
+    test_backend.re_flags = {SigmaRegularExpressionFlag.IGNORECASE: "i"}
     test_backend.re_expression += "{flag_i}"
     with pytest.raises(NotImplementedError, match="flag MULTILINE not supported"):
         test_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -628,13 +861,17 @@ def test_convert_value_regex_flag_explicit_unsupported(test_backend):
                     sel:
                         fieldA|re|i|m: pat.*tern/foobar
                     condition: sel
-            """)
+            """
+            )
         )
+
 
 def test_convert_value_regex_not_escaped_escape(test_backend):
     test_backend.re_escape_escape_char = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -645,19 +882,31 @@ def test_convert_value_regex_not_escaped_escape(test_backend):
                     fieldA|re: pat.*tern/foobar
                     field A|re: 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['mappedA=/pat.*tern\\/foo\\bar/ and \'field A\'=/pat.*te\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["mappedA=/pat.*tern\\/foo\\bar/ and 'field A'=/pat.*te\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_multi_mapping():
     test_backend = TextQueryTestBackend(
-        ProcessingPipeline([
-            ProcessingItem(FieldMappingTransformation({
-                "fieldB": ["mappedB1", "mappedB2"],
-            })),
-        ]),
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldB": ["mappedB1", "mappedB2"],
+                        }
+                    )
+                ),
+            ]
+        ),
     )
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -667,12 +916,18 @@ def test_convert_value_regex_multi_mapping():
                 sel:
                     fieldB|re: pat.*tern/foobar
                 condition: sel
-        """)
-    ) == ['mappedB1=/pat.*tern\\/foo\\bar/ or mappedB2=/pat.*tern\\/foo\\bar/']
+        """
+            )
+        )
+        == ["mappedB1=/pat.*tern\\/foo\\bar/ or mappedB2=/pat.*tern\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_unbound(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -682,12 +937,18 @@ def test_convert_value_regex_unbound(test_backend):
                 sel:
                     "|re": 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['_=/pat.*te\\\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["_=/pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_unbound_flag_prefix(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -697,15 +958,21 @@ def test_convert_value_regex_unbound_flag_prefix(test_backend):
                 sel:
                     "|re|i|m|s": 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['_=/(?ims)pat.*te\\\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["_=/(?ims)pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_regex_unbound_flag_explicit(test_backend):
     test_backend.re_flag_prefix = False
     test_backend.re_flags = SigmaRegularExpression.sigma_to_re_flag
     test_backend.unbound_value_re_expression += "{flag_i}{flag_m}{flag_s}"
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -715,13 +982,19 @@ def test_convert_value_regex_unbound_flag_explicit(test_backend):
                 sel:
                     "|re|i|m|s": 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['_=/pat.*te\\\\rn\\/foo\\bar/ims']
+        """
+            )
+        )
+        == ["_=/pat.*te\\\\rn\\/foo\\bar/ims"]
+    )
+
 
 def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
     test_backend.re_escape_escape_char = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -731,12 +1004,18 @@ def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
                 sel:
                     "|re": 'pat.*te\\rn/foobar'
                 condition: sel
-        """)
-    ) == ['_=/pat.*te\\rn\\/foo\\bar/']
+        """
+            )
+        )
+        == ["_=/pat.*te\\rn\\/foo\\bar/"]
+    )
+
 
 def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -747,12 +1026,18 @@ def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
                     fieldA|cidr: 192.168.0.0/14
                     field A|cidr: 192.168.0.0/14
                 condition: sel
-        """)
-    ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") and cidrmatch(\'field A\', "192.168.0.0/14")']
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', \"192.168.0.0/14\") and cidrmatch('field A', \"192.168.0.0/14\")"]
+    )
+
 
 def test_convert_value_cidr_wildcard_native_ipv6(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -763,13 +1048,27 @@ def test_convert_value_cidr_wildcard_native_ipv6(test_backend):
                     fieldA|cidr: 1234:5678:0:ab00::/56
                     field A|cidr: 1234:5678:0:ab00::/56
                 condition: sel
-        """)
-    ) == ['cidrmatch(\'mappedA\', "1234:5678:0:ab00::/56") and cidrmatch(\'field A\', "1234:5678:0:ab00::/56")']
+        """
+            )
+        )
+        == [
+            "cidrmatch('mappedA', \"1234:5678:0:ab00::/56\") and cidrmatch('field A', \"1234:5678:0:ab00::/56\")"
+        ]
+    )
 
-def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv4(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', {prefixlen})")
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+
+def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv4(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(
+        test_backend,
+        "cidr_expression",
+        "cidrmatch('{field}', '{network}', {prefixlen})",
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -779,13 +1078,25 @@ def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv4(test
                 sel:
                     fieldA|cidr: 192.168.0.0/14
                 condition: sel
-        """)
-    ) == ["cidrmatch('mappedA', '192.168.0.0', 14)"]
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', '192.168.0.0', 14)"]
+    )
 
-def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv6(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', {prefixlen})")
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+
+def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv6(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(
+        test_backend,
+        "cidr_expression",
+        "cidrmatch('{field}', '{network}', {prefixlen})",
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -795,13 +1106,25 @@ def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv6(test
                 sel:
                     fieldA|cidr: 1234:5678:0:ab00::/56
                 condition: sel
-        """)
-    ) == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 56)"]
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 56)"]
+    )
 
-def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv4(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', '{netmask}')")
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+
+def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv4(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(
+        test_backend,
+        "cidr_expression",
+        "cidrmatch('{field}', '{network}', '{netmask}')",
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -811,13 +1134,25 @@ def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv4(test_b
                 sel:
                     fieldA|cidr: 192.168.0.0/14
                 condition: sel
-        """)
-    ) == ["cidrmatch('mappedA', '192.168.0.0', '255.252.0.0')"]
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', '192.168.0.0', '255.252.0.0')"]
+    )
 
-def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv6(test_backend, monkeypatch):
-    monkeypatch.setattr(test_backend, "cidr_expression", "cidrmatch('{field}', '{network}', '{netmask}')")
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+
+def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv6(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(
+        test_backend,
+        "cidr_expression",
+        "cidrmatch('{field}', '{network}', '{netmask}')",
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -827,13 +1162,19 @@ def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv6(test_b
                 sel:
                     fieldA|cidr: 1234:5678:0:ab00::/56
                 condition: sel
-        """)
-    ) == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 'ffff:ffff:ffff:ff00::')"]
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 'ffff:ffff:ffff:ff00::')"]
+    )
+
 
 def test_convert_value_cidr_wildcard_expression_ipv4(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -844,14 +1185,22 @@ def test_convert_value_cidr_wildcard_expression_ipv4(test_backend, monkeypatch):
                     fieldA|cidr: 192.168.0.0/14
                     field A|cidr: 192.168.0.0/14
                 condition: sel
-        """)
-    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") and \'field A\' in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")']
+        """
+            )
+        )
+        == [
+            'mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") and \'field A\' in ("192.168.*", "192.169.*", "192.170.*", "192.171.*")'
+        ]
+    )
+
 
 def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)
     monkeypatch.setattr(test_backend, "add_escaped", "")
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -861,12 +1210,20 @@ def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
                 sel:
                     fieldA|cidr: 1234:5678:0:ab00::/58
                 condition: sel
-        """)
-    ) == ['mappedA in ("1234:5678:0:ab0*", "1234:5678:0:ab1*", "1234:5678:0:ab2*", "1234:5678:0:ab3*")']
+        """
+            )
+        )
+        == [
+            'mappedA in ("1234:5678:0:ab0*", "1234:5678:0:ab1*", "1234:5678:0:ab2*", "1234:5678:0:ab3*")'
+        ]
+    )
+
 
 def test_convert_compare(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -883,12 +1240,20 @@ def test_convert_compare(test_backend):
                     fieldD|gte: 123
                     field D|gte: 123
                 condition: sel
-        """)
-    ) == ['mappedA<123 and \'field A\'<123 and mappedB<=123 and \'field B\'<=123 and fieldC>123 and \'field C\'>123 and fieldD>=123 and \'field D\'>=123']
+        """
+            )
+        )
+        == [
+            "mappedA<123 and 'field A'<123 and mappedB<=123 and 'field B'<=123 and fieldC>123 and 'field C'>123 and fieldD>=123 and 'field D'>=123"
+        ]
+    )
+
 
 def test_convert_compare_fields(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -899,14 +1264,20 @@ def test_convert_compare_fields(test_backend):
                     fieldA|fieldref: "field B"
                     field A|fieldref: fieldB
                 condition: sel
-        """)
-    ) == ['mappedA=fieldref(\'field B\') and \'field A\'=fieldref(mappedB)']
+        """
+            )
+        )
+        == ["mappedA=fieldref('field B') and 'field A'=fieldref(mappedB)"]
+    )
 
-def test_convert_compare_fields_noquote(test_backend : TextQueryTestBackend):
+
+def test_convert_compare_fields_noquote(test_backend: TextQueryTestBackend):
     test_backend.field_equals_field_expression = "`{field1}`=`{field2}`"
     test_backend.field_equals_field_escaping_quoting = (False, False)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -917,12 +1288,18 @@ def test_convert_compare_fields_noquote(test_backend : TextQueryTestBackend):
                     fieldA|fieldref: "field B"
                     field A|fieldref: fieldB
                 condition: sel
-        """)
-    ) == ['`mappedA`=`field B` and `field A`=`mappedB`']
+        """
+            )
+        )
+        == ["`mappedA`=`field B` and `field A`=`mappedB`"]
+    )
+
 
 def test_convert_compare_fields_differentiation_suffix(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -933,12 +1310,18 @@ def test_convert_compare_fields_differentiation_suffix(test_backend):
                     field|fieldref: suffix
                     suffix|fieldref: field
                 condition: sel
-        """)
-    ) == ['field=fieldref(\'suffix.test\') and \'suffix.test\'=fieldref(field)']
+        """
+            )
+        )
+        == ["field=fieldref('suffix.test') and 'suffix.test'=fieldref(field)"]
+    )
+
 
 def test_convert_compare_fields_differentiation_prefix(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -949,13 +1332,18 @@ def test_convert_compare_fields_differentiation_prefix(test_backend):
                     field|fieldref: prefix
                     prefix|fieldref: field
                 condition: sel
-        """)
-    ) == ['field=fieldref(\'test.prefix\') and \'test.prefix\'=fieldref(field)']
+        """
+            )
+        )
+        == ["field=fieldref('test.prefix') and 'test.prefix'=fieldref(field)"]
+    )
+
 
 def test_convert_compare_fields_wrong_type(test_backend):
     with pytest.raises(SigmaTypeError):
         assert test_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -965,13 +1353,16 @@ def test_convert_compare_fields_wrong_type(test_backend):
                     sel:
                         fieldA|re|fieldref: "field B"
                     condition: sel
-            """)
+            """
+            )
         )
+
 
 def test_convert_compare_str(test_backend):
     with pytest.raises(SigmaTypeError, match="incompatible to value type"):
         test_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -981,11 +1372,16 @@ def test_convert_compare_str(test_backend):
                     sel:
                         fieldA|lt: test
                     condition: sel
-            """))
+            """
+            )
+        )
+
 
 def test_convert_or_in_list(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1002,12 +1398,20 @@ def test_convert_or_in_list(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['(mappedA in ("value1", "value2", "value3")) and (\'field A\' in ("value1", "value2", "value3"))']
+        """
+            )
+        )
+        == [
+            '(mappedA in ("value1", "value2", "value3")) and (\'field A\' in ("value1", "value2", "value3"))'
+        ]
+    )
+
 
 def test_convert_or_in_list_empty_string(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1020,12 +1424,18 @@ def test_convert_or_in_list_empty_string(test_backend):
                         - value2
                         - ''
                 condition: sel
-        """)
-    ) == ['mappedA in ("value1", "value2", "")']
+        """
+            )
+        )
+        == ['mappedA in ("value1", "value2", "")']
+    )
+
 
 def test_convert_or_in_list_with_wildcards(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1038,13 +1448,19 @@ def test_convert_or_in_list_with_wildcards(test_backend):
                         - value2*
                         - val*ue3
                 condition: sel
-        """)
-    ) == ['mappedA in ("value1", "value2*", "val*ue3")']
+        """
+            )
+        )
+        == ['mappedA in ("value1", "value2*", "val*ue3")']
+    )
+
 
 def test_convert_or_in_list_with_wildcards_disabled(test_backend):
     test_backend.in_expressions_allow_wildcards = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1057,12 +1473,18 @@ def test_convert_or_in_list_with_wildcards_disabled(test_backend):
                         - value2
                         - val*ue3
                 condition: sel
-        """)
-    ) == ['mappedA="value1" or mappedA="value2" or mappedA match "val*ue3"']
+        """
+            )
+        )
+        == ['mappedA="value1" or mappedA="value2" or mappedA match "val*ue3"']
+    )
+
 
 def test_convert_or_in_separate(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1076,12 +1498,18 @@ def test_convert_or_in_separate(test_backend):
                 sel3:
                     fieldA: value3
                 condition: sel1 or sel2 or sel3
-        """)
-    ) == ['mappedA in ("value1", "value2", "value3")']
+        """
+            )
+        )
+        == ['mappedA in ("value1", "value2", "value3")']
+    )
+
 
 def test_convert_or_in_mixed_keyword_field(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1094,12 +1522,18 @@ def test_convert_or_in_mixed_keyword_field(test_backend):
                     fieldB: value2
                 sel3: value3
                 condition: sel1 or sel2 or sel3
-        """)
-    ) == ['mappedA="value1" or mappedB="value2" or _="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" or mappedB="value2" or _="value3"']
+    )
+
 
 def test_convert_or_in_mixed_fields(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1113,12 +1547,18 @@ def test_convert_or_in_mixed_fields(test_backend):
                 sel3:
                     fieldA: value3
                 condition: sel1 or sel2 or sel3
-        """)
-    ) == ['mappedA="value1" or mappedB="value2" or mappedA="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" or mappedB="value2" or mappedA="value3"']
+    )
+
 
 def test_convert_or_in_unallowed_value_type(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1131,12 +1571,18 @@ def test_convert_or_in_unallowed_value_type(test_backend):
                         - value2
                         - null
                 condition: sel
-        """)
-    ) == ['mappedA="value1" or mappedA="value2" or mappedA is null']
+        """
+            )
+        )
+        == ['mappedA="value1" or mappedA="value2" or mappedA is null']
+    )
+
 
 def test_convert_and_in_list(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1153,12 +1599,20 @@ def test_convert_and_in_list(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['mappedA contains-all ("value1", "value2", "value3") and \'field A\' contains-all ("value1", "value2", "value3")']
+        """
+            )
+        )
+        == [
+            'mappedA contains-all ("value1", "value2", "value3") and \'field A\' contains-all ("value1", "value2", "value3")'
+        ]
+    )
+
 
 def test_convert_and_in_list_single_item(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1168,13 +1622,19 @@ def test_convert_and_in_list_single_item(test_backend):
                 sel:
                     fieldA|all: value1
                 condition: sel
-        """)
-    ) == ['mappedA="value1"']
+        """
+            )
+        )
+        == ['mappedA="value1"']
+    )
+
 
 def test_convert_and_in_list_or_disabled(test_backend):
     test_backend.convert_or_as_in = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1187,13 +1647,19 @@ def test_convert_and_in_list_or_disabled(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['mappedA contains-all ("value1", "value2", "value3")']
+        """
+            )
+        )
+        == ['mappedA contains-all ("value1", "value2", "value3")']
+    )
+
 
 def test_convert_or_in_list_and_disabled(test_backend):
     test_backend.convert_and_as_in = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1206,13 +1672,19 @@ def test_convert_or_in_list_and_disabled(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['mappedA in ("value1", "value2", "value3")']
+        """
+            )
+        )
+        == ['mappedA in ("value1", "value2", "value3")']
+    )
+
 
 def test_convert_or_in_list_disabled(test_backend):
     test_backend.convert_or_as_in = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1225,13 +1697,19 @@ def test_convert_or_in_list_disabled(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['mappedA="value1" or mappedA="value2" or mappedA="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" or mappedA="value2" or mappedA="value3"']
+    )
+
 
 def test_convert_and_in_list_disabled(test_backend):
     test_backend.convert_and_as_in = False
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1244,12 +1722,18 @@ def test_convert_and_in_list_disabled(test_backend):
                         - value2
                         - value3
                 condition: sel
-        """)
-    ) == ['mappedA="value1" and mappedA="value2" and mappedA="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" and mappedA="value2" and mappedA="value3"']
+    )
+
 
 def test_convert_or_in_list_numbers(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1262,12 +1746,18 @@ def test_convert_or_in_list_numbers(test_backend):
                         - 2
                         - 3
                 condition: sel
-        """)
-    ) == ['mappedA in (1, 2, 3)']
+        """
+            )
+        )
+        == ["mappedA in (1, 2, 3)"]
+    )
+
 
 def test_convert_unbound_values(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1279,13 +1769,18 @@ def test_convert_unbound_values(test_backend):
                     - value2
                     - 123
                 condition: sel
-        """)
-    ) == ['_="value1" or _="value2" or _=123']
+        """
+            )
+        )
+        == ['_="value1" or _="value2" or _=123']
+    )
+
 
 def test_convert_invalid_unbound_bool(test_backend):
     with pytest.raises(SigmaValueError, match="Boolean values can't appear as standalone"):
         test_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -1294,12 +1789,15 @@ def test_convert_invalid_unbound_bool(test_backend):
                 detection:
                     sel: true
                     condition: sel
-            """)
+            """
+            )
         )
+
 
 def test_convert_collect_error(test_backend):
     test_backend.collect_errors = True
-    collection = SigmaCollection.from_yaml("""
+    collection = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -1308,17 +1806,20 @@ def test_convert_collect_error(test_backend):
             detection:
                 sel: true
                 condition: sel
-        """)
+        """
+    )
     rule = collection.rules[0]
 
     res = test_backend.convert(collection)
     error = test_backend.errors[0]
     assert res == [] and error[0] == rule and isinstance(error[1], SigmaValueError)
 
+
 def test_convert_invalid_unbound_cidr(test_backend):
     with pytest.raises(SigmaValueError, match="CIDR values can't appear as standalone"):
         test_backend.convert(
-            SigmaCollection.from_yaml("""
+            SigmaCollection.from_yaml(
+                """
                 title: Test
                 status: test
                 logsource:
@@ -1328,12 +1829,16 @@ def test_convert_invalid_unbound_cidr(test_backend):
                     sel:
                        "|cidr": 192.168.0.0/16
                     condition: sel
-            """)
+            """
+            )
         )
 
+
 def test_convert_and(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1345,15 +1850,22 @@ def test_convert_and(test_backend):
                 sel3:
                     fieldC: value3
                 condition: sel1 and sel3
-        """)
-    ) == ['mappedA="value1" and fieldC="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" and fieldC="value3"']
+    )
+
 
 class TextQueryTestBackendEmptyAND(TextQueryTestBackend):
     and_token = " "
 
+
 def test_convert_and_emptytoken():
-    assert TextQueryTestBackendEmptyAND().convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        TextQueryTestBackendEmptyAND().convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1365,15 +1877,22 @@ def test_convert_and_emptytoken():
                 sel3:
                     fieldC: value3
                 condition: sel1 and sel3
-        """)
-    ) == ['mappedA="value1" fieldC="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" fieldC="value3"']
+    )
+
 
 class TextQueryTestBackendEmptyOR(TextQueryTestBackend):
     or_token = " "
 
+
 def test_convert_or_emptytoken():
-    assert TextQueryTestBackendEmptyOR().convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        TextQueryTestBackendEmptyOR().convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1385,12 +1904,18 @@ def test_convert_or_emptytoken():
                 sel3:
                     fieldC: value3
                 condition: sel1 or sel3
-        """)
-    ) == ['mappedA="value1" fieldC="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" fieldC="value3"']
+    )
+
 
 def test_convert_or(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1402,12 +1927,18 @@ def test_convert_or(test_backend):
                 sel3:
                     fieldC: value3
                 condition: sel1 or sel3
-        """)
-    ) == ['mappedA="value1" or fieldC="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1" or fieldC="value3"']
+    )
+
 
 def test_convert_not(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1417,12 +1948,18 @@ def test_convert_not(test_backend):
                 sel:
                     fieldA: value1
                 condition: not sel
-        """)
-    ) == ['not mappedA="value1"']
+        """
+            )
+        )
+        == ['not mappedA="value1"']
+    )
+
 
 def test_convert_precedence(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1438,14 +1975,20 @@ def test_convert_precedence(test_backend):
                 sel4:
                     fieldD: value4
                 condition: (sel1 or sel2) and not (sel3 and sel4)
-        """)
-    ) == ['(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")']
+        """
+            )
+        )
+        == ['(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")']
+    )
+
 
 def test_convert_parenthesize(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "parenthesize", True)
     monkeypatch.setattr(test_backend, "convert_or_as_in", False)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1465,12 +2008,20 @@ def test_convert_parenthesize(test_backend, monkeypatch):
                        - value6
                     fieldD: value7
                 condition: sel1 or not sel2
-        """)
-    ) == ['(mappedA="value1" and (mappedB="value2" or mappedB="value3" or mappedB="value4")) or (not ((fieldC="value4" or fieldC="value5" or fieldC="value6") and fieldD="value7"))']
+        """
+            )
+        )
+        == [
+            '(mappedA="value1" and (mappedB="value2" or mappedB="value3" or mappedB="value4")) or (not ((fieldC="value4" or fieldC="value5" or fieldC="value6") and fieldD="value7"))'
+        ]
+    )
+
 
 def test_convert_multi_conditions(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1484,12 +2035,18 @@ def test_convert_multi_conditions(test_backend):
                 condition:
                     - sel1
                     - sel3
-        """)
-    ) == ['mappedA="value1"', 'fieldC="value3"']
+        """
+            )
+        )
+        == ['mappedA="value1"', 'fieldC="value3"']
+    )
+
 
 def test_convert_list_cidr_wildcard_none(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1501,13 +2058,19 @@ def test_convert_list_cidr_wildcard_none(test_backend):
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel
-        """)
-    ) == ['cidrmatch(\'mappedA\', "192.168.0.0/14") or cidrmatch(\'mappedA\', "10.10.10.0/24")']
+        """
+            )
+        )
+        == ["cidrmatch('mappedA', \"192.168.0.0/14\") or cidrmatch('mappedA', \"10.10.10.0/24\")"]
+    )
+
 
 def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1519,12 +2082,20 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
                         - 192.168.0.0/14
                         - 10.10.10.0/24
                 condition: sel
-        """)
-    ) == ['mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA in ("10.10.10.*")']
+        """
+            )
+        )
+        == [
+            'mappedA in ("192.168.*", "192.169.*", "192.170.*", "192.171.*") or mappedA in ("10.10.10.*")'
+        ]
+    )
+
 
 def test_convert_state(test_backend):
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1534,20 +2105,29 @@ def test_convert_state(test_backend):
                 sel:
                     fieldA: value
                 condition: sel
-        """), "state"
-    ) == ['index=test (mappedA="value")']
+        """
+            ),
+            "state",
+        )
+        == ['index=test (mappedA="value")']
+    )
+
 
 def test_convert_dropped_detection_item_and():
     backend = TextQueryTestBackend(
-        ProcessingPipeline([
-            ProcessingItem(
-                DropDetectionItemTransformation(),
-                field_name_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
-            ),
-        ]),
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
     )
-    assert backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1559,20 +2139,28 @@ def test_convert_dropped_detection_item_and():
                 sel2:
                     fieldB: value
                 condition: sel1 and sel2
-        """)
-    ) == ['fieldB="value"']
+        """
+            )
+        )
+        == ['fieldB="value"']
+    )
+
 
 def test_convert_dropped_detection_item_or():
     backend = TextQueryTestBackend(
-        ProcessingPipeline([
-            ProcessingItem(
-                DropDetectionItemTransformation(),
-                field_name_conditions=[ IncludeFieldCondition(fields=["EventID"]) ],
-            ),
-        ]),
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
     )
-    assert backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1584,62 +2172,66 @@ def test_convert_dropped_detection_item_or():
                 sel2:
                     fieldB: value
                 condition: sel1 or sel2
-        """)
-    ) == ['fieldB="value"']
+        """
+            )
+        )
+        == ['fieldB="value"']
+    )
+
 
 # Quoting & Escaping Tests
-quote_escape_config = ("'", re.compile("^[\\w.;\\\\]+$"), True, "\\", True, re.compile(";"))
+quote_escape_config = (
+    "'",
+    re.compile("^[\\w.;\\\\]+$"),
+    True,
+    "\\",
+    True,
+    re.compile(";"),
+)
 quote_always_escape_quote_config = ("'", None, True, "\\", True, None)
 quote_only_config = ("'", re.compile("^.*\s"), False, None, False, None)
 escape_only_config = (None, None, True, "\\", False, re.compile("[\s]"))
-quoting_escaping_testcases = {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
-    "escape_quote_nothing": (
-        quote_escape_config,
-        "foo.bar", "foo.bar"
-    ),
-    "escape_quote_quoteonly": (
-        quote_escape_config,
-        "foo bar", "'foo bar'"
-    ),
-    "escape_quote_quote_and_escape": (
-        quote_escape_config,
-        "foo bar;foo;bar", "'foo bar\\;foo\\;bar'"
-    ),
-    "escape_quote_escapeonly": (
-        quote_escape_config,
-        "foobar;foo;bar", "foobar\\;foo\\;bar"
-    ),
-    "escape_quote_escapeonly_start_end": (
-        quote_escape_config,
-        ";foo;bar;", "\\;foo\\;bar\\;"
-    ),
-    "escape_quote_quote_and_escape_quotechar": (
-        quote_escape_config,
-        "foo bar';foo;bar", "'foo bar\\'\\;foo\\;bar'"
-    ),
-    "quote_always_escape_quote_only": (
-        quote_always_escape_quote_config,
-        "foo 'bar'", "'foo \\'bar\\''"
-    ),
-    "quote_only": (
-        quote_only_config,
-        "foo bar", "'foo bar'"
-    ),
-    "escape_only": (
-        escape_only_config,
-        "foo bar", "foo\\ bar"
-    ),
-    "escape_only_start_end": (
-        escape_only_config,
-        " foo bar ", "\\ foo\\ bar\\ "
-    ),
-}
+quoting_escaping_testcases = (
+    {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
+        "escape_quote_nothing": (quote_escape_config, "foo.bar", "foo.bar"),
+        "escape_quote_quoteonly": (quote_escape_config, "foo bar", "'foo bar'"),
+        "escape_quote_quote_and_escape": (
+            quote_escape_config,
+            "foo bar;foo;bar",
+            "'foo bar\\;foo\\;bar'",
+        ),
+        "escape_quote_escapeonly": (
+            quote_escape_config,
+            "foobar;foo;bar",
+            "foobar\\;foo\\;bar",
+        ),
+        "escape_quote_escapeonly_start_end": (
+            quote_escape_config,
+            ";foo;bar;",
+            "\\;foo\\;bar\\;",
+        ),
+        "escape_quote_quote_and_escape_quotechar": (
+            quote_escape_config,
+            "foo bar';foo;bar",
+            "'foo bar\\'\\;foo\\;bar'",
+        ),
+        "quote_always_escape_quote_only": (
+            quote_always_escape_quote_config,
+            "foo 'bar'",
+            "'foo \\'bar\\''",
+        ),
+        "quote_only": (quote_only_config, "foo bar", "'foo bar'"),
+        "escape_only": (escape_only_config, "foo bar", "foo\\ bar"),
+        "escape_only_start_end": (escape_only_config, " foo bar ", "\\ foo\\ bar\\ "),
+    }
+)
+
 
 @pytest.mark.parametrize(
     "backend_parameters,input,expected_result",
     list(quoting_escaping_testcases.values()),
-    ids=list(quoting_escaping_testcases.keys())
-    )
+    ids=list(quoting_escaping_testcases.keys()),
+)
 def test_quote_escape(backend_parameters, input, expected_result, test_backend):
     for param, value in zip(
         (
@@ -1649,21 +2241,32 @@ def test_quote_escape(backend_parameters, input, expected_result, test_backend):
             "field_escape",
             "field_escape_quote",
             "field_escape_pattern",
-        ), backend_parameters):
+        ),
+        backend_parameters,
+    ):
         setattr(test_backend, param, value)
 
     assert test_backend.escape_and_quote_field(input) == expected_result
 
+
 def test_multi_field_mapping_conversion():
     test_backend = TextQueryTestBackend(
-        ProcessingPipeline([
-            ProcessingItem(FieldMappingTransformation({
-                "fieldB": ["mappedB", "mappedC" ],
-            })),
-        ]),
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldB": ["mappedB", "mappedC"],
+                        }
+                    )
+                ),
+            ]
+        ),
     )
-    assert test_backend.convert(
-        SigmaCollection.from_yaml("""
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1673,5 +2276,8 @@ def test_multi_field_mapping_conversion():
                 sel:
                     fieldB: value1
                 condition: sel
-        """)
-    ) == ['mappedB="value1" or mappedC="value1"']
+        """
+            )
+        )
+        == ['mappedB="value1" or mappedC="value1"']
+    )

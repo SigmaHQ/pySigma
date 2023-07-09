@@ -9,8 +9,21 @@ import string
 import re
 import sigma
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
-from sigma.exceptions import SigmaRegularExpressionError, SigmaTransformationError, SigmaValueError, SigmaConfigurationError
-from sigma.types import Placeholder, SigmaString, SigmaType, SpecialChars, SigmaQueryExpression, SigmaFieldReference
+from sigma.exceptions import (
+    SigmaRegularExpressionError,
+    SigmaTransformationError,
+    SigmaValueError,
+    SigmaConfigurationError,
+)
+from sigma.types import (
+    Placeholder,
+    SigmaString,
+    SigmaType,
+    SpecialChars,
+    SigmaQueryExpression,
+    SigmaFieldReference,
+)
+
 
 ### Base Classes ###
 @dataclass
@@ -19,24 +32,34 @@ class Transformation(ABC):
     Base class for processing steps used in pipelines. Override `apply` with transformation that is
     applied to the whole rule.
     """
-    processing_item : Optional["sigma.processing.pipeline.ProcessingItem"] = field(init=False, compare=False, default=None)
+
+    processing_item: Optional["sigma.processing.pipeline.ProcessingItem"] = field(
+        init=False, compare=False, default=None
+    )
 
     @classmethod
-    def from_dict(cls, d : dict) -> "Transformation":
+    def from_dict(cls, d: dict) -> "Transformation":
         return cls(**d)
 
     @abstractmethod
-    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         """Apply transformation on Sigma rule."""
-        self.pipeline : "sigma.processing.pipeline.ProcessingPipeline" = pipeline        # make pipeline accessible from all further options in class property
+        self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
+            pipeline  # make pipeline accessible from all further options in class property
+        )
         self.processing_item_applied(rule)
 
-    def set_processing_item(self, processing_item : "sigma.processing.pipeline.ProcessingItem"):
+    def set_processing_item(self, processing_item: "sigma.processing.pipeline.ProcessingItem"):
         self.processing_item = processing_item
 
-    def processing_item_applied(self, d : Union[SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition]):
+    def processing_item_applied(
+        self, d: Union[SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition]
+    ):
         """Mark detection item or detection as applied."""
         d.add_applied_processing_item(self.processing_item)
+
 
 @dataclass
 class DetectionItemTransformation(Transformation):
@@ -55,28 +78,34 @@ class DetectionItemTransformation(Transformation):
 
     A detection item transformation also marks the item as unconvertible to plain data types.
     """
+
     @abstractmethod
-    def apply_detection_item(self, detection_item : SigmaDetectionItem) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply transformation on detection item."""
 
-    def apply_detection(self, detection : SigmaDetection):
+    def apply_detection(self, detection: SigmaDetection):
         for i, detection_item in enumerate(detection.detection_items):
-            if isinstance(detection_item, SigmaDetection):        # recurse into nested detection items
+            if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
                 self.apply_detection(detection_item)
             else:
                 if (
-                    self.processing_item is None or
-                    self.processing_item.match_detection_item(self.pipeline, detection_item)
-                 ) and (r := self.apply_detection_item(detection_item)) is not None:
+                    self.processing_item is None
+                    or self.processing_item.match_detection_item(self.pipeline, detection_item)
+                ) and (r := self.apply_detection_item(detection_item)) is not None:
                     if isinstance(r, SigmaDetectionItem):
                         r.disable_conversion_to_plain()
                     detection.detection_items[i] = r
                     self.processing_item_applied(r)
 
-    def apply(self, pipeline : "sigma.processing.pipeline.ProcessingPipeline", rule : SigmaRule) -> None:
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         super().apply(pipeline, rule)
         for detection in rule.detection.detections.values():
             self.apply_detection(detection)
+
 
 @dataclass
 class FieldMappingTransformationBase(DetectionItemTransformation):
@@ -84,14 +113,17 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     Transformation that is applied to detection items and additionally the field list of a Sigma
     rule.
     """
+
     @abstractmethod
-    def apply_field_name(self, field : str) -> List[str]:
+    def apply_field_name(self, field: str) -> List[str]:
         """
         Apply field name transformation to a field list item of a Sigma rule. It must always return
         a list of strings that are expanded into a new field list.
         """
 
-    def _apply_field_name(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field : str) -> List[str]:
+    def _apply_field_name(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: str
+    ) -> List[str]:
         """
         Evaluate field name conditions and perform transformation with apply_field_name() method if
         condition matches, else return original value.
@@ -99,39 +131,46 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         if self.processing_item is None or self.processing_item.match_field_name(pipeline, field):
             result = self.apply_field_name(field)
             if self.processing_item is not None:
-                pipeline.track_field_processing_items(field, result, self.processing_item.identifier)
+                pipeline.track_field_processing_items(
+                    field, result, self.processing_item.identifier
+                )
             return result
         else:
-            return [ field ]
+            return [field]
 
-    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         """Apply field name transformations to Sigma rule field names listed in 'fields' attribute."""
         _apply_field_name = partial(self._apply_field_name, pipeline)
-        rule.fields = [
-            item
-            for mapping in map(_apply_field_name, rule.fields)
-            for item in mapping
-        ]
+        rule.fields = [item for mapping in map(_apply_field_name, rule.fields) for item in mapping]
         return super().apply(pipeline, rule)
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply field name transformations to field references in detection item values."""
         new_values = []
         match = False
         for value in detection_item.value:
-            if self.processing_item is not None and self.processing_item.match_field_in_value(self.pipeline, value):
-                new_values.extend((
-                    SigmaFieldReference(mapped_field)
-                    for mapped_field in self._apply_field_name(self.pipeline, value.field)
-                ))
+            if self.processing_item is not None and self.processing_item.match_field_in_value(
+                self.pipeline, value
+            ):
+                new_values.extend(
+                    (
+                        SigmaFieldReference(mapped_field)
+                        for mapped_field in self._apply_field_name(self.pipeline, value.field)
+                    )
+                )
                 match = True
             else:
                 new_values.append(value)
 
-        if match:       # replace value only if something matched
+        if match:  # replace value only if something matched
             detection_item.value = new_values
 
         return super().apply_detection_item(detection_item)
+
 
 @dataclass
 class ValueTransformation(DetectionItemTransformation):
@@ -141,25 +180,32 @@ class ValueTransformation(DetectionItemTransformation):
     are inserted into the value list or None if the original value should be passed through. An
     empty list should be returned by apply_value to drop the value from the transformed results.
     """
+
     def __post_init__(self):
-        argtypes = list(self.apply_value.__annotations__.values())      # get type annotations of apply_value method
-        try:        # try to extract type annotation of first argument and derive accepted types
+        argtypes = list(
+            self.apply_value.__annotations__.values()
+        )  # get type annotations of apply_value method
+        try:  # try to extract type annotation of first argument and derive accepted types
             argtype = argtypes[1]
-            if hasattr(argtype, "__origin__") and argtype.__origin__ is Union:      # if annotation is an union the list of types is contained in __args__
+            if (
+                hasattr(argtype, "__origin__") and argtype.__origin__ is Union
+            ):  # if annotation is an union the list of types is contained in __args__
                 self.value_types = argtype.__args__
             else:
                 self.value_types = argtype
-        except IndexError:      # No type annotation found
+        except IndexError:  # No type annotation found
             self.value_types = None
 
-    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+    def apply_detection_item(self, detection_item: SigmaDetectionItem):
         """Call apply_value for each value and integrate results into value list."""
         results = []
         modified = False
         for value in detection_item.value:
-            if self.value_types is None or isinstance(value, self.value_types):     # run replacement if no type annotation is defined or matching to type of value
+            if self.value_types is None or isinstance(
+                value, self.value_types
+            ):  # run replacement if no type annotation is defined or matching to type of value
                 res = self.apply_value(detection_item.field, value)
-                if res is None:       # no value returned: drop value
+                if res is None:  # no value returned: drop value
                     results.append(value)
                 elif isinstance(res, Iterable) and not isinstance(res, SigmaType):
                     results.extend(res)
@@ -167,14 +213,16 @@ class ValueTransformation(DetectionItemTransformation):
                 else:
                     results.append(res)
                     modified = True
-            else:       # pass original value if type doesn't matches to apply_value argument type annotation
+            else:  # pass original value if type doesn't matches to apply_value argument type annotation
                 results.append(value)
         if modified:
             detection_item.value = results
             self.processing_item_applied(detection_item)
 
     @abstractmethod
-    def apply_value(self, field : str, val : SigmaType) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
+    def apply_value(
+        self, field: str, val: SigmaType
+    ) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
         """
         Perform a value transformation. This method can return:
 
@@ -186,51 +234,62 @@ class ValueTransformation(DetectionItemTransformation):
         The type annotation of the val argument is used to skip incompatible values.
         """
 
+
 @dataclass
 class ConditionTransformation(Transformation):
     """
     Iterates over all rule conditions and calls the apply_condition method for each condition. Automatically
     takes care of marking condition as applied by processing item.
     """
-    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         super().apply(pipeline, rule)
         for i, condition in enumerate(rule.detection.parsed_condition):
             condition_before = condition.condition
             self.apply_condition(condition)
-            if condition.condition != condition_before:               # Condition was changed by transformation,
-                self.processing_item_applied(condition)     # mark as processed by processing item containing this transformation
+            if condition.condition != condition_before:  # Condition was changed by transformation,
+                self.processing_item_applied(
+                    condition
+                )  # mark as processed by processing item containing this transformation
 
     @abstractmethod
-    def apply_condition(self, cond : SigmaCondition) -> None:
+    def apply_condition(self, cond: SigmaCondition) -> None:
         """
         This method is invoked for each condition and can change it.
         """
+
 
 ### Transformations ###
 @dataclass
 class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
-    mapping : Dict[str, Union[str, List[str]]]
+
+    mapping: Dict[str, Union[str, List[str]]]
 
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         if field in self.mapping:
             mapping = self.mapping[field]
             return mapping
 
-    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+    def apply_detection_item(self, detection_item: SigmaDetectionItem):
         super().apply_detection_item(detection_item)
         field = detection_item.field
         mapping = self.get_mapping(field)
         if mapping is not None and self.processing_item.match_field_name(self.pipeline, field):
             self.pipeline.field_mappings.add_mapping(field, mapping)
-            if isinstance(mapping, str):    # 1:1 mapping, map field name of detection item directly
+            if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)
             else:
-                return SigmaDetection([
-                    dataclasses.replace(detection_item, field=field, auto_modifiers=False)
-                    for field in mapping
-                ], item_linking=ConditionOR)
+                return SigmaDetection(
+                    [
+                        dataclasses.replace(detection_item, field=field, auto_modifiers=False)
+                        for field in mapping
+                    ],
+                    item_linking=ConditionOR,
+                )
 
     def apply_field_name(self, field: str) -> Union[str, List[str]]:
         mapping = self.get_mapping(field) or field
@@ -239,90 +298,112 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
         else:
             return mapping
 
+
 @dataclass
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
+
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         for src, dest in self.mapping.items():
-            if field.startswith(src):      # found matching prefix
+            if field.startswith(src):  # found matching prefix
                 if isinstance(dest, str):
-                    return dest + field[len(src):]
+                    return dest + field[len(src) :]
                 else:
-                    return [
-                        dest_item + field[len(src):]
-                        for dest_item in dest
-                    ]
+                    return [dest_item + field[len(src) :] for dest_item in dest]
+
 
 @dataclass
 class DropDetectionItemTransformation(DetectionItemTransformation):
     """Deletes detection items. This should only used in combination with a detection item
     condition."""
+
     class DeleteSigmaDetectionItem(SigmaDetectionItem):
         """Class is used to mark detection item as to be deleted. It's just for having all the
         detection item functionality available."""
+
         @classmethod
         def create(cls):
             return cls(None, [], [])
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> Optional[SigmaDetectionItem]:
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[SigmaDetectionItem]:
         """This function only marks detection items for deletion."""
         return self.DeleteSigmaDetectionItem.create()
 
     def apply_detection(self, detection: SigmaDetection):
         super().apply_detection(detection)
-        detection.detection_items = list(filter(
-            lambda d: not isinstance(d, self.DeleteSigmaDetectionItem),
-            detection.detection_items
-            ))
+        detection.detection_items = list(
+            filter(
+                lambda d: not isinstance(d, self.DeleteSigmaDetectionItem),
+                detection.detection_items,
+            )
+        )
+
 
 @dataclass
 class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
     """
     Add field name suffix.
     """
-    suffix : str
 
-    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+    suffix: str
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem):
         super().apply_detection_item(detection_item)
-        if type(orig_field := detection_item.field) is str and (self.processing_item is None or self.processing_item.match_field_name(self.pipeline, orig_field)):
+        if type(orig_field := detection_item.field) is str and (
+            self.processing_item is None
+            or self.processing_item.match_field_name(self.pipeline, orig_field)
+        ):
             detection_item.field += self.suffix
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
-        return [ field + self.suffix ]
+        return [field + self.suffix]
+
 
 @dataclass
 class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
     """
     Add field name prefix.
     """
-    prefix : str
 
-    def apply_detection_item(self, detection_item : SigmaDetectionItem):
+    prefix: str
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem):
         super().apply_detection_item(detection_item)
-        if type(orig_field := detection_item.field) is str and (self.processing_item is None or self.processing_item.match_field_name(self.pipeline, orig_field)):
+        if type(orig_field := detection_item.field) is str and (
+            self.processing_item is None
+            or self.processing_item.match_field_name(self.pipeline, orig_field)
+        ):
             detection_item.field = self.prefix + detection_item.field
             self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
-        return [ self.prefix + field ]
+        return [self.prefix + field]
+
 
 @dataclass
 class PlaceholderIncludeExcludeMixin:
-    include : Optional[List[str]] = field(default=None)
-    exclude : Optional[List[str]] = field(default=None)
+    include: Optional[List[str]] = field(default=None)
+    exclude: Optional[List[str]] = field(default=None)
 
     def __post_init__(self):
         super().__post_init__()
         if self.include is not None and self.exclude is not None:
-            raise SigmaConfigurationError("Placeholder transformation include and exclude lists can only be used exclusively!")
+            raise SigmaConfigurationError(
+                "Placeholder transformation include and exclude lists can only be used exclusively!"
+            )
 
-    def is_handled_placeholder(self, p : Placeholder) -> bool:
-        return (self.include is None and self.exclude is None) or \
-            (self.include is not None and p.name in self.include) or \
-            (self.exclude is not None and p.name not in self.exclude)
+    def is_handled_placeholder(self, p: Placeholder) -> bool:
+        return (
+            (self.include is None and self.exclude is None)
+            or (self.include is not None and p.name in self.include)
+            or (self.exclude is not None and p.name not in self.exclude)
+        )
+
 
 @dataclass
 class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
@@ -331,16 +412,21 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
     are handled by this transformation. Unhandled placeholders are left as they are and must be handled by
     later transformations.
     """
+
     def __post_init__(self):
         super().__post_init__()
 
-    def apply_value(self, field : str, val: SigmaString) -> Union[SigmaString, Iterable[SigmaString]]:
+    def apply_value(
+        self, field: str, val: SigmaString
+    ) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder(self.include, self.exclude):
             return val.replace_placeholders(self.placeholder_replacements_base)
         else:
             return None
 
-    def placeholder_replacements_base(self, p : Placeholder) -> Iterator[Union[str, SpecialChars, Placeholder]]:
+    def placeholder_replacements_base(
+        self, p: Placeholder
+    ) -> Iterator[Union[str, SpecialChars, Placeholder]]:
         """
         Base placeholder replacement callback. Calls real callback if placeholder is included or not excluded,
         else it passes the placeholder back to caller.
@@ -351,7 +437,9 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
             yield p
 
     @abstractmethod
-    def placeholder_replacements(self, p : Placeholder) -> Iterator[Union[str, SpecialChars, Placeholder]]:
+    def placeholder_replacements(
+        self, p: Placeholder
+    ) -> Iterator[Union[str, SpecialChars, Placeholder]]:
         """
         Placeholder replacement callback used by SigmaString.replace_placeholders(). This must return one
         of the following object types:
@@ -362,6 +450,7 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
           pipeline items or the backend or the conversion will fail.
         """
 
+
 @dataclass
 class WildcardPlaceholderTransformation(BasePlaceholderTransformation):
     """
@@ -369,29 +458,33 @@ class WildcardPlaceholderTransformation(BasePlaceholderTransformation):
     be replaced with something meaningful to make conversion of rules possible without defining the
     placeholders content.
     """
-    def placeholder_replacements(self, p : Placeholder) -> Iterator[SpecialChars]:
-        return [ SpecialChars.WILDCARD_MULTI ]
+
+    def placeholder_replacements(self, p: Placeholder) -> Iterator[SpecialChars]:
+        return [SpecialChars.WILDCARD_MULTI]
+
 
 @dataclass
 class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
     """
     Replaces placeholders with values contained in variables defined in the configuration.
     """
-    def placeholder_replacements(self, p : Placeholder) -> List[str]:
+
+    def placeholder_replacements(self, p: Placeholder) -> List[str]:
         try:
             values = self.pipeline.vars[p.name]
         except KeyError:
             raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
 
         if not isinstance(values, List):
-            values = [ values ]
+            values = [values]
 
-        if { isinstance(item, (str, int, float)) for item in values } != { True }:
-            raise SigmaValueError(f"Replacement variable '{ p.name }' contains value which is not a string or number.")
+        if {isinstance(item, (str, int, float)) for item in values} != {True}:
+            raise SigmaValueError(
+                f"Replacement variable '{ p.name }' contains value which is not a string or number."
+            )
 
-        return [
-            SigmaString(str(v)) for v in values
-        ]
+        return [SigmaString(str(v)) for v in values]
+
 
 @dataclass
 class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
@@ -406,18 +499,24 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
     * mapping: Mapping between placeholders and identifiers that should be used in the expression.
     If no mapping is provided the placeholder name is used.
     """
-    expression : str = ""
-    mapping : Dict[str, str] = field(default_factory=dict)
 
-    def apply_value(self, field : str, val: SigmaString) -> Union[SigmaString, Iterable[SigmaString]]:
+    expression: str = ""
+    mapping: Dict[str, str] = field(default_factory=dict)
+
+    def apply_value(
+        self, field: str, val: SigmaString
+    ) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder():
-            if len(val.s) == 1:     # Sigma string must only contain placeholder, nothing else.
+            if len(val.s) == 1:  # Sigma string must only contain placeholder, nothing else.
                 p = val.s[0]
                 if self.is_handled_placeholder(p):
                     return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)
-            else:       # SigmaString contains placeholder as well as other parts
-                raise SigmaValueError(f"Placeholder query expression transformation only allows placeholder-only strings.")
+            else:  # SigmaString contains placeholder as well as other parts
+                raise SigmaValueError(
+                    f"Placeholder query expression transformation only allows placeholder-only strings."
+                )
         return None
+
 
 @dataclass
 class AddConditionTransformation(ConditionTransformation):
@@ -429,15 +528,18 @@ class AddConditionTransformation(ConditionTransformation):
 
     * $category, $product and $service: with the corresponding values of the Sigma rule log source.
     """
-    conditions : Dict[str, Union[str, List[str]]] = field(default_factory=dict)
-    name : Optional[str] = field(default=None, compare=False)
-    template : bool = False
+
+    conditions: Dict[str, Union[str, List[str]]] = field(default_factory=dict)
+    name: Optional[str] = field(default=None, compare=False)
+    template: bool = False
 
     def __post_init__(self):
-        if self.name is None:       # generate random detection item name if none is given
+        if self.name is None:  # generate random detection item name if none is given
             self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
-    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         if self.template:
             conditions = {
                 field: (
@@ -449,8 +551,8 @@ class AddConditionTransformation(ConditionTransformation):
                         )
                         for item in value
                     ]
-                    if isinstance(value, list) else
-                    string.Template(value).safe_substitute(
+                    if isinstance(value, list)
+                    else string.Template(value).safe_substitute(
                         category=rule.logsource.category,
                         product=rule.logsource.product,
                         service=rule.logsource.service,
@@ -468,17 +570,22 @@ class AddConditionTransformation(ConditionTransformation):
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = f"{self.name} and ({cond.condition})"
 
+
 @dataclass
 class ChangeLogsourceTransformation(Transformation):
     """Replace log source as defined in transformation parameters."""
-    category : Optional[str] = field(default=None)
-    product : Optional[str] = field(default=None)
-    service : Optional[str] = field(default=None)
 
-    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+    category: Optional[str] = field(default=None)
+    product: Optional[str] = field(default=None)
+    service: Optional[str] = field(default=None)
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         super().apply(pipeline, rule)
         logsource = SigmaLogSource(self.category, self.product, self.service)
         rule.logsource = logsource
+
 
 @dataclass
 class ReplaceStringTransformation(ValueTransformation):
@@ -488,29 +595,35 @@ class ReplaceStringTransformation(ValueTransformation):
 
     This is basically an interface to re.sub() and can use all features available there.
     """
-    regex : str
-    replacement : str
+
+    regex: str
+    replacement: str
 
     def __post_init__(self):
         super().__post_init__()
         try:
             self.re = re.compile(self.regex)
         except re.error as e:
-            raise SigmaRegularExpressionError(f"Regular expression '{self.regex}' is invalid: {str(e)}") from e
+            raise SigmaRegularExpressionError(
+                f"Regular expression '{self.regex}' is invalid: {str(e)}"
+            ) from e
 
     def apply_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             return SigmaString(self.re.sub(self.replacement, str(val)))
 
+
 @dataclass
 class SetStateTransformation(Transformation):
     """Set pipeline state key to value."""
-    key : str
-    val : Any
+
+    key: str
+    val: Any
 
     def apply(self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule) -> None:
         super().apply(pipeline, rule)
         pipeline.state[self.key] = self.val
+
 
 @dataclass
 class RuleFailureTransformation(Transformation):
@@ -519,10 +632,14 @@ class RuleFailureTransformation(Transformation):
     pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
     is allowed because the target data model doesn't offers all possibilities.
     """
-    message : str
 
-    def apply(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule) -> None:
+    message: str
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
         raise SigmaTransformationError(self.message)
+
 
 @dataclass
 class DetectionItemFailureTransformation(DetectionItemTransformation):
@@ -531,12 +648,14 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
     pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
     is allowed because the target data model doesn't offers all possibilities.
     """
-    message : str
+
+    message: str
 
     def apply_detection_item(self, detection_item: SigmaDetectionItem) -> None:
         raise SigmaTransformationError(self.message)
 
-transformations : Dict[str, Transformation] = {
+
+transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
     "drop_detection_item": DropDetectionItemTransformation,

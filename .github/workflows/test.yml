@@ -1,17 +1,17 @@
 name: Test
 on:
   push:
-    branches: [ "*" ]
+    branches: ["*"]
   pull_request:
-    branches: [ "*" ]
+    branches: ["*"]
   workflow_dispatch:
 
 jobs:
   test:
     strategy:
       matrix:
-        os: [ 'ubuntu-20.04', 'windows-2019', 'macos-12' ]
-        python-version: [ '3.8', '3.9', '3.10', '3.11' ]
+        os: ["ubuntu-20.04", "windows-2019", "macos-12"]
+        python-version: ["3.8", "3.9", "3.10", "3.11"]
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v3
@@ -24,6 +24,8 @@ jobs:
           cache: poetry
       - name: Install dependencies
         run: poetry install
+      - name: Lint with black
+        run: poetry run black --check .
       - name: Run tests
         run: poetry run pytest --cov=sigma --cov-report term --cov-report xml:cov.xml -vv
       - name: Store coverage for badge

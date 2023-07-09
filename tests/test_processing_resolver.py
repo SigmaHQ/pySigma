@@ -14,17 +14,17 @@ def processing_pipeline_resolver():
     return ProcessingPipelineResolver.from_pipeline_list(
         [
             ProcessingPipeline(
-                [ProcessingItem(AddFieldnameSuffixTransformation(".item-1"))],
+                items=[ProcessingItem(AddFieldnameSuffixTransformation(".item-1"))],
                 name="pipeline-1",
                 priority=10,
             ),
             ProcessingPipeline(
-                [ProcessingItem(AddFieldnameSuffixTransformation(".item-2"))],
+                items=[ProcessingItem(AddFieldnameSuffixTransformation(".item-2"))],
                 name="pipeline-2",
                 priority=10,
             ),
             ProcessingPipeline(
-                [ProcessingItem(AddFieldnameSuffixTransformation(".item-3"))],
+                items=[ProcessingItem(AddFieldnameSuffixTransformation(".item-3"))],
                 name="pipeline-3",
                 allowed_backends={"some_backend"},
                 priority=20,
@@ -47,7 +47,7 @@ def test_resolve_file(processing_pipeline_resolver: ProcessingPipelineResolver):
     assert processing_pipeline_resolver.resolve_pipeline(
         "tests/files/pipeline.yml"
     ) == ProcessingPipeline(
-        [
+        items=[
             ProcessingItem(
                 AddFieldnameSuffixTransformation(".test"),
                 identifier="test",

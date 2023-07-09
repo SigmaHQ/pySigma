@@ -2,7 +2,7 @@ import pytest
 from dataclasses import dataclass
 import re
 from textwrap import dedent
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
     IncludeFieldCondition,
@@ -13,6 +13,7 @@ from sigma.processing.conditions import (
     DetectionItemProcessingCondition,
     FieldNameProcessingItemAppliedCondition,
 )
+from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     SetStateTransformation,
     transformations,
@@ -150,6 +151,34 @@ def processing_item():
         detection_item_conditions=[
             DetectionItemConditionTrue(dummy="test-true"),
             DetectionItemConditionFalse(dummy="test-false"),
+        ],
+        identifier="test",
+    )
+
+
+@pytest.fixture
+def postprocessing_item_dict():
+    return {
+        "id": "test",
+        "rule_conditions": [
+            {"type": "true", "dummy": "test-true"},
+            {"type": "false", "dummy": "test-false"},
+        ],
+        "rule_cond_op": "or",
+        "type": "embed",
+        "prefix": "[ ",
+        "suffix": " ]",
+    }
+
+
+@pytest.fixture
+def postprocessing_item():
+    return QueryPostprocessingItem(
+        transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+        rule_condition_linking=any,
+        rule_conditions=[
+            RuleConditionTrue(dummy="test-true"),
+            RuleConditionFalse(dummy="test-false"),
         ],
         identifier="test",
     )
@@ -449,6 +478,18 @@ def test_processingitem_wrong_field_name_condition():
         )
 
 
+def test_postprocessingitem_fromdict(postprocessing_item_dict, postprocessing_item):
+    assert QueryPostprocessingItem.from_dict(postprocessing_item_dict) == postprocessing_item
+
+
+def test_postprocessingitem_apply(
+    postprocessing_item: QueryPostprocessingItem, dummy_processing_pipeline, sigma_rule
+):
+    postprocessing_item.apply(
+        dummy_processing_pipeline, sigma_rule, "field=value"
+    ) == "[ field=value ]"
+
+
 def test_processingpipeline_fromdict(
     processing_item_dict, processing_item, processing_pipeline_vars
 ):
@@ -563,6 +604,42 @@ def test_processingpipeline_apply_partial(sigma_rule):
     )
 
 
+def test_procesingpipeline_postprocess(sigma_rule):
+    pipeline = ProcessingPipeline(
+        postprocessing_items=[
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="[ "),
+                identifier="add_query_prefix",
+            ),
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(suffix=" ]"),
+                identifier="add_query_suffix",
+            ),
+        ]
+    )
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "[ field=value ]"
+    assert pipeline.applied_ids == {"add_query_prefix", "add_query_suffix"}
+
+
+def test_procesingpipeline_postprocess_partial(sigma_rule):
+    pipeline = ProcessingPipeline(
+        postprocessing_items=[
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+                rule_conditions=[RuleConditionTrue("test")],
+                identifier="add_brackets",
+            ),
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="query"),
+                rule_conditions=[RuleConditionFalse("test")],
+                identifier="add_query_keyword",
+            ),
+        ]
+    )
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "[ field=value ]"
+    assert pipeline.applied_ids == {"add_brackets"}
+
+
 def test_processingpipeline_field_processing_item_tracking():
     pipeline = ProcessingPipeline()
     pipeline.track_field_processing_items("field1", ["fieldA", "fieldB"], "processing_item_1")
@@ -663,6 +740,9 @@ def test_processingpipeline_concatenation():
                 identifier="pre",
             ),
         ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+        ],
         vars={
             "a": 1,
             "b": 2,
@@ -674,6 +754,9 @@ def test_processingpipeline_concatenation():
                 transformation=TransformationAppend(s="Append"),
                 identifier="append",
             ),
+        ],
+        postprocessing_items=[
+            EmbedQueryTransformation(suffix=" ]"),
         ],
         vars={
             "b": 3,
@@ -691,6 +774,10 @@ def test_processingpipeline_concatenation():
                 identifier="append",
             ),
         ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+            EmbedQueryTransformation(suffix=" ]"),
+        ],
         vars={
             "a": 1,
             "b": 3,
@@ -707,6 +794,9 @@ def test_processingpipeline_sum():
                     transformation=TransformationPrepend(s="Pre"),
                     identifier="pre",
                 ),
+            ],
+            postprocessing_items=[
+                EmbedQueryTransformation(prefix="[ "),
             ],
             vars={
                 "a": 1,
@@ -732,6 +822,9 @@ def test_processingpipeline_sum():
                     identifier="append_another",
                 ),
             ],
+            postprocessing_items=[
+                EmbedQueryTransformation(suffix=" ]"),
+            ],
             vars={"c": 5, "d": 6},
         ),
     ]
@@ -749,6 +842,10 @@ def test_processingpipeline_sum():
                 transformation=TransformationAppend(s="AppendAnother"),
                 identifier="append_another",
             ),
+        ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+            EmbedQueryTransformation(suffix=" ]"),
         ],
         vars={
             "a": 1,

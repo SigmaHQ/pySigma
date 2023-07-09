@@ -5,7 +5,8 @@ from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaConfigurationError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
-import yaml
+from sigma import yaml
+
 
 class SigmaValidator:
     """

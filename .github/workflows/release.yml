@@ -23,6 +23,8 @@ jobs:
           [ "$(poetry version -s)" == "${GITHUB_REF#refs/tags/v}" ]
       - name: Install dependencies
         run: poetry install
+      - name: Lint with black
+        run: poetry run black --check .
       - name: Run tests
         run: poetry run pytest
       - name: Build packages

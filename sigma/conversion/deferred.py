@@ -4,6 +4,7 @@ from typing import Any, ClassVar, Dict, Optional
 from sigma.conditions import ParentChainMixin
 import sigma
 
+
 @dataclass
 class DeferredQueryExpression(ParentChainMixin, ABC):
     """
@@ -30,12 +31,13 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
 
     The method finalize_expression must implement the generation of the query expression.
     """
-    conversion_state : "sigma.backends.state.ConversionState"
-    negated : bool = field(init=False, default=False)
+
+    conversion_state: "sigma.backends.state.ConversionState"
+    negated: bool = field(init=False, default=False)
 
     def __post_init__(self):
-       """Deferred expression automatically adds itself to conversion state."""
-       self.conversion_state.add_deferred_expression(self)
+        """Deferred expression automatically adds itself to conversion state."""
+        self.conversion_state.add_deferred_expression(self)
 
     def negate(self) -> "DeferredQueryExpression":
         """Toggle negation state of deferred expression."""
@@ -46,29 +48,33 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
     def finalize_expression(self) -> Any:
         """Generate query from information stored in the deferred query and the conversion state object."""
 
+
 @dataclass
 class DeferredTextQueryExpression(DeferredQueryExpression):
-  """
-  Convenience class derived from DeferredQueryExpression for text query backends. It is a base class for
-  implementation classes setting the following class variables:
+    """
+    Convenience class derived from DeferredQueryExpression for text query backends. It is a base class for
+    implementation classes setting the following class variables:
 
-  * template: a string template containing the following placeholders:
-    * field: the field name referenced by the Sigma rule
-    * value: the value from the Sigma rule
-    * op: an operator that is looked up in operators depending on the state of the negated property.
-  * operators: a dict containing a mapping from the two boolean states to operators inserted in the
-    generated queries.
-  """
-  field : Optional[str]
-  value : str
-  template : ClassVar[str]
-  operators : ClassVar[Dict[bool, str]]
-  default_field : ClassVar[Optional[str]]
+    * template: a string template containing the following placeholders:
+      * field: the field name referenced by the Sigma rule
+      * value: the value from the Sigma rule
+      * op: an operator that is looked up in operators depending on the state of the negated property.
+    * operators: a dict containing a mapping from the two boolean states to operators inserted in the
+      generated queries.
+    """
 
-  def __post_init__(self):
-    super().__post_init__()
-    if self.field is None and self.default_field is not None:
-      self.field = self.default_field
+    field: Optional[str]
+    value: str
+    template: ClassVar[str]
+    operators: ClassVar[Dict[bool, str]]
+    default_field: ClassVar[Optional[str]]
 
-  def finalize_expression(self) -> str:
-    return self.template.format(field=self.field, op=self.operators[self.negated], value=self.value)
+    def __post_init__(self):
+        super().__post_init__()
+        if self.field is None and self.default_field is not None:
+            self.field = self.default_field
+
+    def finalize_expression(self) -> str:
+        return self.template.format(
+            field=self.field, op=self.operators[self.negated], value=self.value
+        )

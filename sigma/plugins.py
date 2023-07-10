@@ -246,6 +246,7 @@ class InstalledSigmaPlugins:
             if identifier:
                 identifier = removesuffix(identifier, "Backend")
                 identifier = removesuffix(identifier, "backend")
+                identifier = removesuffix(identifier, "_")
                 words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", identifier)
                 if len(words) == 0:
                     return identifier.lower()

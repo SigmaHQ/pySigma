@@ -235,8 +235,8 @@ class InstalledSigmaPlugins:
 
             # 4. Convert the name to snake_case.
             if identifier:
-                identifier = identifier.removesuffix("Backend")
-                identifier = identifier.removesuffix("backend")
+                identifier = identifier.rstrip("Backend")
+                identifier = identifier.rstrip("backend")
                 words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", identifier)
                 if len(words) == 0:
                     return identifier.lower()

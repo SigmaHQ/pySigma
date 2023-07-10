@@ -156,17 +156,19 @@ class InstalledSigmaPlugins:
                         # Backends reside on the module level
                         for cls_name in imported_module.__dict__:
                             klass = getattr(imported_module, cls_name)
-                            name = InstalledSigmaPlugins._get_backend_name(klass, cls_name)
+                            identifier = InstalledSigmaPlugins._get_backend_identifier(
+                                klass, cls_name
+                            )
                             if is_backend(klass):
-                                if is_duplicate(result, klass, name):
+                                if is_duplicate(result, klass, identifier):
                                     # If there is a duplicate, use the class name instead.
                                     # This prevents the backend from being overwritten.
                                     warnings.warn(
-                                        f"The '{klass.__name__}' wanted to overwrite the class '{result[name].__name__}' registered as '{name}'. Consider setting the 'name' attribute on the '{result[name].__name__}'. Ignoring the '{klass.__name__}'.",
+                                        f"The '{klass.__name__}' wanted to overwrite the class '{result[identifier].__name__}' registered as '{identifier}'. Consider setting the 'identifier' attribute on the '{result[identifier].__name__}'. Ignoring the '{klass.__name__}'.",
                                     )
                                 else:
                                     # Ignore duplicate backends.
-                                    result.update({name: klass})
+                                    result.update({identifier: klass})
                     else:
                         raise ValueError(
                             f"Unknown directory name {directory_name} for module {mod.name}"
@@ -205,50 +207,46 @@ class InstalledSigmaPlugins:
         )
 
     @staticmethod
-    def _get_backend_name(obj: Any, default: str) -> Optional[str]:
+    def _get_backend_identifier(obj: Any, default: str) -> Optional[str]:
         """
-        Get the name of a backend object. This is either the name attribute of the object,
-        the __name__ attribute of the object, or the __class__ attribute of the object.
-        The name is then converted to snake_case. If the name is empty, the default is returned.
+        Get the identifier of a backend object. This is either the identifier attribute of
+        the object, the __identifier__ attribute of the object, or the __class__ attribute
+        of the object. The identifier is then converted to snake_case. If the identifier is
+        empty, the default is returned.
 
         Args:
-            obj: The Backend object to get the name from.
-            default: The default name to return if no name could be found.
+            obj: The Backend object to get the identifier from.
+            default: The default identifier to return if no identifier could be found.
 
         Returns:
-            The name of the backend object in snake_case or the default name.
+            The identifier of the backend object in snake_case or the default identifier.
         """
         try:
-            # 1. Try to get the obj.name attribute.
-            name = getattr(obj, "name", None)
-            # Base backend is a special case, as it is not a backend but a base class,
-            # so we don't want to return it as a backend.
-            if name and name != "Base backend":
-                return name
+            # 1. Try to get the obj.identifier attribute.
+            identifier = getattr(obj, "identifier", None)
 
-            # 2. Try to get the obj.__name__ attribute.
-            if not name:
-                name = getattr(obj, "__name__", None)
+            # 2. Try to get the obj.__identifier__ attribute.
+            if not identifier:
+                identifier = getattr(obj, "__identifier__", None)
 
-            # 3. Try to get the obj.__class__.__name__ attribute.
-            if not name:
-                name = getattr(obj, "__class__", None)
-                if name:
-                    name = name.__name__
+            # 3. Try to get the obj.__name__ attribute.
+            if not identifier:
+                identifier = getattr(obj, "__name__", None)
 
-            # 4. Convert the name to snake_case while removing the "Backend" suffix.
-            if name:
-                name = name.removesuffix("Backend")
-                words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", name)
+            # 4. Convert the name to snake_case.
+            if identifier:
+                identifier = identifier.removesuffix("Backend")
+                identifier = identifier.removesuffix("backend")
+                words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", identifier)
                 if len(words) == 0:
-                    return name.lower()
-                rebuilt_name = "_".join(words).lower()
-                # 5. If we still have the "base" backend, return the module name instead.
-                if rebuilt_name == "base":
+                    return identifier.lower()
+                rebuilt_identifier = "_".join(words).lower()
+                # 5. If we still have the "base" backend, return the module identifier instead.
+                if rebuilt_identifier == "base":
                     return obj.__module__.split(".")[-1].lower()
-                return rebuilt_name
+                return rebuilt_identifier
             else:
-                # 6. If we still don't have a name, return the default.
+                # 6. If we still don't have an identifier, return the default.
                 return default
         except Exception:
             # 7. If anything goes wrong, return the default.

@@ -157,5 +157,4 @@ class TextQueryTestBackend(TextQueryBackend):
 
 
 class MandatoryPipelineTestBackend(TextQueryTestBackend):
-    name = "Mandatory pipeline test backend"
     requires_pipeline: bool = True

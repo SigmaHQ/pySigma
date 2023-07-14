@@ -5,6 +5,7 @@ import importlib
 import importlib.metadata
 import inspect
 import pkgutil
+import re
 import subprocess
 import sys
 from typing import Callable, Dict, Any, List, Optional, Set, Union, get_type_hints
@@ -12,6 +13,7 @@ from uuid import UUID
 import requests
 from packaging.version import Version
 from packaging.specifiers import Specifier
+import warnings
 
 from sigma.conversion.base import Backend
 from sigma.pipelines.base import Pipeline
@@ -55,6 +57,7 @@ class InstalledSigmaPlugins:
         result = dict()
 
         def is_pipeline(obj):
+            """Checks if an object is a pipeline."""
             return any(
                 [
                     inspect.isclass(obj) and issubclass(obj, Pipeline),
@@ -63,6 +66,21 @@ class InstalledSigmaPlugins:
                     and get_type_hints(obj).get("return") == ProcessingPipeline,
                 ]
             )
+
+        def is_validator(obj):
+            """Checks if an object is a validator."""
+            return (
+                inspect.isclass(obj)
+                and issubclass(obj, SigmaRuleValidator)
+                and obj.__module__ != "sigma.validators.base"
+            )
+
+        def is_backend(obj):
+            """Checks if an object is a backend."""
+            return inspect.isclass(obj) and issubclass(obj, Backend)
+
+        def is_duplicate(container, klass, name):
+            return name in container and container[name] != klass
 
         if include:
             for mod in pkgutil.iter_modules(module.__path__, module.__name__ + "."):
@@ -123,6 +141,7 @@ class InstalledSigmaPlugins:
 
                             # OR'd condition ensures backwards compatibility with older plugins
                             if is_pipeline(possible_obj) or inspect.isfunction(possible_obj):
+                                # Instantiate the pipeline if it is a class.
                                 if inspect.isclass(possible_obj) and issubclass(
                                     possible_obj, Pipeline
                                 ):
@@ -131,18 +150,25 @@ class InstalledSigmaPlugins:
                                     result[obj_name] = possible_obj
                     elif directory_name == "validators":
                         for cls_name in submodules:
-                            if (
-                                inspect.isclass(submodules[cls_name])
-                                and issubclass(submodules[cls_name], SigmaRuleValidator)
-                                and submodules[cls_name].__module__ != "sigma.validators.base"
-                            ):
+                            if is_validator(submodules[cls_name]):
                                 result[cls_name] = submodules[cls_name]
                     elif directory_name == "backends":
                         # Backends reside on the module level
                         for cls_name in imported_module.__dict__:
                             klass = getattr(imported_module, cls_name)
-                            if inspect.isclass(klass) and issubclass(klass, Backend):
-                                result.update({cls_name: klass})
+                            identifier = InstalledSigmaPlugins._get_backend_identifier(
+                                klass, cls_name
+                            )
+                            if is_backend(klass):
+                                if is_duplicate(result, klass, identifier):
+                                    # If there is a duplicate, use the class name instead.
+                                    # This prevents the backend from being overwritten.
+                                    warnings.warn(
+                                        f"The '{klass.__name__}' wanted to overwrite the class '{result[identifier].__name__}' registered as '{identifier}'. Consider setting the 'identifier' attribute on the '{result[identifier].__name__}'. Ignoring the '{klass.__name__}'.",
+                                    )
+                                else:
+                                    # Ignore duplicate backends.
+                                    result.update({identifier: klass})
                     else:
                         raise ValueError(
                             f"Unknown directory name {directory_name} for module {mod.name}"
@@ -179,6 +205,62 @@ class InstalledSigmaPlugins:
                 for identifier, pipeline_generator in self.pipelines.items()
             }
         )
+
+    @staticmethod
+    def _get_backend_identifier(obj: Any, default: str) -> Optional[str]:
+        """
+        Get the identifier of a backend object. This is either the identifier attribute of
+        the object, the __identifier__ attribute of the object, or the __class__ attribute
+        of the object. The identifier is then converted to snake_case. If the identifier is
+        empty, the default is returned.
+
+        Args:
+            obj: The Backend object to get the identifier from.
+            default: The default identifier to return if no identifier could be found.
+
+        Returns:
+            The identifier of the backend object in snake_case or the default identifier.
+        """
+
+        def removesuffix(base: str, suffix: str) -> str:
+            """Removes the suffix from the string if it exists.
+            This is a backport of the Python 3.9 removesuffix method.
+            """
+            if base.endswith(suffix):
+                return base[: len(base) - len(suffix)]
+            return base
+
+        try:
+            # 1. Try to get the obj.identifier attribute.
+            identifier = getattr(obj, "identifier", None)
+
+            # 2. Try to get the obj.__identifier__ attribute.
+            if not identifier:
+                identifier = getattr(obj, "__identifier__", None)
+
+            # 3. Try to get the obj.__name__ attribute.
+            if not identifier:
+                identifier = getattr(obj, "__name__", None)
+
+            # 4. Convert the name to snake_case.
+            if identifier:
+                identifier = removesuffix(identifier, "Backend")
+                identifier = removesuffix(identifier, "backend")
+                identifier = removesuffix(identifier, "_")
+                words = re.findall(r"[A-Z](?:[A-Z]*(?![a-z])|[a-z]*)", identifier)
+                if len(words) == 0:
+                    return identifier.lower()
+                rebuilt_identifier = "_".join(words).lower()
+                # 5. If we still have the "base" backend, return the module identifier instead.
+                if rebuilt_identifier == "base":
+                    return obj.__module__.split(".")[-1].lower()
+                return rebuilt_identifier
+            else:
+                # 6. If we still don't have an identifier, return the default.
+                return default
+        except Exception:
+            # 7. If anything goes wrong, return the default.
+            return default
 
 
 class SigmaPluginType(EnumLowercaseStringMixin, Enum):

@@ -23,8 +23,8 @@ def test_autodiscover_backends():
     plugins = InstalledSigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends={
-            "TextQueryTestBackend": TextQueryTestBackend,
-            "MandatoryPipelineTestBackend": MandatoryPipelineTestBackend,
+            "text_query_test": TextQueryTestBackend,
+            "mandatory_pipeline_test": MandatoryPipelineTestBackend,
         },
         pipelines=dict(),
         validators=dict(),
@@ -204,9 +204,7 @@ def test_sigma_plugin_directory_get_by_uuid_str(plugin_directory: SigmaPluginDir
     )
 
 
-def test_sigma_plugin_directory_get_by_uuid_not_found(
-    plugin_directory: SigmaPluginDirectory,
-):
+def test_sigma_plugin_directory_get_by_uuid_not_found(plugin_directory: SigmaPluginDirectory):
     with pytest.raises(SigmaPluginNotFoundError, match="Plugin with UUID.*not found"):
         plugin_directory.get_plugin_by_uuid("6029969b-4e6b-4060-bb0d-464d476065e0")
 
@@ -217,9 +215,7 @@ def test_sigma_plugin_directory_get_by_id(plugin_directory: SigmaPluginDirectory
     )
 
 
-def test_sigma_plugin_directory_get_by_id_not_found(
-    plugin_directory: SigmaPluginDirectory,
-):
+def test_sigma_plugin_directory_get_by_id_not_found(plugin_directory: SigmaPluginDirectory):
     with pytest.raises(SigmaPluginNotFoundError, match="Plugin with identifier.*not found"):
         plugin_directory.get_plugin_by_id("not_existing")
 
@@ -228,9 +224,7 @@ def test_sigma_plugin_directory_get_plugins(plugin_directory: SigmaPluginDirecto
     assert plugin_directory.get_plugins() == list(plugin_directory.plugins.values())
 
 
-def test_sigma_plugin_directory_get_plugins_filtered(
-    plugin_directory: SigmaPluginDirectory,
-):
+def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory: SigmaPluginDirectory):
     plugins = plugin_directory.get_plugins(
         plugin_types={SigmaPluginType.BACKEND}, plugin_states={SigmaPluginState.TESTING}
     )

@@ -9,6 +9,8 @@ from sigma.rule import SigmaRule
 
 @dataclass
 class QueryPostprocessingTransformation(Transformation):
+    """Query post processing transformation base class."""
+
     processing_item: Optional["sigma.processing.pipeline.QueryPostprocessingItem"] = field(
         init=False, compare=False, default=None
     )

@@ -2,6 +2,7 @@ import pytest
 from dataclasses import dataclass
 import re
 from textwrap import dedent
+from sigma.processing.finalization import ConcatenateQueriesFinalizer
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
@@ -491,25 +492,38 @@ def test_postprocessingitem_apply(
 
 
 def test_processingpipeline_fromdict(
-    processing_item_dict, processing_item, processing_pipeline_vars
+    processing_item_dict,
+    processing_item,
+    postprocessing_item_dict,
+    postprocessing_item,
+    processing_pipeline_vars,
 ):
     assert ProcessingPipeline.from_dict(
         {
             "name": "Test",
             "priority": 10,
             "transformations": [processing_item_dict],
+            "postprocessing": [postprocessing_item_dict],
+            "finalize": {
+                "type": "concat",
+                "prefix": "('",
+                "separator": "', '",
+                "suffix": "')",
+            },
             "vars": processing_pipeline_vars,
         }
     ) == ProcessingPipeline(
         name="Test",
         priority=10,
         items=[processing_item],
+        postprocessing_items=[postprocessing_item],
+        finalizer=ConcatenateQueriesFinalizer(prefix="('", separator="', '", suffix="')"),
         vars=processing_pipeline_vars,
     )
 
 
 def test_processingpipeline_fromyaml(
-    processing_item_dict, processing_item, processing_pipeline_vars
+    processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
 ):
     assert (
         ProcessingPipeline.from_yaml(
@@ -535,6 +549,22 @@ def test_processingpipeline_fromyaml(
               detection_item_cond_op: or
               type: append
               s: Test
+        postprocessing:
+            - id: test
+              type: embed
+              prefix: "[ "
+              suffix: " ]"
+              rule_conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              rule_cond_op: or
+        finalize:
+            type: concat
+            prefix: "('"
+            separator: "', '"
+            suffix: "')"
         vars:
             test_string: abc
             test_number: 123
@@ -544,6 +574,8 @@ def test_processingpipeline_fromyaml(
             name="Test",
             priority=10,
             items=[processing_item],
+            postprocessing_items=[postprocessing_item],
+            finalizer=ConcatenateQueriesFinalizer(prefix="('", separator="', '", suffix="')"),
             vars=processing_pipeline_vars,
             allowed_backends={"test-a", "test-b"},
         )
@@ -638,6 +670,16 @@ def test_procesingpipeline_postprocess_partial(sigma_rule):
     )
     assert pipeline.postprocess_query(sigma_rule, "field=value") == "[ field=value ]"
     assert pipeline.applied_ids == {"add_brackets"}
+
+
+def test_processingpipeline_finalize():
+    pipeline = ProcessingPipeline(
+        finalizer=ConcatenateQueriesFinalizer(separator="', '", prefix="('", suffix="')")
+    )
+    assert (
+        pipeline.finalize(['field1="value1"', 'field2="value2"'])
+        == """('field1="value1"', 'field2="value2"')"""
+    )
 
 
 def test_processingpipeline_field_processing_item_tracking():
@@ -758,6 +800,7 @@ def test_processingpipeline_concatenation():
         postprocessing_items=[
             EmbedQueryTransformation(suffix=" ]"),
         ],
+        finalizer=ConcatenateQueriesFinalizer(),
         vars={
             "b": 3,
             "c": 4,
@@ -778,12 +821,20 @@ def test_processingpipeline_concatenation():
             EmbedQueryTransformation(prefix="[ "),
             EmbedQueryTransformation(suffix=" ]"),
         ],
+        finalizer=ConcatenateQueriesFinalizer(),
         vars={
             "a": 1,
             "b": 3,
             "c": 4,
         },
     )
+
+
+def test_processingpipeline_concatenation_multiple_finalizers():
+    with pytest.raises(ValueError, match="only one finalizer"):
+        ProcessingPipeline(finalizer=ConcatenateQueriesFinalizer()) + ProcessingPipeline(
+            finalizer=ConcatenateQueriesFinalizer()
+        )
 
 
 def test_processingpipeline_sum():
@@ -798,6 +849,7 @@ def test_processingpipeline_sum():
             postprocessing_items=[
                 EmbedQueryTransformation(prefix="[ "),
             ],
+            finalizer=ConcatenateQueriesFinalizer(),
             vars={
                 "a": 1,
                 "b": 2,
@@ -847,6 +899,7 @@ def test_processingpipeline_sum():
             EmbedQueryTransformation(prefix="[ "),
             EmbedQueryTransformation(suffix=" ]"),
         ],
+        finalizer=ConcatenateQueriesFinalizer(),
         vars={
             "a": 1,
             "b": 3,

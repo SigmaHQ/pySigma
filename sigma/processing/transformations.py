@@ -39,7 +39,10 @@ class Transformation(ABC):
 
     @classmethod
     def from_dict(cls, d: dict) -> "Transformation":
-        return cls(**d)
+        try:
+            return cls(**d)
+        except TypeError as e:
+            raise SigmaConfigurationError("Error in instantiation of transformation: " + str(e))
 
     @abstractmethod
     def apply(

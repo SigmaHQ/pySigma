@@ -1,6 +1,9 @@
 from abc import abstractmethod
 from dataclasses import dataclass
-from typing import Any, Dict, List
+import json
+from typing import Any, Dict, List, Optional
+
+import yaml
 import sigma
 from sigma.exceptions import SigmaConfigurationError
 
@@ -49,3 +52,23 @@ class ConcatenateQueriesFinalizer(Finalizer):
 finalizers: Dict[str, Finalizer] = {
     "concat": ConcatenateQueriesFinalizer,
 }
+
+
+@dataclass
+class JSONFinalizer(Finalizer):
+    indent: Optional[int] = None
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
+    ) -> str:
+        return json.dumps(queries, indent=self.indent)
+
+
+@dataclass
+class YAMLFinalizer(Finalizer):
+    indent: Optional[int] = None
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
+    ) -> str:
+        yaml.safe_dump(queries, indent=self.indent)

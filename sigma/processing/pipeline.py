@@ -396,7 +396,7 @@ class ProcessingPipeline:
 
     items: List[ProcessingItem] = field(default_factory=list)
     postprocessing_items: List[QueryPostprocessingTransformation] = field(default_factory=list)
-    finalizer: Finalizer = None
+    finalizers: List[Finalizer] = field(default_factory=list)
     vars: Dict[str, Any] = field(default_factory=dict)
     priority: int = field(default=0)
     name: Optional[str] = field(default=None)
@@ -452,8 +452,9 @@ class ProcessingPipeline:
                     f"Error in processing rule { i + 1 }: { str(e) }"
                 ) from e
 
-        fd = d.get("finalize")  # no default transformation
-        if fd is not None:
+        fds = d.get("finalizers", list())  # no default transformation
+        fs = list()
+        for fd in fds:
             try:
                 finalizer_type = fd.pop("type")
             except KeyError:
@@ -462,11 +463,9 @@ class ProcessingPipeline:
                 )
 
             try:
-                finalizer = finalizers[finalizer_type].from_dict(fd)
+                fs.append(finalizers[finalizer_type].from_dict(fd))
             except KeyError:
                 raise SigmaConfigurationError(f"Finalizer '{finalizer_type}' is unknown")
-        else:
-            finalizer = None
 
         priority = d.get("priority", 0)
         name = d.get("name", None)
@@ -475,7 +474,7 @@ class ProcessingPipeline:
         return cls(
             processing_items,
             postprocessing_items,
-            finalizer,
+            fs,
             vars,
             priority,
             name,
@@ -510,8 +509,10 @@ class ProcessingPipeline:
                 self.applied_ids.add(itid)
         return query
 
-    def finalize(self, queries: List[Any]) -> Any:
-        return self.finalizer.apply(self, queries)
+    def finalize(self, output: Any) -> Any:
+        for finalizer in self.finalizers:
+            output = finalizer.apply(self, output)
+        return output
 
     def track_field_processing_items(
         self, src_field: str, dest_field: List[str], processing_item_id: Optional[str]
@@ -543,15 +544,11 @@ class ProcessingPipeline:
             return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
-        if self.finalizer is not None and other.finalizer is not None:
-            raise ValueError(
-                "Chaining of processing pipelines that contain more than one finalizer is not possible because a pipeline can have only one finalizer."
-            )
 
         return self.__class__(
             items=self.items + other.items,
             postprocessing_items=self.postprocessing_items + other.postprocessing_items,
-            finalizer=self.finalizer or other.finalizer,
+            finalizers=self.finalizers + other.finalizers,
             vars={**self.vars, **other.vars},
         )
 

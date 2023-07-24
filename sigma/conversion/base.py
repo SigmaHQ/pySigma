@@ -497,10 +497,10 @@ class Backend(ABC):
         This is the place where syntactic elements of the target format for the specific query are added,
         e.g. adding query metadata.
         """
-        postprocessed_query = self.last_processing_pipeline.postprocess_query(rule, query)
-        return self.__getattribute__("finalize_query_" + output_format)(
-            rule, postprocessed_query, index, state
+        backend_query = self.__getattribute__("finalize_query_" + output_format)(
+            rule, query, index, state
         )
+        return self.last_processing_pipeline.postprocess_query(rule, query)
 
     def finalize_query_default(
         self, rule: SigmaRule, query: Any, index: int, state: ConversionState
@@ -513,7 +513,8 @@ class Backend(ABC):
 
     def finalize(self, queries: List[Any], output_format: str):
         """Finalize output. Dispatches to format-specific method."""
-        return self.__getattribute__("finalize_output_" + output_format)(queries)
+        output = self.__getattribute__("finalize_output_" + output_format)(queries)
+        return self.last_processing_pipeline.finalize(output)
 
     def finalize_output_default(self, queries: List[Any]) -> Any:
         """

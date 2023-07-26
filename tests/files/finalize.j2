@@ -1,0 +1,5 @@
+[config]
+setting = {{ pipeline.state.setting }}
+
+[queries]{% for query in queries %}
+query{{ loop.index }} = {{ query }}{% endfor %}

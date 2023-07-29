@@ -3,6 +3,7 @@ from sigma.processing.postprocessing import (
     EmbedQueryInJSONTransformation,
     EmbedQueryTransformation,
     QuerySimpleTemplateTransformation,
+    QueryTemplateTransformation,
 )
 from sigma.rule import SigmaRule
 from .test_processing_transformations import dummy_pipeline, sigma_rule
@@ -18,12 +19,33 @@ def test_embed_query_transformation_none(dummy_pipeline, sigma_rule):
     assert transformation.apply(dummy_pipeline, sigma_rule, "field=value") == "field=value"
 
 
-def test_query_template_transformation(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
+def test_query_simple_template_transformation(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
     transformation = QuerySimpleTemplateTransformation(
         """
 title = {rule.title}
 query = {query}
 state = {pipeline.state[test]}
+    """
+    )
+    dummy_pipeline.state["test"] = "teststate"
+    assert (
+        transformation.apply(dummy_pipeline, sigma_rule, 'field="value"')
+        == """
+title = Test
+query = field="value"
+state = teststate
+    """
+    )
+
+
+def test_query_template_transformation(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
+    transformation = QueryTemplateTransformation(
+        """
+title = {{ rule.title }}
+query = {{ query }}
+state = {{ pipeline.state.test }}
     """
     )
     dummy_pipeline.state["test"] = "teststate"

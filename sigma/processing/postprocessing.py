@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 import json
 from typing import Any, Dict, List, Optional, Union
 import sigma
+from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
@@ -72,6 +73,27 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
             rule=rule,
             pipeline=pipeline,
         )
+
+
+@dataclass
+class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBase):
+    """Apply Jinja2 template provided as template object variable to a query. The following
+    variables are available in the context:
+
+    * query: the postprocessed query.
+    * rule: the Sigma rule including all its attributes like rule.title.
+    * pipeline: the Sigma processing pipeline where this transformation is applied including all
+      current state information in pipeline.state.
+
+    if *path* is given, *template* is considered as a relative path to a template file below the
+    specified path. If it is not provided, the template is specified as plain string. *autoescape*
+    controls the Jinja2 HTML/XML auto-escaping.
+    """
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+    ) -> str:
+        return self.j2template.render(query=query, rule=rule, pipeline=pipeline)
 
 
 @dataclass

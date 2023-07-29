@@ -6,7 +6,8 @@ from typing import Any, Dict, List, Literal, Optional
 import yaml
 import sigma
 from sigma.exceptions import SigmaConfigurationError
-from jinja2 import Environment, FileSystemLoader, Template
+
+from sigma.processing.templates import TemplateBase
 
 
 @dataclass
@@ -71,7 +72,7 @@ class YAMLFinalizer(Finalizer):
 
 
 @dataclass
-class TemplateFinalizer(Finalizer):
+class TemplateFinalizer(Finalizer, TemplateBase):
     """Apply Jinja2 template provided as template object variable to the queries. The following
     variables are available in the context:
 
@@ -83,17 +84,6 @@ class TemplateFinalizer(Finalizer):
     specified path. If it is not provided, the template is specified as plain string. *autoescape*
     controls the Jinja2 HTML/XML auto-escaping.
     """
-
-    template: str
-    path: Optional[str] = None
-    autoescape: bool = False
-
-    def __post_init__(self):
-        if self.path is None:
-            self.j2template = Template(self.template, autoescape=self.autoescape)
-        else:
-            env = Environment(autoescape=self.autoescape, loader=FileSystemLoader(self.path))
-            self.j2template = env.get_template(self.template)
 
     def apply(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]

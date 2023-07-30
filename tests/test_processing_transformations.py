@@ -684,7 +684,7 @@ def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule: 
 
 def test_valuelist_placeholders(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
-    pipeline = ProcessingPipeline([], {"var1": ["val1", 123], "var2": "val3*"})
+    pipeline = ProcessingPipeline(vars={"var1": ["val1", 123], "var2": "val3*"})
     transformation.apply(pipeline, sigma_rule_placeholders_simple)
     assert sigma_rule_placeholders_simple.detection.detections["test"] == SigmaDetection(
         [
@@ -713,7 +713,7 @@ def test_valuelist_placeholders_missing(sigma_rule_placeholders_simple: SigmaRul
 
 def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
-    pipeline = ProcessingPipeline([], {"var1": None})
+    pipeline = ProcessingPipeline(vars={"var1": None})
     with pytest.raises(SigmaValueError, match="not a string or number"):
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
 

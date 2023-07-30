@@ -3,7 +3,9 @@ from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
 from sigma.processing.conditions import IncludeFieldCondition
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.finalization import ConcatenateQueriesFinalizer
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
+from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     AddFieldnamePrefixTransformation,
     AddFieldnameSuffixTransformation,
@@ -45,8 +47,14 @@ def test_backend():
     )
 
 
-def test_backend_pipeline():
-    test_backend = TextQueryTestBackend()
+def test_backend_pipeline_with_postprocessing():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            postprocessing_items=[
+                QueryPostprocessingItem(EmbedQueryTransformation(prefix="[ ", suffix=" ]"))
+            ]
+        )
+    )
     assert (
         test_backend.convert(
             SigmaCollection.from_yaml(
@@ -65,7 +73,7 @@ def test_backend_pipeline():
         """
             )
         )
-        == ['mappedA="valueA" and fieldB="valueB" and fieldC="valueC"']
+        == ['[ mappedA="valueA" and fieldB="valueB" and fieldC="valueC" ]']
     )
 
 
@@ -2091,7 +2099,12 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
     )
 
 
-def test_convert_state(test_backend):
+def test_convert_state():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            finalizers=[ConcatenateQueriesFinalizer(prefix="index=test (", suffix=")")]
+        )
+    )
     assert (
         test_backend.convert(
             SigmaCollection.from_yaml(
@@ -2109,7 +2122,7 @@ def test_convert_state(test_backend):
             ),
             "state",
         )
-        == ['index=test (mappedA="value")']
+        == 'index=test (mappedA="value")'
     )
 
 

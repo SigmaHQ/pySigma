@@ -2,7 +2,8 @@ import pytest
 from dataclasses import dataclass
 import re
 from textwrap import dedent
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.finalization import ConcatenateQueriesFinalizer, JSONFinalizer
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
     IncludeFieldCondition,
@@ -13,6 +14,7 @@ from sigma.processing.conditions import (
     DetectionItemProcessingCondition,
     FieldNameProcessingItemAppliedCondition,
 )
+from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     SetStateTransformation,
     transformations,
@@ -150,6 +152,34 @@ def processing_item():
         detection_item_conditions=[
             DetectionItemConditionTrue(dummy="test-true"),
             DetectionItemConditionFalse(dummy="test-false"),
+        ],
+        identifier="test",
+    )
+
+
+@pytest.fixture
+def postprocessing_item_dict():
+    return {
+        "id": "test",
+        "rule_conditions": [
+            {"type": "true", "dummy": "test-true"},
+            {"type": "false", "dummy": "test-false"},
+        ],
+        "rule_cond_op": "or",
+        "type": "embed",
+        "prefix": "[ ",
+        "suffix": " ]",
+    }
+
+
+@pytest.fixture
+def postprocessing_item():
+    return QueryPostprocessingItem(
+        transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+        rule_condition_linking=any,
+        rule_conditions=[
+            RuleConditionTrue(dummy="test-true"),
+            RuleConditionFalse(dummy="test-false"),
         ],
         identifier="test",
     )
@@ -449,26 +479,53 @@ def test_processingitem_wrong_field_name_condition():
         )
 
 
+def test_postprocessingitem_fromdict(postprocessing_item_dict, postprocessing_item):
+    assert QueryPostprocessingItem.from_dict(postprocessing_item_dict) == postprocessing_item
+
+
+def test_postprocessingitem_apply(
+    postprocessing_item: QueryPostprocessingItem, dummy_processing_pipeline, sigma_rule
+):
+    postprocessing_item.apply(
+        dummy_processing_pipeline, sigma_rule, "field=value"
+    ) == "[ field=value ]"
+
+
 def test_processingpipeline_fromdict(
-    processing_item_dict, processing_item, processing_pipeline_vars
+    processing_item_dict,
+    processing_item,
+    postprocessing_item_dict,
+    postprocessing_item,
+    processing_pipeline_vars,
 ):
     assert ProcessingPipeline.from_dict(
         {
             "name": "Test",
             "priority": 10,
             "transformations": [processing_item_dict],
+            "postprocessing": [postprocessing_item_dict],
+            "finalizers": [
+                {
+                    "type": "concat",
+                    "prefix": "('",
+                    "separator": "', '",
+                    "suffix": "')",
+                }
+            ],
             "vars": processing_pipeline_vars,
         }
     ) == ProcessingPipeline(
         name="Test",
         priority=10,
         items=[processing_item],
+        postprocessing_items=[postprocessing_item],
+        finalizers=[ConcatenateQueriesFinalizer(prefix="('", separator="', '", suffix="')")],
         vars=processing_pipeline_vars,
     )
 
 
 def test_processingpipeline_fromyaml(
-    processing_item_dict, processing_item, processing_pipeline_vars
+    processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
 ):
     assert (
         ProcessingPipeline.from_yaml(
@@ -494,6 +551,22 @@ def test_processingpipeline_fromyaml(
               detection_item_cond_op: or
               type: append
               s: Test
+        postprocessing:
+            - id: test
+              type: embed
+              prefix: "[ "
+              suffix: " ]"
+              rule_conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              rule_cond_op: or
+        finalizers:
+            - type: concat
+              prefix: "('"
+              separator: "', '"
+              suffix: "')"
         vars:
             test_string: abc
             test_number: 123
@@ -503,6 +576,8 @@ def test_processingpipeline_fromyaml(
             name="Test",
             priority=10,
             items=[processing_item],
+            postprocessing_items=[postprocessing_item],
+            finalizers=[ConcatenateQueriesFinalizer(prefix="('", separator="', '", suffix="')")],
             vars=processing_pipeline_vars,
             allowed_backends={"test-a", "test-b"},
         )
@@ -560,6 +635,55 @@ def test_processingpipeline_apply_partial(sigma_rule):
         result_rule.title == "TestAppended"
         and pipeline.applied == [False, True]
         and pipeline.applied_ids == {"append"}
+    )
+
+
+def test_procesingpipeline_postprocess(sigma_rule):
+    pipeline = ProcessingPipeline(
+        postprocessing_items=[
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="[ "),
+                identifier="add_query_prefix",
+            ),
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(suffix=" ]"),
+                identifier="add_query_suffix",
+            ),
+        ]
+    )
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "[ field=value ]"
+    assert pipeline.applied_ids == {"add_query_prefix", "add_query_suffix"}
+
+
+def test_procesingpipeline_postprocess_partial(sigma_rule):
+    pipeline = ProcessingPipeline(
+        postprocessing_items=[
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+                rule_conditions=[RuleConditionTrue("test")],
+                identifier="add_brackets",
+            ),
+            QueryPostprocessingItem(
+                transformation=EmbedQueryTransformation(prefix="query"),
+                rule_conditions=[RuleConditionFalse("test")],
+                identifier="add_query_keyword",
+            ),
+        ]
+    )
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "[ field=value ]"
+    assert pipeline.applied_ids == {"add_brackets"}
+
+
+def test_processingpipeline_finalize():
+    pipeline = ProcessingPipeline(
+        finalizers=[
+            ConcatenateQueriesFinalizer(separator="', '", prefix="('", suffix="')"),
+            JSONFinalizer(),
+        ]
+    )
+    assert (
+        pipeline.finalize(['field1="value1"', 'field2="value2"'])
+        == """\"('field1=\\"value1\\"', 'field2=\\"value2\\"')\""""
     )
 
 
@@ -663,6 +787,10 @@ def test_processingpipeline_concatenation():
                 identifier="pre",
             ),
         ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+        ],
+        finalizers=[ConcatenateQueriesFinalizer()],
         vars={
             "a": 1,
             "b": 2,
@@ -675,6 +803,10 @@ def test_processingpipeline_concatenation():
                 identifier="append",
             ),
         ],
+        postprocessing_items=[
+            EmbedQueryTransformation(suffix=" ]"),
+        ],
+        finalizers=[JSONFinalizer()],
         vars={
             "b": 3,
             "c": 4,
@@ -690,6 +822,14 @@ def test_processingpipeline_concatenation():
                 transformation=TransformationAppend(s="Append"),
                 identifier="append",
             ),
+        ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+            EmbedQueryTransformation(suffix=" ]"),
+        ],
+        finalizers=[
+            ConcatenateQueriesFinalizer(),
+            JSONFinalizer(),
         ],
         vars={
             "a": 1,
@@ -708,6 +848,12 @@ def test_processingpipeline_sum():
                     identifier="pre",
                 ),
             ],
+            postprocessing_items=[
+                EmbedQueryTransformation(prefix="[ "),
+            ],
+            finalizers=[
+                ConcatenateQueriesFinalizer(),
+            ],
             vars={
                 "a": 1,
                 "b": 2,
@@ -720,6 +866,9 @@ def test_processingpipeline_sum():
                     identifier="append",
                 ),
             ],
+            finalizers=[
+                JSONFinalizer(),
+            ],
             vars={
                 "b": 3,
                 "c": 4,
@@ -731,6 +880,9 @@ def test_processingpipeline_sum():
                     transformation=TransformationAppend(s="AppendAnother"),
                     identifier="append_another",
                 ),
+            ],
+            postprocessing_items=[
+                EmbedQueryTransformation(suffix=" ]"),
             ],
             vars={"c": 5, "d": 6},
         ),
@@ -749,6 +901,14 @@ def test_processingpipeline_sum():
                 transformation=TransformationAppend(s="AppendAnother"),
                 identifier="append_another",
             ),
+        ],
+        postprocessing_items=[
+            EmbedQueryTransformation(prefix="[ "),
+            EmbedQueryTransformation(suffix=" ]"),
+        ],
+        finalizers=[
+            ConcatenateQueriesFinalizer(),
+            JSONFinalizer(),
         ],
         vars={
             "a": 1,

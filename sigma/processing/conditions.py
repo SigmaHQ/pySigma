@@ -8,11 +8,14 @@ import re
 from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 
+
 ### Base Classes ###
+class ProcessingCondition(ABC):
+    """Anchor base class for all processing condition types."""
 
 
 @dataclass
-class RuleProcessingCondition(ABC):
+class RuleProcessingCondition(ProcessingCondition, ABC):
     """
     Base for Sigma rule processing condition classes used in processing pipelines.
     """
@@ -24,7 +27,7 @@ class RuleProcessingCondition(ABC):
         """Match condition on Sigma rule."""
 
 
-class FieldNameProcessingCondition(ABC):
+class FieldNameProcessingCondition(ProcessingCondition, ABC):
     """
     Base class for conditions on field names in detection items, Sigma rule field lists and other
     use cases that require matching on field names without detection item context.
@@ -88,7 +91,7 @@ class FieldNameProcessingCondition(ABC):
 
 
 @dataclass
-class DetectionItemProcessingCondition(ABC):
+class DetectionItemProcessingCondition(ProcessingCondition, ABC):
     """
     Base for Sigma detection item processing condition classes used in processing pipelines.
     """

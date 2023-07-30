@@ -14,7 +14,7 @@ from sigma.processing.transformations import (
     QueryExpressionPlaceholderTransformation,
     SetStateTransformation,
 )
-from sigma.exceptions import SigmaTypeError, SigmaValueError
+from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
 import pytest
 
 from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
@@ -542,6 +542,25 @@ def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
         )
         == ['mappedA="val*ue"']
     )
+
+
+def test_convert_value_str_placeholder(test_backend):
+    with pytest.raises(SigmaPlaceholderError, match="unhandled placeholder 'test'"):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|expand: "%test%"
+                condition: sel
+        """
+            )
+        )
 
 
 def test_convert_value_expansion_with_all(test_backend):

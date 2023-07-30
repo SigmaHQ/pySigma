@@ -19,6 +19,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 import re
 from sigma.exceptions import (
+    SigmaPlaceholderError,
     SigmaRuleLocation,
     SigmaValueError,
     SigmaRegularExpressionError,
@@ -347,7 +348,19 @@ class SigmaString(SigmaType):
             )
 
     def __str__(self) -> str:
-        return "".join(s if isinstance(s, str) else special_char_mapping[s] for s in self.s)
+        rs = ""
+        for s in self.s:
+            if isinstance(s, str):
+                rs += s
+            elif isinstance(s, SpecialChars):
+                rs += special_char_mapping[s]
+            elif isinstance(s, Placeholder):
+                rs += f"%{s.name}%"
+            else:
+                raise TypeError(
+                    "SigmaString can only consist of plain strings and instances of SpecialChars or Placeholder objects."
+                )
+        return rs
 
     def __repr__(self) -> str:
         return str(self.s)
@@ -493,7 +506,7 @@ class SigmaString(SigmaType):
                 if c in escaped_chars:
                     s += escape_char
                 s += c
-            else:  # special handling for special characters
+            elif isinstance(c, SpecialChars):  # special handling for special characters
                 if c == SpecialChars.WILDCARD_MULTI:
                     if wildcard_multi is not None:
                         s += wildcard_multi
@@ -508,6 +521,14 @@ class SigmaString(SigmaType):
                         raise SigmaValueError(
                             "Single-character wildcard not specified for conversion"
                         )
+            elif isinstance(c, Placeholder):
+                raise SigmaPlaceholderError(
+                    f"Attempt to convert unhandled placeholder '{c.name}' into query."
+                )
+            else:
+                raise SigmaValueError(
+                    f"Trying to convert SigmaString containing part of type '{type(c).__name__}'"
+                )
         return s
 
 

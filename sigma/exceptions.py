@@ -120,6 +120,12 @@ class SigmaRegularExpressionError(SigmaValueError):
     pass
 
 
+class SigmaPlaceholderError(SigmaValueError):
+    """Attempted to convert an unhandled Placeholder into a query"""
+
+    pass
+
+
 class SigmaCollectionError(SigmaError):
     """Error in Sigma collection, e.g. unknown action"""
 

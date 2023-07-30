@@ -18,6 +18,7 @@ from sigma.types import (
     SigmaCIDRExpression,
 )
 from sigma.exceptions import (
+    SigmaPlaceholderError,
     SigmaTypeError,
     SigmaValueError,
     SigmaRegularExpressionError,
@@ -313,6 +314,10 @@ def test_strings_to_string():
     assert str(SigmaString("test*?")) == "test*?"
 
 
+def test_strings_with_placeholder_to_string():
+    assert str(SigmaString("te%var%st").insert_placeholders()) == "te%var%st"
+
+
 def test_strings_to_plain():
     assert SigmaString("test*?").to_plain() == "test*?"
 
@@ -349,6 +354,18 @@ def test_strings_convert_no_multiwildcard():
 def test_strings_convert_no_singlewildcard():
     with pytest.raises(SigmaValueError, match="Single-character wildcard"):
         SigmaString("foo?bar").convert(wildcard_single=None)
+
+
+def test_strings_convert_placeholder():
+    with pytest.raises(SigmaPlaceholderError, match="unhandled placeholder 'var'"):
+        SigmaString("foo%var%bar").insert_placeholders().convert()
+
+
+def test_strings_convert_invalid_part():
+    s = SigmaString("test")
+    s.s = ("test", 1)
+    with pytest.raises(SigmaValueError, match="part of type 'int'"):
+        s.convert()
 
 
 def test_string_index(sigma_string):

@@ -606,19 +606,19 @@ def test_cidr_invalid():
 
 
 def test_cidr_expand_ipv4_0():
-    assert SigmaCIDRExpression("0.0.0.0/0").expand(wildcard="*") == ["*"]
+    assert SigmaCIDRExpression("0.0.0.0/0").expand() == ["*"]
 
 
 def test_cidr_expand_ipv4_7():
-    assert SigmaCIDRExpression("10.0.0.0/7").expand(wildcard="*") == ["10.*", "11.*"]
+    assert SigmaCIDRExpression("10.0.0.0/7").expand() == ["10.*", "11.*"]
 
 
 def test_cidr_expand_ipv4_8():
-    assert SigmaCIDRExpression("192.0.0.0/8").expand(wildcard="*") == ["192.*"]
+    assert SigmaCIDRExpression("192.0.0.0/8").expand() == ["192.*"]
 
 
 def test_cidr_expand_ipv4_14():
-    assert SigmaCIDRExpression("192.168.0.0/14").expand(wildcard="*") == [
+    assert SigmaCIDRExpression("192.168.0.0/14").expand() == [
         "192.168.*",
         "192.169.*",
         "192.170.*",
@@ -627,37 +627,37 @@ def test_cidr_expand_ipv4_14():
 
 
 def test_cidr_expand_ipv4_23():
-    assert SigmaCIDRExpression("192.168.0.0/23").expand(wildcard="*") == [
+    assert SigmaCIDRExpression("192.168.0.0/23").expand() == [
         "192.168.0.*",
         "192.168.1.*",
     ]
 
 
 def test_cidr_expand_ipv4_24():
-    assert SigmaCIDRExpression("192.168.1.0/24").expand(wildcard="*") == ["192.168.1.*"]
+    assert SigmaCIDRExpression("192.168.1.0/24").expand() == ["192.168.1.*"]
 
 
 def test_cidr_expand_ipv4_31():
-    assert SigmaCIDRExpression("192.168.1.0/31").expand(wildcard="*") == [
+    assert SigmaCIDRExpression("192.168.1.0/31").expand() == [
         "192.168.1.0",
         "192.168.1.1",
     ]
 
 
 def test_cidr_expand_ipv4_32():
-    assert SigmaCIDRExpression("192.168.1.1/32").expand(wildcard="*") == ["192.168.1.1"]
+    assert SigmaCIDRExpression("192.168.1.1/32").expand() == ["192.168.1.1"]
 
 
 def test_cidr_expand_ipv6_0():
-    assert SigmaCIDRExpression("::/0").expand(wildcard="*") == ["*"]
+    assert SigmaCIDRExpression("::/0").expand() == ["*"]
 
 
 def test_cidr_expand_ipv6_56():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand(wildcard="*") == ["1234:5678:0:ab*"]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab*"]
 
 
 def test_cidr_expand_ipv6_58():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand(wildcard="*") == [
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand() == [
         "1234:5678:0:ab0*",
         "1234:5678:0:ab1*",
         "1234:5678:0:ab2*",
@@ -666,17 +666,15 @@ def test_cidr_expand_ipv6_58():
 
 
 def test_cidr_expand_ipv6_60():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand(wildcard="*") == ["1234:5678:0:ab0*"]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand() == ["1234:5678:0:ab0*"]
 
 
 def test_cidr_expand_ipv6_64():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/64").expand(wildcard="*") == [
-        "1234:5678:0:ab00:*"
-    ]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/64").expand() == ["1234:5678:0:ab00:*"]
 
 
 def test_cidr_expand_ipv6_128():
-    assert SigmaCIDRExpression("::1/128").expand(wildcard="*") == ["::1/128"]
+    assert SigmaCIDRExpression("::1/128").expand() == ["::1/128"]
 
 
 def test_cidr_invalid():

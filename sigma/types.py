@@ -661,7 +661,9 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         """
         Convert CIDR range into a list of wildcard patterns or plain CIDR notation. The following parameters allow to change the behavior:
 
-        * wildcard: string that should be output as wildcard.
+        * wildcard: string that should be output as wildcard. Usually not required because this is
+          passed to SigmaString that generates a wildcard pecial character from '*' that is
+          converted into possible individual wildcard characters.
 
         Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
@@ -702,16 +704,16 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             ):  # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
                 first_addr = str(subnet.network_address)
                 last_addr = str(subnet.broadcast_address)
-                wildcard = False  # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
+                wildcard_required = False  # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
                 for i in range(
                     len(first_addr)
                 ):  # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
                     if first_addr[i] != last_addr[i]:
-                        wildcard = True
+                        wildcard_required = True
                         break  # location found
-                if wildcard:
+                if wildcard_required:
                     patterns.append(
-                        str(subnet)[:i] + "*"
+                        str(subnet)[:i] + wildcard
                     )  # Generate pattern by cutting of at first difference
                 else:  # The /128 case - no differences
                     patterns.append(str(subnet))  # Return the single address

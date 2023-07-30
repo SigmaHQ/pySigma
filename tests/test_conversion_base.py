@@ -1202,6 +1202,30 @@ def test_convert_value_cidr_wildcard_expression_ipv4(test_backend, monkeypatch):
     )
 
 
+def test_convert_value_cidr_wildcard_expression_other(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "cidr_expression", None)
+    monkeypatch.setattr(test_backend, "wildcard_multi", "%")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: 192.168.0.0/15
+                    field A|cidr: 192.168.0.0/15
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA in ("192.168.%", "192.169.%") and \'field A\' in ("192.168.%", "192.169.%")']
+    )
+
+
 def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "cidr_expression", None)
     monkeypatch.setattr(test_backend, "add_escaped", "")

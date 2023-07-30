@@ -1114,7 +1114,7 @@ class TextQueryBackend(Backend):
                 netmask=cidr.network.netmask,
             )
         else:  # No native CIDR support: expand into string wildcard matches on prefixes.
-            expanded = cidr.expand(self.wildcard_multi)
+            expanded = cidr.expand()
             expanded_cond = ConditionOR(
                 [
                     ConditionFieldEqualsValueExpression(cond.field, SigmaString(network))

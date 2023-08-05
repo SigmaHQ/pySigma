@@ -121,7 +121,7 @@ def test_backend_custom_format_pipeline(test_backend):
             ),
             output_format="test",
         )
-        == ['mappedA="valueA" and mappedB="valueB" and mappedC="valueC"']
+        == ['[ mappedA="valueA" and mappedB="valueB" and mappedC="valueC" ]']
     )
 
 

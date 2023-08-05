@@ -14,7 +14,7 @@ class TextQueryTestBackend(TextQueryBackend):
     name: str = "Test backend"
     formats: Dict[str, str] = {
         "default": "Default format",
-        "test": "Dummy test format that equals default format",
+        "test": "Dummy test format",
         "state": "Test format that obtains information from state",
         "list_of_dict": "List of Dict",
         "str": "Plain string",
@@ -115,7 +115,7 @@ class TextQueryTestBackend(TextQueryBackend):
         self.testparam = testparam
 
     def finalize_query_test(self, rule, query, index, state):
-        return self.finalize_query_default(rule, query, index, state)
+        return "[ " + self.finalize_query_default(rule, query, index, state) + " ]"
 
     def finalize_output_test(self, queries):
         return self.finalize_output_default(queries)

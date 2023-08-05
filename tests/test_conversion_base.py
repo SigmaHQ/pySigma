@@ -2142,12 +2142,7 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
     )
 
 
-def test_convert_state():
-    test_backend = TextQueryTestBackend(
-        ProcessingPipeline(
-            finalizers=[ConcatenateQueriesFinalizer(prefix="index=test (", suffix=")")]
-        )
-    )
+def test_convert_state(test_backend):
     assert (
         test_backend.convert(
             SigmaCollection.from_yaml(
@@ -2165,7 +2160,7 @@ def test_convert_state():
             ),
             "state",
         )
-        == 'index=test (mappedA="value")'
+        == ['index=test (mappedA="value")']
     )
 
 

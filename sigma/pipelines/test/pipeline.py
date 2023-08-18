@@ -11,7 +11,7 @@ from sigma.processing.transformations import (
 def dummy_test_pipeline():
     return ProcessingPipeline(
         name="Test pipeline",
-        allowed_backends={"test"},
+        allowed_backends={"text_query_test"},
         items=[
             ProcessingItem(
                 FieldMappingTransformation(

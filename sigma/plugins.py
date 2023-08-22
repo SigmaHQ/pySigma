@@ -93,7 +93,9 @@ class InstalledSigmaPlugins:
                     if imported_module.__name__ in [
                         "sigma.pipelines.base",
                         "sigma.pipelines.common",
-                    ]:
+                    ] or (
+                        imported_module.__name__.endswith(".test") and "pytest" not in sys.modules
+                    ):
                         continue
 
                     # Add exported objects to submodules

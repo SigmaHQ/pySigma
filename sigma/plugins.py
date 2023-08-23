@@ -140,6 +140,7 @@ class InstalledSigmaPlugins:
                     if directory_name == "pipelines":
                         for obj_name in submodules:
                             possible_obj = submodules[obj_name]
+                            obj_id = obj_name.replace("_pipeline", "")
 
                             # OR'd condition ensures backwards compatibility with older plugins
                             if is_pipeline(possible_obj) or inspect.isfunction(possible_obj):
@@ -147,9 +148,9 @@ class InstalledSigmaPlugins:
                                 if inspect.isclass(possible_obj) and issubclass(
                                     possible_obj, Pipeline
                                 ):
-                                    result[obj_name] = possible_obj()
+                                    result[obj_id] = possible_obj()
                                 else:
-                                    result[obj_name] = possible_obj
+                                    result[obj_id] = possible_obj
                     elif directory_name == "validators":
                         for cls_name in submodules:
                             if is_validator(submodules[cls_name]):

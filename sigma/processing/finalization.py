@@ -93,5 +93,7 @@ class TemplateFinalizer(Finalizer, TemplateBase):
 
 finalizers: Dict[str, Finalizer] = {
     "concat": ConcatenateQueriesFinalizer,
+    "json": JSONFinalizer,
+    "yaml": YAMLFinalizer,
     "template": TemplateFinalizer,
 }

@@ -128,5 +128,6 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
 query_postprocessing_transformations = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
+    "template": QueryTemplateTransformation,
     "json": EmbedQueryInJSONTransformation,
 }

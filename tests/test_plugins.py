@@ -31,13 +31,25 @@ def test_autodiscover_backends():
     )
 
 
-def test_autodiscover_pipelines():
+def test_autodiscover_pipelines(monkeypatch):
+    monkeypatch.delattr("sigma.pipelines.test.__all__")
     plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_validators=False)
     assert plugins == InstalledSigmaPlugins(
         backends=dict(),
         pipelines={
-            "test": dummy_test_pipeline,
+            "dummy_test": dummy_test_pipeline,
             "another_test": another_test_pipeline,
+            "YetAnotherTestPipeline": YetAnotherTestPipeline(),
+        },
+        validators=dict(),
+    )
+
+
+def test_autodiscover_pipelines_all():
+    plugins = InstalledSigmaPlugins.autodiscover(include_backends=False, include_validators=False)
+    assert plugins == InstalledSigmaPlugins(
+        backends=dict(),
+        pipelines={
             "YetAnotherTestPipeline": YetAnotherTestPipeline(),
         },
         validators=dict(),

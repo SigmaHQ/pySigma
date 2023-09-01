@@ -24,7 +24,7 @@ from sigma.conditions import (
 )
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaError
+from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaTypeError, SigmaError
 
 
 class EnumLowercaseStringMixin:
@@ -697,6 +697,11 @@ class SigmaRule(ProcessingItemTrackingMixin):
                                 source=source,
                             )
                         )
+
+        # validate fields
+        rule_fields = rule.get("fields")
+        if rule_fields is not None and not isinstance(rule_fields, list):
+            raise SigmaTypeError("Sigma rule fields must be a list", source=source)
 
         # parse log source
         logsource = None

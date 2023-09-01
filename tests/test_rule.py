@@ -735,6 +735,13 @@ def test_sigmadetection_dict_and_keyword_to_plain():
 ### SigmaRule tests ###
 
 
+def test_sigmarule_fields_not_list():
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a list.*test.yml"):
+        SigmaRule.from_dict(
+            {"fields": "test"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
 def test_sigmarule_bad_uuid():
     with pytest.raises(sigma_exceptions.SigmaIdentifierError, match="must be an UUID.*test.yml"):
         SigmaRule.from_dict(

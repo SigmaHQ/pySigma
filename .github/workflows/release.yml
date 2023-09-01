@@ -9,6 +9,9 @@ on:
 jobs:
   build-and-publish:
     runs-on: ubuntu-20.04
+    environment: release
+    permissions:
+      id-token: write
     steps:
       - uses: actions/checkout@v3
       - name: Install Poetry
@@ -29,14 +32,11 @@ jobs:
         run: poetry run pytest
       - name: Build packages
         run: poetry build
-      - name: Configure Poetry
-        run: |
-          poetry config repositories.testpypi https://test.pypi.org/legacy/
-          poetry config pypi-token.testpypi ${{ secrets.TEST_PYPI_API_TOKEN }}
-          poetry config pypi-token.pypi "${{ secrets.PYPI_API_TOKEN }}"
       - name: Publish to test PyPI
         if: ${{ github.event_name == 'push' }}
-        run: poetry publish -r testpypi
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          repository-url: https://test.pypi.org/legacy/
       - name: Publish to PyPI
         if: ${{ github.event_name == 'release' }}
-        run: poetry publish
+        uses: pypa/gh-action-pypi-publish@release/v1

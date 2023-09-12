@@ -1866,6 +1866,79 @@ def test_convert_collect_error(test_backend):
     assert res == [] and error[0] == rule and isinstance(error[1], SigmaValueError)
 
 
+def test_convert_errors_class_variable_issue(test_backend):
+    test_backend.collect_errors = True
+
+    collection = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel: true
+                condition: sel
+        """
+    )
+    rule = collection.rules[0]
+
+    res = test_backend.convert(collection)
+    error = test_backend.errors[0]
+    assert res == [] and error[0] == rule and isinstance(error[1], SigmaValueError)
+
+    test_backend_duplicate = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldB": "mappedB",
+                        }
+                    ),
+                    identifier="mappingB",
+                ),
+                ProcessingItem(
+                    AddFieldnameSuffixTransformation(".test"),
+                    field_name_conditions=[IncludeFieldCondition(["suffix"])],
+                ),
+                ProcessingItem(
+                    AddFieldnamePrefixTransformation("test."),
+                    field_name_conditions=[IncludeFieldCondition(["prefix"])],
+                ),
+                ProcessingItem(SetStateTransformation("index", "test")),
+            ]
+        ),
+    )
+    test_backend_duplicate.collect_errors = True
+
+    assert (
+        test_backend_duplicate.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                    fieldC: valueC
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
+    )
+    assert "mappingB" in test_backend_duplicate.last_processing_pipeline.applied_ids
+    # The following assertion succeeds, because the errors list is now
+    # an instance variable, not a class variable anymore, so it is not
+    # shared between the two instances of the backend.
+    assert test_backend_duplicate.errors == []
+
+
 def test_convert_invalid_unbound_cidr(test_backend):
     with pytest.raises(SigmaValueError, match="CIDR values can't appear as standalone"):
         test_backend.convert(

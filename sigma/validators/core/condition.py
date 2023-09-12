@@ -108,10 +108,14 @@ class EscapedWildcardIssue(SigmaValidationIssue):
 
 
 class EscapedWildcardValidator(SigmaStringValueValidator):
-    """Find occurrences of unescaped wildcards."""
+    """Check for the presence of escaped wildcards."""
+
+    wildcard_list = ["*", "?"]
 
     def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
-        if any([x in value for x in ["*", "?"]]):
+        if any(
+            [x in value for x in self.wildcard_list]
+        ):
             return [EscapedWildcardIssue([])]
         else:
             return []

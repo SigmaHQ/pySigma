@@ -776,23 +776,8 @@ def test_validator_sysmon_insteadof_generic_logsource():
         ),
     ]
 
-def test_validator_escaped_wildcard():
-    validator = EscapedWildcardValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: path\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [EscapedWildcardIssue([rule], SigmaString("path\*something"))]
 
-def test_validator_escaped_wildcard_valid():
+def test_validator_escaped_wildcard():
     validator = EscapedWildcardValidator()
     rule = SigmaRule.from_yaml(
         """
@@ -806,4 +791,23 @@ def test_validator_escaped_wildcard_valid():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [EscapedWildcardIssue([rule], SigmaString("path\\*something"))]
+    assert validator.validate(rule) == [
+        EscapedWildcardIssue([rule], SigmaString("path\*something"))
+    ]
+
+
+def test_validator_escaped_wildcard_valid():
+    validator = EscapedWildcardValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: path\\\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []

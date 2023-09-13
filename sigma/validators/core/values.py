@@ -157,6 +157,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
         else:
             return []
 
+
 @dataclass
 class EscapedWildcardIssue(SigmaValidationIssue):
     description: ClassVar[
@@ -172,9 +173,7 @@ class EscapedWildcardValidator(SigmaStringValueValidator):
     wildcard_list = ["*", "?"]
 
     def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
-        if any(
-            [x in value for x in self.wildcard_list]
-        ):
+        if any([x in s for x in self.wildcard_list for s in value if isinstance(s, str)]):
             return [EscapedWildcardIssue(self.rule, value)]
         else:
             return []

@@ -55,6 +55,8 @@ from sigma.validators.core.values import (
     WildcardInsteadOfStartswithIssue,
     WildcardsInsteadOfContainsModifierIssue,
     WildcardsInsteadOfModifiersValidator,
+    EscapedWildcardIssue,
+    EscapedWildcardValidator,
 )
 
 
@@ -773,3 +775,39 @@ def test_validator_sysmon_insteadof_generic_logsource():
             generic_logsource=SigmaLogSource("image_load"),
         ),
     ]
+
+
+def test_validator_escaped_wildcard():
+    validator = EscapedWildcardValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: path\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [
+        EscapedWildcardIssue([rule], SigmaString("path\*something"))
+    ]
+
+
+def test_validator_escaped_wildcard_valid():
+    validator = EscapedWildcardValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: path\\\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []

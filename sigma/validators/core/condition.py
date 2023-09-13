@@ -88,7 +88,7 @@ class AllOfThemConditionIssue(SigmaValidationIssue):
 
 
 class AllOfThemConditionValidator(SigmaRuleValidator):
-    """Find ocurrences of discouraged 'all of them' conditions."""
+    """Find occurrences of discouraged 'all of them' conditions."""
 
     re_all_of_them: ClassVar[Pattern] = re.compile("all\\s+of\\s+them")
 

@@ -3,12 +3,11 @@ from re import Pattern
 import re
 from typing import ClassVar, List, Set
 from sigma.conditions import ConditionIdentifier, ConditionItem, ConditionSelector
-from sigma.rule import SigmaDetections, SigmaRule, SigmaType
+from sigma.rule import SigmaDetections, SigmaRule
 from sigma.validators.base import (
     SigmaValidationIssue,
     SigmaValidationIssueSeverity,
     SigmaRuleValidator,
-    SigmaStringValueValidator,
 )
 
 
@@ -96,26 +95,5 @@ class AllOfThemConditionValidator(SigmaRuleValidator):
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if any([self.re_all_of_them.search(condition) for condition in rule.detection.condition]):
             return [AllOfThemConditionIssue([rule])]
-        else:
-            return []
-
-@dataclass
-class EscapedWildcardIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "Rule contains an escaped wildcard in the rule logic. Make sure the escape is intentional."
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class EscapedWildcardValidator(SigmaStringValueValidator):
-    """Check for the presence of escaped wildcards."""
-
-    wildcard_list = ["*", "?"]
-
-    def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
-        if any(
-            [x in value for x in self.wildcard_list]
-        ):
-            return [EscapedWildcardIssue([])]
         else:
             return []

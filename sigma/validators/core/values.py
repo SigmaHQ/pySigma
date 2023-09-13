@@ -156,3 +156,25 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
             return [WildcardInsteadOfStartswithIssue([self.rule], detection_item)]
         else:
             return []
+
+@dataclass
+class EscapedWildcardIssue(SigmaValidationIssue):
+    description: ClassVar[
+        str
+    ] = "Rule contains an escaped wildcard in the rule logic. Make sure the escape is intentional."
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
+    string: SigmaString
+
+
+class EscapedWildcardValidator(SigmaStringValueValidator):
+    """Check for the presence of escaped wildcards."""
+
+    wildcard_list = ["*", "?"]
+
+    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
+        if any(
+            [x in value for x in self.wildcard_list]
+        ):
+            return [EscapedWildcardIssue(self.rule, value)]
+        else:
+            return []

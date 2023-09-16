@@ -51,6 +51,7 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
             IdentifierCollisionIssue(rules, id) for id, rules in self.ids.items() if len(rules) > 1
         ]
 
+
 @dataclass
 class TitleLengthIssue(SigmaValidationIssue):
     description = "Rule has a title longer than 100 characters"
@@ -65,6 +66,7 @@ class TitleLengthValidator(SigmaRuleValidator):
             return [TitleLengthIssue([rule])]
         else:
             return []
+
 
 @dataclass
 class DuplicateTitleIssue(SigmaValidationIssue):
@@ -88,5 +90,7 @@ class DuplicateTitleValidator(SigmaRuleValidator):
 
     def finalize(self) -> List[SigmaValidationIssue]:
         return [
-            DuplicateTitleIssue(rules, title) for title, rules in self.titles.items() if len(rules) > 1
+            DuplicateTitleIssue(rules, title)
+            for title, rules in self.titles.items()
+            if len(rules) > 1
         ]

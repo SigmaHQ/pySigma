@@ -83,10 +83,12 @@ class SigmaDateError(SigmaError):
 
     pass
 
+
 class SigmaFieldsError(SigmaError):
     """Error in Sigma rule fields"""
 
     pass
+
 
 class SigmaFalsePositivesError(SigmaError):
     """Error in Sigma rule falsepositives"""

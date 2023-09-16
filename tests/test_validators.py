@@ -816,6 +816,7 @@ def test_validator_escaped_wildcard_valid():
     )
     assert validator.validate(rule) == []
 
+
 def test_validator_lengthy_title():
     validator = TitleLengthValidator()
     rule = SigmaRule.from_yaml(
@@ -831,6 +832,7 @@ def test_validator_lengthy_title():
     """
     )
     assert validator.validate(rule) == [TitleLengthIssue([rule])]
+
 
 def test_validator_lengthy_title_valid():
     validator = TitleLengthValidator()
@@ -848,6 +850,7 @@ def test_validator_lengthy_title_valid():
     )
     assert validator.validate(rule) == []
 
+
 def test_validator_duplicate_title():
     validator = DuplicateTitleValidator()
     rule = SigmaRule.from_yaml(
@@ -863,6 +866,7 @@ def test_validator_duplicate_title():
     """
     )
     assert validator.validate(rule) == [DuplicateTitleIssue([rule])]
+
 
 def test_validator_duplicate_title_valid():
     validator = DuplicateTitleValidator()

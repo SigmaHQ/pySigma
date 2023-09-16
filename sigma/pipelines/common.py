@@ -66,11 +66,13 @@ def logsource_windows(service: str) -> LogsourceCondition:
         service=service,
     )
 
+
 def logsource_linux(service: str) -> LogsourceCondition:
     return LogsourceCondition(
         product="linux",
         service=service,
     )
+
 
 def logsource_macos(service: str) -> LogsourceCondition:
     return LogsourceCondition(
@@ -78,10 +80,12 @@ def logsource_macos(service: str) -> LogsourceCondition:
         service=service,
     )
 
+
 def logsource_category(category: str) -> LogsourceCondition:
     return LogsourceCondition(
         category=category,
     )
+
 
 def logsource_windows_process_creation() -> LogsourceCondition:
     return LogsourceCondition(
@@ -273,11 +277,13 @@ def logsource_linux_file_create() -> LogsourceCondition:
         product="linux",
     )
 
+
 def logsource_macos_process_creation() -> LogsourceCondition:
     return LogsourceCondition(
         category="process_creation",
         product="macos",
     )
+
 
 def logsource_macos_file_create() -> LogsourceCondition:
     return LogsourceCondition(
@@ -285,11 +291,13 @@ def logsource_macos_file_create() -> LogsourceCondition:
         product="macos",
     )
 
+
 def logsource_azure_riskdetection() -> LogsourceCondition:
     return LogsourceCondition(
         category="riskdetection",
         product="azure",
     )
+
 
 def logsource_azure_pim() -> LogsourceCondition:
     return LogsourceCondition(
@@ -297,17 +305,20 @@ def logsource_azure_pim() -> LogsourceCondition:
         product="azure",
     )
 
+
 def logsource_azure_auditlogs() -> LogsourceCondition:
     return LogsourceCondition(
         category="auditlogs",
         product="azure",
     )
 
+
 def logsource_azure_azureactivity() -> LogsourceCondition:
     return LogsourceCondition(
         category="azureactivity",
         product="azure",
     )
+
 
 def logsource_azure_signinlogs() -> LogsourceCondition:
     return LogsourceCondition(

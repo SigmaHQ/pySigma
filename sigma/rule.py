@@ -672,7 +672,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
         # Rule status validation
         status = rule.get("status")
         if status is not None:
-            if isinstance(status, list):
+            if not isinstance(status, str):
                 errors.append(
                     sigma_exceptions.SigmaStatusError(
                         "Sigma rule status cannot be a list", source=source

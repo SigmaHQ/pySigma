@@ -8,7 +8,7 @@ from sigma.modifiers import (
     SigmaBase64OffsetModifier,
     SigmaContainsModifier,
 )
-from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule, SigmaRuleTag, SigmaRuleTitle
+from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule, SigmaRuleTag
 from sigma.types import SigmaString
 from sigma.validators.core.logsources import (
     SpecificInsteadOfGenericLogsourceValidator,

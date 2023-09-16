@@ -672,14 +672,21 @@ class SigmaRule(ProcessingItemTrackingMixin):
         # Rule status validation
         status = rule.get("status")
         if status is not None:
-            try:
-                status = SigmaStatus[status.upper()]
-            except KeyError:
+            if isinstance(status, list):
                 errors.append(
                     sigma_exceptions.SigmaStatusError(
-                        f"'{ status }' is no valid Sigma rule status", source=source
+                        "Sigma rule status cannot be a list", source=source
                     )
                 )
+            else:
+                try:
+                    status = SigmaStatus[status.upper()]
+                except KeyError:
+                    errors.append(
+                        sigma_exceptions.SigmaStatusError(
+                            f"'{ status }' is no valid Sigma rule status", source=source
+                        )
+                    )
 
         # parse rule date if existing
         rule_date = rule.get("date")
@@ -701,7 +708,23 @@ class SigmaRule(ProcessingItemTrackingMixin):
         # validate fields
         rule_fields = rule.get("fields")
         if rule_fields is not None and not isinstance(rule_fields, list):
+            errors.append(
+                sigma_exceptions.SigmaFieldsError(
+                    "Sigma rule fields must be a list",
+                    source=source,
+                )
+            )
             raise SigmaTypeError("Sigma rule fields must be a list", source=source)
+        
+        # validate falsepositives
+        rule_falsepositives = rule.get("falsepositives")
+        if rule_falsepositives is not None and not isinstance(rule_fields, list):
+            errors.append(
+                sigma_exceptions.SigmaFalsePositivesError(
+                    "Sigma rule falsepositives must be a list",
+                    source=source,
+                )
+            )
 
         # parse log source
         logsource = None

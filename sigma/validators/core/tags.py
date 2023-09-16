@@ -87,7 +87,7 @@ class TLPTagValidator(TLPTagValidatorBase):
 
 @dataclass
 class DuplicateTagIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "The same tag appears mutliple times"
+    description: ClassVar[str] = "The same tag appears multiple times"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 

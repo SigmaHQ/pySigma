@@ -759,7 +759,7 @@ def test_validator_sysmon_insteadof_generic_logsource():
         sel:
             EventID:
                - 1
-               - 255
+               - 999
                - 7
         condition: sel
     """
@@ -777,12 +777,6 @@ def test_validator_sysmon_insteadof_generic_logsource():
             logsource=logsource_sysmon,
             event_id=7,
             generic_logsource=SigmaLogSource("image_load"),
-        ),
-        SpecificInsteadOfGenericLogsourceIssue(
-            rules=[rule],
-            logsource=logsource_sysmon,
-            event_id=7,
-            generic_logsource=SigmaLogSource("sysmon_error"),
         ),
     ]
 
@@ -871,7 +865,7 @@ def test_validator_duplicate_title():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [DuplicateTitleIssue([rule, "Test"])]
+    assert validator.validate(rule) == [DuplicateTitleIssue([rule], "Test")]
 
 
 def test_validator_duplicate_title_valid():

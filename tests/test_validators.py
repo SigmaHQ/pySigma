@@ -880,6 +880,7 @@ def test_validator_duplicate_title():
     )
     assert validator.validate(rule1) == validator.validate(rule2)
 
+
 def test_validator_duplicate_title_valid():
     validator = DuplicateTitleValidator()
     rule = SigmaRule.from_yaml(

@@ -855,7 +855,7 @@ def test_validator_duplicate_title():
     validator = DuplicateTitleValidator()
     rule1 = SigmaRule.from_yaml(
         """
-    title: Test1
+    title: Test
     status: test
     logsource:
         category: test
@@ -868,7 +868,7 @@ def test_validator_duplicate_title():
 
     rule2 = SigmaRule.from_yaml(
         """
-    title: Test2
+    title: Test
     status: test
     logsource:
         category: test
@@ -878,7 +878,9 @@ def test_validator_duplicate_title():
         condition: sel
     """
     )
-    assert validator.validate(rule1) == validator.validate(rule2)
+    assert validator.validate(rule1) == []
+    assert validator.validate(rule2) == []
+    assert validator.finalize() == [DuplicateTitleIssue([rule1, rule2], "Test")]
 
 
 def test_validator_duplicate_title_valid():

@@ -19,6 +19,10 @@ from sigma.validators.core.metadata import (
     IdentifierExistenceIssue,
     IdentifierExistenceValidator,
     IdentifierUniquenessValidator,
+    TitleLengthIssue,
+    TitleLengthValidator,
+    DuplicateTitleIssue,
+    DuplicateTitleValidator,
 )
 from sigma.validators.core.condition import (
     AllOfThemConditionIssue,
@@ -259,7 +263,7 @@ def test_validator_them_condition_with_multiple_detection():
     assert validator.validate(rule) == []
 
 
-def test_validator_all_of_then():
+def test_validator_all_of_them():
     validator = AllOfThemConditionValidator()
     rule = SigmaRule.from_yaml(
         """
@@ -755,7 +759,7 @@ def test_validator_sysmon_insteadof_generic_logsource():
         sel:
             EventID:
                - 1
-               - 255
+               - 999
                - 7
         condition: sel
     """
@@ -807,6 +811,87 @@ def test_validator_escaped_wildcard_valid():
     detection:
         sel:
             field: path\\\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_lengthy_title():
+    validator = TitleLengthValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: ThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleT
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: path\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [TitleLengthIssue([rule])]
+
+
+def test_validator_lengthy_title_valid():
+    validator = TitleLengthValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: path\\*something
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_duplicate_title():
+    validator = DuplicateTitleValidator()
+    rule1 = SigmaRule.from_yaml(
+        """
+    title: Test1
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+
+    rule2 = SigmaRule.from_yaml(
+        """
+    title: Test2
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule1) == validator.validate(rule2)
+
+
+def test_validator_duplicate_title_valid():
+    validator = DuplicateTitleValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
         condition: sel
     """
     )

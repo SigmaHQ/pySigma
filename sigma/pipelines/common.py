@@ -49,6 +49,14 @@ windows_logsource_mapping = {  # Mapping between Sigma log source services and W
     "shell-core": "Microsoft-Windows-Shell-Core/Operational",
     "openssh": "OpenSSH/Operational",
     "bitlocker": "Microsoft-Windows-BitLocker/BitLocker Management",
+    "vhdmp": "Microsoft-Windows-VHDMP/Operational",
+    "appxdeployment-server": "Microsoft-Windows-AppXDeploymentServer/Operational",
+    "lsa-server": "Microsoft-Windows-LSA/Operational",
+    "appxpackaging-om": "Microsoft-Windows-AppxPackaging/Operational",
+    "dns-client": "Microsoft-Windows-DNS Client Events/Operational",
+    "appmodel-runtime": "Microsoft-Windows-AppModel-Runtime/Admin",
+    "capi2": "Microsoft-Windows-CAPI2/Operational",
+    "certificateservicesclient-lifecycle-system": "Microsoft-Windows-CertificateServicesClient-Lifecycle-System/Operational",
 }
 
 
@@ -59,6 +67,26 @@ def logsource_windows(service: str) -> LogsourceCondition:
     )
 
 
+def logsource_linux(service: str) -> LogsourceCondition:
+    return LogsourceCondition(
+        product="linux",
+        service=service,
+    )
+
+
+def logsource_macos(service: str) -> LogsourceCondition:
+    return LogsourceCondition(
+        product="macos",
+        service=service,
+    )
+
+
+def logsource_category(category: str) -> LogsourceCondition:
+    return LogsourceCondition(
+        category=category,
+    )
+
+
 def logsource_windows_process_creation() -> LogsourceCondition:
     return LogsourceCondition(
         category="process_creation",
@@ -66,28 +94,28 @@ def logsource_windows_process_creation() -> LogsourceCondition:
     )
 
 
-def logsource_windows_registry_add():
+def logsource_windows_registry_add() -> LogsourceCondition:
     return LogsourceCondition(
         category="registry_add",
         product="windows",
     )
 
 
-def logsource_windows_registry_set():
+def logsource_windows_registry_set() -> LogsourceCondition:
     return LogsourceCondition(
         category="registry_set",
         product="windows",
     )
 
 
-def logsource_windows_registry_delete():
+def logsource_windows_registry_delete() -> LogsourceCondition:
     return LogsourceCondition(
         category="registry_delete",
         product="windows",
     )
 
 
-def logsource_windows_registry_event():
+def logsource_windows_registry_event() -> LogsourceCondition:
     return LogsourceCondition(
         category="registry_event",
         product="windows",
@@ -101,105 +129,105 @@ def logsource_windows_file_change() -> LogsourceCondition:
     )
 
 
-def logsource_windows_file_event():
+def logsource_windows_file_event() -> LogsourceCondition:
     return LogsourceCondition(
         category="file_event",
         product="windows",
     )
 
 
-def logsource_windows_file_delete():
+def logsource_windows_file_delete() -> LogsourceCondition:
     return LogsourceCondition(
         category="file_delete",
         product="windows",
     )
 
 
-def logsource_windows_file_access():
+def logsource_windows_file_access() -> LogsourceCondition:
     return LogsourceCondition(
         category="file_access",
         product="windows",
     )
 
 
-def logsource_windows_file_rename():
+def logsource_windows_file_rename() -> LogsourceCondition:
     return LogsourceCondition(
         category="file_rename",
         product="windows",
     )
 
 
-def logsource_windows_image_load():
+def logsource_windows_image_load() -> LogsourceCondition:
     return LogsourceCondition(
         category="image_load",
         product="windows",
     )
 
 
-def logsource_windows_pipe_created():
+def logsource_windows_pipe_created() -> LogsourceCondition:
     return LogsourceCondition(
         category="pipe_created",
         product="windows",
     )
 
 
-def logsource_windows_ps_classic_start():
+def logsource_windows_ps_classic_start() -> LogsourceCondition:
     return LogsourceCondition(
         category="ps_classic_start",
         product="windows",
     )
 
 
-def logsource_windows_ps_module():
+def logsource_windows_ps_module() -> LogsourceCondition:
     return LogsourceCondition(
         category="ps_module",
         product="windows",
     )
 
 
-def logsource_windows_ps_script():
+def logsource_windows_ps_script() -> LogsourceCondition:
     return LogsourceCondition(
         category="ps_script",
         product="windows",
     )
 
 
-def logsource_windows_process_access():
+def logsource_windows_process_access() -> LogsourceCondition:
     return LogsourceCondition(
         category="process_access",
         product="windows",
     )
 
 
-def logsource_windows_raw_access_thread():
+def logsource_windows_raw_access_thread() -> LogsourceCondition:
     return LogsourceCondition(
         category="raw_access_thread",
         product="windows",
     )
 
 
-def logsource_windows_wmi_event():
+def logsource_windows_wmi_event() -> LogsourceCondition:
     return LogsourceCondition(
         category="wmi_event",
         product="windows",
     )
 
 
-def logsource_windows_driver_load():
+def logsource_windows_driver_load() -> LogsourceCondition:
     return LogsourceCondition(
         category="driver_load",
         product="windows",
     )
 
 
-def logsource_windows_create_stream_hash():
+def logsource_windows_create_stream_hash() -> LogsourceCondition:
     return LogsourceCondition(
         category="create_stream_hash",
         product="windows",
     )
 
 
-def logsource_windows_create_remote_thread():
+def logsource_windows_create_remote_thread() -> LogsourceCondition:
     return LogsourceCondition(
         category="create_remote_thread",
         product="windows",
@@ -229,7 +257,7 @@ def logsource_windows_dns_query() -> LogsourceCondition:
     )
 
 
-def logsource_linux_process_creation():
+def logsource_linux_process_creation() -> LogsourceCondition:
     return LogsourceCondition(
         category="process_creation",
         product="linux",
@@ -243,10 +271,59 @@ def logsource_linux_network_connection() -> LogsourceCondition:
     )
 
 
-def logsource_linux_file_create():
+def logsource_linux_file_create() -> LogsourceCondition:
     return LogsourceCondition(
         category="file_create",
         product="linux",
+    )
+
+
+def logsource_macos_process_creation() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="process_creation",
+        product="macos",
+    )
+
+
+def logsource_macos_file_create() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="file_create",
+        product="macos",
+    )
+
+
+def logsource_azure_riskdetection() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="riskdetection",
+        product="azure",
+    )
+
+
+def logsource_azure_pim() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="pim",
+        product="azure",
+    )
+
+
+def logsource_azure_auditlogs() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="auditlogs",
+        product="azure",
+    )
+
+
+def logsource_azure_azureactivity() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="azureactivity",
+        product="azure",
+    )
+
+
+def logsource_azure_signinlogs() -> LogsourceCondition:
+    return LogsourceCondition(
+        category="signinlogs",
+        product="azure",
     )
 
 

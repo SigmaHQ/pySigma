@@ -105,7 +105,7 @@ class Backend(ABC):
     config: Dict[str, Any]
     default_format: ClassVar[str] = "default"
     collect_errors: bool = False
-    errors: List[Tuple[SigmaRule, SigmaError]] = list()
+    errors: List[Tuple[SigmaRule, SigmaError]]
 
     # in-expressions
     convert_or_as_in: ClassVar[bool] = False  # Convert OR as in-expression
@@ -123,6 +123,7 @@ class Backend(ABC):
         collect_errors: bool = False,
     ):
         self.processing_pipeline = processing_pipeline
+        self.errors = list()
         self.collect_errors = collect_errors
 
     def convert(self, rule_collection: SigmaCollection, output_format: Optional[str] = None) -> Any:

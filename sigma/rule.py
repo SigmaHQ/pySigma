@@ -718,7 +718,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
 
         # validate falsepositives
         rule_falsepositives = rule.get("falsepositives")
-        if rule_falsepositives is not None and not isinstance(rule_fields, list):
+        if rule_falsepositives is not None and not isinstance(rule_falsepositives, list):
             errors.append(
                 sigma_exceptions.SigmaFalsePositivesError(
                     "Sigma rule falsepositives must be a list",

@@ -1,6 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
+import re
 from typing import Any, Dict, List, Optional, Union
 import sigma
 from sigma.processing.templates import TemplateBase
@@ -125,9 +126,27 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
         return json.dumps(self._replace_placeholder(self.parsed_json, query))
 
 
+@dataclass
+class ReplaceQueryTransformation(QueryPostprocessingTransformation):
+    """Replace query part specified by regular expression with a given string."""
+
+    pattern: str
+    replacement: str
+
+    def __post_init__(self):
+        self.re = re.compile(self.pattern)
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+    ):
+        super().apply(pipeline, rule, query)
+        return self.re.sub(self.replacement, query)
+
+
 query_postprocessing_transformations = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
     "template": QueryTemplateTransformation,
     "json": EmbedQueryInJSONTransformation,
+    "replace": ReplaceQueryTransformation,
 }

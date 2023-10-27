@@ -4,6 +4,7 @@ from sigma.processing.postprocessing import (
     EmbedQueryTransformation,
     QuerySimpleTemplateTransformation,
     QueryTemplateTransformation,
+    ReplaceQueryTransformation,
 )
 from sigma.rule import SigmaRule
 from .test_processing_transformations import dummy_pipeline, sigma_rule
@@ -75,3 +76,8 @@ def test_embed_query_in_json_transformation_list(dummy_pipeline, sigma_rule):
         transformation.apply(dummy_pipeline, sigma_rule, 'field="value"')
         == '{"field": "value", "query": ["foo", "field=\\"value\\"", "bar"]}'
     )
+
+
+def test_replace_query_transformation(dummy_pipeline, sigma_rule):
+    transformation = ReplaceQueryTransformation("v\\w+e", "replaced")
+    assert transformation.apply(dummy_pipeline, sigma_rule, 'field="value"') == 'field="replaced"'

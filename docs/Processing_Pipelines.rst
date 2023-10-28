@@ -18,6 +18,11 @@ A processing pipeline has three stages:
 3. Output finalization: finalizers operate on all post-processed queries to generate the final
    output. Example: merge all queries and add a header to the output.
 
+Further resources:
+
+* `SigmaHQ Blog Post: Connecting Sigma Rule Sets to your Environment with Processing Pipelines <https://blog.sigmahq.io/connecting-sigma-rule-sets-to-your-environment-with-processing-pipelines-4ee1bd577070>`_ 
+* `SigmaHQ Blog Post: Introducing Query Post-Processing and Output Finalization to Processing Pipelines <https://blog.sigmahq.io/introducing-query-post-processing-and-output-finalization-to-processing-pipelines-4bfe74087ac1>`_ 
+
 .. _pipeline-resolvers:
 
 Resolvers

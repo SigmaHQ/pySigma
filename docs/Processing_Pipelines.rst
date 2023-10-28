@@ -87,6 +87,10 @@ Conditions are specified as follows:
 
 * `type`: defines the condition type. It must be one of the identifiers that are defined in
   :ref:`conditions`
+* `rule_cond_op`, `detection_item_cond_op`, `field_name_cond_op`: boolean operator for the condition
+  result. Must be one of `or` or `and`. Defaults to `and`.
+* `rule_cond_not`, `detection_item_cond_not`, `field_name_cond_not`: if set to *True*, the condition
+  result is negated.
 * Arbitrary conditions parameters are specified on the same level.
 
 Example:

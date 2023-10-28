@@ -7,6 +7,17 @@ transformation of Sigma rules.
 Sigma rules are tranformed to take care of differences between the Sigma rule and the target data
 model. Examples are differences in field naming schemes or value representation.
 
+A processing pipeline has three stages:
+
+1. Rule pre-processing: transformations that are applied to the rule. Example: field name mapping, adding
+   conditions.
+2. Query post-processing: transformations that are applied to the generated query. In this stage the
+   transformaions have access to the query generated from the backend and the rule that was the
+   source of the conversion. Example: embedding query and rule parts in a template to define custom
+   output formats.
+3. Output finalization: finalizers operate on all post-processed queries to generate the final
+   output. Example: merge all queries and add a header to the output.
+
 .. _pipeline-resolvers:
 
 Resolvers
@@ -53,7 +64,9 @@ The following items are expected on the root level of the YAML file:
 * `name`: the name of the pipeline.
 * `priority`: specifies the ordering of the pipeline in case multiple pipelines are concatenated.
   Lower priorities are used first.
-* `transformations`: contains a list of transformation items.
+* `transformations`: contains a list of transformation items for the rule pre-processing stage.
+* `postprocessing`: contains a list of transformation items for the query post-processing stage.
+* `finalizers`: contains a list of transformation items for the output finalization stage.
 
 Some conventions used for processing pipeline priorities are:
 
@@ -119,14 +132,17 @@ Conditions
 There are three types of conditions:
 
 * Rule conditions are evaluated to the whole rule. They are defined in the `rule_conditions`
-  attribute of a `ProcessingItem`.
+  attribute of a `ProcessingItem`. These can be applied in the rule pre-processing stage and the
+  query post-processing stage.
 * Detection item conditions are evaluated for each detection item. They are defined in the
-  `detection_item_conditions` attribute of a `ProcessingPipeline`.
+  `detection_item_conditions` attribute of a `ProcessingPipeline`. These can only be applied in the
+  rule pre-processing stage.
 * Field name conditions are evaluated for field names that can be located in detection items or in
   the field name list of a Sigma rule. They are defined in the `field_name_conditions` attribute of
-  a `ProcessingPipeline`.
+  `detection_item_conditions` attribute of a `ProcessingPipeline`. These can only be applied in the
+  rule pre-processing stage.
 
-In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two furthert
+In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two further
 attributes hat control the condition matching behavior:
 
 * `rule_condition_linking`, `detection_item_condition_linking` and `field_name_condition_linking`:
@@ -201,14 +217,14 @@ and not be distributed via the main pySigma distribution.
 Transformations
 ***************
 
-Implemented Transformations
-===========================
+Rule Pre-Processing Transformations
+===================================
 
 The following transformations with their corresponding identifiers for usage in YAML-based pipeline
 definitions are available:
 
 
-.. csv-table:: Detection Item Identifiers
+.. csv-table:: Rule Pre-Processing Transformations
    :header-rows: 1
 
    "Identifier", "Class"
@@ -241,6 +257,46 @@ definitions are available:
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
+
+Query Post-Processing Transformations
+======================================
+
+.. versionadded:: 0.10.0
+
+.. csv-table:: Query Post-Processing Transformations
+   :header-rows: 1
+
+   "Identifier", "Class"
+   "embed", "EmbedQueryTransformation"
+   "simple_template", "QuerySimpleTemplateTransformation"
+   "template", "QueryTemplateTransformation"
+   "json", "EmbedQueryInJSONTransformation"
+   "replace", "ReplaceQueryTransformation"
+
+.. autoclass:: sigma.processing.postprocessing.EmbedQueryTransformation
+.. autoclass:: sigma.processing.postprocessing.QuerySimpleTemplateTransformation
+.. autoclass:: sigma.processing.postprocessing.QueryTemplateTransformation
+.. autoclass:: sigma.processing.postprocessing.EmbedQueryInJSONTransformation
+.. autoclass:: sigma.processing.postprocessing.ReplaceQueryTransformation
+
+Output Finalization Transformations
+====================================
+
+.. versionadded:: 0.10.0
+
+.. csv-table:: Output Finalization Transformations
+   :header-rows: 1
+
+   "Identifier", "Class"
+   "concat", "ConcatenateQueriesFinalizer"
+   "template", "TemplateFinalizer"
+   "json", "JSONFinalizer"
+   "yaml", "YAMLFinalizer"
+
+.. autoclass:: sigma.processing.finalization.ConcatenateQueriesFinalizer
+.. autoclass:: sigma.processing.finalization.TemplateFinalizer
+.. autoclass:: sigma.processing.finalization.JSONFinalizer
+.. autoclass:: sigma.processing.finalization.YAMLFinalizer
 
 Base Classes
 ============

@@ -66,9 +66,10 @@ class SigmaCorrelationCondition:
 
         return cls(op=cond_op, count=cond_count)
 
+    def to_dict(self) -> dict:
+        return {self.op.name.lower(): self.count}
 
-# Calculates the number of seconds from a time specifier consisting of a number and a unit.
-# The unit can be one of the following: s, m, h, d, w, M, y
+
 def parse_timespan(timespan: str) -> int:
     """
     Parses a string representing a time span and returns the equivalent number of seconds.
@@ -97,6 +98,32 @@ def parse_timespan(timespan: str) -> int:
         )
     except (ValueError, KeyError):
         raise sigma_exceptions.SigmaTimespanError(f"Timespan '{ timespan }' is invalid.")
+
+
+def seconds_to_timespan(seconds: int) -> str:
+    """
+    Converts a number of seconds into a time span string.
+
+    Args:
+        seconds (int): The number of seconds to convert.
+
+    Returns:
+        str: The time span string.
+    """
+    if seconds % 31556952 == 0:
+        return f"{ seconds // 31556952 }y"
+    elif seconds % 2629746 == 0:
+        return f"{ seconds // 2629746 }M"
+    elif seconds % 604800 == 0:
+        return f"{ seconds // 604800 }w"
+    elif seconds % 86400 == 0:
+        return f"{ seconds // 86400 }d"
+    elif seconds % 3600 == 0:
+        return f"{ seconds // 3600 }h"
+    elif seconds % 60 == 0:
+        return f"{ seconds // 60 }m"
+    else:
+        return f"{ seconds }s"
 
 
 @dataclass
@@ -242,3 +269,18 @@ class SigmaCorrelationRule(SigmaRuleBase):
             errors=errors,
             **kwargs,
         )
+
+    def to_dict(self) -> dict:
+        d = super().to_dict()
+        dc = {
+            "type": self.type.name.lower(),
+            "rules": [rule.reference for rule in self.rules],
+            "timespan": seconds_to_timespan(self.timespan),
+            "group-by": self.group_by,
+            "ordered": self.ordered,
+        }
+        if self.condition is not None:
+            dc["condition"] = self.condition.to_dict()
+        d["correlation"] = dc
+
+        return d

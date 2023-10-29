@@ -268,6 +268,32 @@ def test_correlation_without_condition():
         )
 
 
+def test_correlation_to_dict():
+    rule = SigmaCorrelationRule.from_dict(
+        {
+            "title": "Valid correlation",
+            "correlation": {
+                "type": "event_count",
+                "rules": "failed_login",
+                "group-by": "user",
+                "timespan": "10m",
+                "condition": {"gte": 10},
+            },
+        }
+    )
+    assert rule.to_dict() == {
+        "title": "Valid correlation",
+        "correlation": {
+            "type": "event_count",
+            "rules": ["failed_login"],
+            "group-by": ["user"],
+            "timespan": "10m",
+            "ordered": False,
+            "condition": {"gte": 10},
+        },
+    }
+
+
 def test_correlation_condition():
     cond = SigmaCorrelationCondition.from_dict({"gte": 10})
     assert isinstance(cond, SigmaCorrelationCondition)
@@ -297,3 +323,8 @@ def test_correlation_condition_invalid_count():
         match="'test' is no valid Sigma correlation condition count",
     ):
         SigmaCorrelationCondition.from_dict({"gte": "test"})
+
+
+def test_correlation_condition_to_dict():
+    cond = SigmaCorrelationCondition.from_dict({"gte": 10})
+    assert cond.to_dict() == {"gte": 10}

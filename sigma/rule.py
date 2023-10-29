@@ -1,6 +1,6 @@
 from dataclasses import InitVar, dataclass, field
 import dataclasses
-from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
+from typing import Any, Dict, Optional, Tuple, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date, datetime
@@ -596,14 +596,8 @@ class SigmaYAMLLoader(yaml.SafeLoader):
 
 
 @dataclass
-class SigmaRule(ProcessingItemTrackingMixin):
-    """
-    A single Sigma rule.
-    """
-
-    title: str
-    logsource: SigmaLogSource
-    detection: SigmaDetections
+class SigmaRuleBase:
+    title: str = ""
     id: Optional[UUID] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
@@ -637,9 +631,12 @@ class SigmaRule(ProcessingItemTrackingMixin):
         rule: dict,
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaRule":
+    ) -> Tuple[dict, List[Exception]]:
         """
-        Convert Sigma rule parsed in dict structure into SigmaRule object.
+        Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
+        class instantiation of an object derived from the SigmaRuleBase class and the errors list.
+        This is intended to be called only by to_dict() methods for processing the general
+        parameters defined in the base class.
 
         if collect_errors is set to False exceptions are collected in the errors property of the resulting
         SigmaRule object. Else the first recognized error is raised as exception.
@@ -726,6 +723,91 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 )
             )
 
+        if not collect_errors and errors:
+            raise errors[0]
+
+        return (
+            {
+                "title": rule.get("title", ""),
+                "id": rule_id,
+                "level": level,
+                "status": status,
+                "description": rule.get("description"),
+                "references": rule.get("references"),
+                "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
+                "author": rule.get("author"),
+                "date": rule_date,
+                "fields": rule.get("fields", list()),
+                "falsepositives": rule.get("falsepositives", list()),
+                "source": source,
+                "custom_attributes": {
+                    k: v
+                    for k, v in rule.items()
+                    if k
+                    not in set(cls.__dataclass_fields__.keys())
+                    - {"errors", "source", "applied_processing_items"}
+                },
+            },
+            errors,
+        )
+
+    @classmethod
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRule":
+        """Convert YAML input string with single document into SigmaRule object."""
+        parsed_rule = yaml.load(rule, SigmaYAMLLoader)
+        return cls.from_dict(parsed_rule, collect_errors)
+
+    def to_dict(self) -> dict:
+        """Convert rule object into dict."""
+        d = {
+            "title": self.title,
+        }
+        # Convert to string where possible
+        for field in ("id", "status", "level", "author", "description"):
+            if (s := self.__getattribute__(field)) is not None:
+                d[field] = str(s)
+
+        # copy list of strings
+        for field in ("references", "fields", "falsepositives"):
+            if len(l := self.__getattribute__(field)) > 0:
+                d[field] = l.copy()
+
+        # the special cases
+        if len(self.tags) > 0:
+            d["tags"] = [str(tag) for tag in self.tags]
+        if self.date is not None:
+            d["date"] = self.date.isoformat()
+
+        # custom attributes
+        d.update(self.custom_attributes)
+
+        return d
+
+
+@dataclass
+class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
+    """
+    A single Sigma rule.
+    """
+
+    logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
+    detection: SigmaDetections = field(default_factory=SigmaDetections)
+
+    @classmethod
+    def from_dict(
+        cls,
+        rule: dict,
+        collect_errors: bool = False,
+        source: Optional[SigmaRuleLocation] = None,
+    ) -> "SigmaRule":
+        """
+        Convert Sigma rule parsed in dict structure into SigmaRule object.
+
+        if collect_errors is set to False exceptions are collected in the errors property of the resulting
+        SigmaRule object. Else the first recognized error is raised as exception.
+        """
+        kwargs, errors = super().from_dict(rule, collect_errors, source)
+
         # parse log source
         logsource = None
         try:
@@ -756,60 +838,20 @@ class SigmaRule(ProcessingItemTrackingMixin):
             raise errors[0]
 
         return cls(
-            title=rule.get("title", ""),
-            id=rule_id,
-            level=level,
-            status=status,
-            description=rule.get("description"),
-            references=rule.get("references"),
-            tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
-            author=rule.get("author"),
-            date=rule_date,
             logsource=logsource,
             detection=detections,
-            fields=rule.get("fields", list()),
-            falsepositives=rule.get("falsepositives", list()),
             errors=errors,
-            source=source,
-            custom_attributes={
-                k: v
-                for k, v in rule.items()
-                if k
-                not in set(cls.__dataclass_fields__.keys())
-                - {"errors", "source", "applied_processing_items"}
-            },
+            **kwargs,
         )
-
-    @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRule":
-        """Convert YAML input string with single document into SigmaRule object."""
-        parsed_rule = yaml.load(rule, SigmaYAMLLoader)
-        return cls.from_dict(parsed_rule, collect_errors)
 
     def to_dict(self) -> dict:
         """Convert rule object into dict."""
-        d = {
-            "title": self.title,
-            "logsource": self.logsource.to_dict(),
-            "detection": self.detection.to_dict(),
-        }
-        # Convert to string where possible
-        for field in ("id", "status", "level", "author", "description"):
-            if (s := self.__getattribute__(field)) is not None:
-                d[field] = str(s)
-
-        # copy list of strings
-        for field in ("references", "fields", "falsepositives"):
-            if len(l := self.__getattribute__(field)) > 0:
-                d[field] = l.copy()
-
-        # the special cases
-        if len(self.tags) > 0:
-            d["tags"] = [str(tag) for tag in self.tags]
-        if self.date is not None:
-            d["date"] = self.date.isoformat()
-
-        # custom attributes
-        d.update(self.custom_attributes)
+        d = super().to_dict()
+        d.update(
+            {
+                "logsource": self.logsource.to_dict(),
+                "detection": self.detection.to_dict(),
+            }
+        )
 
         return d

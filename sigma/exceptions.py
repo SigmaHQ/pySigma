@@ -138,25 +138,25 @@ class SigmaPlaceholderError(SigmaValueError):
     pass
 
 
-class SigmaCorrelationTypeError(SigmaValueError):
-    """Wrong Sigma correlation type."""
-
-    pass
-
-
 class SigmaCorrelationRuleError(SigmaValueError):
     """Error in Sigma correlation rule."""
 
     pass
 
 
-class SigmaCorrelationConditionError(SigmaValueError):
+class SigmaCorrelationTypeError(SigmaCorrelationRuleError):
+    """Wrong Sigma correlation type."""
+
+    pass
+
+
+class SigmaCorrelationConditionError(SigmaCorrelationRuleError):
     """Error in Sigma correlation condition."""
 
     pass
 
 
-class SigmaTimespanError(Exception):
+class SigmaTimespanError(SigmaCorrelationRuleError):
     """Raised when the timespan for calculating sigma is invalid."""
 
     pass

@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import List, Optional
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
 
 
@@ -70,7 +70,7 @@ class SigmaCorrelationCondition:
         return {self.op.name.lower(): self.count}
 
 
-def parse_timespan(timespan: str) -> int:
+def parse_timespan(timespan: str, source: Optional[SigmaRuleLocation] = None) -> int:
     """
     Parses a string representing a time span and returns the equivalent number of seconds.
 
@@ -97,7 +97,9 @@ def parse_timespan(timespan: str) -> int:
             }[timespan[-1]]
         )
     except (ValueError, KeyError):
-        raise sigma_exceptions.SigmaTimespanError(f"Timespan '{ timespan }' is invalid.")
+        raise sigma_exceptions.SigmaTimespanError(
+            f"Timespan '{ timespan }' is invalid.", source=source
+        )
 
 
 def seconds_to_timespan(seconds: int) -> str:
@@ -213,12 +215,8 @@ class SigmaCorrelationRule(SigmaRuleBase):
         if timespan is not None:
             try:
                 timespan = parse_timespan(timespan)
-            except ValueError:
-                errors.append(
-                    sigma_exceptions.SigmaCorrelationTypeError(
-                        f"Sigma correlation rule with invalid timespan", source=source
-                    )
-                )
+            except SigmaTimespanError as e:
+                errors.append(e)
         else:
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(

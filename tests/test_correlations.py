@@ -216,6 +216,21 @@ def test_correlation_invalid_timespan():
         )
 
 
+def test_correlation_without_timespan():
+    with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without timespan"):
+        SigmaCorrelationRule.from_dict(
+            {
+                "name": "Invalid time span",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "group-by": ["user"],
+                    "condition": {"gte": 10},
+                },
+            }
+        )
+
+
 def test_correlation_invalid_ordered():
     with pytest.raises(
         SigmaCorrelationRuleError, match="Sigma correlation ordered definition must be boolean"
@@ -265,6 +280,18 @@ def test_correlation_without_condition():
                     "timespan": "10m",
                 },
             }
+        )
+
+
+def test_correlation_without_condition_post_init_check():
+    with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without condition"):
+        SigmaCorrelationRule(
+            type=SigmaCorrelationType.EVENT_COUNT,
+            rules=[SigmaRuleReference("failed_login")],
+            timespan=600,
+            group_by=["user"],
+            ordered=False,
+            condition=None,
         )
 
 

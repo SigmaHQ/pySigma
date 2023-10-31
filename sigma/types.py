@@ -1,5 +1,9 @@
-from math import inf
+import re
+from abc import ABC
+from dataclasses import dataclass, field
 from enum import Enum, auto
+from ipaddress import IPv4Network, IPv6Network, ip_network
+from math import inf
 from typing import (
     ClassVar,
     Dict,
@@ -14,10 +18,7 @@ from typing import (
     Callable,
     Iterator,
 )
-from abc import ABC
-from dataclasses import dataclass, field
-from enum import Enum, auto
-import re
+
 from sigma.exceptions import (
     SigmaPlaceholderError,
     SigmaRuleLocation,
@@ -25,7 +26,6 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTypeError,
 )
-from ipaddress import IPv4Network, IPv6Network, ip_network
 
 
 class SpecialChars(Enum):
@@ -644,9 +644,13 @@ class SigmaRegularExpression(SigmaType):
                 if e is not None
             ]
         )
-        pos = [  # determine positions of matches in regular expression
-            m.start() for m in re.finditer(r, self.regexp)
-        ] if r is not '' else []
+        pos = (
+            [  # determine positions of matches in regular expression
+                m.start() for m in re.finditer(r, self.regexp)
+            ]
+            if r is not ""
+            else []
+        )
         ranges = zip([None, *pos], [*pos, None])  # string chunk ranges with escapes in between
         ranges = list(ranges)
 

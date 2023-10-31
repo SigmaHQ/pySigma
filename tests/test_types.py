@@ -1,6 +1,14 @@
-from ipaddress import IPv4Network, IPv6Network
 import re
+from ipaddress import IPv4Network, IPv6Network
+
 import pytest
+
+from sigma.exceptions import (
+    SigmaPlaceholderError,
+    SigmaTypeError,
+    SigmaValueError,
+    SigmaRegularExpressionError,
+)
 from sigma.types import (
     SigmaBool,
     SigmaCasedString,
@@ -16,12 +24,6 @@ from sigma.types import (
     SigmaQueryExpression,
     sigma_type,
     SigmaCIDRExpression,
-)
-from sigma.exceptions import (
-    SigmaPlaceholderError,
-    SigmaTypeError,
-    SigmaValueError,
-    SigmaRegularExpressionError,
 )
 
 
@@ -511,11 +513,11 @@ def test_re_escape_without_escape():
 
 def test_re_escape_with_escape_escape_char_param():
     # See issue #153 https://github.com/SigmaHQ/pySigma/issues/153
-    assert(
+    assert (
         SigmaRegularExpression("bitsadmin\\.exe").escape(escape_escape_char=True)
         == "bitsadmin\\\\.exe"
     )
-    assert(
+    assert (
         SigmaRegularExpression("bitsadmin\\.exe").escape(escape_escape_char=False)
         == "bitsadmin\\.exe"
     )

@@ -509,6 +509,18 @@ def test_re_escape_without_escape():
     )
 
 
+def test_re_escape_with_escape_escape_char_param():
+    # See issue #153 https://github.com/SigmaHQ/pySigma/issues/153
+    assert(
+        SigmaRegularExpression("bitsadmin\\.exe").escape(escape_escape_char=True)
+        == "bitsadmin\\\\.exe"
+    )
+    assert(
+        SigmaRegularExpression("bitsadmin\\.exe").escape(escape_escape_char=False)
+        == "bitsadmin\\.exe"
+    )
+
+
 def test_bool():
     assert SigmaBool(True).boolean == True
 

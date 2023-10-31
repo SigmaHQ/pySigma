@@ -646,7 +646,7 @@ class SigmaRegularExpression(SigmaType):
         )
         pos = [  # determine positions of matches in regular expression
             m.start() for m in re.finditer(r, self.regexp)
-        ]
+        ] if r is not '' else []
         ranges = zip([None, *pos], [*pos, None])  # string chunk ranges with escapes in between
         ranges = list(ranges)
 

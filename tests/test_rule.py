@@ -749,6 +749,16 @@ def test_sigmarule_bad_uuid():
         )
 
 
+def test_sigmarule_bad_name():
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a string.*test.yml"):
+        SigmaRule.from_dict({"name": 123}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
+def test_sigmarule_empty_name():
+    with pytest.raises(sigma_exceptions.SigmaNameError, match="must not be empty.*test.yml"):
+        SigmaRule.from_dict({"name": ""}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
 def test_sigmarule_bad_level():
     with pytest.raises(
         sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
@@ -887,6 +897,7 @@ def sigma_rule():
     return SigmaRule(
         title="Test",
         id=UUID("9a6cafa7-1481-4e64-89a1-1f69ed08618c"),
+        name="test",
         status=SigmaStatus.TEST,
         description="This is a test",
         references=[
@@ -957,6 +968,7 @@ def test_sigmarule_fromyaml(sigma_rule):
         """
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+    name: test
     status: test
     description: This is a test
     references:
@@ -996,6 +1008,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         """
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+    name: test
     status: test
     description: This is a test
     references:

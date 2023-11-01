@@ -78,6 +78,12 @@ class SigmaIdentifierError(SigmaError):
     pass
 
 
+class SigmaNameError(SigmaError):
+    """Error in Sigma rule name"""
+
+    pass
+
+
 class SigmaDateError(SigmaError):
     """Error in Sigma rule date"""
 

@@ -599,6 +599,7 @@ class SigmaYAMLLoader(yaml.SafeLoader):
 class SigmaRuleBase:
     title: str = ""
     id: Optional[UUID] = None
+    name: Optional[str] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
     references: List[str] = field(default_factory=list)
@@ -653,6 +654,25 @@ class SigmaRuleBase:
                         "Sigma rule identifier must be an UUID", source=source
                     )
                 )
+
+        # Rule name
+        rule_name = rule.get("name")
+        if rule_name is not None:
+            if not isinstance(rule_name, str):
+                errors.append(
+                    sigma_exceptions.SigmaTypeError(
+                        "Sigma rule name must be a string", source=source
+                    )
+                )
+            else:
+                if rule_name == "":
+                    errors.append(
+                        sigma_exceptions.SigmaNameError(
+                            "Sigma rule name must not be empty", source=source
+                        )
+                    )
+                else:
+                    rule_name = rule_name
 
         # Rule level validation
         level = rule.get("level")
@@ -730,6 +750,7 @@ class SigmaRuleBase:
             {
                 "title": rule.get("title", ""),
                 "id": rule_id,
+                "name": rule_name,
                 "level": level,
                 "status": status,
                 "description": rule.get("description"),

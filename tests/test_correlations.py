@@ -3,6 +3,7 @@ from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
     SigmaCorrelationRule,
+    SigmaCorrelationTimespan,
     SigmaCorrelationType,
     SigmaRuleReference,
 )
@@ -32,7 +33,7 @@ def test_correlation_valid_1():
     assert rule.type == SigmaCorrelationType.EVENT_COUNT
     assert rule.rules == [SigmaRuleReference("failed_login")]
     assert rule.group_by == ["user"]
-    assert rule.timespan == 600
+    assert rule.timespan == SigmaCorrelationTimespan("10m")
     assert rule.condition == SigmaCorrelationCondition(
         op=SigmaCorrelationConditionOperator.GTE, count=10
     )
@@ -57,7 +58,7 @@ def test_correlation_valid_2():
     assert rule.type == SigmaCorrelationType.TEMPORAL
     assert rule.rules == [SigmaRuleReference("event_a"), SigmaRuleReference("event_b")]
     assert rule.group_by == ["source", "user"]
-    assert rule.timespan == 3600
+    assert rule.timespan == SigmaCorrelationTimespan("1h")
     assert rule.condition == None
     assert rule.ordered == True
 
@@ -80,7 +81,7 @@ correlation:
     assert rule.type == SigmaCorrelationType.EVENT_COUNT
     assert rule.rules == [SigmaRuleReference("failed_login")]
     assert rule.group_by == ["user"]
-    assert rule.timespan == 600
+    assert rule.timespan == SigmaCorrelationTimespan("10m")
     assert rule.condition == SigmaCorrelationCondition(
         op=SigmaCorrelationConditionOperator.GTE, count=10
     )
@@ -108,7 +109,7 @@ correlation:
     assert rule.type == SigmaCorrelationType.TEMPORAL
     assert rule.rules == [SigmaRuleReference("event_a"), SigmaRuleReference("event_b")]
     assert rule.group_by == ["source", "user"]
-    assert rule.timespan == 3600
+    assert rule.timespan == SigmaCorrelationTimespan("1h")
     assert rule.condition == None
     assert rule.ordered == True
 

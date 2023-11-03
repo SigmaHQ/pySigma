@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
+from sigma.correlations import SigmaCorrelationRule
 
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaCollectionError, SigmaError, SigmaRuleLocation
@@ -47,15 +48,22 @@ class SigmaCollection:
                 rule.source = source
             else:
                 action = rule.get("action")
-                if (
-                    action is None
-                ):  # no action defined: merge with global rule and handle as simple rule
-                    parsed_rules.append(
-                        SigmaRule.from_dict(
-                            deep_dict_update(rule, global_rule), collect_errors, source
+                if action is None:  # no action defined
+                    if "correlation" in rule:  # correlation rule - no global rule merge
+                        parsed_rules.append(
+                            SigmaCorrelationRule.from_dict(
+                                rule,
+                                collect_errors,
+                                source,
+                            )
                         )
-                    )
-                    prev_rule = rule
+                    else:  # merge with global rule and parse as simple rule
+                        parsed_rules.append(
+                            SigmaRule.from_dict(
+                                deep_dict_update(rule, global_rule), collect_errors, source
+                            )
+                        )
+                        prev_rule = rule
                 elif action == "global":  # set global rule template
                     del rule["action"]
                     global_rule = rule

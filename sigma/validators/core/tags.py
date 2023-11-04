@@ -14,6 +14,7 @@ from sigma.data.mitre_attack import (
     mitre_attack_intrusion_sets,
     mitre_attack_software,
 )
+import re
 
 
 @dataclass
@@ -98,3 +99,56 @@ class DuplicateTagValidator(SigmaRuleValidator):
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         tags = Counter(rule.tags)
         return [DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1]
+
+
+@dataclass
+class InvalidCVETagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid CVE tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class CVETagValidator(SigmaTagValidator):
+    """Validate rule CVE tag"""
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        tags_pattern = re.compile(r"\d+\.\d+$")
+        if tag.namespace == "cve" and tags_pattern.match(tag.name) is None:
+            return [InvalidCVETagIssue([self.rule], tag)]
+        return []
+
+
+@dataclass
+class InvalidDetectionTagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid detection tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class DetectionTagValidator(SigmaTagValidator):
+    """Validate rule detection tag"""
+
+    def __init__(self) -> None:
+        self.allowed_tags = {"dfir", "emerging_threats", "threat_hunting"}
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        if tag.namespace == "detection" and tag.name not in self.allowed_tags:
+            return [InvalidDetectionTagIssue([self.rule], tag)]
+        return []
+
+
+@dataclass
+class InvalidCARTagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid CAR tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class CARTagValidator(SigmaTagValidator):
+    """Validate rule CAR tag"""
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        tags_pattern = re.compile(r"\d{4}-\d{2}-\d{3}$")
+        if tag.namespace == "car" and tags_pattern.match(tag.name) is None:
+            return [InvalidCARTagIssue([self.rule], tag)]
+        return []

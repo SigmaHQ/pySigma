@@ -49,6 +49,12 @@ from sigma.validators.core.tags import (
     TLPTagValidator,
     TLPv1TagValidator,
     TLPv2TagValidator,
+    CVETagValidator,
+    InvalidCVETagIssue,
+    DetectionTagValidator,
+    InvalidDetectionTagIssue,
+    CARTagValidator,
+    InvalidCARTagIssue,
 )
 from sigma.validators.core.values import (
     ControlCharacterIssue,
@@ -746,6 +752,57 @@ def test_validator_duplicate_tags():
     """
     )
     assert validator.validate(rule) == [DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001"))]
+
+
+@pytest.mark.parametrize(
+    "opt_validator_class,opt_tags,opt_issue_tags,opt_issue_class",
+    [
+        (
+            CVETagValidator,
+            ["cve.2023.11.04", "cve.2023.007"],
+            ["cve.2023.11.04"],
+            InvalidCVETagIssue,
+        ),
+        (CVETagValidator, ["cve.2023.007", "cve.2022.963"], [], InvalidCVETagIssue),
+        (
+            DetectionTagValidator,
+            ["detection.new_threats", "cve.2023.007"],
+            ["detection.new_threats"],
+            InvalidDetectionTagIssue,
+        ),
+        (
+            DetectionTagValidator,
+            ["detection.emerging_threats", "cve.2022.963"],
+            [],
+            InvalidDetectionTagIssue,
+        ),
+        (
+            CARTagValidator,
+            ["car.2016-04-005", "car.2023-011-11"],
+            ["car.2023-011-11"],
+            InvalidCARTagIssue,
+        ),
+        (CARTagValidator, ["car.2016-04-005", "car.2023-11-011"], [], InvalidCARTagIssue),
+    ],
+)
+def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):
+    validator = opt_validator_class()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    rule.tags = [SigmaRuleTag.from_str(tag) for tag in opt_tags]
+    assert validator.validate(rule) == [
+        opt_issue_class([rule], SigmaRuleTag.from_str(tag)) for tag in opt_issue_tags
+    ]
 
 
 def test_validator_sysmon_insteadof_generic_logsource():

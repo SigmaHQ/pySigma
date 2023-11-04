@@ -1,3 +1,4 @@
+from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import ClassVar, Dict, List
@@ -93,4 +94,23 @@ class DuplicateTitleValidator(SigmaRuleValidator):
             DuplicateTitleIssue(rules, title)
             for title, rules in self.titles.items()
             if len(rules) > 1
+        ]
+
+
+@dataclass
+class DuplicateReferencesIssue(SigmaValidationIssue):
+    description = "The same references appears multiple times"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+    reference: str
+
+
+class DuplicateReferencesValidator(SigmaRuleValidator):
+    """Validate rule References uniqueness."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        references = Counter(rule.references)
+        return [
+            DuplicateReferencesIssue([rule], reference)
+            for reference, count in references.items()
+            if count > 1
         ]

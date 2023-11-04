@@ -755,14 +755,38 @@ def test_validator_duplicate_tags():
 
 
 @pytest.mark.parametrize(
-    "cve_tags,cve_issue_tags",
+    "opt_validator_class,opt_tags,opt_issue_tags,opt_issue_class",
     [
-        (["cve.2023.11.04", "cve.2023.007"], ["cve.2023.11.04"]),
-        (["cve.2023.007", "cve.2022.963"], []),
+        (
+            CVETagValidator,
+            ["cve.2023.11.04", "cve.2023.007"],
+            ["cve.2023.11.04"],
+            InvalidCVETagIssue,
+        ),
+        (CVETagValidator, ["cve.2023.007", "cve.2022.963"], [], InvalidCVETagIssue),
+        (
+            DetectionTagValidator,
+            ["detection.new_threats", "cve.2023.007"],
+            ["detection.new_threats"],
+            InvalidDetectionTagIssue,
+        ),
+        (
+            DetectionTagValidator,
+            ["detection.emerging_threats", "cve.2022.963"],
+            [],
+            InvalidDetectionTagIssue,
+        ),
+        (
+            CARTagValidator,
+            ["car.2016-04-005", "car.2023-011-11"],
+            ["car.2023-011-11"],
+            InvalidCARTagIssue,
+        ),
+        (CARTagValidator, ["car.2016-04-005", "car.2023-11-011"], [], InvalidCARTagIssue),
     ],
 )
-def test_validator_cve_tag(cve_tags, cve_issue_tags):
-    validator = CVETagValidator()
+def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):
+    validator = opt_validator_class()
     rule = SigmaRule.from_yaml(
         """
     title: Test
@@ -775,63 +799,9 @@ def test_validator_cve_tag(cve_tags, cve_issue_tags):
         condition: sel
     """
     )
-    rule.tags = [SigmaRuleTag.from_str(tag) for tag in cve_tags]
+    rule.tags = [SigmaRuleTag.from_str(tag) for tag in opt_tags]
     assert validator.validate(rule) == [
-        InvalidCVETagIssue([rule], SigmaRuleTag.from_str(tag)) for tag in cve_issue_tags
-    ]
-
-
-@pytest.mark.parametrize(
-    "detection_tags,detection_issue_tags",
-    [
-        (["detection.new_threats", "cve.2023.007"], ["detection.new_threats"]),
-        (["detection.emerging_threats", "cve.2022.963"], []),
-    ],
-)
-def test_validator_detection_tag(detection_tags, detection_issue_tags):
-    validator = DetectionTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    rule.tags = [SigmaRuleTag.from_str(tag) for tag in detection_tags]
-    assert validator.validate(rule) == [
-        InvalidDetectionTagIssue([rule], SigmaRuleTag.from_str(tag)) for tag in detection_issue_tags
-    ]
-
-
-@pytest.mark.parametrize(
-    "car_tags,car_issue_tags",
-    [
-        (["car.2016-04-005", "car.2023-011-11"], ["car.2023-011-11"]),
-        (["car.2016-04-005", "car.2023-11-011"], []),
-    ],
-)
-def test_validator_car_tag(car_tags, car_issue_tags):
-    validator = CARTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    rule.tags = [SigmaRuleTag.from_str(tag) for tag in car_tags]
-    assert validator.validate(rule) == [
-        InvalidCARTagIssue([rule], SigmaRuleTag.from_str(tag)) for tag in car_issue_tags
+        opt_issue_class([rule], SigmaRuleTag.from_str(tag)) for tag in opt_issue_tags
     ]
 
 

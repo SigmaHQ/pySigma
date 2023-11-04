@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
+from uuid import UUID
 from sigma.correlations import SigmaCorrelationRule
 
 from sigma.rule import SigmaRule
@@ -14,13 +15,15 @@ class SigmaCollection:
 
     rules: List[SigmaRule]
     errors: List[SigmaError] = field(default_factory=list)
-    ids_to_rules: Dict[str, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
+    ids_to_rules: Dict[UUID, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
+    names_to_rules: Dict[str, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
 
     def __post_init__(self):
         """
         Map rule identifiers to rules.
         """
-        self.ids_to_rules = {str(rule.id): rule for rule in self.rules if rule.id is not None}
+        self.ids_to_rules = {rule.id: rule for rule in self.rules if rule.id is not None}
+        self.names_to_rules = {rule.name: rule for rule in self.rules if rule.name is not None}
 
     @classmethod
     def from_dicts(
@@ -189,11 +192,16 @@ class SigmaCollection:
     def __len__(self):
         return len(self.rules)
 
-    def __getitem__(self, i: Union[int, str]):
-        if isinstance(i, int):
+    def __getitem__(self, i: Union[int, str, UUID]):
+        if isinstance(i, int):  # Index by position
             return self.rules[i]
-        else:
+        elif isinstance(i, UUID):  # Index by UUID
             return self.ids_to_rules[i]
+        elif isinstance(i, str):  # Index by UUID or name
+            try:  # Try UUID first
+                return self.ids_to_rules[UUID(i)]
+            except ValueError:  # Try name if UUID fails
+                return self.names_to_rules[i]
 
 
 def deep_dict_update(dest, src):

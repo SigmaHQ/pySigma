@@ -299,6 +299,11 @@ def test_index_rule_by_position(ruleset):
 def test_index_rule_by_id(ruleset):
     rule_id = "240dbc26-8b19-4f5f-8972-fc3841f4185f"
     assert ruleset[rule_id].id == UUID(rule_id)
+    assert ruleset[UUID(rule_id)].id == UUID(rule_id)
+
+
+def test_index_rule_by_name(ruleset):
+    assert ruleset["test_rule"].name == "test_rule"
 
 
 @pytest.fixture

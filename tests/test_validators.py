@@ -23,6 +23,8 @@ from sigma.validators.core.metadata import (
     TitleLengthValidator,
     DuplicateTitleIssue,
     DuplicateTitleValidator,
+    DuplicateReferencesIssue,
+    DuplicateReferencesValidator,
 )
 from sigma.validators.core.condition import (
     AllOfThemConditionIssue,
@@ -888,6 +890,48 @@ def test_validator_duplicate_title_valid():
     rule = SigmaRule.from_yaml(
         """
     title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_duplicate_references():
+    validator = DuplicateReferencesValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    references:
+        - ref_a
+        - ref_b
+        - ref_a
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [DuplicateReferencesIssue([rule], "ref_a")]
+
+
+def test_validator_duplicate_references_valid():
+    validator = DuplicateReferencesValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    references:
+        - ref_a
+        - ref_b
+        - ref_c
     status: test
     logsource:
         category: test

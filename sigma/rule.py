@@ -788,7 +788,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             id=rule_id,
             level=level,
             status=status,
-            description=rule.get("description"),
+            description=rule_description,
             references=rule.get("references"),
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
             author=rule.get("author"),

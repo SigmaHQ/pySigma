@@ -14,18 +14,7 @@ from sigma.validators.core.logsources import (
     SpecificInsteadOfGenericLogsourceValidator,
     SpecificInsteadOfGenericLogsourceIssue,
 )
-from sigma.validators.core.metadata import (
-    IdentifierCollisionIssue,
-    IdentifierExistenceIssue,
-    IdentifierExistenceValidator,
-    IdentifierUniquenessValidator,
-    TitleLengthIssue,
-    TitleLengthValidator,
-    DuplicateTitleIssue,
-    DuplicateTitleValidator,
-    DuplicateReferencesIssue,
-    DuplicateReferencesValidator,
-)
+
 from sigma.validators.core.condition import (
     AllOfThemConditionIssue,
     AllOfThemConditionValidator,
@@ -122,30 +111,6 @@ def rules_with_id_collision():
         """
         )
         for i in range(2)
-    ]
-
-
-def test_validator_identifier_existence(rule_without_id):
-    validator = IdentifierExistenceValidator()
-    assert (
-        validator.validate(rule_without_id) == [IdentifierExistenceIssue([rule_without_id])]
-        and validator.finalize() == []
-    )
-
-
-def test_validator_identifier_existence_valid(rule_with_id):
-    validator = IdentifierExistenceValidator()
-    assert validator.validate(rule_with_id) == [] and validator.finalize() == []
-
-
-def test_validator_identifier_uniqueness(rules_with_id_collision):
-    validator = IdentifierUniquenessValidator()
-    assert [
-        issue for rule in rules_with_id_collision for issue in validator.validate(rule)
-    ] == [] and validator.finalize() == [
-        IdentifierCollisionIssue(
-            rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")
-        )
     ]
 
 
@@ -870,131 +835,6 @@ def test_validator_escaped_wildcard_valid():
     detection:
         sel:
             field: path\\\\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == []
-
-
-def test_validator_lengthy_title():
-    validator = TitleLengthValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: ThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleT
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: path\\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [TitleLengthIssue([rule])]
-
-
-def test_validator_lengthy_title_valid():
-    validator = TitleLengthValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: path\\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == []
-
-
-def test_validator_duplicate_title():
-    validator = DuplicateTitleValidator()
-    rule1 = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-
-    rule2 = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule1) == []
-    assert validator.validate(rule2) == []
-    assert validator.finalize() == [DuplicateTitleIssue([rule1, rule2], "Test")]
-
-
-def test_validator_duplicate_title_valid():
-    validator = DuplicateTitleValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == []
-
-
-def test_validator_duplicate_references():
-    validator = DuplicateReferencesValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    references:
-        - ref_a
-        - ref_b
-        - ref_a
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [DuplicateReferencesIssue([rule], "ref_a")]
-
-
-def test_validator_duplicate_references_valid():
-    validator = DuplicateReferencesValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    references:
-        - ref_a
-        - ref_b
-        - ref_c
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
         condition: sel
     """
     )

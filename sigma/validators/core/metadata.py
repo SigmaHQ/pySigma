@@ -11,6 +11,17 @@ from sigma.validators.base import (
 )
 
 
+def is_uuid_v4(val: str) -> bool:
+    try:
+        id = UUID(str(val))
+        if id.version == 4:
+            return True
+        else:
+            return False
+    except ValueError:
+        return False
+
+
 @dataclass
 class IdentifierExistenceIssue(SigmaValidationIssue):
     description = "Rule has no identifier (UUID)"
@@ -114,3 +125,67 @@ class DuplicateReferencesValidator(SigmaRuleValidator):
             for reference, count in references.items()
             if count > 1
         ]
+
+
+@dataclass
+class InvalidRelatedTypeIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid related type"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    type: str
+
+
+class InvalidRelatedTypeValidator(SigmaRuleValidator):
+    """Validate rule related type."""
+
+    def __init__(self) -> None:
+        self.allowed_type = {"derived", "obsoletes", "merged", "renamed", "similar"}
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.custom_attributes["related"]:
+            return [
+                InvalidRelatedTypeIssue([rule], value["type"])
+                for value in rule.custom_attributes["related"]
+                if value["type"] not in self.allowed_type
+            ]
+        return []
+
+
+@dataclass
+class InvalidRelatedIdIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid related id format"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    id: str
+
+
+class InvalidRelatedIdValidator(SigmaRuleValidator):
+    """Validate rule related id format."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.custom_attributes["related"]:
+            return [
+                InvalidRelatedIdIssue([rule], value["id"])
+                for value in rule.custom_attributes["related"]
+                if not is_uuid_v4(value["id"])
+            ]
+        return []
+
+
+@dataclass
+class InvalidRelatedSubfieldIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid related Subfield name"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    subfield: str
+
+
+class InvalidRelatedSubfieldValidator(SigmaRuleValidator):
+    """Validate rule related subfield name."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.custom_attributes["related"]:
+            return [
+                InvalidRelatedSubfieldIssue([rule], value_key)
+                for value in rule.custom_attributes["related"]
+                for value_key in value.keys()
+                if value_key not in ["id", "type"]
+            ]
+        return []

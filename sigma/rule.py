@@ -717,7 +717,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
                         rule_modified = date(*(int(i) for i in rule_modified.split("-")))
                     except ValueError:
                         errors.append(
-                            sigma_exceptions.SigmaDateError(
+                            sigma_exceptions.SigmaModifiedError(
                                 f"Rule modified '{ rule_modified }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
                                 source=source,
                             )
@@ -748,7 +748,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
         rule_description = rule.get("description")
         if rule_description is not None and not isinstance(rule_description, str):
             errors.append(
-                sigma_exceptions.SigmaFalsePositivesError(
+                sigma_exceptions.SigmaDescriptionError(
                     "Sigma rule description must be a string",
                     source=source,
                 )

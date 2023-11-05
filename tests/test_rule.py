@@ -749,6 +749,13 @@ def test_sigmarule_bad_uuid():
         )
 
 
+def test_sigmarule_bad_decription():
+    with pytest.raises(sigma_exceptions.SigmaDescriptionError, match="must be a string.*test.yml"):
+        SigmaRule.from_dict(
+            {"description": ["1", "2"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
 def test_sigmarule_bad_level():
     with pytest.raises(
         sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
@@ -791,7 +798,7 @@ def test_sigmarule_date():
     assert rule.date == expected_date
 
 
-def test_sigmarule_date():
+def test_modified_date():
     expected_date = date(3000, 11, 3)
     rule = SigmaRule.from_yaml(
         """

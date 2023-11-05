@@ -370,3 +370,30 @@ def test_load_ruleset_with_correlation(rules_with_correlation):
         timespan=SigmaCorrelationTimespan("5m"),
     )
     assert correlation_rule.rules[0].rule == rules_with_correlation.rules[0]
+
+
+def test_load_ruleset_with_correlation_referencing_nonexistent_rule():
+    with pytest.raises(SigmaRuleNotFoundError, match="Rule 'rule-2' not found in rule collection"):
+        SigmaCollection.from_yaml(
+            """
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\a.exe'
+    condition: selection
+---
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+"""
+        )

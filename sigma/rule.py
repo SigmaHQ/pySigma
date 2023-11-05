@@ -611,6 +611,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
     tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
     date: Optional[date] = None
+    modified: Optional[date] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None
@@ -705,6 +706,23 @@ class SigmaRule(ProcessingItemTrackingMixin):
                             )
                         )
 
+        # parse rule modified if existing
+        rule_modified = rule.get("modified")
+        if rule_modified is not None:
+            if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
+                try:
+                    rule_modified = date(*(int(i) for i in rule_modified.split("/")))
+                except ValueError:
+                    try:
+                        rule_modified = date(*(int(i) for i in rule_modified.split("-")))
+                    except ValueError:
+                        errors.append(
+                            sigma_exceptions.SigmaModifiedError(
+                                f"Rule modified '{ rule_modified }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
+                                source=source,
+                            )
+                        )
+
         # validate fields
         rule_fields = rule.get("fields")
         if rule_fields is not None and not isinstance(rule_fields, list):
@@ -722,6 +740,16 @@ class SigmaRule(ProcessingItemTrackingMixin):
             errors.append(
                 sigma_exceptions.SigmaFalsePositivesError(
                     "Sigma rule falsepositives must be a list",
+                    source=source,
+                )
+            )
+
+        # validate description
+        rule_description = rule.get("description")
+        if rule_description is not None and not isinstance(rule_description, str):
+            errors.append(
+                sigma_exceptions.SigmaDescriptionError(
+                    "Sigma rule description must be a string",
                     source=source,
                 )
             )
@@ -760,11 +788,12 @@ class SigmaRule(ProcessingItemTrackingMixin):
             id=rule_id,
             level=level,
             status=status,
-            description=rule.get("description"),
+            description=rule_description,
             references=rule.get("references"),
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
             author=rule.get("author"),
             date=rule_date,
+            modified=rule_modified,
             logsource=logsource,
             detection=detections,
             fields=rule.get("fields", list()),

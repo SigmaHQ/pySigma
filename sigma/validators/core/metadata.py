@@ -189,3 +189,51 @@ class InvalidRelatedSubfieldValidator(SigmaRuleValidator):
                 if value_key not in ["id", "type"]
             ]
         return []
+
+
+@dataclass
+class StatusExistenceIssue(SigmaValidationIssue):
+    description = "Rule has no status"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class StatusExistenceValidator(SigmaRuleValidator):
+    """Checks if rule has a status."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.status is None:
+            return [StatusExistenceIssue([rule])]
+        else:
+            return []
+
+
+@dataclass
+class StatusUnsupportedIssue(SigmaValidationIssue):
+    description = "Rule has UNSUPPORTED status"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class StatusUnsupportedValidator(SigmaRuleValidator):
+    """Checks if rule has a status UNSUPPORTED."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.status and rule.status.name == "UNSUPPORTED":
+            return [StatusUnsupportedIssue([rule])]
+        else:
+            return []
+
+
+@dataclass
+class DateExistenceIssue(SigmaValidationIssue):
+    description = "Rule has no status"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class DateExistenceValidator(SigmaRuleValidator):
+    """Checks if rule has a status."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.status is None:
+            return [DateExistenceIssue([rule])]
+        else:
+            return []

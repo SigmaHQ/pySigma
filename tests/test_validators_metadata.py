@@ -23,6 +23,12 @@ from sigma.validators.core.metadata import (
     InvalidRelatedIdIssue,
     InvalidRelatedSubfieldValidator,
     InvalidRelatedSubfieldIssue,
+    StatusExistenceValidator,
+    StatusExistenceIssue,
+    StatusUnsupportedValidator,
+    StatusUnsupportedIssue,
+    DateExistenceValidator,
+    DateExistenceIssue,
 )
 
 
@@ -294,3 +300,52 @@ def test_validator_invalid_related_subfield():
     """
     )
     assert validator.validate(rule) == [InvalidRelatedSubfieldIssue([rule], "uuid")]
+
+
+def test_validator_status_existence():
+    validator = StatusExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [StatusExistenceIssue([rule])]
+
+
+def test_validator_status_unsupported():
+    validator = StatusUnsupportedValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: unsupported
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [StatusUnsupportedIssue([rule])]
+
+
+def test_validator_date_existence():
+    validator = DateExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [DateExistenceIssue([rule])]

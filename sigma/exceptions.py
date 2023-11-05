@@ -84,6 +84,18 @@ class SigmaDateError(SigmaError):
     pass
 
 
+class SigmaModifiedError(SigmaError):
+    """Error in Sigma rule modified"""
+
+    pass
+
+
+class SigmaDescriptionError(SigmaError):
+    """Error in Sigma rule description"""
+
+    pass
+
+
 class SigmaFieldsError(SigmaError):
     """Error in Sigma rule fields"""
 

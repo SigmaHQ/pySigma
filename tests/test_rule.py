@@ -749,6 +749,13 @@ def test_sigmarule_bad_uuid():
         )
 
 
+def test_sigmarule_bad_decription():
+    with pytest.raises(sigma_exceptions.SigmaDescriptionError, match="must be a string.*test.yml"):
+        SigmaRule.from_dict(
+            {"description": ["1", "2"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
 def test_sigmarule_bad_level():
     with pytest.raises(
         sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
@@ -789,6 +796,28 @@ def test_sigmarule_date():
     )
     assert rule is not None
     assert rule.date == expected_date
+
+
+def test_modified_date():
+    expected_date = date(3000, 11, 3)
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    id: cafedead-beef-0000-1111-0123456789ab
+    level: medium
+    status: test
+    date: 3000-01-02
+    modified: 3000-11-03
+    logsource:
+        product: foobar
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """
+    )
+    assert rule is not None
+    assert rule.modified == expected_date
 
 
 def test_sigmarule_datetime():

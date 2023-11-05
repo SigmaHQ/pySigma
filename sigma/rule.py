@@ -744,6 +744,16 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 )
             )
 
+        # validate description
+        rule_description = rule.get("description")
+        if rule_description is not None and not isinstance(rule_description, str):
+            errors.append(
+                sigma_exceptions.SigmaFalsePositivesError(
+                    "Sigma rule description must be a string",
+                    source=source,
+                )
+            )
+
         # parse log source
         logsource = None
         try:
@@ -783,6 +793,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
             author=rule.get("author"),
             date=rule_date,
+            modified=rule_modified,
             logsource=logsource,
             detection=detections,
             fields=rule.get("fields", list()),

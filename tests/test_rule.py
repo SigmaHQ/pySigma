@@ -791,6 +791,28 @@ def test_sigmarule_date():
     assert rule.date == expected_date
 
 
+def test_sigmarule_date():
+    expected_date = date(3000, 11, 3)
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    id: cafedead-beef-0000-1111-0123456789ab
+    level: medium
+    status: test
+    date: 3000-01-02
+    modified: 3000-11-03
+    logsource:
+        product: foobar
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """
+    )
+    assert rule is not None
+    assert rule.modified == expected_date
+
+
 def test_sigmarule_datetime():
     expected_date = datetime(3000, 1, 2, 3, 4, 5)
     rule = SigmaRule.from_yaml(

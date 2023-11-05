@@ -156,6 +156,12 @@ class SigmaCorrelationTypeError(SigmaCorrelationRuleError):
     pass
 
 
+class SigmaRuleNotFoundError(SigmaCorrelationRuleError):
+    """Sigma rule not found."""
+
+    pass
+
+
 class SigmaCorrelationConditionError(SigmaCorrelationRuleError):
     """Error in Sigma correlation condition."""
 

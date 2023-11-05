@@ -4,6 +4,7 @@ from typing import List, Optional
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
+import sigma
 
 
 class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
@@ -25,6 +26,15 @@ class SigmaRuleReference:
 
     reference: str
     rule: SigmaRule = field(init=False, repr=False, compare=False)
+
+    def resolve(self, rule_collection: "sigma.collection.SigmaCollection"):
+        """
+        Resolves the reference to the actual Sigma rule.
+
+        Raises:
+            sigma_exceptions.SigmaRuleNotFoundError: If the referenced rule cannot be found in the given rule collection.
+        """
+        self.rule = rule_collection[self.reference]
 
 
 class SigmaCorrelationConditionOperator(Enum):
@@ -251,3 +261,13 @@ class SigmaCorrelationRule(SigmaRuleBase):
         d["correlation"] = dc
 
         return d
+
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+        """
+        Resolves all rule references in the rules property to actual Sigma rules.
+
+        Raises:
+            sigma_exceptions.SigmaRuleNotFoundError: If a referenced rule cannot be found in the given rule collection.
+        """
+        for rule in self.rules:
+            rule.resolve(rule_collection)

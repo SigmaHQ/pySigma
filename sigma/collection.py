@@ -5,7 +5,12 @@ from uuid import UUID
 from sigma.correlations import SigmaCorrelationRule
 
 from sigma.rule import SigmaRule
-from sigma.exceptions import SigmaCollectionError, SigmaError, SigmaRuleLocation
+from sigma.exceptions import (
+    SigmaCollectionError,
+    SigmaError,
+    SigmaRuleLocation,
+    SigmaRuleNotFoundError,
+)
 import yaml
 
 
@@ -20,10 +25,17 @@ class SigmaCollection:
 
     def __post_init__(self):
         """
-        Map rule identifiers to rules.
+        Map rule identifiers to rules and resolve rule references in correlation rules.
         """
-        self.ids_to_rules = {rule.id: rule for rule in self.rules if rule.id is not None}
-        self.names_to_rules = {rule.name: rule for rule in self.rules if rule.name is not None}
+        self.ids_to_rules = {}
+        self.names_to_rules = {}
+        for rule in self.rules:
+            if rule.id is not None:
+                self.ids_to_rules[rule.id] = rule
+            if rule.name is not None:
+                self.names_to_rules[rule.name] = rule
+            if isinstance(rule, SigmaCorrelationRule):
+                rule.resolve_rule_references(self)
 
     @classmethod
     def from_dicts(
@@ -193,15 +205,20 @@ class SigmaCollection:
         return len(self.rules)
 
     def __getitem__(self, i: Union[int, str, UUID]):
-        if isinstance(i, int):  # Index by position
-            return self.rules[i]
-        elif isinstance(i, UUID):  # Index by UUID
-            return self.ids_to_rules[i]
-        elif isinstance(i, str):  # Index by UUID or name
-            try:  # Try UUID first
-                return self.ids_to_rules[UUID(i)]
-            except ValueError:  # Try name if UUID fails
-                return self.names_to_rules[i]
+        try:
+            if isinstance(i, int):  # Index by position
+                return self.rules[i]
+            elif isinstance(i, UUID):  # Index by UUID
+                return self.ids_to_rules[i]
+            elif isinstance(i, str):  # Index by UUID or name
+                try:  # Try UUID first
+                    return self.ids_to_rules[UUID(i)]
+                except ValueError:  # Try name if UUID fails
+                    return self.names_to_rules[i]
+        except IndexError:
+            raise SigmaRuleNotFoundError(f"Rule at position { i } not found in rule collection")
+        except KeyError:
+            raise SigmaRuleNotFoundError(f"Rule '{ i }' not found in rule collection")
 
 
 def deep_dict_update(dest, src):

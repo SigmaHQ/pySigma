@@ -1,4 +1,5 @@
 import pytest
+from sigma.collection import SigmaCollection
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
@@ -11,12 +12,31 @@ from sigma.exceptions import (
     SigmaCorrelationConditionError,
     SigmaCorrelationRuleError,
     SigmaCorrelationTypeError,
+    SigmaRuleNotFoundError,
     SigmaTimespanError,
 )
 
 
-def test_correlation_valid_1():
-    rule = SigmaCorrelationRule.from_dict(
+@pytest.fixture
+def rule_collection():
+    return SigmaCollection.from_yaml(
+        """
+title: Failed login
+name: failed_login
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+        """
+    )
+
+
+@pytest.fixture
+def correlation_rule():
+    return SigmaCorrelationRule.from_dict(
         {
             "title": "Valid correlation",
             "correlation": {
@@ -28,6 +48,10 @@ def test_correlation_valid_1():
             },
         }
     )
+
+
+def test_correlation_valid_1(correlation_rule):
+    rule = correlation_rule
     assert isinstance(rule, SigmaCorrelationRule)
     assert rule.title == "Valid correlation"
     assert rule.type == SigmaCorrelationType.EVENT_COUNT
@@ -356,3 +380,15 @@ def test_correlation_condition_invalid_count():
 def test_correlation_condition_to_dict():
     cond = SigmaCorrelationCondition.from_dict({"gte": 10})
     assert cond.to_dict() == {"gte": 10}
+
+
+def test_correlation_resolve_rule_references(rule_collection, correlation_rule):
+    correlation_rule.resolve_rule_references(rule_collection)
+    assert correlation_rule.rules[0].rule == rule_collection["failed_login"]
+
+
+def test_correlation_resolve_rule_references_invalid_reference(correlation_rule):
+    with pytest.raises(
+        SigmaRuleNotFoundError, match="Rule 'failed_login' not found in rule collection"
+    ):
+        correlation_rule.resolve_rule_references(SigmaCollection([]))

@@ -269,5 +269,6 @@ class SigmaCorrelationRule(SigmaRuleBase):
         Raises:
             sigma_exceptions.SigmaRuleNotFoundError: If a referenced rule cannot be found in the given rule collection.
         """
-        for rule in self.rules:
-            rule.resolve(rule_collection)
+        for rule_ref in self.rules:
+            rule_ref.resolve(rule_collection)
+            rule_ref.rule.add_backreference(self)

@@ -323,8 +323,18 @@ def test_index_rule_by_name_not_existing(ruleset):
 
 @pytest.fixture
 def rules_with_correlation():
-    return SigmaCollection.from_yaml(
+    rule_collection = SigmaCollection.from_yaml(
         """
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+---
 title: Rule 1
 name: rule-1
 logsource:
@@ -344,18 +354,10 @@ detection:
     selection:
         ImageFile|endswith: '\\\\b.exe'
     condition: selection
----
-title: Correlating 1+2
-name: corr-1-2
-correlation:
-    type: temporal
-    rules:
-        - rule-1
-        - rule-2
-    group-by: user
-    timespan: 5m
 """
     )
+    rule_collection.resolve_rule_references()
+    return rule_collection
 
 
 def test_load_ruleset_with_correlation(rules_with_correlation):
@@ -396,4 +398,4 @@ correlation:
     group-by: user
     timespan: 5m
 """
-        )
+        ).resolve_rule_references()

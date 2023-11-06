@@ -614,6 +614,10 @@ class SigmaRuleBase:
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Dict[str, Any] = field(compare=False, default_factory=dict)
 
+    _backreferences: List["SigmaRuleBase"] = field(
+        init=False, default_factory=list, repr=False, compare=False
+    )
+
     def __post_init__(self):
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
@@ -803,6 +807,18 @@ class SigmaRuleBase:
         d.update(self.custom_attributes)
 
         return d
+
+    def add_backreference(self, rule: "SigmaRuleBase"):
+        """Add backreference to another rule."""
+        self._backreferences.append(rule)
+
+    def referenced_by(self, rule: "SigmaRuleBase") -> bool:
+        """Check if rule is referenced by another rule."""
+        return rule in self._backreferences
+
+    def __lt__(self, other: "SigmaRuleBase") -> bool:
+        """Sort rules by backreference. A rule referenced by another rule is smaller."""
+        return self.referenced_by(other)
 
 
 @dataclass

@@ -34,8 +34,18 @@ class SigmaCollection:
                 self.ids_to_rules[rule.id] = rule
             if rule.name is not None:
                 self.names_to_rules[rule.name] = rule
+
+    def resolve_rule_references(self):
+        """
+        Resolve rule references in correlation rules to the actual rule objects and sort the rules
+        by reference order (rules that are referenced by other rules come first).
+
+        This must be called before referencing rules are converted into queries to make references available.
+        """
+        for rule in self.rules:
             if isinstance(rule, SigmaCorrelationRule):
                 rule.resolve_rule_references(self)
+        self.rules = list(sorted(self.rules))
 
     @classmethod
     def from_dicts(

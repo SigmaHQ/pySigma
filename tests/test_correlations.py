@@ -384,7 +384,9 @@ def test_correlation_condition_to_dict():
 
 def test_correlation_resolve_rule_references(rule_collection, correlation_rule):
     correlation_rule.resolve_rule_references(rule_collection)
-    assert correlation_rule.rules[0].rule == rule_collection["failed_login"]
+    rule = rule_collection["failed_login"]
+    assert correlation_rule.rules[0].rule == rule
+    assert rule.referenced_by(correlation_rule)
 
 
 def test_correlation_resolve_rule_references_invalid_reference(correlation_rule):

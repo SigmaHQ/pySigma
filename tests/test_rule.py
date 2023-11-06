@@ -1142,3 +1142,26 @@ def test_sigma_rule_overlapping_selections():
         and all((isinstance(arg, ConditionAND) for arg in cond.args))
         and [len(ands.args) for ands in cond.args] == [2, 4]
     )
+
+
+def test_sigma_rule_backreference(sigma_rule):
+    sigma_rule_2 = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "CommandLine|endswith": "test.exe",
+                },
+                "condition": "selection",
+            },
+        }
+    )
+    sigma_rule.add_backreference(sigma_rule_2)
+    assert sigma_rule.referenced_by(sigma_rule_2)
+    assert sigma_rule < sigma_rule_2
+    assert not sigma_rule_2.referenced_by(sigma_rule)
+    assert not sigma_rule_2 < sigma_rule

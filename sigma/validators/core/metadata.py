@@ -1,3 +1,5 @@
+import re
+
 from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
@@ -237,3 +239,68 @@ class DateExistenceValidator(SigmaRuleValidator):
             return [DateExistenceIssue([rule])]
         else:
             return []
+
+
+@dataclass
+class DuplicateFilenameIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule filemane used by multiple rules"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    filename: str
+
+
+class DuplicateFilenameValidator(SigmaRuleValidator):
+    """Check rule filename uniqueness."""
+
+    filenames: Dict[str, List[SigmaRule]]
+
+    def __init__(self):
+        self.filenames = defaultdict(list)
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.source is not None:
+            self.filenames[rule.source.path.name].append(rule)
+        return []
+
+    def finalize(self) -> List[SigmaValidationIssue]:
+        return [
+            DuplicateFilenameIssue(rules, filename)
+            for filename, rules in self.filenames.items()
+            if len(rules) > 1
+        ]
+
+
+@dataclass
+class FilenameSigmahqIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule filemane doesn't match SigmaHQ standard"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    filename: str
+
+
+class FilenameSigmahqValidator(SigmaRuleValidator):
+    """Check rule filename match SigmaHQ standard."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        filename_pattern = re.compile(r"[a-z0-9_]{10,90}\.yml")
+        if rule.source is not None:
+            filename = rule.source.path.name
+            if filename_pattern.match(filename) is None or not "_" in filename:
+                return [FilenameSigmahqIssue(rule, filename)]
+        return []
+
+
+@dataclass
+class FilenameLenghIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule filemane is too short or long"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    filename: str
+
+
+class FilenameLenghValidator(SigmaRuleValidator):
+    """Check rule filename lengh"""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.source is not None:
+            filename = rule.source.path.name
+            if len(filename) < 10 or len(filename) > 90:
+                return [FilenameLenghIssue(rule, filename)]
+        return []

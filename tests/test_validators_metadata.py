@@ -5,6 +5,7 @@ import pytest
 from sigma.exceptions import SigmaValueError
 from sigma.rule import SigmaRule
 from sigma.types import SigmaString
+from sigma.collection import SigmaCollection
 
 from sigma.validators.core.metadata import (
     IdentifierExistenceValidator,
@@ -29,6 +30,12 @@ from sigma.validators.core.metadata import (
     StatusUnsupportedIssue,
     DateExistenceValidator,
     DateExistenceIssue,
+    DuplicateFilenameValidator,
+    DuplicateFilenameIssue,
+    FilenameSigmahqValidator,
+    FilenameSigmahqIssue,
+    FilenameLenghValidator,
+    FilenameLenghIssue,
 )
 
 
@@ -349,3 +356,27 @@ def test_validator_date_existence():
     """
     )
     assert validator.validate(rule) == [DateExistenceIssue([rule])]
+
+
+def test_validator_duplicate_filename():
+    validator = DuplicateFilenameValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/ruleset_duplicate"])
+    rule1 = sigma_collection[0]
+    rule2 = sigma_collection[1]
+    assert validator.validate(rule1) == []
+    assert validator.validate(rule2) == []
+    assert validator.finalize() == [DuplicateFilenameIssue([rule1, rule2], "test_rule.yml")]
+
+
+def test_validator_sigmahqfilename():
+    validator = FilenameSigmahqValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
+    rule = sigma_collection[0]
+    assert validator.validate(rule) == [FilenameSigmahqIssue([rule], "Name.yml")]
+
+
+def test_validator_filename_lengh():
+    validator = FilenameLenghValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
+    rule = sigma_collection[0]
+    assert validator.validate(rule) == [FilenameLenghIssue([rule], "Name.yml")]

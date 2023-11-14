@@ -1,10 +1,10 @@
 import re
-
 from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
 from typing import ClassVar, Dict, List
 from uuid import UUID
+
 from sigma.rule import SigmaRule
 from sigma.validators.base import (
     SigmaRuleValidator,
@@ -143,7 +143,7 @@ class InvalidRelatedTypeValidator(SigmaRuleValidator):
         self.allowed_type = {"derived", "obsoletes", "merged", "renamed", "similar"}
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.custom_attributes["related"]:
+        if rule.custom_attributes.get("related"):
             return [
                 InvalidRelatedTypeIssue([rule], value["type"])
                 for value in rule.custom_attributes["related"]
@@ -163,7 +163,7 @@ class InvalidRelatedIdValidator(SigmaRuleValidator):
     """Validate rule related id format."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.custom_attributes["related"]:
+        if rule.custom_attributes.get("related"):
             return [
                 InvalidRelatedIdIssue([rule], value["id"])
                 for value in rule.custom_attributes["related"]
@@ -183,7 +183,7 @@ class InvalidRelatedSubfieldValidator(SigmaRuleValidator):
     """Validate rule related subfield name."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.custom_attributes["related"]:
+        if rule.custom_attributes.get("related"):
             return [
                 InvalidRelatedSubfieldIssue([rule], value_key)
                 for value in rule.custom_attributes["related"]

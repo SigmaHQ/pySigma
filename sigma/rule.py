@@ -55,26 +55,33 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
 
 
 class SigmaRelatedType(EnumLowercaseStringMixin, Enum):
-    DERIVED = auto()
     OBSOLETES = auto()
-    MERGED = auto()
     RENAMED = auto()
+    MERGED = auto()
+    DERIVED = auto()
     SIMILAR = auto()
 
 
+@dataclass
 class SigmaRelatedItem:
     id: UUID
     type: SigmaRelatedType
 
-    def __post_init__(self):
-        try:
-            id = UUID(id)
-        except ValueError:
-            raise SigmaRelatedError("Sigma related identifier must be an UUID")
-
     @classmethod
-    def from_dict(cls, id: str, type: str) -> "SigmaRelatedItem":
+    def from_dict(cls, value: dict) -> "SigmaRelatedItem":
         """Returns Related item from dict with fields."""
+        try:
+            id = UUID(value["id"])
+        except ValueError:
+            raise sigma_exceptions.SigmaRelatedError(f"Sigma related identifier must be an UUID")
+
+        try:
+            type = SigmaRelatedType[value["type"].upper()]
+        except:
+            raise sigma_exceptions.SigmaRelatedError(
+                f"{value['type']} is not a Sigma related valid type"
+            )
+
         return cls(
             id,
             type,
@@ -84,31 +91,24 @@ class SigmaRelatedItem:
 @dataclass
 class SigmaRelated:
     related: List[Type[SigmaRelatedItem]]
-    source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
-
-    # def __post_init__(self):
-    #     if not isinstance(self.related,list):
-    #         raise SigmaRelatedError("Sigma related must be a list")
 
     @classmethod
-    def from_dict(cls, value: list, source: Optional[SigmaRuleLocation] = None) -> "SigmaRelated":
+    def from_dict(cls, val: list) -> "SigmaRelated":
         """Returns Related object from dict with fields."""
 
         list_ret = []
-        for v in value:
+        for v in val:
             if not "id" in v.keys():
-                raise SigmaRelatedError("Sigma related must have an id field")
+                raise sigma_exceptions.SigmaRelatedError("Sigma related must have an id field")
             elif not "type" in v.keys():
-                raise SigmaRelatedError("Sigma related must have a type field")
+                raise sigma_exceptions.SigmaRelatedError("Sigma related must have a type field")
             else:
-                list_ret.append(
-                    SigmaRelatedItem(v["id"], v["type"])
-                )  # should rise the SigmaRelatedError
+                list_ret.append(SigmaRelatedItem.from_dict(v))  # should rise the SigmaRelatedError
 
         return cls(list_ret)
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class SigmaRuleTag:
     namespace: str
     name: str
@@ -730,9 +730,9 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 )
             else:
                 try:
-                    rule_related = SigmaRelated[rule_related]
-                except:
-                    sigma_exceptions.SigmaError("Sigma rule related error to find", source=source)
+                    rule_related = SigmaRelated.from_dict(rule_related)
+                except SigmaRelatedError as e:
+                    errors.append(e)
 
         # Rule level validation
         level = rule.get("level")

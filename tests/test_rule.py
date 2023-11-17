@@ -1158,3 +1158,72 @@ def test_sigma_rule_overlapping_selections():
         and all((isinstance(arg, ConditionAND) for arg in cond.args))
         and [len(ands.args) for ands in cond.args] == [2, 4]
     )
+
+
+def test__invalid_related_type():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="same is not a Sigma related valid type"
+    ):
+        SigmaRule.from_yaml(
+            """
+    title: Test
+    related:
+        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          type: derived
+        - id: 929a690e-bef0-4204-a928-ef5e620d6fcc
+          type: obsoletes
+        - id: 929a690e-bef0-4204-a928-ef5e620d6fff
+          type: same
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+        )
+
+
+def test_invalid_related_id():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma related identifier must be an UUID"
+    ):
+        SigmaRule.from_yaml(
+            """
+    title: Test
+    related:
+        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          type: derived
+        - id: 929a690e-bef0-4204-a928-ef5e620d6fc
+          type: obsoletes
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+        )
+
+
+def test__invalid_related_subfield():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma related must have an id field"
+    ):
+        SigmaRule.from_yaml(
+            """
+    title: Test
+    related:
+        - uuid: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          type: derived
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+        )

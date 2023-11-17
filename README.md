@@ -186,7 +186,7 @@ On 2022/04/10
 | sumologic-cse      | SumoLogic CSE query                                                                        |
 | sumologic-cse-rule | SumoLogic CSE query                                                                        |
 | sysmon             | sysmon XML configuration                                                                   |
-| uberagent          | uberAgent ESA's process tagging rules                                                      |
+| uberagent          | uberAgent ESA Threat Detection Engine                                                      | [pySigma-backend-uberAgent](https://github.com/vastlimits/pySigma-backend-uberAgent/)
 | xpack-watcher      | X-Pack Watcher JSON for alerting                                                           |
 
 ## Overview

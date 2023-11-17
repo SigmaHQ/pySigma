@@ -72,29 +72,40 @@ class SigmaRelatedItem:
         except ValueError:
             raise SigmaRelatedError("Sigma related identifier must be an UUID")
 
+    @classmethod
+    def from_dict(cls, id: str, type: str) -> "SigmaRelatedItem":
+        """Returns Related item from dict with fields."""
+        return cls(
+            id,
+            type,
+        )
+
 
 @dataclass
 class SigmaRelated:
-    related: list[SigmaRelatedItem]
+    related: List[Type[SigmaRelatedItem]]
+    source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
+
+    # def __post_init__(self):
+    #     if not isinstance(self.related,list):
+    #         raise SigmaRelatedError("Sigma related must be a list")
 
     @classmethod
-    def from_dict(cls, value: list) -> "SigmaRelated":
+    def from_dict(cls, value: list, source: Optional[SigmaRuleLocation] = None) -> "SigmaRelated":
         """Returns Related object from dict with fields."""
 
         list_ret = []
         for v in value:
             if not "id" in v.keys():
-                raise SigmaRelatedError("Sigma related must have an identifier")
+                raise SigmaRelatedError("Sigma related must have an id field")
             elif not "type" in v.keys():
-                raise SigmaRelatedError("Sigma related must have a type")
+                raise SigmaRelatedError("Sigma related must have a type field")
             else:
                 list_ret.append(
                     SigmaRelatedItem(v["id"], v["type"])
                 )  # should rise the SigmaRelatedError
 
-        return cls(
-            list_ret,
-        )
+        return cls(list_ret)
 
 
 @dataclass
@@ -720,8 +731,8 @@ class SigmaRule(ProcessingItemTrackingMixin):
             else:
                 try:
                     rule_related = SigmaRelated[rule_related]
-                except SigmaRelatedError as e:
-                    errors.append(e)
+                except:
+                    sigma_exceptions.SigmaError("Sigma rule related error to find", source=source)
 
         # Rule level validation
         level = rule.get("level")

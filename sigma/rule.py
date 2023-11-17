@@ -24,7 +24,13 @@ from sigma.conditions import (
 )
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation, SigmaValueError, SigmaTypeError, SigmaError
+from sigma.exceptions import (
+    SigmaRuleLocation,
+    SigmaValueError,
+    SigmaTypeError,
+    SigmaError,
+    SigmaRelatedError,
+)
 
 
 class EnumLowercaseStringMixin:
@@ -48,6 +54,60 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
     CRITICAL = auto()
 
 
+class SigmaRelatedType(EnumLowercaseStringMixin, Enum):
+    OBSOLETES = auto()
+    RENAMED = auto()
+    MERGED = auto()
+    DERIVED = auto()
+    SIMILAR = auto()
+
+
+@dataclass
+class SigmaRelatedItem:
+    id: UUID
+    type: SigmaRelatedType
+
+    @classmethod
+    def from_dict(cls, value: dict) -> "SigmaRelatedItem":
+        """Returns Related item from dict with fields."""
+        try:
+            id = UUID(value["id"])
+        except ValueError:
+            raise sigma_exceptions.SigmaRelatedError(f"Sigma related identifier must be an UUID")
+
+        try:
+            type = SigmaRelatedType[value["type"].upper()]
+        except:
+            raise sigma_exceptions.SigmaRelatedError(
+                f"{value['type']} is not a Sigma related valid type"
+            )
+
+        return cls(
+            id,
+            type,
+        )
+
+
+@dataclass
+class SigmaRelated:
+    related: List[Type[SigmaRelatedItem]]
+
+    @classmethod
+    def from_dict(cls, val: list) -> "SigmaRelated":
+        """Returns Related object from dict with fields."""
+
+        list_ret = []
+        for v in val:
+            if not "id" in v.keys():
+                raise sigma_exceptions.SigmaRelatedError("Sigma related must have an id field")
+            elif not "type" in v.keys():
+                raise sigma_exceptions.SigmaRelatedError("Sigma related must have a type field")
+            else:
+                list_ret.append(SigmaRelatedItem.from_dict(v))  # should rise the SigmaRelatedError
+
+        return cls(list_ret)
+
+
 @dataclass(unsafe_hash=True)
 class SigmaRuleTag:
     namespace: str
@@ -59,8 +119,8 @@ class SigmaRuleTag:
         """Build SigmaRuleTag class from plain text tag string."""
         try:
             ns, n = tag.split(".", maxsplit=1)
-        except ValueError as e:
-            raise SigmaValueError(
+        except ValueError:
+            raise sigma_exceptions.SigmaValueError(
                 "Sigma tag must start with namespace separated with dot from remaining tag."
             )
         return cls(ns, n)
@@ -605,6 +665,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
     logsource: SigmaLogSource
     detection: SigmaDetections
     id: Optional[UUID] = None
+    related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
     references: List[str] = field(default_factory=list)
@@ -657,6 +718,21 @@ class SigmaRule(ProcessingItemTrackingMixin):
                         "Sigma rule identifier must be an UUID", source=source
                     )
                 )
+
+        # Rule related validation
+        rule_related = rule.get("related")
+        if rule_related is not None:
+            if not isinstance(rule_related, list):
+                errors.append(
+                    sigma_exceptions.SigmaRelatedError(
+                        "Sigma rule related must be a list", source=source
+                    )
+                )
+            else:
+                try:
+                    rule_related = SigmaRelated.from_dict(rule_related)
+                except SigmaRelatedError as e:
+                    errors.append(e)
 
         # Rule level validation
         level = rule.get("level")
@@ -786,6 +862,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
         return cls(
             title=rule.get("title", ""),
             id=rule_id,
+            related=rule_related,
             level=level,
             status=status,
             description=rule_description,

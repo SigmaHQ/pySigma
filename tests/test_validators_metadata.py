@@ -2,7 +2,6 @@ from uuid import UUID
 from wsgiref.validate import validator
 
 import pytest
-from sigma.exceptions import SigmaValueError
 from sigma.rule import SigmaRule
 from sigma.types import SigmaString
 from sigma.collection import SigmaCollection
@@ -18,12 +17,6 @@ from sigma.validators.core.metadata import (
     DuplicateTitleValidator,
     DuplicateReferencesIssue,
     DuplicateReferencesValidator,
-    InvalidRelatedTypeValidator,
-    InvalidRelatedTypeIssue,
-    InvalidRelatedIdValidator,
-    InvalidRelatedIdIssue,
-    InvalidRelatedSubfieldValidator,
-    InvalidRelatedSubfieldIssue,
     StatusExistenceValidator,
     StatusExistenceIssue,
     StatusUnsupportedValidator,
@@ -239,74 +232,6 @@ def test_validator_duplicate_references_valid():
     """
     )
     assert validator.validate(rule) == []
-
-
-def test_validator_invalid_related_type():
-    validator = InvalidRelatedTypeValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    related:
-        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
-          type: derived
-        - id: 929a690e-bef0-4204-a928-ef5e620d6fcc
-          type: obsoletes
-        - id: 929a690e-bef0-4204-a928-ef5e620d6fff
-          type: same
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [InvalidRelatedTypeIssue([rule], "same")]
-
-
-def test_validator_invalid_related_id():
-    validator = InvalidRelatedIdValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    related:
-        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
-          type: derived
-        - id: 929a690e-bef0-4204-a928-ef5e620d6fc
-          type: obsoletes
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [
-        InvalidRelatedIdIssue([rule], "929a690e-bef0-4204-a928-ef5e620d6fc")
-    ]
-
-
-def test_validator_invalid_related_subfield():
-    validator = InvalidRelatedSubfieldValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    related:
-        - uuid: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
-          type: derived
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [InvalidRelatedSubfieldIssue([rule], "uuid")]
 
 
 def test_validator_status_existence():

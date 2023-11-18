@@ -26,10 +26,8 @@ from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import (
     SigmaRuleLocation,
-    SigmaValueError,
     SigmaTypeError,
     SigmaError,
-    SigmaRelatedError,
 )
 
 
@@ -731,7 +729,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             else:
                 try:
                     rule_related = SigmaRelated.from_dict(rule_related)
-                except SigmaRelatedError as e:
+                except sigma_exceptions.SigmaRelatedError as e:
                     errors.append(e)
 
         # Rule level validation
@@ -799,7 +797,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
                             )
                         )
 
-        # validate fields
+        # Rule fields validation
         rule_fields = rule.get("fields")
         if rule_fields is not None and not isinstance(rule_fields, list):
             errors.append(
@@ -810,7 +808,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             )
             raise SigmaTypeError("Sigma rule fields must be a list", source=source)
 
-        # validate falsepositives
+        # Rule falsepositives validation
         rule_falsepositives = rule.get("falsepositives")
         if rule_falsepositives is not None and not isinstance(rule_falsepositives, list):
             errors.append(
@@ -820,12 +818,39 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 )
             )
 
-        # validate description
+        # Rule author validation
+        rule_author = rule.get("author")
+        if rule_author is not None and not isinstance(rule_author, str):
+            errors.append(
+                sigma_exceptions.SigmaAuthorError(
+                    "Sigma rule author must be a string",
+                    source=source,
+                )
+            )
+
+        # Rule description validation
         rule_description = rule.get("description")
         if rule_description is not None and not isinstance(rule_description, str):
             errors.append(
                 sigma_exceptions.SigmaDescriptionError(
                     "Sigma rule description must be a string",
+                    source=source,
+                )
+            )
+
+        # Rule title validation
+        rule_title = rule.get("title")
+        if rule_title is None:
+            errors.append(
+                sigma_exceptions.SigmaTitleError(
+                    "Sigma rule must have a title",
+                    source=source,
+                )
+            )
+        elif not isinstance(rule_title, str):
+            errors.append(
+                sigma_exceptions.SigmaTitleError(
+                    "Sigma rule title must be a string",
                     source=source,
                 )
             )
@@ -860,7 +885,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             raise errors[0]
 
         return cls(
-            title=rule.get("title", ""),
+            title=rule_title,
             id=rule_id,
             related=rule_related,
             level=level,
@@ -868,13 +893,13 @@ class SigmaRule(ProcessingItemTrackingMixin):
             description=rule_description,
             references=rule.get("references"),
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
-            author=rule.get("author"),
+            author=rule_author,
             date=rule_date,
             modified=rule_modified,
             logsource=logsource,
             detection=detections,
-            fields=rule.get("fields", list()),
-            falsepositives=rule.get("falsepositives", list()),
+            fields=rule_fields,
+            falsepositives=rule_falsepositives,
             errors=errors,
             source=source,
             custom_attributes={

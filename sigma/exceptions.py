@@ -54,6 +54,12 @@ class SigmaError(ValueError):
             return False
 
 
+class SigmaTitleError(SigmaError):
+    """Error in Sigma rule logosurce specification"""
+
+    pass
+
+
 class SigmaLogsourceError(SigmaError):
     """Error in Sigma rule logosurce specification"""
 
@@ -74,6 +80,12 @@ class SigmaConditionError(SigmaError):
 
 class SigmaIdentifierError(SigmaError):
     """Error in Sigma rule identifier"""
+
+    pass
+
+
+class SigmaAuthorError(SigmaError):
+    """Error in Sigma rule author"""
 
     pass
 

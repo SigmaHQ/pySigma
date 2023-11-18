@@ -871,7 +871,9 @@ def test_sigmarule_no_logsource():
     with pytest.raises(
         sigma_exceptions.SigmaLogsourceError, match="must have a log source.*test.yml"
     ):
-        SigmaRule.from_dict({}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+        SigmaRule.from_dict(
+            {"title": "azerty"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_no_detections():
@@ -879,7 +881,7 @@ def test_sigmarule_no_detections():
         sigma_exceptions.SigmaDetectionError, match="must have a detection.*test.yml"
     ):
         SigmaRule.from_dict(
-            {"logsource": {"category": "category-id"}},
+            {"title": "azerty", "logsource": {"category": "category-id"}},
             source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
@@ -1136,6 +1138,7 @@ def test_sigmarule_processing_item_tracking(sigma_rule, processing_item):
 def test_sigma_rule_overlapping_selections():
     rule = SigmaRule.from_yaml(
         """
+    title: test
     logsource:
         category: test
     detection:
@@ -1208,7 +1211,7 @@ def test_invalid_related_id():
         )
 
 
-def test__invalid_related_subfield():
+def test_invalid_related_subfield():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma related must have an id field"
     ):
@@ -1226,4 +1229,57 @@ def test__invalid_related_subfield():
             field: value
         condition: sel
     """
+        )
+
+
+def test_invalid_author():
+    with pytest.raises(
+        sigma_exceptions.SigmaAuthorError, match="Sigma rule author must be a string"
+    ):
+        rule = SigmaRule.from_yaml(
+            """
+        title: Test
+        status: test
+        author:
+            - abc
+            - def
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
+        )
+
+
+def test_missing_title():
+    with pytest.raises(sigma_exceptions.SigmaTitleError, match="Sigma rule must have a title"):
+        rule = SigmaRule.from_yaml(
+            """
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
+        )
+
+
+def test_invalid_title_type():
+    with pytest.raises(sigma_exceptions.SigmaTitleError, match="Sigma rule title must be a string"):
+        rule = SigmaRule.from_yaml(
+            """
+        title:
+            - abc
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
         )

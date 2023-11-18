@@ -282,3 +282,35 @@ class DescriptionExistenceValidator(SigmaRuleValidator):
             return [DescriptionExistenceIssue([rule])]
         else:
             return []
+
+
+@dataclass
+class DescriptionLengthIssue(SigmaValidationIssue):
+    description = "Rule has a too short description"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class DescriptionLengthValidator(SigmaRuleValidator):
+    """Checks if rule has a description."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.description is not None and len(rule.description) < 16:
+            return [DescriptionLengthIssue([rule])]
+        else:
+            return []
+
+
+@dataclass
+class LevelExistenceIssue(SigmaValidationIssue):
+    description = "Rule has no level"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class LevelExistenceValidator(SigmaRuleValidator):
+    """Checks if rule has a level."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.level is None:
+            return [LevelExistenceIssue([rule])]
+        else:
+            return []

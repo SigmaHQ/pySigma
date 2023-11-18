@@ -2,7 +2,7 @@ import re
 from collections import Counter
 from collections import defaultdict
 from dataclasses import dataclass
-from typing import ClassVar, Dict, List
+from typing import ClassVar, Dict, List, Set
 from uuid import UUID
 
 from sigma.rule import SigmaRule
@@ -163,15 +163,15 @@ class StatusUnsupportedValidator(SigmaRuleValidator):
 
 @dataclass
 class DateExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no status"
+    description = "Rule has no date"
     severity = SigmaValidationIssueSeverity.MEDIUM
 
 
 class DateExistenceValidator(SigmaRuleValidator):
-    """Checks if rule has a status."""
+    """Checks if rule has a data."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.status is None:
+        if rule.date is None:
             return [DateExistenceIssue([rule])]
         else:
             return []
@@ -226,7 +226,7 @@ class FilenameSigmahqValidator(SigmaRuleValidator):
 
 @dataclass
 class FilenameLenghIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule filemane is too short or long"
+    description: ClassVar[str] = "Rule filename is too short or long"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     filename: str
 
@@ -240,3 +240,45 @@ class FilenameLenghValidator(SigmaRuleValidator):
             if len(filename) < 10 or len(filename) > 90:
                 return [FilenameLenghIssue(rule, filename)]
         return []
+
+
+@dataclass
+class CustomAttributesIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Rule use optional field name similar to legit"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    fieldname: str
+
+
+class CustomAttributesValidator(SigmaRuleValidator):
+    """Check rule filename lengh"""
+
+    known_custom_attributes: Set[str] = {
+        "realted",
+        "relatde",
+        "relted",
+        "rlated",
+        "reference",
+    }
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.custom_attributes is not None:
+            for k in rule.custom_attributes.keys():
+                if k in self.known_custom_attributes:
+                    return [CustomAttributesIssue(rule, k)]
+        return []
+
+
+@dataclass
+class DescriptionExistenceIssue(SigmaValidationIssue):
+    description = "Rule has no description"
+    severity = SigmaValidationIssueSeverity.MEDIUM
+
+
+class DescriptionExistenceValidator(SigmaRuleValidator):
+    """Checks if rule has a description."""
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.description is None:
+            return [DescriptionExistenceIssue([rule])]
+        else:
+            return []

@@ -29,6 +29,8 @@ from sigma.validators.core.metadata import (
     FilenameSigmahqIssue,
     FilenameLenghValidator,
     FilenameLenghIssue,
+    CustomAttributesValidator,
+    CustomAttributesIssue,
 )
 
 
@@ -305,3 +307,22 @@ def test_validator_filename_lengh():
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
     rule = sigma_collection[0]
     assert validator.validate(rule) == [FilenameLenghIssue([rule], "Name.yml")]
+
+
+def test_validator_custom_attributes():
+    validator = CustomAttributesValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    realted: 
+        - id: abc
+          type: abc
+    """
+    )
+    assert validator.validate(rule) == [CustomAttributesIssue([rule], "realted")]

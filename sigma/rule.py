@@ -138,7 +138,7 @@ class SigmaLogSource:
 
     def __post_init__(self):
         """Ensures that log source is not empty."""
-        if self.category == None and self.product == None and self.service == None:
+        if self.category is None and self.product is None and self.service is None:
             raise sigma_exceptions.SigmaLogsourceError(
                 "Sigma log source can't be empty", source=self.source
             )

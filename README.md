@@ -227,7 +227,7 @@ This [blog post](https://medium.com/@micahbabinski/creating-a-sigma-backend-for-
 The project is currently maintained by:
 
 - Thomas Patzke <thomas@patzke.org>
-- [frack113](https://github.com/frack113)
+- [François Hubaut](https://github.com/frack113)
 
 ## Related Projects
 

@@ -29,6 +29,14 @@ from sigma.validators.core.metadata import (
     FilenameSigmahqIssue,
     FilenameLenghValidator,
     FilenameLenghIssue,
+    CustomAttributesValidator,
+    CustomAttributesIssue,
+    DescriptionExistenceValidator,
+    DescriptionExistenceIssue,
+    DescriptionLengthValidator,
+    DescriptionLengthIssue,
+    LevelExistenceValidator,
+    LevelExistenceIssue,
 )
 
 
@@ -305,3 +313,71 @@ def test_validator_filename_lengh():
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
     rule = sigma_collection[0]
     assert validator.validate(rule) == [FilenameLenghIssue([rule], "Name.yml")]
+
+
+def test_validator_custom_attributes():
+    validator = CustomAttributesValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    realted: 
+        - id: abc
+          type: abc
+    """
+    )
+    assert validator.validate(rule) == [CustomAttributesIssue([rule], "realted")]
+
+
+def test_validator_description_existence():
+    validator = DescriptionExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [DescriptionExistenceIssue([rule])]
+
+
+def test_validator_description_length():
+    validator = DescriptionLengthValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    description: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [DescriptionLengthIssue([rule])]
+
+
+def test_validator_level_existence():
+    validator = LevelExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [LevelExistenceIssue([rule])]

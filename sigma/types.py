@@ -59,7 +59,7 @@ class SigmaType(ABC):
     def to_plain(self):
         """
         Return plain Python value (str, int etc.) from SigmaType instance for usage in conversion of
-        Sigma rules back to dict's. Uses the first annotated member as return value.
+        Sigma rules back to dicts. Uses the first annotated member as return value.
         """
         return self.__getattribute__(list(self.__annotations__.keys())[0])
 
@@ -448,7 +448,7 @@ class SigmaString(SigmaType):
         """
         if (
             not self.contains_placeholder()
-        ):  # return unchanged string in a list if it doesn't contains placeholders
+        ):  # return unchanged string in a list if it doesn't contain placeholders
             return [self]
 
         s = self.s
@@ -638,7 +638,7 @@ class SigmaRegularExpression(SigmaType):
         escape_escape_char) with escape_char. Prepends a (?...) expression with set flags (i, m and
         s) if flag_prefix is set."""
         r = "|".join(
-            [  # Generate regulear expressions from sequences that should be escaped and the escape char itself
+            [  # Generate regular expressions from sequences that should be escaped and the escape char itself
                 re.escape(e)
                 for e in [*escaped, escape_char if escape_escape_char else None]
                 if e is not None
@@ -648,7 +648,7 @@ class SigmaRegularExpression(SigmaType):
             [  # determine positions of matches in regular expression
                 m.start() for m in re.finditer(r, self.regexp)
             ]
-            if r is not ""
+            if r != ""
             else []
         )
         ranges = zip([None, *pos], [*pos, None])  # string chunk ranges with escapes in between

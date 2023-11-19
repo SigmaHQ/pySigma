@@ -15,9 +15,9 @@ class SigmaValidationIssueSeverity(Enum):
     * Low: minor improvement suggestion that results in better readability or maintainability of the
       rule.
     * Medium: issue can cause problems under certain conditions or the meaning of the rule can be
-      different than intended.
+      different from intended.
     * High: issue will cause problems. It is certain that the intention of the rule author and the
-      rule logic deviate or the rule doesn't matches anything.
+      rule logic deviate or the rule doesn't match anything.
     """
 
     LOW = auto()
@@ -171,7 +171,7 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
         """Implementation of the detection item validation. It is invoked for each detection item.
 
         :param detection_item: detection item that should be validated.
-        :type detection: SigmaDetectionItem
+        :type detection_item: SigmaDetectionItem
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
@@ -216,8 +216,8 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
     def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
         """Implementation of the value validation. It is invoked for each value of a type.
 
-        :param detection_item: detection item that should be validated.
-        :type detection: SigmaDetectionItem
+        :param value: detection item that should be validated.
+        :type value: SigmaType
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """

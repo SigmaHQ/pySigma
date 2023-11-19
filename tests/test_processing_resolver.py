@@ -102,6 +102,23 @@ def test_resolve_backend_compatible(
     )
 
 
+def test_resolve_backend_compatible_not_specified(
+    processing_pipeline_resolver: ProcessingPipelineResolver,
+):
+    assert (
+        processing_pipeline_resolver.resolve_pipeline("pipeline-2", "any_backend").name
+        == "pipeline-2"
+    )
+
+
+def test_resolve_backend_incompatible(processing_pipeline_resolver: ProcessingPipelineResolver):
+    with pytest.raises(
+        SigmaPipelineNotAllowedForBackendError,
+        match="not allowed for backend.*test.*pipeline-3",
+    ):
+        processing_pipeline_resolver.resolve_pipeline("pipeline-3", "test")
+
+
 def test_resolver_add_class():
     resolver = ProcessingPipelineResolver()
     pipeline = ProcessingPipeline(name="test", items=[])

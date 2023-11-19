@@ -201,12 +201,15 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
 class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
     """One or multiple processing pipelines doesn't matches the given backend."""
 
-    def __init__(self, spec: str, *args, **kwargs):
+    def __init__(self, spec: str, backend: str, *args, **kwargs):
         self.wrong_pipeline = spec
+        self.backend = backend
         super().__init__(*args, **kwargs)
 
     def __str__(self):
-        return "Processing pipelines not allowed for backend: " + self.wrong_pipeline
+        return (
+            f"Processing pipelines not allowed for backend '{self.backend}': {self.wrong_pipeline}"
+        )
 
 
 class SigmaTransformationError(SigmaError):

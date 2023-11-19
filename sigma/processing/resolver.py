@@ -55,7 +55,7 @@ class ProcessingPipelineResolver:
                 len(resolved_pipeline.allowed_backends) == 0
                 or target in resolved_pipeline.allowed_backends
             ):
-                raise SigmaPipelineNotAllowedForBackendError(spec)
+                raise SigmaPipelineNotAllowedForBackendError(spec, target)
             return resolved_pipeline
         except KeyError:  # identifier not found, try it as path
             try:

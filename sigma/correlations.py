@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import List, Optional
+from typing import Dict, List, Optional
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
@@ -17,7 +17,7 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     TEMPORAL = auto()
 
 
-@dataclass
+@dataclass(unsafe_hash=True)
 class SigmaRuleReference:
     """
     Reference to a Sigma rule. Initially this only contains the plain reference as string that is
@@ -110,12 +110,78 @@ class SigmaCorrelationTimespan:
 
 
 @dataclass
+class SigmaCorrelationFieldAlias:
+    """
+    The Sigma rules used in a correlation rule possibly match events that use different field names
+    for the same information. An alias field definition maps a field name that can be used in the
+    group-by definition of a correlation rule to their respective field names in the events matched
+    by the Sigma rules.
+    """
+
+    alias: str
+    mapping: Dict[SigmaRuleReference, str]
+
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+        """
+        Resolves all rule references in the mapping property to actual Sigma rules.
+
+        Raises:
+            sigma_exceptions.SigmaRuleNotFoundError: If a referenced rule cannot be found in the given rule collection.
+        """
+        for rule_ref in self.mapping.keys():
+            rule_ref.resolve(rule_collection)
+
+
+@dataclass
+class SigmaCorrelationFieldAliases:
+    aliases: Dict[str, SigmaCorrelationFieldAlias] = field(default_factory=list)
+
+    @classmethod
+    def from_dict(cls, d: dict):
+        aliases = {}
+        for alias, mapping in d.items():
+            if not isinstance(mapping, dict):
+                raise sigma_exceptions.SigmaCorrelationRuleError(
+                    "Sigma correlation field alias mapping must be a dict"
+                )
+
+            aliases[alias] = SigmaCorrelationFieldAlias(
+                alias=alias,
+                mapping={
+                    SigmaRuleReference(rule_ref): field_name
+                    for rule_ref, field_name in mapping.items()
+                },
+            )
+
+        return cls(aliases=aliases)
+
+    def to_dict(self) -> dict:
+        return {
+            alias: {
+                rule_ref.reference: field_name for rule_ref, field_name in alias_def.mapping.items()
+            }
+            for alias, alias_def in self.aliases.items()
+        }
+
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+        """
+        Resolves all rule references in the aliases property to actual Sigma rules.
+
+        Raises:
+            sigma_exceptions.SigmaRuleNotFoundError: If a referenced rule cannot be found in the given rule collection.
+        """
+        for alias in self.aliases:
+            alias.resolve_rule_reference(rule_collection)
+
+
+@dataclass
 class SigmaCorrelationRule(SigmaRuleBase):
     type: SigmaCorrelationType = None
     rules: List[SigmaRuleReference] = field(default_factory=list)
     timespan: SigmaCorrelationTimespan = field(default_factory=SigmaCorrelationTimespan)
     group_by: Optional[List[str]] = None
     ordered: bool = False
+    aliases: SigmaCorrelationFieldAliases = field(default_factory=SigmaCorrelationFieldAliases)
     condition: Optional[SigmaCorrelationCondition] = None
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
@@ -215,6 +281,20 @@ class SigmaCorrelationRule(SigmaRuleBase):
         else:
             ordered = False
 
+        # Aliases
+        aliases = correlation_rule.get("aliases")
+        if aliases is not None:
+            if isinstance(aliases, dict):
+                aliases = SigmaCorrelationFieldAliases.from_dict(aliases)
+            else:
+                errors.append(
+                    sigma_exceptions.SigmaCorrelationRuleError(
+                        f"Sigma correlation aliases definition must be a dict", source=source
+                    )
+                )
+        else:
+            aliases = SigmaCorrelationFieldAliases()
+
         # Condition
         condition = correlation_rule.get("condition")
         if condition is not None:
@@ -242,6 +322,7 @@ class SigmaCorrelationRule(SigmaRuleBase):
             timespan=timespan,
             group_by=group_by,
             ordered=ordered,
+            aliases=aliases,
             condition=condition,
             errors=errors,
             **kwargs,
@@ -256,6 +337,8 @@ class SigmaCorrelationRule(SigmaRuleBase):
             "group-by": self.group_by,
             "ordered": self.ordered,
         }
+        if self.aliases is not None:
+            dc["aliases"] = self.aliases.to_dict()
         if self.condition is not None:
             dc["condition"] = self.condition.to_dict()
         d["correlation"] = dc
@@ -272,3 +355,5 @@ class SigmaCorrelationRule(SigmaRuleBase):
         for rule_ref in self.rules:
             rule_ref.resolve(rule_collection)
             rule_ref.rule.add_backreference(self)
+
+        self.aliases.resolve_rule_references(rule_collection)

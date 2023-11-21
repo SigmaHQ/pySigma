@@ -3,6 +3,7 @@ from sigma.collection import SigmaCollection
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
+    SigmaCorrelationFieldAliases,
     SigmaCorrelationRule,
     SigmaCorrelationTimespan,
     SigmaCorrelationType,
@@ -74,17 +75,39 @@ def test_correlation_valid_2():
                 "group-by": ["source", "user"],
                 "timespan": "1h",
                 "ordered": True,
+                "aliases": {
+                    "source": {
+                        "event_a": "source_ip",
+                        "event_b": "source_address",
+                    },
+                    "user": {
+                        "event_a": "username",
+                        "event_b": "user_name",
+                    },
+                },
             },
         }
     )
     assert isinstance(rule, SigmaCorrelationRule)
     assert rule.title == "Valid correlation"
     assert rule.type == SigmaCorrelationType.TEMPORAL
-    assert rule.rules == [SigmaRuleReference("event_a"), SigmaRuleReference("event_b")]
+    assert rule.rules == [
+        SigmaRuleReference("event_a"),
+        SigmaRuleReference("event_b"),
+    ]
     assert rule.group_by == ["source", "user"]
     assert rule.timespan == SigmaCorrelationTimespan("1h")
-    assert rule.condition == None
-    assert rule.ordered == True
+    assert rule.condition is None
+    assert rule.ordered is True
+    assert len(rule.aliases.aliases) == 2
+    assert rule.aliases.aliases["source"].mapping == {
+        SigmaRuleReference("event_a"): "source_ip",
+        SigmaRuleReference("event_b"): "source_address",
+    }
+    assert rule.aliases.aliases["user"].mapping == {
+        SigmaRuleReference("event_a"): "username",
+        SigmaRuleReference("event_b"): "user_name",
+    }
 
 
 def test_correlation_valid_1_from_yaml():
@@ -124,6 +147,13 @@ correlation:
     group-by:
         - source
         - user
+    aliases:
+        source:
+            event_a: source_ip
+            event_b: source_address
+        user:
+            event_a: username
+            event_b: user_name
     timespan: 1h
     ordered: true
 """
@@ -136,6 +166,15 @@ correlation:
     assert rule.timespan == SigmaCorrelationTimespan("1h")
     assert rule.condition == None
     assert rule.ordered == True
+    assert len(rule.aliases.aliases) == 2
+    assert rule.aliases.aliases["source"].mapping == {
+        SigmaRuleReference("event_a"): "source_ip",
+        SigmaRuleReference("event_b"): "source_address",
+    }
+    assert rule.aliases.aliases["user"].mapping == {
+        SigmaRuleReference("event_a"): "username",
+        SigmaRuleReference("event_b"): "user_name",
+    }
 
 
 def test_correlation_wrong_type():
@@ -329,6 +368,7 @@ def test_correlation_to_dict():
                 "rules": "failed_login",
                 "group-by": "user",
                 "timespan": "10m",
+                "aliases": {"user": {"failed_login": "username"}},
                 "condition": {"gte": 10},
             },
         }
@@ -341,9 +381,38 @@ def test_correlation_to_dict():
             "group-by": ["user"],
             "timespan": "10m",
             "ordered": False,
+            "aliases": {"user": {"failed_login": "username"}},
             "condition": {"gte": 10},
         },
     }
+
+
+def test_correlation_invalid_alias():
+    with pytest.raises(
+        SigmaCorrelationRuleError, match="Sigma correlation aliases definition must be a dict"
+    ):
+        SigmaCorrelationRule.from_dict(
+            {
+                "name": "Invalid alias",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "group-by": ["user"],
+                    "timespan": "10m",
+                    "aliases": "test",
+                    "condition": {"gte": 10},
+                },
+            }
+        )
+
+
+def test_correlation_alias_invalid_mapping():
+    with pytest.raises(
+        SigmaCorrelationRuleError, match="Sigma correlation field alias mapping must be a dict"
+    ):
+        SigmaCorrelationFieldAliases.from_dict(
+            {"test": "test"},
+        )
 
 
 def test_correlation_condition():

@@ -21,6 +21,8 @@ from sigma.validators.core.tags import (
     InvalidDetectionTagIssue,
     CARTagValidator,
     InvalidCARTagIssue,
+    STPTagValidator,
+    InvalidSTPTagIssue,
     NamespaceTagValidator,
     InvalidNamespaceTagIssue,
 )
@@ -160,6 +162,16 @@ def test_validator_duplicate_tags():
             InvalidCARTagIssue,
         ),
         (CARTagValidator, ["car.2016-04-005", "car.2023-11-011"], [], InvalidCARTagIssue),
+        (STPTagValidator, ["stp.5k", "stp.1"], [], InvalidSTPTagIssue),
+        (
+            STPTagValidator,
+            [
+                "stp.5k",
+                "stp.1A",
+            ],
+            ["stp.1A"],
+            InvalidSTPTagIssue,
+        ),
     ],
 )
 def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):

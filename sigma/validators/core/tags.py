@@ -154,6 +154,23 @@ class CARTagValidator(SigmaTagValidator):
 
 
 @dataclass
+class InvalidSTPTagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid STP tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class STPTagValidator(SigmaTagValidator):
+    """Validate rule STP tag"""
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        tags_pattern = re.compile(r"^[1-5]{1}[auk]{0,1}$")
+        if tag.namespace == "stp" and tags_pattern.match(tag.name) is None:
+            return [InvalidSTPTagIssue([self.rule], tag)]
+        return []
+
+
+@dataclass
 class InvalidNamespaceTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid tagging name"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
@@ -163,7 +180,7 @@ class InvalidNamespaceTagIssue(SigmaValidationIssue):
 class NamespaceTagValidator(SigmaTagValidator):
     """Validate rule tag name"""
 
-    allowed_namespace = {"attack", "car", "cve", "detection"}
+    allowed_namespace = {"attack", "car", "cve", "detection", "stp"}
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         if tag.namespace not in self.allowed_namespace:

@@ -806,7 +806,6 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     source=source,
                 )
             )
-            raise SigmaTypeError("Sigma rule fields must be a list", source=source)
 
         # Rule falsepositives validation
         rule_falsepositives = rule.get("falsepositives")
@@ -834,6 +833,16 @@ class SigmaRule(ProcessingItemTrackingMixin):
             errors.append(
                 sigma_exceptions.SigmaDescriptionError(
                     "Sigma rule description must be a string",
+                    source=source,
+                )
+            )
+
+        # Rule references validation
+        rule_references = rule.get("references")
+        if rule_references is not None and not isinstance(rule_references, list):
+            errors.append(
+                sigma_exceptions.SigmaReferencesError(
+                    "Sigma rule references must be a list",
                     source=source,
                 )
             )
@@ -891,7 +900,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             level=level,
             status=status,
             description=rule_description,
-            references=rule.get("references"),
+            references=rule_references,
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
             author=rule_author,
             date=rule_date,

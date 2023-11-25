@@ -736,7 +736,7 @@ def test_sigmadetection_dict_and_keyword_to_plain():
 
 
 def test_sigmarule_fields_not_list():
-    with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a list.*test.yml"):
+    with pytest.raises(sigma_exceptions.SigmaFieldsError, match="must be a list.*test.yml"):
         SigmaRule.from_dict(
             {"fields": "test"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
         )

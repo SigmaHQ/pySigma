@@ -250,7 +250,7 @@ class CustomAttributesIssue(SigmaValidationIssue):
 
 
 class CustomAttributesValidator(SigmaRuleValidator):
-    """Check rule filename lengh"""
+    """Check if field name is similar to legit one"""
 
     known_custom_attributes: Set[str] = {
         "realted",

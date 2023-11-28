@@ -3,6 +3,8 @@ from uuid import UUID
 import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.correlations import (
+    SigmaCorrelationCondition,
+    SigmaCorrelationConditionOperator,
     SigmaCorrelationRule,
     SigmaCorrelationTimespan,
     SigmaCorrelationType,
@@ -370,6 +372,7 @@ def test_load_ruleset_with_correlation(rules_with_correlation):
         rules=[SigmaRuleReference("rule-1"), SigmaRuleReference("rule-2")],
         group_by=["user"],
         timespan=SigmaCorrelationTimespan("5m"),
+        condition=SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2),
     )
     assert correlation_rule.rules[0].rule == rules_with_correlation.rules[0]
 

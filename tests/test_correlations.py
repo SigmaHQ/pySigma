@@ -97,7 +97,7 @@ def test_correlation_valid_2():
     ]
     assert rule.group_by == ["source", "user"]
     assert rule.timespan == SigmaCorrelationTimespan("1h")
-    assert rule.condition is None
+    assert rule.condition == SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2)
     assert rule.ordered is True
     assert len(rule.aliases.aliases) == 2
     assert rule.aliases.aliases["source"].mapping == {
@@ -164,7 +164,7 @@ correlation:
     assert rule.rules == [SigmaRuleReference("event_a"), SigmaRuleReference("event_b")]
     assert rule.group_by == ["source", "user"]
     assert rule.timespan == SigmaCorrelationTimespan("1h")
-    assert rule.condition == None
+    assert rule.condition == SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2)
     assert rule.ordered == True
     assert len(rule.aliases.aliases) == 2
     assert rule.aliases.aliases["source"].mapping == {

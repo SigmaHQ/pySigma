@@ -312,6 +312,12 @@ class SigmaCorrelationRule(SigmaRuleBase):
                     f"Non-temporal Sigma correlation rule without condition", source=source
                 )
             )
+        elif (
+            correlation_type == SigmaCorrelationType.TEMPORAL
+        ):  # default condition for temporal correlation rules: count >= number of rules
+            condition = SigmaCorrelationCondition(
+                op=SigmaCorrelationConditionOperator.GTE, count=len(rules), source=source
+            )
 
         if not collect_errors and errors:
             raise errors[0]

@@ -62,7 +62,6 @@ def test_correlation_valid_1(correlation_rule):
     assert rule.condition == SigmaCorrelationCondition(
         op=SigmaCorrelationConditionOperator.GTE, count=10
     )
-    assert rule.ordered == False
 
 
 def test_correlation_valid_2():
@@ -74,7 +73,6 @@ def test_correlation_valid_2():
                 "rules": ["event_a", "event_b"],
                 "group-by": ["source", "user"],
                 "timespan": "1h",
-                "ordered": True,
                 "aliases": {
                     "source": {
                         "event_a": "source_ip",
@@ -98,7 +96,6 @@ def test_correlation_valid_2():
     assert rule.group_by == ["source", "user"]
     assert rule.timespan == SigmaCorrelationTimespan("1h")
     assert rule.condition == SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2)
-    assert rule.ordered is True
     assert len(rule.aliases.aliases) == 2
     assert rule.aliases.aliases["source"].mapping == {
         SigmaRuleReference("event_a"): "source_ip",
@@ -132,7 +129,6 @@ correlation:
     assert rule.condition == SigmaCorrelationCondition(
         op=SigmaCorrelationConditionOperator.GTE, count=10
     )
-    assert rule.ordered == False
 
 
 def test_correlation_valid_2_from_yaml():
@@ -155,7 +151,6 @@ correlation:
             event_a: username
             event_b: user_name
     timespan: 1h
-    ordered: true
 """
     )
     assert isinstance(rule, SigmaCorrelationRule)
@@ -165,7 +160,6 @@ correlation:
     assert rule.group_by == ["source", "user"]
     assert rule.timespan == SigmaCorrelationTimespan("1h")
     assert rule.condition == SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2)
-    assert rule.ordered == True
     assert len(rule.aliases.aliases) == 2
     assert rule.aliases.aliases["source"].mapping == {
         SigmaRuleReference("event_a"): "source_ip",
@@ -303,25 +297,6 @@ def test_correlation_without_timespan():
         )
 
 
-def test_correlation_invalid_ordered():
-    with pytest.raises(
-        SigmaCorrelationRuleError, match="Sigma correlation ordered definition must be boolean"
-    ):
-        SigmaCorrelationRule.from_dict(
-            {
-                "name": "Invalid ordered",
-                "correlation": {
-                    "type": "event_count",
-                    "rules": "failed_login",
-                    "group-by": ["user"],
-                    "timespan": "10m",
-                    "ordered": "test",
-                    "condition": {"gte": 10},
-                },
-            }
-        )
-
-
 def test_correlation_invalid_condition():
     with pytest.raises(
         SigmaCorrelationRuleError, match="Sigma correlation condition definition must be a dict"
@@ -362,7 +337,6 @@ def test_correlation_without_condition_post_init_check():
             rules=[SigmaRuleReference("failed_login")],
             timespan=600,
             group_by=["user"],
-            ordered=False,
             condition=None,
         )
 
@@ -388,7 +362,6 @@ def test_correlation_to_dict():
             "rules": ["failed_login"],
             "group-by": ["user"],
             "timespan": "10m",
-            "ordered": False,
             "aliases": {"user": {"failed_login": "username"}},
             "condition": {"gte": 10},
         },

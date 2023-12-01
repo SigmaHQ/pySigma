@@ -15,6 +15,7 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     EVENT_COUNT = auto()
     VALUE_COUNT = auto()
     TEMPORAL = auto()
+    TEMPORAL_ORDERED = auto()
 
 
 @dataclass(unsafe_hash=True)
@@ -184,7 +185,6 @@ class SigmaCorrelationRule(SigmaRuleBase):
     rules: List[SigmaRuleReference] = field(default_factory=list)
     timespan: SigmaCorrelationTimespan = field(default_factory=SigmaCorrelationTimespan)
     group_by: Optional[List[str]] = None
-    ordered: bool = False
     aliases: SigmaCorrelationFieldAliases = field(default_factory=SigmaCorrelationFieldAliases)
     condition: Optional[SigmaCorrelationCondition] = None
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
@@ -273,18 +273,6 @@ class SigmaCorrelationRule(SigmaRuleBase):
                 )
             )
 
-        # Ordered
-        ordered = correlation_rule.get("ordered")
-        if ordered is not None:
-            if not isinstance(ordered, bool):
-                errors.append(
-                    sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Sigma correlation ordered definition must be boolean", source=source
-                    )
-                )
-        else:
-            ordered = False
-
         # Aliases
         aliases = correlation_rule.get("aliases")
         if aliases is not None:
@@ -331,7 +319,6 @@ class SigmaCorrelationRule(SigmaRuleBase):
             rules=rules,
             timespan=timespan,
             group_by=group_by,
-            ordered=ordered,
             aliases=aliases,
             condition=condition,
             errors=errors,
@@ -345,7 +332,6 @@ class SigmaCorrelationRule(SigmaRuleBase):
             "rules": [rule.reference for rule in self.rules],
             "timespan": self.timespan.spec,
             "group-by": self.group_by,
-            "ordered": self.ordered,
         }
         if self.aliases is not None:
             dc["aliases"] = self.aliases.to_dict()

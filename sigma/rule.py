@@ -863,6 +863,13 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     source=source,
                 )
             )
+        elif len(rule_title) > 256:
+            errors.append(
+                sigma_exceptions.SigmaTitleError(
+                    "Sigma rule title length must not exceed 256 characters",
+                    source=source,
+                )
+            )
 
         # parse log source
         logsource = None

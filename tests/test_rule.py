@@ -1283,3 +1283,23 @@ def test_invalid_title_type():
             condition: sel
         """
         )
+
+
+def test_invalid_title_length():
+    with pytest.raises(
+        sigma_exceptions.SigmaTitleError,
+        match="Sigma rule title length must not exceed 256 characters",
+    ):
+        title = "0123456789 " * 26
+        rule = SigmaRule.from_yaml(
+            f"""
+        title: {title}
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
+        )

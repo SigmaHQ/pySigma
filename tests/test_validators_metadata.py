@@ -11,8 +11,8 @@ from sigma.validators.core.metadata import (
     IdentifierExistenceIssue,
     IdentifierUniquenessValidator,
     IdentifierCollisionIssue,
-    TitleLengthIssue,
-    TitleLengthValidator,
+    TitleLengthsigmahqIssue,
+    TitleLengthsigmahqValidator,
     DuplicateTitleIssue,
     DuplicateTitleValidator,
     DuplicateReferencesIssue,
@@ -118,10 +118,10 @@ def test_validator_identifier_uniqueness(rules_with_id_collision):
 
 
 def test_validator_lengthy_title():
-    validator = TitleLengthValidator()
+    validator = TitleLengthsigmahqValidator()
     rule = SigmaRule.from_yaml(
         """
-    title: ThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleT
+    title: ThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVery
     status: test
     logsource:
         category: test
@@ -131,11 +131,11 @@ def test_validator_lengthy_title():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [TitleLengthIssue([rule])]
+    assert validator.validate(rule) == [TitleLengthsigmahqIssue([rule])]
 
 
 def test_validator_lengthy_title_valid():
-    validator = TitleLengthValidator()
+    validator = TitleLengthsigmahqValidator()
     rule = SigmaRule.from_yaml(
         """
     title: Test

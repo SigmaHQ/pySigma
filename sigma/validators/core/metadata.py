@@ -67,17 +67,17 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
 
 
 @dataclass
-class TitleLengthIssue(SigmaValidationIssue):
-    description = "Rule has a title longer than 100 characters"
+class TitleLengthsigmahqIssue(SigmaValidationIssue):
+    description = "Rule has a title longer than 110 characters"
     severity = SigmaValidationIssueSeverity.MEDIUM
 
 
-class TitleLengthValidator(SigmaRuleValidator):
-    """Checks if rule has a title length longer than 100."""
+class TitleLengthsigmahqValidator(SigmaRuleValidator):
+    """Checks if rule has a title length longer than 110."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if len(rule.title) > 100:
-            return [TitleLengthIssue([rule])]
+        if len(rule.title) > 110:
+            return [TitleLengthsigmahqIssue([rule])]
         else:
             return []
 

@@ -84,6 +84,8 @@ class SigmaCorrelationCondition:
 class SigmaCorrelationTimespan:
     spec: str = field(compare=False)
     seconds: int = field(init=False)
+    count: int = field(init=False)
+    unit: str = field(init=False)
 
     def __post_init__(self):
         """
@@ -93,8 +95,10 @@ class SigmaCorrelationTimespan:
             sigma_exceptions.SigmaTimespanError: If the given time span is invalid.
         """
         try:
+            self.count = int(self.spec[:-1])
+            self.unit = self.spec[-1]
             self.seconds = (
-                int(self.spec[:-1])
+                self.count
                 * {
                     "s": 1,
                     "m": 60,
@@ -103,7 +107,7 @@ class SigmaCorrelationTimespan:
                     "w": 604800,
                     "M": 2629746,
                     "y": 31556952,
-                }[self.spec[-1]]
+                }[self.unit]
             )
         except (ValueError, KeyError):
             raise sigma_exceptions.SigmaTimespanError(f"Timespan '{ self.spec }' is invalid.")

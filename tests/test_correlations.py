@@ -280,6 +280,14 @@ def test_correlation_invalid_timespan():
         )
 
 
+def test_correlation_timespan():
+    timespan = SigmaCorrelationTimespan("10m")
+    assert isinstance(timespan, SigmaCorrelationTimespan)
+    assert timespan.count == 10
+    assert timespan.unit == "m"
+    assert timespan.seconds == 600
+
+
 def test_correlation_without_timespan():
     with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without timespan"):
         SigmaCorrelationRule.from_dict(

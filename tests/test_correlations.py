@@ -341,6 +341,24 @@ def test_correlation_without_condition_post_init_check():
         )
 
 
+def test_value_count_correlation_without_condition_field():
+    with pytest.raises(
+        SigmaCorrelationRuleError, match="Value count correlation rule without field reference"
+    ):
+        SigmaCorrelationRule.from_dict(
+            {
+                "name": "Missing field in condition",
+                "correlation": {
+                    "type": "value_count",
+                    "rules": "failed_login",
+                    "group-by": ["user"],
+                    "timespan": "10m",
+                    "condition": {"gte": 10},
+                },
+            }
+        )
+
+
 def test_correlation_to_dict():
     rule = SigmaCorrelationRule.from_dict(
         {
@@ -403,20 +421,28 @@ def test_correlation_condition():
     assert cond.count == 10
 
 
-def test_correlation_condition_multiple_items():
+def test_correlation_condition_with_field():
+    cond = SigmaCorrelationCondition.from_dict({"field": "test", "gte": 10})
+    assert isinstance(cond, SigmaCorrelationCondition)
+    assert cond.op == SigmaCorrelationConditionOperator.GTE
+    assert cond.count == 10
+    assert cond.fieldref == "test"
+
+
+def test_correlation_condition_invalid_multicond():
     with pytest.raises(
         SigmaCorrelationConditionError,
-        match="Sigma correlation condition must have exactly one item",
+        match="Sigma correlation condition must have exactly one condition item",
     ):
         SigmaCorrelationCondition.from_dict({"gte": 10, "lte": 20})
 
 
-def test_correlation_condition_invalid_operator():
+def test_correlation_condition_invalid_item():
     with pytest.raises(
         SigmaCorrelationConditionError,
-        match="Sigma correlation condition operator 'test' is invalid",
+        match="Sigma correlation condition contains invalid items: test.*",
     ):
-        SigmaCorrelationCondition.from_dict({"test": 10})
+        SigmaCorrelationCondition.from_dict({"gte": 10, "test1": 20, "test2": 30})
 
 
 def test_correlation_condition_invalid_count():

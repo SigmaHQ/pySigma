@@ -43,39 +43,61 @@ class SigmaCorrelationConditionOperator(Enum):
     LTE = auto()
     GT = auto()
     GTE = auto()
+    EQ = auto()
+
+    @classmethod
+    def operators(cls):
+        return {op.name.lower() for op in cls}
 
 
 @dataclass
 class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
     count: int
+    fieldref: Optional[str] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
     def from_dict(
         cls, d: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaCorrelationCondition":
-        if len(d) != 1:
+        d_keys = frozenset(d.keys())
+        ops = frozenset(SigmaCorrelationConditionOperator.operators())
+        if len(d_keys.intersection(ops)) != 1:
             raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"Sigma correlation condition must have exactly one item"
+                f"Sigma correlation condition must have exactly one condition item", source=source
+            )
+        unknown_keys = d_keys.difference(ops).difference({"field"})
+        if unknown_keys:
+            raise sigma_exceptions.SigmaCorrelationConditionError(
+                "Sigma correlation condition contains invalid items: " + ", ".join(unknown_keys),
+                source=source,
             )
 
-        cond_def = list(d.items())[0]
+        # Condition operator and count
+        cond_op = None
+        for op in SigmaCorrelationConditionOperator.operators():
+            if op in d:
+                cond_op = SigmaCorrelationConditionOperator[op.upper()]
+                try:
+                    cond_count = int(d[op])
+                except ValueError:
+                    raise sigma_exceptions.SigmaCorrelationConditionError(
+                        f"'{ d[op] }' is no valid Sigma correlation condition count", source=source
+                    )
+                break
+        if cond_op is None:
+            raise sigma_exceptions.SigmaCorrelationConditionError(
+                f"Sigma correlation condition is invalid", source=source
+            )
+
+        # Condition field
         try:
-            cond_op = SigmaCorrelationConditionOperator[cond_def[0].upper()]
+            cond_field = d["field"]
         except KeyError:
-            raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"Sigma correlation condition operator '{ cond_def[0] }' is invalid"
-            )
+            cond_field = None
 
-        try:
-            cond_count = int(cond_def[1])
-        except ValueError:
-            raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"'{ cond_def[1] }' is no valid Sigma correlation condition count"
-            )
-
-        return cls(op=cond_op, count=cond_count)
+        return cls(op=cond_op, count=cond_count, fieldref=cond_field, source=source)
 
     def to_dict(self) -> dict:
         return {self.op.name.lower(): self.count}
@@ -193,7 +215,11 @@ class SigmaCorrelationRule(SigmaRuleBase):
         super().__post_init__()
         if self.type != SigmaCorrelationType.TEMPORAL and self.condition is None:
             raise sigma_exceptions.SigmaCorrelationRuleError(
-                f"Non-temporal Sigma correlation rule without condition", source=self.source
+                "Non-temporal Sigma correlation rule without condition", source=self.source
+            )
+        if self.type == SigmaCorrelationType.VALUE_COUNT and self.condition.fieldref is None:
+            raise sigma_exceptions.SigmaCorrelationRuleError(
+                "Value count correlation rule without field reference", source=self.source
             )
 
     @classmethod

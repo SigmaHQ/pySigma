@@ -26,8 +26,8 @@ def is_uuid_v4(val: str) -> bool:
 
 @dataclass
 class IdentifierExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no identifier (UUID)"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has no identifier (UUID)"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class IdentifierExistenceValidator(SigmaRuleValidator):
@@ -68,8 +68,8 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
 
 @dataclass
 class TitleLengthIssue(SigmaValidationIssue):
-    description = "Rule has a title longer than 100 characters"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has a title longer than 100 characters"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class TitleLengthValidator(SigmaRuleValidator):
@@ -112,8 +112,8 @@ class DuplicateTitleValidator(SigmaRuleValidator):
 
 @dataclass
 class DuplicateReferencesIssue(SigmaValidationIssue):
-    description = "The same references appears multiple times"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "The same references appears multiple times"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     reference: str
 
 
@@ -131,8 +131,8 @@ class DuplicateReferencesValidator(SigmaRuleValidator):
 
 @dataclass
 class StatusExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no status"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has no status"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class StatusExistenceValidator(SigmaRuleValidator):
@@ -147,8 +147,8 @@ class StatusExistenceValidator(SigmaRuleValidator):
 
 @dataclass
 class StatusUnsupportedIssue(SigmaValidationIssue):
-    description = "Rule has UNSUPPORTED status"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has UNSUPPORTED status"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class StatusUnsupportedValidator(SigmaRuleValidator):
@@ -163,8 +163,8 @@ class StatusUnsupportedValidator(SigmaRuleValidator):
 
 @dataclass
 class DateExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no date"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has no date"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class DateExistenceValidator(SigmaRuleValidator):
@@ -270,8 +270,8 @@ class CustomAttributesValidator(SigmaRuleValidator):
 
 @dataclass
 class DescriptionExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no description"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has no description"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class DescriptionExistenceValidator(SigmaRuleValidator):
@@ -286,8 +286,8 @@ class DescriptionExistenceValidator(SigmaRuleValidator):
 
 @dataclass
 class DescriptionLengthIssue(SigmaValidationIssue):
-    description = "Rule has a too short description"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has a too short description"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class DescriptionLengthValidator(SigmaRuleValidator):
@@ -302,8 +302,8 @@ class DescriptionLengthValidator(SigmaRuleValidator):
 
 @dataclass
 class LevelExistenceIssue(SigmaValidationIssue):
-    description = "Rule has no level"
-    severity = SigmaValidationIssueSeverity.MEDIUM
+    description: ClassVar[str] = "Rule has no level"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
 class LevelExistenceValidator(SigmaRuleValidator):

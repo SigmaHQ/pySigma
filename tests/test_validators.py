@@ -134,6 +134,23 @@ def test_validator_number_as_string():
     assert validator.validate(rule) == [NumberAsStringIssue([rule], SigmaString("234"))]
 
 
+def test_validator_number_as_string_valid():
+    validator = NumberAsStringValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: a
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_control_characters():
     validator = ControlCharacterValidator()
     rule = SigmaRule.from_yaml(

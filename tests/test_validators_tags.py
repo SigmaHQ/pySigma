@@ -172,6 +172,13 @@ def test_validator_duplicate_tags():
             ["stp.1A"],
             InvalidSTPTagIssue,
         ),
+        (
+            NamespaceTagValidator,
+            ["attaque.command_and_control"],
+            ["attaque.command_and_control"],
+            InvalidNamespaceTagIssue,
+        ),
+        (NamespaceTagValidator, ["cve.2023.007"], [], InvalidNamespaceTagIssue),
     ],
 )
 def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):
@@ -191,25 +198,4 @@ def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, o
     rule.tags = [SigmaRuleTag.from_str(tag) for tag in opt_tags]
     assert validator.validate(rule) == [
         opt_issue_class([rule], SigmaRuleTag.from_str(tag)) for tag in opt_issue_tags
-    ]
-
-
-def test_validator_namespace_tags():
-    validator = NamespaceTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: value
-        condition: sel
-    tags:
-        - attaque.command_and_control
-    """
-    )
-    assert validator.validate(rule) == [
-        InvalidNamespaceTagIssue([rule], SigmaRuleTag.from_str("attaque.command_and_control"))
     ]

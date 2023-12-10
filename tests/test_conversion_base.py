@@ -2313,8 +2313,8 @@ quote_escape_config = (
     re.compile(";"),
 )
 quote_always_escape_quote_config = ("'", None, True, "\\", True, None)
-quote_only_config = ("'", re.compile("^.*\s"), False, None, False, None)
-escape_only_config = (None, None, True, "\\", False, re.compile("[\s]"))
+quote_only_config = ("'", re.compile(r"^.*\s"), False, None, False, None)
+escape_only_config = (None, None, True, "\\", False, re.compile(r"[\s]"))
 quoting_escaping_testcases = (
     {  # test name -> quoting/escaping parameters (see test below), test field name, expected result
         "escape_quote_nothing": (quote_escape_config, "foo.bar", "foo.bar"),

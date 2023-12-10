@@ -321,7 +321,7 @@ def test_validator_escaped_wildcard():
     """
     )
     assert validator.validate(rule) == [
-        EscapedWildcardIssue([rule], SigmaString("path\*something"))
+        EscapedWildcardIssue([rule], SigmaString(r"path\*something"))
     ]
 
 

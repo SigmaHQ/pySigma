@@ -258,6 +258,23 @@ def test_validator_status_existence():
     assert validator.validate(rule) == [StatusExistenceIssue([rule])]
 
 
+def test_validator_status_existence_valid():
+    validator = StatusExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: stable
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_status_unsupported():
     validator = StatusUnsupportedValidator()
     rule = SigmaRule.from_yaml(
@@ -275,6 +292,23 @@ def test_validator_status_unsupported():
     assert validator.validate(rule) == [StatusUnsupportedIssue([rule])]
 
 
+def test_validator_status_unsupported_valid():
+    validator = StatusUnsupportedValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: stable
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_date_existence():
     validator = DateExistenceValidator()
     rule = SigmaRule.from_yaml(
@@ -289,6 +323,23 @@ def test_validator_date_existence():
     """
     )
     assert validator.validate(rule) == [DateExistenceIssue([rule])]
+
+
+def test_validator_date_existence_valid():
+    validator = DateExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    date: 2023-12-11
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
 
 
 def test_validator_duplicate_filename():
@@ -308,11 +359,25 @@ def test_validator_sigmahqfilename():
     assert validator.validate(rule) == [FilenameSigmahqIssue([rule], "Name.yml")]
 
 
+def test_validator_sigmahqfilename_valid():
+    validator = FilenameSigmahqValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_valid"])
+    rule = sigma_collection[0]
+    assert validator.validate(rule) == []
+
+
 def test_validator_filename_lengh():
     validator = FilenameLenghValidator()
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
     rule = sigma_collection[0]
     assert validator.validate(rule) == [FilenameLenghIssue([rule], "Name.yml")]
+
+
+def test_validator_filename_lengh_valid():
+    validator = FilenameLenghValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_valid"])
+    rule = sigma_collection[0]
+    assert validator.validate(rule) == []
 
 
 def test_validator_custom_attributes():
@@ -334,6 +399,22 @@ def test_validator_custom_attributes():
     assert validator.validate(rule) == [CustomAttributesIssue([rule], "realted")]
 
 
+def test_validator_custom_attributes_valid():
+    validator = CustomAttributesValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_description_existence():
     validator = DescriptionExistenceValidator()
     rule = SigmaRule.from_yaml(
@@ -348,6 +429,23 @@ def test_validator_description_existence():
     """
     )
     assert validator.validate(rule) == [DescriptionExistenceIssue([rule])]
+
+
+def test_validator_description_existence_valid():
+    validator = DescriptionExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    description: it is a simple description
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
 
 
 def test_validator_description_length():
@@ -367,6 +465,23 @@ def test_validator_description_length():
     assert validator.validate(rule) == [DescriptionLengthIssue([rule])]
 
 
+def test_validator_description_length_valid():
+    validator = DescriptionLengthValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    description: it is a simple description
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_level_existence():
     validator = LevelExistenceValidator()
     rule = SigmaRule.from_yaml(
@@ -381,3 +496,20 @@ def test_validator_level_existence():
     """
     )
     assert validator.validate(rule) == [LevelExistenceIssue([rule])]
+
+
+def test_validator_level_existence_valid():
+    validator = LevelExistenceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    level: medium
+    """
+    )
+    assert validator.validate(rule) == []

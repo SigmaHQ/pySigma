@@ -323,6 +323,42 @@ def test_validator_sysmon_insteadof_generic_logsource():
     ]
 
 
+def test_validator_sysmon_insteadof_generic_logsource_sysmon_valid():
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: sysmon
+    detection:
+        sel:
+            field: 999
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_sysmon_insteadof_generic_logsource_other_valid():
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: generic
+    detection:
+        sel:
+            field: 999
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_escaped_wildcard():
     validator = EscapedWildcardValidator()
     rule = SigmaRule.from_yaml(

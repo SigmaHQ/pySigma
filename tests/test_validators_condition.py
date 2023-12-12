@@ -153,3 +153,22 @@ def test_validator_all_of_them():
     """
     )
     assert validator.validate(rule) == [AllOfThemConditionIssue([rule])]
+
+
+def test_validator_all_of_them_valid():
+    validator = AllOfThemConditionValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        selection1:
+            field1: val1
+        selection2:
+            field2: val2
+        condition: all of selection*
+    """
+    )
+    assert validator.validate(rule) == []

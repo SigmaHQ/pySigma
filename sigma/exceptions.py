@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from pyparsing import List
+import sigma
 
 
 @dataclass
@@ -221,3 +222,14 @@ class SigmaTransformationError(SigmaError):
 
 class SigmaPluginNotFoundError(SigmaError):
     """Plugin was not found."""
+
+
+class SigmaConversionError(SigmaError):
+    """Rule conversion failed."""
+
+    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
+        self.rule = rule
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return super().__str__() + " in rule " + str(self.rule)

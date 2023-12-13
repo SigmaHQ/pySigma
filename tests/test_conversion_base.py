@@ -2405,3 +2405,27 @@ def test_multi_field_mapping_conversion():
         )
         == ['mappedB="value1" or mappedC="value1"']
     )
+
+
+def test_convert_without_output(test_backend):
+    sigma_collection = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                    field A: value
+                condition: sel
+        """
+    )
+    rule = sigma_collection.rules[0]
+    rule.disable_output()
+
+    result = test_backend.convert(sigma_collection)
+
+    assert rule._conversion_result == ['mappedA="value" and \'field A\'="value"']
+    assert result == []

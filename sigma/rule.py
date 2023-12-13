@@ -617,6 +617,10 @@ class SigmaRuleBase:
     _backreferences: List["SigmaRuleBase"] = field(
         init=False, default_factory=list, repr=False, compare=False
     )
+    _conversion_result: Optional[List[Any]] = field(
+        init=False, default=None, repr=False, compare=False
+    )
+    _output: bool = field(init=False, default=True, repr=False, compare=False)
 
     def __post_init__(self):
         for field in ("references", "tags", "fields", "falsepositives"):
@@ -815,6 +819,23 @@ class SigmaRuleBase:
     def referenced_by(self, rule: "SigmaRuleBase") -> bool:
         """Check if rule is referenced by another rule."""
         return rule in self._backreferences
+
+    def set_conversion_result(self, result: List[Any]):
+        """Set conversion result."""
+        self._conversion_result = result
+
+    def get_conversion_result(self) -> List[Any]:
+        """Get conversion result."""
+        if self._conversion_result is None:
+            raise sigma_exceptions.SigmaConversionError(
+                self,
+                "Conversion result not available",
+            )
+        return self._conversion_result
+
+    def disable_output(self):
+        """Disable output of rule."""
+        self._output = False
 
     def __lt__(self, other: "SigmaRuleBase") -> bool:
         """Sort rules by backreference. A rule referenced by another rule is smaller."""

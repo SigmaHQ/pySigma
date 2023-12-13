@@ -1165,3 +1165,21 @@ def test_sigma_rule_backreference(sigma_rule):
     assert sigma_rule < sigma_rule_2
     assert not sigma_rule_2.referenced_by(sigma_rule)
     assert not sigma_rule_2 < sigma_rule
+
+
+def test_sigma_rule_conversion_result(sigma_rule):
+    conversion_result = ["test1", "test2"]
+    sigma_rule.set_conversion_result(conversion_result)
+    assert sigma_rule.get_conversion_result() == conversion_result
+
+
+def test_sigma_rule_conversion_result_no_result(sigma_rule):
+    with pytest.raises(
+        sigma_exceptions.SigmaConversionError, match="Conversion result not available.*Test"
+    ):
+        assert sigma_rule.get_conversion_result()
+
+
+def test_sigma_rule_disable_output(sigma_rule):
+    sigma_rule.disable_output()
+    assert sigma_rule._output == False

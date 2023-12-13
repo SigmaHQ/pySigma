@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Optional
+from typing import Dict, List, Literal, Optional
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
@@ -16,6 +16,11 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     VALUE_COUNT = auto()
     TEMPORAL = auto()
     TEMPORAL_ORDERED = auto()
+
+
+type SigmaCorrelationTypeLiteral = Literal[
+    "event_count", "value_count", "temporal", "temporal_ordered"
+]
 
 
 @dataclass(unsafe_hash=True)
@@ -161,7 +166,10 @@ class SigmaCorrelationFieldAlias:
 
 @dataclass
 class SigmaCorrelationFieldAliases:
-    aliases: Dict[str, SigmaCorrelationFieldAlias] = field(default_factory=list)
+    aliases: Dict[str, SigmaCorrelationFieldAlias] = field(default_factory=dict)
+
+    def __iter__(self):
+        return iter(self.aliases.values())
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -205,6 +213,7 @@ class SigmaCorrelationFieldAliases:
 class SigmaCorrelationRule(SigmaRuleBase):
     type: SigmaCorrelationType = None
     rules: List[SigmaRuleReference] = field(default_factory=list)
+    generate: bool = field(default=False)
     timespan: SigmaCorrelationTimespan = field(default_factory=SigmaCorrelationTimespan)
     group_by: Optional[List[str]] = None
     aliases: SigmaCorrelationFieldAliases = field(default_factory=SigmaCorrelationFieldAliases)
@@ -213,7 +222,10 @@ class SigmaCorrelationRule(SigmaRuleBase):
 
     def __post_init__(self):
         super().__post_init__()
-        if self.type != SigmaCorrelationType.TEMPORAL and self.condition is None:
+        if (
+            self.type not in {SigmaCorrelationType.TEMPORAL, SigmaCorrelationType.TEMPORAL_ORDERED}
+            and self.condition is None
+        ):
             raise sigma_exceptions.SigmaCorrelationRuleError(
                 "Non-temporal Sigma correlation rule without condition", source=self.source
             )
@@ -269,6 +281,18 @@ class SigmaCorrelationRule(SigmaRuleBase):
                     f"Sigma correlation rule without rule references", source=source
                 )
             )
+
+        # Generate
+        generate = correlation_rule.get("generate")
+        if generate is not None:
+            if not isinstance(generate, bool):
+                errors.append(
+                    sigma_exceptions.SigmaCorrelationRuleError(
+                        f"Sigma correlation generate definition must be a boolean", source=source
+                    )
+                )
+        else:
+            generate = False
 
         # Group by
         group_by = correlation_rule.get("group-by")
@@ -343,6 +367,7 @@ class SigmaCorrelationRule(SigmaRuleBase):
         return cls(
             type=correlation_type,
             rules=rules,
+            generate=generate,
             timespan=timespan,
             group_by=group_by,
             aliases=aliases,
@@ -376,6 +401,9 @@ class SigmaCorrelationRule(SigmaRuleBase):
         """
         for rule_ref in self.rules:
             rule_ref.resolve(rule_collection)
-            rule_ref.rule.add_backreference(self)
+            rule = rule_ref.rule
+            rule.add_backreference(self)
+            if not self.generate:
+                rule.disable_output()
 
         self.aliases.resolve_rule_references(rule_collection)

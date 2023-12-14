@@ -18,9 +18,9 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     TEMPORAL_ORDERED = auto()
 
 
-type SigmaCorrelationTypeLiteral = Literal[
-    "event_count", "value_count", "temporal", "temporal_ordered"
-]
+# TODO: type supported from 3.12
+# type SigmaCorrelationTypeLiteral = Literal[
+SigmaCorrelationTypeLiteral = Literal["event_count", "value_count", "temporal", "temporal_ordered"]
 
 
 @dataclass(unsafe_hash=True)

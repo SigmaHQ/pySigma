@@ -884,7 +884,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
         except AttributeError:
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
-                    "Sigma logsource must be a list", source=source
+                    "Sigma logsource must be a valid YAML map", source=source
                 )
             )
         except SigmaError as e:

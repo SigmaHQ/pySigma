@@ -116,7 +116,8 @@ def test_sigmalogsource_empty():
 
 def test_sigmalogsource_str():
     with pytest.raises(
-        sigma_exceptions.SigmaLogsourceError, match="Sigma logsource must be a list.*test.yml"
+        sigma_exceptions.SigmaLogsourceError,
+        match="Sigma logsource must be a valid YAML map.*test.yml",
     ):
         SigmaRule.from_dict(
             {"title": "test", "logsource": "windows"},

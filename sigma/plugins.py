@@ -316,6 +316,13 @@ class SigmaPlugin:
         except importlib.metadata.PackageNotFoundError:
             return None
 
+    def is_installed(self) -> bool:
+        try:
+            subprocess.check_call([sys.executable, "-m", "pip", "-q", "show", self.package])
+            return True
+        except:
+            return False
+
     def install(self):
         """Install plugin with pip."""
         if sys.prefix == sys.base_prefix:  # not in a virtual environment
@@ -339,6 +346,36 @@ class SigmaPlugin:
                     "-q",
                     "--disable-pip-version-check",
                     "install",
+                    "--no-user",
+                    self.package,
+                ]
+            )
+
+    def upgrade(self):
+        """Upgrade plugin with pip."""
+        if sys.prefix == sys.base_prefix:  # not in a virtual environment
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "-q",
+                    "--disable-pip-version-check",
+                    "install",
+                    "--upgrade",
+                    self.package,
+                ]
+            )
+        else:
+            subprocess.check_call(
+                [
+                    sys.executable,
+                    "-m",
+                    "pip",
+                    "-q",
+                    "--disable-pip-version-check",
+                    "install",
+                    "--upgrade",
                     "--no-user",
                     self.package,
                 ]

@@ -881,6 +881,12 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     "Sigma rule must have a log source", source=source
                 )
             )
+        except AttributeError:
+            errors.append(
+                sigma_exceptions.SigmaLogsourceError(
+                    "Sigma logsource must be a list", source=source
+                )
+            )
         except SigmaError as e:
             errors.append(e)
 

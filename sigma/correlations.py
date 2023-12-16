@@ -205,8 +205,8 @@ class SigmaCorrelationFieldAliases:
         Raises:
             sigma_exceptions.SigmaRuleNotFoundError: If a referenced rule cannot be found in the given rule collection.
         """
-        for alias in self.aliases:
-            alias.resolve_rule_reference(rule_collection)
+        for alias in self.aliases.values():
+            alias.resolve_rule_references(rule_collection)
 
 
 @dataclass
@@ -348,14 +348,18 @@ class SigmaCorrelationRule(SigmaRuleBase):
                         f"Sigma correlation condition definition must be a dict", source=source
                     )
                 )
-        elif correlation_type != SigmaCorrelationType.TEMPORAL:
+        elif correlation_type not in (
+            SigmaCorrelationType.TEMPORAL,
+            SigmaCorrelationType.TEMPORAL_ORDERED,
+        ):
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(
                     f"Non-temporal Sigma correlation rule without condition", source=source
                 )
             )
-        elif (
-            correlation_type == SigmaCorrelationType.TEMPORAL
+        elif correlation_type in (
+            SigmaCorrelationType.TEMPORAL,
+            SigmaCorrelationType.TEMPORAL_ORDERED,
         ):  # default condition for temporal correlation rules: count >= number of rules
             condition = SigmaCorrelationCondition(
                 op=SigmaCorrelationConditionOperator.GTE, count=len(rules), source=source

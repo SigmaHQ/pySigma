@@ -114,14 +114,14 @@ class TextQueryTestBackend(TextQueryBackend):
     temporal_correlation_query: ClassVar[str] = {"test": "{search}\n\n{aggregate}\n\n{condition}"}
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
-    correlation_search_multi_rule_expression: ClassVar[str] = "subsearch {{ {queries} }}"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
     correlation_search_multi_rule_query_expression: ClassVar[
         str
-    ] = '{query}\n| set event_type="{ruleid}"\n{normalization}'
-    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = "}} subsearch {{"
+    ] = 'subsearch {{ {query} | set event_type="{ruleid}"{normalization} }}'
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = "\n"
 
-    correlation_search_field_normalization_expression: ClassVar[str] = "| set {alias}={field}"
-    correlation_search_field_normalization_expression_joiner: ClassVar[str] = "\n"
+    correlation_search_field_normalization_expression: ClassVar[str] = " | set {alias}={field}"
+    correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
 
     event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
         "test": "| aggregate window={timespan} count() as event_count{groupby}"
@@ -154,6 +154,9 @@ class TextQueryTestBackend(TextQueryBackend):
     }
     temporal_condition_expression: ClassVar[Dict[str, str]] = {
         "test": "| where eventtype_count {op} {count}"
+    }
+    temporal_ordered_condition_expression: ClassVar[Dict[str, str]] = {
+        "test": "| where eventtype_count {op} {count} and eventtype_order={referenced_rules}"
     }
 
     def __init__(

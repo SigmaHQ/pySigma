@@ -806,7 +806,6 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     source=source,
                 )
             )
-            raise SigmaTypeError("Sigma rule fields must be a list", source=source)
 
         # Rule falsepositives validation
         rule_falsepositives = rule.get("falsepositives")
@@ -838,6 +837,16 @@ class SigmaRule(ProcessingItemTrackingMixin):
                 )
             )
 
+        # Rule references validation
+        rule_references = rule.get("references")
+        if rule_references is not None and not isinstance(rule_references, list):
+            errors.append(
+                sigma_exceptions.SigmaReferencesError(
+                    "Sigma rule references must be a list",
+                    source=source,
+                )
+            )
+
         # Rule title validation
         rule_title = rule.get("title")
         if rule_title is None:
@@ -854,6 +863,13 @@ class SigmaRule(ProcessingItemTrackingMixin):
                     source=source,
                 )
             )
+        elif len(rule_title) > 256:
+            errors.append(
+                sigma_exceptions.SigmaTitleError(
+                    "Sigma rule title length must not exceed 256 characters",
+                    source=source,
+                )
+            )
 
         # parse log source
         logsource = None
@@ -863,6 +879,12 @@ class SigmaRule(ProcessingItemTrackingMixin):
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma rule must have a log source", source=source
+                )
+            )
+        except AttributeError:
+            errors.append(
+                sigma_exceptions.SigmaLogsourceError(
+                    "Sigma logsource must be a valid YAML map", source=source
                 )
             )
         except SigmaError as e:
@@ -891,7 +913,7 @@ class SigmaRule(ProcessingItemTrackingMixin):
             level=level,
             status=status,
             description=rule_description,
-            references=rule.get("references"),
+            references=rule_references,
             tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
             author=rule_author,
             date=rule_date,

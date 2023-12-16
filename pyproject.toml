@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma"
-version = "0.10.9"
+version = "0.10.10"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
@@ -37,6 +37,7 @@ pytest = "^6.2.2"
 pytest-cov = "^2.11.1"
 pytest-mypy = "^0.6.2"
 Sphinx = "^4.2.0"
+defusedxml = "^0.7.1"
 
 [tool.black]
 line-length = 100

@@ -4,7 +4,6 @@ from sigma.pipelines.common import (
     logsource_linux_network_connection,
     logsource_linux_file_create,
     logsource_linux_process_creation,
-    logsource_windows,
     logsource_windows_dns_query,
     logsource_windows_file_change,
     logsource_windows_file_event,
@@ -29,7 +28,18 @@ from sigma.pipelines.common import (
     logsource_windows_driver_load,
     logsource_windows_create_stream_hash,
     logsource_windows_create_remote_thread,
+    logsource_macos_process_creation,
+    logsource_macos_file_create,
+    logsource_azure_riskdetection,
+    logsource_azure_pim,
+    logsource_azure_auditlogs,
+    logsource_azure_azureactivity,
+    logsource_azure_signinlogs,
+    logsource_linux,
+    logsource_macos,
+    logsource_windows,
     generate_windows_logsource_items,
+    logsource_category,
 )
 from sigma.processing.conditions import (
     LogsourceCondition,
@@ -45,11 +55,16 @@ def test_windows_logsource_mapping():
     assert windows_logsource_mapping["security"] == "Security"
 
 
-def test_logsource_windows():
-    assert logsource_windows("security") == LogsourceCondition(
-        product="windows",
-        service="security",
-    )
+@pytest.mark.parametrize(
+    ("func", "service", "product"),
+    [
+        (logsource_windows, "test", "windows"),
+        (logsource_linux, "test", "linux"),
+        (logsource_macos, "test", "macos"),
+    ],
+)
+def test_generic_service_sources(func, service, product):
+    assert func(service) == LogsourceCondition(service=service, product=product)
 
 
 @pytest.mark.parametrize(
@@ -81,6 +96,13 @@ def test_logsource_windows():
         (logsource_linux_process_creation, "process_creation", "linux"),
         (logsource_linux_network_connection, "network_connection", "linux"),
         (logsource_linux_file_create, "file_create", "linux"),
+        (logsource_macos_process_creation, "process_creation", "macos"),
+        (logsource_macos_file_create, "file_create", "macos"),
+        (logsource_azure_riskdetection, "riskdetection", "azure"),
+        (logsource_azure_pim, "pim", "azure"),
+        (logsource_azure_auditlogs, "auditlogs", "azure"),
+        (logsource_azure_azureactivity, "azureactivity", "azure"),
+        (logsource_azure_signinlogs, "signinlogs", "azure"),
     ],
 )
 def test_generic_log_sources(func, category, product):
@@ -137,3 +159,7 @@ def test_generate_windows_logsource_items():
             ]
         }
     )
+
+
+def test_logsource_category():
+    assert logsource_category("test") == LogsourceCondition(category="test")

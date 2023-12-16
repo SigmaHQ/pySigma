@@ -134,6 +134,23 @@ def test_validator_number_as_string():
     assert validator.validate(rule) == [NumberAsStringIssue([rule], SigmaString("234"))]
 
 
+def test_validator_number_as_string_valid():
+    validator = NumberAsStringValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field1: a
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_control_characters():
     validator = ControlCharacterValidator()
     rule = SigmaRule.from_yaml(
@@ -306,6 +323,42 @@ def test_validator_sysmon_insteadof_generic_logsource():
     ]
 
 
+def test_validator_sysmon_insteadof_generic_logsource_sysmon_valid():
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: sysmon
+    detection:
+        sel:
+            field: 999
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_sysmon_insteadof_generic_logsource_other_valid():
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        product: windows
+        service: generic
+    detection:
+        sel:
+            field: 999
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_escaped_wildcard():
     validator = EscapedWildcardValidator()
     rule = SigmaRule.from_yaml(
@@ -321,7 +374,7 @@ def test_validator_escaped_wildcard():
     """
     )
     assert validator.validate(rule) == [
-        EscapedWildcardIssue([rule], SigmaString("path\*something"))
+        EscapedWildcardIssue([rule], SigmaString(r"path\*something"))
     ]
 
 

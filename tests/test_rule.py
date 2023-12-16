@@ -114,6 +114,17 @@ def test_sigmalogsource_empty():
         SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 
+def test_sigmalogsource_str():
+    with pytest.raises(
+        sigma_exceptions.SigmaLogsourceError,
+        match="Sigma logsource must be a valid YAML map.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "logsource": "windows"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
 def test_sigmalogsource_eq():
     assert SigmaLogSource("category", "product", "service") == SigmaLogSource(
         "category", "product", "service"
@@ -736,7 +747,7 @@ def test_sigmadetection_dict_and_keyword_to_plain():
 
 
 def test_sigmarule_fields_not_list():
-    with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a list.*test.yml"):
+    with pytest.raises(sigma_exceptions.SigmaFieldsError, match="must be a list.*test.yml"):
         SigmaRule.from_dict(
             {"fields": "test"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
         )
@@ -772,9 +783,45 @@ def test_sigmarule_bad_status():
         )
 
 
+def test_sigmarule_bad_status_type():
+    with pytest.raises(
+        sigma_exceptions.SigmaStatusError, match="Sigma rule status cannot be a list.*test.yml"
+    ):
+        SigmaRule.from_dict(
+            {"status": ["test"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
 def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
         SigmaRule.from_dict({"date": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
+def test_sigmarule_bad_modified():
+    with pytest.raises(sigma_exceptions.SigmaModifiedError, match="Rule modified.*test.yml"):
+        SigmaRule.from_dict(
+            {"modified": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
+def test_sigmarule_bad_falsepositives():
+    with pytest.raises(
+        sigma_exceptions.SigmaFalsePositivesError,
+        match="Sigma rule falsepositives must be a list.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"falsepositives": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
+
+
+def test_sigmarule_bad_references():
+    with pytest.raises(
+        sigma_exceptions.SigmaReferencesError,
+        match="Sigma rule references must be a list.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"references": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_date():
@@ -1211,7 +1258,7 @@ def test_invalid_related_id():
         )
 
 
-def test_invalid_related_subfield():
+def test_invalid_related_id_subfield():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma related must have an id field"
     ):
@@ -1221,6 +1268,48 @@ def test_invalid_related_subfield():
     related:
         - uuid: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
           type: derived
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+        )
+
+
+def test_invalid_related_type_subfield():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma related must have a type field"
+    ):
+        SigmaRule.from_yaml(
+            """
+    title: Test
+    related:
+        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          types: derived
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+        )
+
+
+def test_invalid_related_list():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma rule related must be a list"
+    ):
+        SigmaRule.from_yaml(
+            """
+    title: Test
+    related:
+        id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+        types: derived
     status: test
     logsource:
         category: test
@@ -1274,6 +1363,26 @@ def test_invalid_title_type():
             """
         title:
             - abc
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
+        )
+
+
+def test_invalid_title_length():
+    with pytest.raises(
+        sigma_exceptions.SigmaTitleError,
+        match="Sigma rule title length must not exceed 256 characters",
+    ):
+        title = "0123456789 " * 26
+        rule = SigmaRule.from_yaml(
+            f"""
+        title: {title}
         status: test
         logsource:
             category: test

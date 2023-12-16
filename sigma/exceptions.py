@@ -114,6 +114,12 @@ class SigmaDescriptionError(SigmaError):
     pass
 
 
+class SigmaReferencesError(SigmaError):
+    """Error in Sigma rule references"""
+
+    pass
+
+
 class SigmaFieldsError(SigmaError):
     """Error in Sigma rule fields"""
 

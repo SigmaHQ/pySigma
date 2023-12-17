@@ -15,7 +15,12 @@ from sigma.correlations import (
     SigmaRuleReference,
 )
 
-from sigma.exceptions import SigmaConfigurationError, SigmaError, SigmaValueError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaConversionError,
+    SigmaError,
+    SigmaValueError,
+)
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Pattern, Union, ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
@@ -1507,8 +1512,19 @@ class TextQueryBackend(Backend):
         template = (
             getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
         )
+        if template is None:
+            raise NotImplementedError(
+                f"Correlation rule type '{correlation_type}' is not supported by backend."
+            )
+
+        method = method or self.default_correlation_method
+        if method not in self.correlation_methods or method not in template:
+            raise SigmaConversionError(
+                f"Correlation method '{method}' is not supported by backend."
+            )
+
         return [
-            template[method or self.default_correlation_method].format(
+            template[method].format(
                 search=self.convert_correlation_search(rule),
                 aggregate=self.convert_correlation_aggregation_from_template(
                     rule, correlation_type, method
@@ -1592,6 +1608,14 @@ class TextQueryBackend(Backend):
         aliases: SigmaCorrelationFieldAliases,
         rule_reference: SigmaRule,
     ) -> str:
+        if (
+            self.correlation_search_field_normalization_expression is None
+            or self.correlation_search_field_normalization_expression_joiner is None
+        ):
+            raise NotImplementedError(
+                "Correlation field normalization is not supported by backend."
+            )
+
         return self.correlation_search_field_normalization_expression_joiner.join(
             (
                 self.correlation_search_field_normalization_expression.format(

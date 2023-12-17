@@ -57,6 +57,7 @@ def test_correlation_valid_1(correlation_rule):
     assert rule.title == "Valid correlation"
     assert rule.type == SigmaCorrelationType.EVENT_COUNT
     assert rule.rules == [SigmaRuleReference("failed_login")]
+    assert rule.generate == False
     assert rule.group_by == ["user"]
     assert rule.timespan == SigmaCorrelationTimespan("10m")
     assert rule.condition == SigmaCorrelationCondition(
@@ -470,3 +471,41 @@ def test_correlation_resolve_rule_references_invalid_reference(correlation_rule)
         SigmaRuleNotFoundError, match="Rule 'failed_login' not found in rule collection"
     ):
         correlation_rule.resolve_rule_references(SigmaCollection([]))
+
+
+def test_correlation_rule_generate():
+    assert (
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Valid correlation",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "generate": True,
+                    "group-by": "user",
+                    "timespan": "10m",
+                    "condition": {"gte": 10},
+                },
+            }
+        ).generate
+        == True
+    )
+
+
+def test_correlation_invalid_generate():
+    with pytest.raises(
+        SigmaCorrelationRuleError, match="Sigma correlation generate definition must be a boolean"
+    ):
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Valid correlation",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "generate": "test",
+                    "group-by": "user",
+                    "timespan": "10m",
+                    "condition": {"gte": 10},
+                },
+            }
+        )

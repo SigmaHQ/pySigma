@@ -81,7 +81,11 @@ class SigmaCorrelationCondition:
 
         # Condition operator and count
         cond_op = None
-        for op in SigmaCorrelationConditionOperator.operators():
+        for (
+            op
+        ) in (
+            SigmaCorrelationConditionOperator.operators()
+        ):  # It's already tested above if there's an operator.
             if op in d:
                 cond_op = SigmaCorrelationConditionOperator[op.upper()]
                 try:
@@ -91,10 +95,6 @@ class SigmaCorrelationCondition:
                         f"'{ d[op] }' is no valid Sigma correlation condition count", source=source
                     )
                 break
-        if cond_op is None:
-            raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"Sigma correlation condition is invalid", source=source
-            )
 
         # Condition field
         try:

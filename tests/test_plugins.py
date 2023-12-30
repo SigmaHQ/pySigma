@@ -3,6 +3,7 @@ from sigma.exceptions import SigmaPluginNotFoundError
 from sigma.pipelines.test.pipeline import another_test_pipeline, YetAnotherTestPipeline
 from sigma.plugins import (
     SigmaPlugin,
+    SigmaPluginCapability,
     SigmaPluginDirectory,
     SigmaPluginState,
     SigmaPluginType,
@@ -92,6 +93,10 @@ def sigma_plugin_dict():
         "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
         "state": "testing",
         "pysigma_version": ">=0.9.0",
+        "capabilities": [
+            "event_count_correlation_conversion",
+            "value_count_correlation_conversion",
+        ],
     }
 
 
@@ -107,10 +112,20 @@ def sigma_plugin():
         report_issue_url="https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
         state=SigmaPluginState.TESTING,
         pysigma_version=Specifier(">=0.9.0"),
+        capabilities={
+            SigmaPluginCapability.EVENT_COUNT_CORRELATION_CONVERSION,
+            SigmaPluginCapability.VALUE_COUNT_CORRELATION_CONVERSION,
+        },
     )
 
 
 def test_sigma_plugin_from_dict(sigma_plugin, sigma_plugin_dict):
+    assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
+
+
+def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, sigma_plugin_dict):
+    monkeypatch.delitem(sigma_plugin_dict, "capabilities")
+    monkeypatch.setattr(sigma_plugin, "capabilities", set())
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
 
 
@@ -134,6 +149,12 @@ def test_sigma_plugin_version_unknown(sigma_plugin, monkeypatch):
     monkeypatch.setattr("importlib.metadata.version", version_replacement)
     sigma_plugin.pysigma_version = Specifier("<=0.1.0")
     assert sigma_plugin.is_compatible() is None
+
+
+def test_sigma_plugin_has_capability(sigma_plugin):
+    assert sigma_plugin.has_capability(SigmaPluginCapability.EVENT_COUNT_CORRELATION_CONVERSION)
+    assert sigma_plugin.has_capability(SigmaPluginCapability.VALUE_COUNT_CORRELATION_CONVERSION)
+    assert not sigma_plugin.has_capability(SigmaPluginCapability.TEMPORAL_CORRELATION_CONVERSION)
 
 
 def check_module(name: str) -> bool:

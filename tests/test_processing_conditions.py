@@ -15,6 +15,7 @@ from sigma.processing.conditions import (
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
+from tests.test_processing_transformations import sigma_correlation_rule
 
 
 @pytest.fixture
@@ -65,6 +66,16 @@ def test_logsource_no_match(dummy_processing_pipeline, sigma_rule):
     )
 
 
+def test_logsource_match_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
+    assert not LogsourceCondition(category="test_category", product="other_product").match(
+        dummy_processing_pipeline,
+        sigma_correlation_rule,
+    )
+
+
+from tests.test_processing_pipeline import processing_item
+
+
 def test_rule_processing_item_applied(
     dummy_processing_pipeline, processing_item, sigma_rule: SigmaRule
 ):
@@ -75,12 +86,24 @@ def test_rule_processing_item_applied(
     )
 
 
-def test_rule_processing_item_not_applied(
-    dummy_processing_pipeline, processing_item, sigma_rule: SigmaRule
-):
+def test_rule_processing_item_not_applied(dummy_processing_pipeline, sigma_rule: SigmaRule):
     assert not RuleProcessingItemAppliedCondition(processing_item_id="test").match(
         dummy_processing_pipeline,
         sigma_rule,
+    )
+
+
+def test_rule_processing_item_applied_correlation_rule(
+    dummy_processing_pipeline, processing_item, sigma_correlation_rule
+):
+    assert not RuleProcessingItemAppliedCondition(processing_item_id="test").match(
+        dummy_processing_pipeline,
+        sigma_correlation_rule,
+    )
+    sigma_correlation_rule.add_applied_processing_item(processing_item)
+    assert RuleProcessingItemAppliedCondition(processing_item_id="test").match(
+        dummy_processing_pipeline,
+        sigma_correlation_rule,
     )
 
 
@@ -90,71 +113,61 @@ def test_rule_contains_detection_item_match(sigma_rule, dummy_processing_pipelin
     )
 
 
-def test_rule_contains_detection_item_nomatch_field(sigma_rule):
+def test_rule_contains_detection_item_nomatch_field(sigma_rule, dummy_processing_pipeline):
     assert not RuleContainsDetectionItemCondition(field="fieldB", value="value").match(
         dummy_processing_pipeline, sigma_rule
     )
 
 
-def test_rule_contains_detection_item_nomatch_value(sigma_rule):
+def test_rule_contains_detection_item_nomatch_value(sigma_rule, dummy_processing_pipeline):
     assert not RuleContainsDetectionItemCondition(field="fieldA", value="valuex").match(
         dummy_processing_pipeline, sigma_rule
     )
 
 
+def test_rule_contains_detection_item_correlation_rule(
+    sigma_correlation_rule, dummy_processing_pipeline
+):
+    assert not RuleContainsDetectionItemCondition(field="fieldA", value="value").match(
+        dummy_processing_pipeline, sigma_correlation_rule
+    )
+
+
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):
-    assert (
-        IncludeFieldCondition(["field", "otherfield"]).match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == True
+    assert IncludeFieldCondition(["field", "otherfield"]).match_field_name(
+        dummy_processing_pipeline, "field"
     )
 
 
 def test_include_field_condition_match_nofield(dummy_processing_pipeline, detection_item_nofield):
-    assert (
-        IncludeFieldCondition(["field", "otherfield"]).match_field_name(
-            dummy_processing_pipeline, None
-        )
-        == False
+    assert not IncludeFieldCondition(["field", "otherfield"]).match_field_name(
+        dummy_processing_pipeline, None
     )
 
 
 def test_include_field_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert (
-        IncludeFieldCondition(["testfield", "otherfield"]).match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == False
+    assert not IncludeFieldCondition(["testfield", "otherfield"]).match_field_name(
+        dummy_processing_pipeline, "field"
     )
 
 
 def test_include_field_condition_re_match(dummy_processing_pipeline, detection_item):
-    assert (
-        IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == True
+    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
+        dummy_processing_pipeline, "field"
     )
 
 
 def test_include_field_condition_re_match_nofield(
     dummy_processing_pipeline, detection_item_nofield
 ):
-    assert (
-        IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
-            dummy_processing_pipeline, None
-        )
-        == False
+    assert not IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
+        dummy_processing_pipeline, None
     )
 
 
 def test_include_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
-    assert (
-        IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == False
+    assert not IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(
+        dummy_processing_pipeline, "field"
     )
 
 

@@ -1,14 +1,27 @@
 from abc import ABC, abstractmethod
 from functools import partial
 from sigma.conditions import ConditionOR, SigmaCondition
-from typing import Any, Iterable, List, Dict, Optional, Set, Union, Pattern, Iterator
+from typing import (
+    Any,
+    Iterable,
+    List,
+    Dict,
+    Optional,
+    Set,
+    Union,
+    Pattern,
+    Iterator,
+    get_args,
+    get_origin,
+)
 from dataclasses import dataclass, field
 import dataclasses
 import random
 import string
 import re
 import sigma
-from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
+from sigma.correlations import SigmaCorrelationRule
+from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaRuleBase
 from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,
@@ -46,7 +59,9 @@ class Transformation(ABC):
 
     @abstractmethod
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         """Apply transformation on Sigma rule."""
         self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
@@ -58,7 +73,10 @@ class Transformation(ABC):
         self.processing_item = processing_item
 
     def processing_item_applied(
-        self, d: Union[SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition]
+        self,
+        d: Union[
+            SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition, SigmaCorrelationRule
+        ],
     ):
         """Mark detection item or detection as applied."""
         d.add_applied_processing_item(self.processing_item)
@@ -106,8 +124,9 @@ class DetectionItemTransformation(Transformation):
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
         super().apply(pipeline, rule)
-        for detection in rule.detection.detections.values():
-            self.apply_detection(detection)
+        if isinstance(rule, SigmaRule):
+            for detection in rule.detection.detections.values():
+                self.apply_detection(detection)
 
 
 @dataclass
@@ -142,11 +161,46 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             return [field]
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         """Apply field name transformations to Sigma rule field names listed in 'fields' attribute."""
         _apply_field_name = partial(self._apply_field_name, pipeline)
         rule.fields = [item for mapping in map(_apply_field_name, rule.fields) for item in mapping]
+        if isinstance(rule, SigmaCorrelationRule):
+            if rule.group_by is not None:
+                # first iterate over aliases, map the field names contained in them and keep track
+                # of aliases used later in grouping list and shouldn't be mapped.
+                aliases = set()
+                for alias in rule.aliases:
+                    aliases.add(alias.alias)
+                    for rule_reference, field_name in alias.mapping.items():
+                        mapped_field_name = _apply_field_name(field_name)
+                        if len(mapped_field_name) > 1:
+                            raise SigmaConfigurationError(
+                                "Field name mapping transformation can't be applied to correlation rule alias mapping because it results in multiple field names."
+                            )
+                        alias.mapping[rule_reference] = mapped_field_name[0]
+
+                # now iterate over grouping list and map field names if not contained in aliases
+                rule.group_by = [
+                    item
+                    for field_name in rule.group_by
+                    for item in (
+                        _apply_field_name(field_name) if field_name not in aliases else [field_name]
+                    )
+                ]
+
+            # finally map the field name in the condition
+            if rule.condition is not None and (fieldref := rule.condition.fieldref) is not None:
+                mapped_field = _apply_field_name(fieldref)
+                if len(mapped_field) > 1:
+                    raise SigmaConfigurationError(
+                        "Field name mapping transformation can't be applied to correlation rule condition field reference because it results in multiple field names."
+                    )
+                rule.condition.fieldref = mapped_field[0]
+
         return super().apply(pipeline, rule)
 
     def apply_detection_item(
@@ -249,13 +303,16 @@ class ConditionTransformation(Transformation):
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
         super().apply(pipeline, rule)
-        for i, condition in enumerate(rule.detection.parsed_condition):
-            condition_before = condition.condition
-            self.apply_condition(condition)
-            if condition.condition != condition_before:  # Condition was changed by transformation,
-                self.processing_item_applied(
-                    condition
-                )  # mark as processed by processing item containing this transformation
+        if isinstance(rule, SigmaRule):
+            for i, condition in enumerate(rule.detection.parsed_condition):
+                condition_before = condition.condition
+                self.apply_condition(condition)
+                if (
+                    condition.condition != condition_before
+                ):  # Condition was changed by transformation,
+                    self.processing_item_applied(
+                        condition
+                    )  # mark as processed by processing item containing this transformation
 
     @abstractmethod
     def apply_condition(self, cond: SigmaCondition) -> None:
@@ -543,32 +600,33 @@ class AddConditionTransformation(ConditionTransformation):
     def apply(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
-        if self.template:
-            conditions = {
-                field: (
-                    [
-                        string.Template(item).safe_substitute(
+        if isinstance(rule, SigmaRule):
+            if self.template:
+                conditions = {
+                    field: (
+                        [
+                            string.Template(item).safe_substitute(
+                                category=rule.logsource.category,
+                                product=rule.logsource.product,
+                                service=rule.logsource.service,
+                            )
+                            for item in value
+                        ]
+                        if isinstance(value, list)
+                        else string.Template(value).safe_substitute(
                             category=rule.logsource.category,
                             product=rule.logsource.product,
                             service=rule.logsource.service,
                         )
-                        for item in value
-                    ]
-                    if isinstance(value, list)
-                    else string.Template(value).safe_substitute(
-                        category=rule.logsource.category,
-                        product=rule.logsource.product,
-                        service=rule.logsource.service,
                     )
-                )
-                for field, value in self.conditions.items()
-            }
-        else:
-            conditions = self.conditions
+                    for field, value in self.conditions.items()
+                }
+            else:
+                conditions = self.conditions
 
-        rule.detection.detections[self.name] = SigmaDetection.from_definition(conditions)
-        self.processing_item_applied(rule.detection.detections[self.name])
-        super().apply(pipeline, rule)
+            rule.detection.detections[self.name] = SigmaDetection.from_definition(conditions)
+            self.processing_item_applied(rule.detection.detections[self.name])
+            super().apply(pipeline, rule)
 
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = f"{self.name} and ({cond.condition})"

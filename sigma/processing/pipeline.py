@@ -16,6 +16,7 @@ from typing import (
     Type,
     Union,
 )
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.postprocessing import QueryPostprocessingTransformation
 from sigma.processing.tracking import FieldMappingTracking
@@ -107,7 +108,9 @@ class ProcessingItemBase:
                 f"Unknown transformation type '{ transformation_class_name }'"
             )
 
-    def match_rule_conditions(self, pipeline: "ProcessingPipeline", rule: SigmaRule):
+    def match_rule_conditions(
+        self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
+    ):
         cond_result = self.rule_condition_linking(
             [condition.match(pipeline, rule) for condition in self.rule_conditions]
         )
@@ -232,7 +235,9 @@ class ProcessingItem(ProcessingItemBase):
                     f"Detection item processing condition '{str(field_name_condition)}' is not a FieldNameProcessingCondition"
                 )
 
-    def apply(self, pipeline: "ProcessingPipeline", rule: SigmaRule) -> bool:
+    def apply(
+        self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
+    ) -> bool:
         """
         Matches condition against rule and performs transformation if condition is true or not present.
         Returns Sigma rule and bool if transformation was applied.
@@ -364,7 +369,10 @@ class QueryPostprocessingItem(ProcessingItemBase):
                 )
 
     def apply(
-        self, pipeline: "ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+        query: str,
     ) -> Tuple[str, bool]:
         """
         Matches condition against rule and performs transformation of query if condition is true or not present.
@@ -487,7 +495,9 @@ class ProcessingPipeline:
         parsed_pipeline = yaml.safe_load(processing_pipeline)
         return cls.from_dict(parsed_pipeline)
 
-    def apply(self, rule: SigmaRule) -> SigmaRule:
+    def apply(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule]
+    ) -> Union[SigmaRule, SigmaCorrelationRule]:
         """Apply processing pipeline on Sigma rule."""
         self.applied = list()
         self.applied_ids = set()
@@ -501,7 +511,7 @@ class ProcessingPipeline:
                 self.applied_ids.add(itid)
         return rule
 
-    def postprocess_query(self, rule: SigmaRule, query: Any) -> Any:
+    def postprocess_query(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         """Post-process queries with postprocessing_items."""
         for item in self.postprocessing_items:
             query, applied = item.apply(self, rule, query)

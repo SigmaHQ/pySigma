@@ -3,6 +3,7 @@ from enum import Enum, auto
 from typing import Dict, List, Literal, Optional
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
+from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
 import sigma
 
@@ -210,7 +211,7 @@ class SigmaCorrelationFieldAliases:
 
 
 @dataclass
-class SigmaCorrelationRule(SigmaRuleBase):
+class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     type: SigmaCorrelationType = None
     rules: List[SigmaRuleReference] = field(default_factory=list)
     generate: bool = field(default=False)

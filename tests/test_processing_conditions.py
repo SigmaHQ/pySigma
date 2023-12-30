@@ -6,6 +6,8 @@ from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
     FieldNameProcessingItemAppliedCondition,
+    IsSigmaCorrelationRuleCondition,
+    IsSigmaRuleCondition,
     LogsourceCondition,
     IncludeFieldCondition,
     ExcludeFieldCondition,
@@ -131,6 +133,26 @@ def test_rule_contains_detection_item_correlation_rule(
     assert not RuleContainsDetectionItemCondition(field="fieldA", value="value").match(
         dummy_processing_pipeline, sigma_correlation_rule
     )
+
+
+def test_is_sigma_rule_with_rule(dummy_processing_pipeline, sigma_rule):
+    assert IsSigmaRuleCondition().match(dummy_processing_pipeline, sigma_rule)
+
+
+def test_is_sigma_rule_with_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
+    assert not IsSigmaRuleCondition().match(dummy_processing_pipeline, sigma_correlation_rule)
+
+
+def test_is_sigma_correlation_rule_with_correlation_rule(
+    dummy_processing_pipeline, sigma_correlation_rule
+):
+    assert IsSigmaCorrelationRuleCondition().match(
+        dummy_processing_pipeline, sigma_correlation_rule
+    )
+
+
+def test_is_sigma_correlation_rule_with_rule(dummy_processing_pipeline, sigma_rule):
+    assert not IsSigmaCorrelationRuleCondition().match(dummy_processing_pipeline, sigma_rule)
 
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):

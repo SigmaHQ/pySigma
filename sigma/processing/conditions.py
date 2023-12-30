@@ -229,6 +229,34 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
         return rule.was_processed_by(self.processing_item_id)
 
 
+@dataclass
+class IsSigmaRuleCondition(RuleProcessingCondition):
+    """
+    Checks if rule is a SigmaRule.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return isinstance(rule, SigmaRule)
+
+
+@dataclass
+class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
+    """
+    Checks if rule is a SigmaCorrelationRule.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return isinstance(rule, SigmaCorrelationRule)
+
+
 ### Field Name Condition Classes ###
 @dataclass
 class IncludeFieldCondition(FieldNameProcessingCondition):
@@ -365,6 +393,8 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "processing_item_applied": RuleProcessingItemAppliedCondition,
+    "is_sigma_rule": IsSigmaRuleCondition,
+    "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

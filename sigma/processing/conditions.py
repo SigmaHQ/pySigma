@@ -2,6 +2,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
 import sigma
+from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaString, SigmaType, sigma_type
 from typing import Dict, List, Pattern, Literal, Optional, Union
 import re
@@ -22,7 +23,9 @@ class RuleProcessingCondition(ProcessingCondition, ABC):
 
     @abstractmethod
     def match(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         """Match condition on Sigma rule."""
 
@@ -158,9 +161,14 @@ class LogsourceCondition(RuleProcessingCondition):
         self.logsource = SigmaLogSource(self.category, self.product, self.service)
 
     def match(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        return rule.logsource in self.logsource
+        if isinstance(rule, SigmaRule):
+            return rule.logsource in self.logsource
+        elif isinstance(rule, SigmaCorrelationRule):
+            return False
 
 
 @dataclass
@@ -174,12 +182,17 @@ class RuleContainsDetectionItemCondition(RuleProcessingCondition):
         self.sigma_value = sigma_type(self.value)
 
     def match(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        for detection in rule.detection.detections.values():
-            if self.find_detection_item(detection):
-                return True
-        return False
+        if isinstance(rule, SigmaRule):
+            for detection in rule.detection.detections.values():
+                if self.find_detection_item(detection):
+                    return True
+            return False
+        elif isinstance(rule, SigmaCorrelationRule):
+            return False
 
     def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
         if isinstance(detection, SigmaDetection):
@@ -209,9 +222,39 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
     processing_item_id: str
 
     def match(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         return rule.was_processed_by(self.processing_item_id)
+
+
+@dataclass
+class IsSigmaRuleCondition(RuleProcessingCondition):
+    """
+    Checks if rule is a SigmaRule.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return isinstance(rule, SigmaRule)
+
+
+@dataclass
+class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
+    """
+    Checks if rule is a SigmaCorrelationRule.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return isinstance(rule, SigmaCorrelationRule)
 
 
 ### Field Name Condition Classes ###
@@ -350,6 +393,8 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "processing_item_applied": RuleProcessingItemAppliedCondition,
+    "is_sigma_rule": IsSigmaRuleCondition,
+    "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

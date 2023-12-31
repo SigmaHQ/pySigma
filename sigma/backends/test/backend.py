@@ -105,6 +105,60 @@ class TextQueryTestBackend(TextQueryBackend):
         ),
     )
 
+    # Correlations
+    correlation_methods: ClassVar[Dict[str, str]] = {
+        "test": "Test correlation method",
+    }
+    default_correlation_method: ClassVar[str] = "test"
+    default_correlation_query: ClassVar[str] = {"test": "{search}\n{aggregate}\n{condition}"}
+    temporal_correlation_query: ClassVar[str] = {"test": "{search}\n\n{aggregate}\n\n{condition}"}
+
+    correlation_search_single_rule_expression: ClassVar[str] = "{query}"
+    correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
+    correlation_search_multi_rule_query_expression: ClassVar[
+        str
+    ] = 'subsearch {{ {query} | set event_type="{ruleid}"{normalization} }}'
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = "\n"
+
+    correlation_search_field_normalization_expression: ClassVar[str] = " | set {alias}={field}"
+    correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
+
+    event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "test": "| aggregate window={timespan} count() as event_count{groupby}"
+    }
+    value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "test": "| aggregate window={timespan} value_count({field}) as value_count{groupby}"
+    }
+    temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "test": "| temporal window={timespan} eventtypes={referenced_rules}{groupby}"
+    }
+    temporal_ordered_aggregation_expression: ClassVar[Dict[str, str]] = {
+        "test": "| temporal ordered=true window={timespan} eventtypes={referenced_rules}{groupby}"
+    }
+
+    timespan_mapping: ClassVar[Dict[str, str]] = {
+        "m": "min",
+    }
+    referenced_rules_expression: ClassVar[Dict[str, str]] = {"test": "{ruleid}"}
+    referenced_rules_expression_joiner: ClassVar[Dict[str, str]] = {"test": ","}
+
+    groupby_expression: ClassVar[Dict[str, str]] = {"test": " by {fields}"}
+    groupby_field_expression: ClassVar[Dict[str, str]] = {"test": "{field}"}
+    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"test": ", "}
+
+    event_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "test": "| where event_count {op} {count}"
+    }
+    value_count_condition_expression: ClassVar[Dict[str, str]] = {
+        "test": "| where value_count {op} {count}"
+    }
+    temporal_condition_expression: ClassVar[Dict[str, str]] = {
+        "test": "| where eventtype_count {op} {count}"
+    }
+    temporal_ordered_condition_expression: ClassVar[Dict[str, str]] = {
+        "test": "| where eventtype_count {op} {count} and eventtype_order={referenced_rules}"
+    }
+
     def __init__(
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,

@@ -3,8 +3,24 @@ from collections import defaultdict
 import re
 
 from pyparsing import Set
+from sigma.correlations import (
+    SigmaCorrelationCondition,
+    SigmaCorrelationConditionOperator,
+    SigmaCorrelationFieldAlias,
+    SigmaCorrelationFieldAliases,
+    SigmaCorrelationRule,
+    SigmaCorrelationTimespan,
+    SigmaCorrelationType,
+    SigmaCorrelationTypeLiteral,
+    SigmaRuleReference,
+)
 
-from sigma.exceptions import SigmaError, SigmaValueError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaConversionError,
+    SigmaError,
+    SigmaValueError,
+)
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import Pattern, Union, ClassVar, Optional, Tuple, List, Dict, Any
 from sigma.processing.pipeline import ProcessingPipeline
@@ -102,7 +118,6 @@ class Backend(ABC):
     output_format_processing_pipeline: ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(
         ProcessingPipeline
     )
-    config: Dict[str, Any]
     default_format: ClassVar[str] = "default"
     collect_errors: bool = False
     errors: List[Tuple[SigmaRule, SigmaError]]
@@ -126,16 +141,28 @@ class Backend(ABC):
         self.errors = list()
         self.collect_errors = collect_errors
 
-    def convert(self, rule_collection: SigmaCollection, output_format: Optional[str] = None) -> Any:
+    def convert(
+        self,
+        rule_collection: SigmaCollection,
+        output_format: Optional[str] = None,
+        correlation_method: Optional[str] = None,
+    ) -> Any:
         """
         Convert a Sigma ruleset into the target data structure. Usually the result are one or
         multiple queries, but might also be some arbitrary data structure required for further
         processing.
         """
+        rule_collection.resolve_rule_references()
         queries = [
             query
             for rule in rule_collection.rules
-            for query in self.convert_rule(rule, output_format or self.default_format)
+            for query in (
+                self.convert_rule(rule, output_format or self.default_format)
+                if isinstance(rule, SigmaRule)
+                else self.convert_correlation_rule(
+                    rule, output_format or self.default_format, correlation_method
+                )
+            )
         ]
         return self.finalize(queries, output_format or self.default_format)
 
@@ -165,7 +192,7 @@ class Backend(ABC):
             ]
 
             error_state = "finalizing query for"
-            return [  # 3. Postprocess generated query
+            finalized_queries = [  # 3. Postprocess generated query
                 self.finalize_query(
                     rule,
                     query,
@@ -175,6 +202,11 @@ class Backend(ABC):
                 )
                 for index, query in enumerate(queries)
             ]
+            rule.set_conversion_result(finalized_queries)
+            if rule._output:
+                return finalized_queries
+            else:
+                return []
         except SigmaError as e:
             if self.collect_errors:
                 self.errors.append((rule, e))
@@ -483,6 +515,115 @@ class Backend(ABC):
                 "Unexpected data type in condition parse tree: " + cond.__class__.__name__
             )
 
+    def convert_correlation_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Convert a correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The correlation rule to be converted.
+            output_format (Optional[str]): The desired output format. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+
+        Raises:
+            NotImplementedError: If the conversion for the given correlation rule type is not implemented.
+        """
+        if rule.type == SigmaCorrelationType.EVENT_COUNT:
+            return self.convert_correlation_event_count_rule(rule, output_format, method)
+        elif rule.type == SigmaCorrelationType.VALUE_COUNT:
+            return self.convert_correlation_value_count_rule(rule, output_format, method)
+        elif rule.type == SigmaCorrelationType.TEMPORAL:
+            return self.convert_correlation_temporal_rule(rule, output_format, method)
+        elif rule.type == SigmaCorrelationType.TEMPORAL_ORDERED:
+            return self.convert_correlation_temporal_ordered_rule(rule, output_format, method)
+        else:
+            raise NotImplementedError(
+                f"Conversion of correlation rule type {rule.type} is not implemented."
+            )
+
+    @abstractmethod
+    def convert_correlation_event_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Convert an event count correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The event count correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_value_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Convert a value count correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The value count correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_temporal_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Convert a temporal correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The temporal correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_temporal_ordered_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[Any]:
+        """
+        Convert an ordered temporal correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The ordered temporal correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
     def finalize_query(
         self,
         rule: SigmaRule,
@@ -703,6 +844,148 @@ class TextQueryBackend(Backend):
     deferred_only_query: ClassVar[
         Optional[str]
     ] = None  # String used as query if final query only contains deferred expression
+
+    ### Correlation rule templates
+    # Backends can offer different methods of correlation query generation. That are described by
+    # correlation_methods:
+    correlation_methods: ClassVar[Optional[Dict[str, str]]] = None
+    # The following class variable defines the default method that should be chosen if none is provided.
+    default_correlation_method: ClassVar[str] = "default"
+
+    ## Correlation query frame
+    # The correlation query frame is the basic structure of a correlation query for each correlation
+    # type. It contains the following placeholders:
+    # * {search} is the search expression generated by the correlation query search phase.
+    # * {aggregate} is the aggregation expression generated by the correlation query aggregation
+    #   phase.
+    # * {condition} is the condition expression generated by the correlation query condition phase.
+    # If a correlation query template for a specific correlation type is not defined, the default correlation query template is used.
+    default_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+    event_count_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+    value_count_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+    temporal_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+    temporal_ordered_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+
+    ## Correlation query search phase
+    # The first step of a correlation query is to match events described by the referred Sigma
+    # rules. A main difference is made between single and multiple rule searches.
+    # A single rule search expression defines the search expression emitted if only one rule is
+    # referred by the correlation rule. It contains the following placeholders:
+    # * {rule} is the referred Sigma rule.
+    # * {ruleid} is the rule name or if not available the id of the rule.
+    # * {query} is the query generated from the referred Sigma rule.
+    # * {normalization} is the expression that normalizes the rule field names to unified alias
+    #   field names that can be later used for aggregation. The expression is defined by
+    #   correlation_search_field_normalization_expression defined below.
+    correlation_search_single_rule_expression: ClassVar[Optional[str]] = None
+    # If no single rule query expression is defined, the multi query template expressions below are
+    # used and must be suitable for this purpose.
+
+    # A multiple rule search expression defines the search expression emitted if multiple rules are
+    # referred by the correlation rule. This is split into the expression for the query itself:
+    correlation_search_multi_rule_expression: ClassVar[Optional[str]] = None
+    # This template contains only one placeholder {queries} which contains the queries generated
+    # from single queries joined with a query separator:
+    # * A query template for each query generated from the referred Sigma rules similar to the
+    #   search_single_rule_expression defined above:
+    correlation_search_multi_rule_query_expression: ClassVar[Optional[str]] = None
+    #   Usually the expression must contain some an expression that marks the matched event type as
+    #   such, e.g. by using the rule name or uuid.
+    # * A joiner string that is put between each search_multi_rule_query_expression:
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[Optional[str]] = None
+
+    # Event field normalization expression. This is used to normalize field names in events matched
+    # by the Sigma rules referred by the correlation rule. This is a dictionary mapping from
+    # correlation_method names to format strings hat can contain the following placeholders:
+    # * {alias} is the field name to which the event field names are normalized and that is used as
+    #   group-by field in the aggregation phase.
+    # * {field} is the field name from the rule that is normalized.
+    # The expression is generated for each Sigma rule referred by the correlation rule and each
+    # alias field definition that contains a field definition for the Sigma rule for which the
+    # normalization expression is generated. All such generated expressions are joined with the
+    # correlation_search_field_normalization_expression_joiner and the result is passed as
+    # {normalization} to the correlation_search_*_rule_expression.
+    correlation_search_field_normalization_expression: ClassVar[Optional[str]] = None
+    correlation_search_field_normalization_expression_joiner: ClassVar[Optional[str]] = None
+
+    ## Correlation query aggregation phase
+    # All of the following class variables are dictionaries of mappings from
+    # correlation_method names to format strings with the following placeholders:
+    # * {rule} contains the whole correlation rule object.
+    # * {referenced_rules} contains the Sigma rules that are referred by the correlation rule.
+    # * {field} contains the field specified in the condition.
+    # * {timespan} contains the timespan converted into the target format by the convert_timespan
+    #   method.
+    # * {groupby} contains the group by expression generated by the groupby_* templates below.
+    event_count_aggregation_expression: ClassVar[
+        Optional[Dict[str, str]]
+    ] = None  # Expression for event count correlation rules
+    value_count_aggregation_expression: ClassVar[
+        Optional[Dict[str, str]]
+    ] = None  # Expression for value count correlation rules
+    temporal_aggregation_expression: ClassVar[
+        Optional[Dict[str, str]]
+    ] = None  # Expression for temporal correlation rules
+    temporal_ordered_aggregation_expression: ClassVar[
+        Optional[Dict[str, str]]
+    ] = None  # Expression for ordered temporal correlation rules
+
+    # Mapping from Sigma timespan to target format timespan specification. This can be:
+    # * A dictionary mapping Sigma timespan specifications to target format timespan specifications,
+    #   e.g. the Sigma timespan specifier "m" to "min".
+    # * None if the target query language uses the same timespan specification as Sigma or expects
+    #   seconds (see timespan_seconds) or a custom timespan conversion is implemented in the method
+    #   convert_timespan.
+    # The mapping can be incomplete. Non-existent timespan specifiers will be passed as-is if no
+    # mapping is defined for them.
+    timespan_mapping: ClassVar[Optional[Dict[str, str]]] = None
+    timespan_seconds: ClassVar[
+        bool
+    ] = False  # If True, timespan is converted to seconds instead of using a more readable timespan specification like 5m.
+
+    # Expression for a referenced rule as format string with {ruleid} placeholder that is replaced
+    # with the rule name or id similar to the search query expression.
+    referenced_rules_expression: ClassVar[Optional[Dict[str, str]]] = None
+    # All referenced rules expressions are joined with the following joiner:
+    referenced_rules_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+
+    # The following class variables defined the templates for the group by expression.
+    # First an expression frame is definied:
+    groupby_expression: ClassVar[Optional[Dict[str, str]]] = None
+    # This expression only contains the {fields} placeholder that is replaced by the result of
+    # groupby_field_expression for each group by field joined by groupby_field_expression_joiner. The expression template
+    # itself can only contain a {field} placeholder for a single field name.
+    groupby_field_expression: ClassVar[Optional[Dict[str, str]]] = None
+    groupby_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+    # Groupy by expression in the case that no fields were provided in the correlation rule:
+    groupby_expression_nofield: ClassVar[Optional[Dict[str, str]]] = None
+
+    ## Correlation query condition phase
+    # The final correlation query phase adds a final filter that filters the aggregated events
+    # according to the given conditions. The following class variables define the templates for the
+    # different correlation rule types and correlation methods (dict keys).
+    # Each template gets the following placeholders:
+    # * {op} is the condition operator mapped according o correlation_condition_mapping.
+    # * {count} is the value specified in the condition.
+    # * {field} is the field specified in the condition.
+    # * {referenced_rules} contains the Sigma rules that are referred by the correlation rule. This
+    #   expression is generated by the referenced_rules_expression template in combincation with the
+    #   referennced_rules_expression_joiner defined above.
+    event_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
+    value_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
+    temporal_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
+    temporal_ordered_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
+    # The following mapping defines the mapping from Sigma correlation condition operators like
+    # "lt", "gte" into the operatpors expected by the target query language.
+    correlation_condition_mapping: ClassVar[
+        Optional[Dict[SigmaCorrelationConditionOperator, str]]
+    ] = {
+        SigmaCorrelationConditionOperator.LT: "<",
+        SigmaCorrelationConditionOperator.LTE: "<=",
+        SigmaCorrelationConditionOperator.GT: ">",
+        SigmaCorrelationConditionOperator.GTE: ">=",
+        SigmaCorrelationConditionOperator.EQ: "==",
+    }
 
     def __new__(cls, *args, **kwargs):
         c = super().__new__(cls)
@@ -1214,6 +1497,227 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only plain query expressions."""
         return cond.value.finalize()
+
+    # Correlation query conversion
+    # The following methods are used to convert Sigma correlation rules into queries. The conversion
+    # starts with the convert_correlation_rule method that calls correlation type specific methods
+    # which itself call convert_correlation_rule_from_template that dispatches to the three
+    # correlation query phases: search, aggregation and condition.
+    def convert_correlation_rule_from_template(
+        self,
+        rule: SigmaCorrelationRule,
+        correlation_type: SigmaCorrelationTypeLiteral,
+        method: Optional[str] = None,
+    ) -> str:
+        template = (
+            getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
+        )
+        if template is None:
+            raise NotImplementedError(
+                f"Correlation rule type '{correlation_type}' is not supported by backend."
+            )
+
+        method = method or self.default_correlation_method
+        if method not in self.correlation_methods or method not in template:
+            raise SigmaConversionError(
+                f"Correlation method '{method}' is not supported by backend."
+            )
+
+        return [
+            template[method].format(
+                search=self.convert_correlation_search(rule),
+                aggregate=self.convert_correlation_aggregation_from_template(
+                    rule, correlation_type, method
+                ),
+                condition=self.convert_correlation_condition_from_template(
+                    rule.condition, rule.rules, correlation_type, method
+                ),
+            )
+        ]
+
+    def convert_correlation_event_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[str]:
+        return self.convert_correlation_rule_from_template(rule, "event_count", method)
+
+    def convert_correlation_value_count_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[str]:
+        return self.convert_correlation_rule_from_template(rule, "value_count", method)
+
+    def convert_correlation_temporal_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[str]:
+        return self.convert_correlation_rule_from_template(rule, "temporal", method)
+
+    def convert_correlation_temporal_ordered_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> List[str]:
+        return self.convert_correlation_rule_from_template(rule, "temporal_ordered", method)
+
+    # Implementation of the search phase of the correlation query.
+    def convert_correlation_search(
+        self,
+        rule: SigmaCorrelationRule,
+    ) -> str:
+        if (  # if the correlation rule refers only a single rule and this rule results only in a single query
+            len(rule.rules) == 1
+            and len(queries := (rule_reference := rule.rules[0].rule).get_conversion_result()) == 1
+            and self.correlation_search_single_rule_expression is not None
+        ):
+            return self.correlation_search_single_rule_expression.format(
+                rule=rule_reference,
+                query=queries[0],
+                normalization=self.convert_correlation_search_field_normalization_expression(
+                    rule.aliases, rule_reference
+                ),
+            )
+        else:
+            return self.correlation_search_multi_rule_expression.format(
+                queries=self.correlation_search_multi_rule_query_expression_joiner.join(
+                    (
+                        self.correlation_search_multi_rule_query_expression.format(
+                            rule=rule_reference.rule,
+                            ruleid=rule_reference.rule.name or rule_reference.rule.id,
+                            query=query,
+                            normalization=self.convert_correlation_search_field_normalization_expression(
+                                rule.aliases,
+                                rule_reference,
+                            ),
+                        )
+                        for rule_reference in rule.rules
+                        for query in rule_reference.rule.get_conversion_result()
+                    )
+                )
+            )
+
+    def convert_correlation_search_field_normalization_expression(
+        self,
+        aliases: SigmaCorrelationFieldAliases,
+        rule_reference: SigmaRule,
+    ) -> str:
+        if (
+            self.correlation_search_field_normalization_expression is None
+            or self.correlation_search_field_normalization_expression_joiner is None
+        ):
+            raise NotImplementedError(
+                "Correlation field normalization is not supported by backend."
+            )
+
+        return self.correlation_search_field_normalization_expression_joiner.join(
+            (
+                self.correlation_search_field_normalization_expression.format(
+                    alias=alias.alias,
+                    field=field,
+                )
+                for alias in aliases
+                for alias_rule_reference, field in alias.mapping.items()
+                if alias_rule_reference == rule_reference
+            )
+        )
+
+    # Implementation of the aggregation phase of the correlation query.
+    def convert_correlation_aggregation_from_template(
+        self,
+        rule: SigmaCorrelationRule,
+        correlation_type: SigmaCorrelationTypeLiteral,
+        method: Optional[str] = None,
+    ) -> str:
+        template = getattr(self, f"{correlation_type}_aggregation_expression")[
+            method or self.default_correlation_method
+        ]
+        return template.format(
+            rule=rule,
+            referenced_rules=self.convert_referenced_rules(rule.rules, method),
+            field=rule.condition.fieldref,
+            timespan=self.convert_timespan(rule.timespan, method),
+            groupby=self.convert_correlation_aggregation_groupby_from_template(
+                rule.group_by, method
+            ),
+        )
+
+    def convert_correlation_aggregation_groupby_from_template(
+        self,
+        group_by: Optional[List[str]],
+        method: Optional[str] = None,
+    ) -> str:
+        if group_by is None:
+            if self.groupby_expression_nofield is None:
+                return ""
+            else:
+                return self.groupby_expression_nofield[method or self.default_correlation_method]
+        else:
+            return self.groupby_expression[method or self.default_correlation_method].format(
+                fields=self.groupby_field_expression_joiner[
+                    method or self.default_correlation_method
+                ].join(
+                    (
+                        self.groupby_field_expression[
+                            method or self.default_correlation_method
+                        ].format(field=self.escape_and_quote_field(field))
+                        for field in group_by
+                    )
+                )
+            )
+
+    def convert_referenced_rules(
+        self, referenced_rules: List[SigmaRuleReference], method: Optional[str] = None
+    ):
+        return self.referenced_rules_expression_joiner[
+            method or self.default_correlation_method
+        ].join(
+            (
+                self.referenced_rules_expression[method or self.default_correlation_method].format(
+                    ruleid=rule_reference.rule.name or rule_reference.rule.id
+                )
+                for rule_reference in referenced_rules
+            )
+        )
+
+    # Implementation of the condition phase of the correlation query.
+    def convert_correlation_condition_from_template(
+        self,
+        cond: SigmaCorrelationCondition,
+        referenced_rules: List[SigmaRuleReference],
+        correlation_type: SigmaCorrelationTypeLiteral,
+        method: Optional[str] = None,
+    ) -> str:
+        template = getattr(self, f"{correlation_type}_condition_expression")[
+            method or self.default_correlation_method
+        ]
+        return template.format(
+            field=cond.fieldref,
+            op=self.correlation_condition_mapping[cond.op],
+            count=cond.count,
+            referenced_rules=self.convert_referenced_rules(referenced_rules, method),
+        )
+
+    def convert_timespan(
+        self,
+        timespan: SigmaCorrelationTimespan,
+        output_format: Optional[str] = None,
+        method: Optional[str] = None,
+    ) -> str:
+        if self.timespan_seconds:  # return timespan in seconds
+            return timespan.seconds
+        elif (
+            self.timespan_mapping is not None and timespan.unit in self.timespan_mapping
+        ):  # return timespan converted with mapping
+            return str(timespan.count) + self.timespan_mapping[timespan.unit]
+        else:  # return timespan as is
+            return timespan.spec
 
     def finalize_query(
         self,

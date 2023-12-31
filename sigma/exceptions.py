@@ -3,6 +3,7 @@ from pathlib import Path
 from typing import Optional
 
 from pyparsing import List
+import sigma
 
 
 @dataclass
@@ -80,6 +81,12 @@ class SigmaConditionError(SigmaError):
 
 class SigmaIdentifierError(SigmaError):
     """Error in Sigma rule identifier"""
+
+    pass
+
+
+class SigmaNameError(SigmaError):
+    """Error in Sigma rule name"""
 
     pass
 
@@ -174,6 +181,36 @@ class SigmaPlaceholderError(SigmaValueError):
     pass
 
 
+class SigmaCorrelationRuleError(SigmaValueError):
+    """Error in Sigma correlation rule."""
+
+    pass
+
+
+class SigmaCorrelationTypeError(SigmaCorrelationRuleError):
+    """Wrong Sigma correlation type."""
+
+    pass
+
+
+class SigmaRuleNotFoundError(SigmaCorrelationRuleError):
+    """Sigma rule not found."""
+
+    pass
+
+
+class SigmaCorrelationConditionError(SigmaCorrelationRuleError):
+    """Error in Sigma correlation condition."""
+
+    pass
+
+
+class SigmaTimespanError(SigmaCorrelationRuleError):
+    """Raised when the timespan for calculating sigma is invalid."""
+
+    pass
+
+
 class SigmaCollectionError(SigmaError):
     """Error in Sigma collection, e.g. unknown action"""
 
@@ -224,3 +261,14 @@ class SigmaTransformationError(SigmaError):
 
 class SigmaPluginNotFoundError(SigmaError):
     """Plugin was not found."""
+
+
+class SigmaConversionError(SigmaError):
+    """Rule conversion failed."""
+
+    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
+        self.rule = rule
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return super().__str__() + " in rule " + str(self.rule)

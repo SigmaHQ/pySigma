@@ -760,7 +760,17 @@ def test_sigmarule_bad_uuid():
         )
 
 
-def test_sigmarule_bad_decription():
+def test_sigmarule_bad_name():
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a string.*test.yml"):
+        SigmaRule.from_dict({"name": 123}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
+def test_sigmarule_empty_name():
+    with pytest.raises(sigma_exceptions.SigmaNameError, match="must not be empty.*test.yml"):
+        SigmaRule.from_dict({"name": ""}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
+def test_sigmarule_bad_description():
     with pytest.raises(sigma_exceptions.SigmaDescriptionError, match="must be a string.*test.yml"):
         SigmaRule.from_dict(
             {"description": ["1", "2"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
@@ -965,6 +975,7 @@ def sigma_rule():
     return SigmaRule(
         title="Test",
         id=UUID("9a6cafa7-1481-4e64-89a1-1f69ed08618c"),
+        name="test",
         status=SigmaStatus.TEST,
         description="This is a test",
         references=[
@@ -1035,6 +1046,7 @@ def test_sigmarule_fromyaml(sigma_rule):
         """
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+    name: test
     status: test
     description: This is a test
     references:
@@ -1074,6 +1086,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         """
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+    name: test
     status: test
     description: This is a test
     references:
@@ -1210,7 +1223,7 @@ def test_sigma_rule_overlapping_selections():
     )
 
 
-def test__invalid_related_type():
+def test_invalid_related_type():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="same is not a Sigma related valid type"
     ):
@@ -1392,3 +1405,44 @@ def test_invalid_title_length():
             condition: sel
         """
         )
+
+
+def test_sigma_rule_backreference(sigma_rule):
+    sigma_rule_2 = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "CommandLine|endswith": "test.exe",
+                },
+                "condition": "selection",
+            },
+        }
+    )
+    sigma_rule.add_backreference(sigma_rule_2)
+    assert sigma_rule.referenced_by(sigma_rule_2)
+    assert sigma_rule < sigma_rule_2
+    assert not sigma_rule_2.referenced_by(sigma_rule)
+    assert not sigma_rule_2 < sigma_rule
+
+
+def test_sigma_rule_conversion_result(sigma_rule):
+    conversion_result = ["test1", "test2"]
+    sigma_rule.set_conversion_result(conversion_result)
+    assert sigma_rule.get_conversion_result() == conversion_result
+
+
+def test_sigma_rule_conversion_result_no_result(sigma_rule):
+    with pytest.raises(
+        sigma_exceptions.SigmaConversionError, match="Conversion result not available.*Test"
+    ):
+        assert sigma_rule.get_conversion_result()
+
+
+def test_sigma_rule_disable_output(sigma_rule):
+    sigma_rule.disable_output()
+    assert sigma_rule._output == False

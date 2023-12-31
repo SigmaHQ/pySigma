@@ -2,6 +2,14 @@ from pathlib import Path
 from uuid import UUID
 import pytest
 from sigma.collection import SigmaCollection, deep_dict_update
+from sigma.correlations import (
+    SigmaCorrelationCondition,
+    SigmaCorrelationConditionOperator,
+    SigmaCorrelationRule,
+    SigmaCorrelationTimespan,
+    SigmaCorrelationType,
+    SigmaRuleReference,
+)
 from sigma.rule import SigmaRule, SigmaLogSource
 from sigma.types import SigmaString
 from sigma.exceptions import (
@@ -9,6 +17,7 @@ from sigma.exceptions import (
     SigmaModifierError,
     SigmaRuleLocation,
     SigmaError,
+    SigmaRuleNotFoundError,
 )
 
 
@@ -290,6 +299,106 @@ def test_index_rule_by_position(ruleset):
     assert isinstance(ruleset[0], SigmaRule)
 
 
+def test_index_rule_by_position_not_existing(ruleset):
+    with pytest.raises(
+        SigmaRuleNotFoundError, match="Rule at position 2 not found in rule collection"
+    ):
+        ruleset[2]
+
+
 def test_index_rule_by_id(ruleset):
     rule_id = "240dbc26-8b19-4f5f-8972-fc3841f4185f"
     assert ruleset[rule_id].id == UUID(rule_id)
+    assert ruleset[UUID(rule_id)].id == UUID(rule_id)
+
+
+def test_index_rule_by_name(ruleset):
+    assert ruleset["test_rule"].name == "test_rule"
+
+
+def test_index_rule_by_name_not_existing(ruleset):
+    with pytest.raises(
+        SigmaRuleNotFoundError, match="Rule 'test_rule_not_existing' not found in rule collection"
+    ):
+        ruleset["test_rule_not_existing"]
+
+
+@pytest.fixture
+def rules_with_correlation():
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+---
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\a.exe'
+    condition: selection
+---
+title: Rule 2
+name: rule-2
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\b.exe'
+    condition: selection
+"""
+    )
+    rule_collection.resolve_rule_references()
+    return rule_collection
+
+
+def test_load_ruleset_with_correlation(rules_with_correlation):
+    assert len(rules_with_correlation.rules) == 3
+    correlation_rule = rules_with_correlation.rules[2]
+    assert correlation_rule == SigmaCorrelationRule(
+        title="Correlating 1+2",
+        name="corr-1-2",
+        type=SigmaCorrelationType.TEMPORAL,
+        rules=[SigmaRuleReference("rule-1"), SigmaRuleReference("rule-2")],
+        group_by=["user"],
+        timespan=SigmaCorrelationTimespan("5m"),
+        condition=SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 2),
+    )
+    assert correlation_rule.rules[0].rule == rules_with_correlation.rules[0]
+
+
+def test_load_ruleset_with_correlation_referencing_nonexistent_rule():
+    with pytest.raises(SigmaRuleNotFoundError, match="Rule 'rule-2' not found in rule collection"):
+        SigmaCollection.from_yaml(
+            """
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\a.exe'
+    condition: selection
+---
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+"""
+        ).resolve_rule_references()

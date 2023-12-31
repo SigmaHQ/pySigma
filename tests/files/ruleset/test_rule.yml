@@ -1,5 +1,6 @@
     title: Test
     id: 2dcca7b4-4b3a-4db6-9364-a019d54904bf
+    name: test_rule
     status: test
     description: This is a test
     references:

@@ -1,6 +1,6 @@
 from dataclasses import InitVar, dataclass, field
 import dataclasses
-from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
+from typing import Any, Dict, Optional, Tuple, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 from datetime import date, datetime
@@ -654,15 +654,10 @@ class SigmaYAMLLoader(yaml.SafeLoader):
 
 
 @dataclass
-class SigmaRule(ProcessingItemTrackingMixin):
-    """
-    A single Sigma rule.
-    """
-
-    title: str
-    logsource: SigmaLogSource
-    detection: SigmaDetections
+class SigmaRuleBase:
+    title: str = ""
     id: Optional[UUID] = None
+    name: Optional[str] = None
     related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
@@ -678,6 +673,14 @@ class SigmaRule(ProcessingItemTrackingMixin):
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Dict[str, Any] = field(compare=False, default_factory=dict)
+
+    _backreferences: List["SigmaRuleBase"] = field(
+        init=False, default_factory=list, repr=False, compare=False
+    )
+    _conversion_result: Optional[List[Any]] = field(
+        init=False, default=None, repr=False, compare=False
+    )
+    _output: bool = field(init=False, default=True, repr=False, compare=False)
 
     def __post_init__(self):
         for field in ("references", "tags", "fields", "falsepositives"):
@@ -697,9 +700,12 @@ class SigmaRule(ProcessingItemTrackingMixin):
         rule: dict,
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaRule":
+    ) -> Tuple[dict, List[Exception]]:
         """
-        Convert Sigma rule parsed in dict structure into SigmaRule object.
+        Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
+        class instantiation of an object derived from the SigmaRuleBase class and the errors list.
+        This is intended to be called only by to_dict() methods for processing the general
+        parameters defined in the base class.
 
         if collect_errors is set to False exceptions are collected in the errors property of the resulting
         SigmaRule object. Else the first recognized error is raised as exception.
@@ -716,6 +722,25 @@ class SigmaRule(ProcessingItemTrackingMixin):
                         "Sigma rule identifier must be an UUID", source=source
                     )
                 )
+
+        # Rule name
+        rule_name = rule.get("name")
+        if rule_name is not None:
+            if not isinstance(rule_name, str):
+                errors.append(
+                    sigma_exceptions.SigmaTypeError(
+                        "Sigma rule name must be a string", source=source
+                    )
+                )
+            else:
+                if rule_name == "":
+                    errors.append(
+                        sigma_exceptions.SigmaNameError(
+                            "Sigma rule name must not be empty", source=source
+                        )
+                    )
+                else:
+                    rule_name = rule_name
 
         # Rule related validation
         rule_related = rule.get("related")
@@ -906,31 +931,32 @@ class SigmaRule(ProcessingItemTrackingMixin):
         if not collect_errors and errors:
             raise errors[0]
 
-        return cls(
-            title=rule_title,
-            id=rule_id,
-            related=rule_related,
-            level=level,
-            status=status,
-            description=rule_description,
-            references=rule_references,
-            tags=[SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
-            author=rule_author,
-            date=rule_date,
-            modified=rule_modified,
-            logsource=logsource,
-            detection=detections,
-            fields=rule_fields,
-            falsepositives=rule_falsepositives,
-            errors=errors,
-            source=source,
-            custom_attributes={
-                k: v
-                for k, v in rule.items()
-                if k
-                not in set(cls.__dataclass_fields__.keys())
-                - {"errors", "source", "applied_processing_items"}
+        return (
+            {
+                "title": rule_title,
+                "id": rule_id,
+                "name": rule_name,
+                "related": rule_related,
+                "level": level,
+                "status": status,
+                "description": rule_description,
+                "references": rule_references,
+                "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
+                "author": rule_author,
+                "date": rule_date,
+                "modified": rule_modified,
+                "fields": rule_fields,
+                "falsepositives": rule_falsepositives,
+                "source": source,
+                "custom_attributes": {
+                    k: v
+                    for k, v in rule.items()
+                    if k
+                    not in set(cls.__dataclass_fields__.keys())
+                    - {"errors", "source", "applied_processing_items"}
+                },
             },
+            errors,
         )
 
     @classmethod
@@ -943,8 +969,6 @@ class SigmaRule(ProcessingItemTrackingMixin):
         """Convert rule object into dict."""
         d = {
             "title": self.title,
-            "logsource": self.logsource.to_dict(),
-            "detection": self.detection.to_dict(),
         }
         # Convert to string where possible
         for field in ("id", "status", "level", "author", "description"):
@@ -964,5 +988,107 @@ class SigmaRule(ProcessingItemTrackingMixin):
 
         # custom attributes
         d.update(self.custom_attributes)
+
+        return d
+
+    def add_backreference(self, rule: "SigmaRuleBase"):
+        """Add backreference to another rule."""
+        self._backreferences.append(rule)
+
+    def referenced_by(self, rule: "SigmaRuleBase") -> bool:
+        """Check if rule is referenced by another rule."""
+        return rule in self._backreferences
+
+    def set_conversion_result(self, result: List[Any]):
+        """Set conversion result."""
+        self._conversion_result = result
+
+    def get_conversion_result(self) -> List[Any]:
+        """Get conversion result."""
+        if self._conversion_result is None:
+            raise sigma_exceptions.SigmaConversionError(
+                self,
+                "Conversion result not available",
+            )
+        return self._conversion_result
+
+    def disable_output(self):
+        """Disable output of rule."""
+        self._output = False
+
+    def __lt__(self, other: "SigmaRuleBase") -> bool:
+        """Sort rules by backreference. A rule referenced by another rule is smaller."""
+        return self.referenced_by(other)
+
+
+@dataclass
+class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
+    """
+    A single Sigma rule.
+    """
+
+    logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
+    detection: SigmaDetections = field(default_factory=SigmaDetections)
+
+    @classmethod
+    def from_dict(
+        cls,
+        rule: dict,
+        collect_errors: bool = False,
+        source: Optional[SigmaRuleLocation] = None,
+    ) -> "SigmaRule":
+        """
+        Convert Sigma rule parsed in dict structure into SigmaRule object.
+
+        if collect_errors is set to False exceptions are collected in the errors property of the resulting
+        SigmaRule object. Else the first recognized error is raised as exception.
+        """
+        kwargs, errors = super().from_dict(rule, collect_errors, source)
+
+        # parse log source
+        logsource = None
+        try:
+            logsource = SigmaLogSource.from_dict(rule["logsource"], source)
+        except KeyError:
+            errors.append(
+                sigma_exceptions.SigmaLogsourceError(
+                    "Sigma rule must have a log source", source=source
+                )
+            )
+        except SigmaError as e:
+            errors.append(e)
+
+        # parse detections
+        detections = None
+        try:
+            detections = SigmaDetections.from_dict(rule["detection"], source)
+        except KeyError:
+            errors.append(
+                sigma_exceptions.SigmaDetectionError(
+                    "Sigma rule must have a detection definitions", source=source
+                )
+            )
+        except SigmaError as e:
+            errors.append(e)
+
+        if not collect_errors and errors:
+            raise errors[0]
+
+        return cls(
+            logsource=logsource,
+            detection=detections,
+            errors=errors,
+            **kwargs,
+        )
+
+    def to_dict(self) -> dict:
+        """Convert rule object into dict."""
+        d = super().to_dict()
+        d.update(
+            {
+                "logsource": self.logsource.to_dict(),
+                "detection": self.detection.to_dict(),
+            }
+        )
 
         return d

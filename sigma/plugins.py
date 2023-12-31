@@ -280,6 +280,15 @@ class SigmaPluginState(EnumLowercaseStringMixin, Enum):
     ORPHANED = auto()
 
 
+class SigmaPluginCapability(EnumLowercaseStringMixin, Enum):
+    """Sigma plugin capabilities that describe optional plugin functionality."""
+
+    EVENT_COUNT_CORRELATION_CONVERSION = auto()
+    VALUE_COUNT_CORRELATION_CONVERSION = auto()
+    TEMPORAL_CORRELATION_CONVERSION = auto()
+    ORDERED_TEMPORAL_CORRELATION_CONVERSION = auto()
+
+
 @dataclass
 class SigmaPlugin:
     """Sigma plugin description corresponding to https://github.com/SigmaHQ/pySigma-plugin-directory#format"""
@@ -293,6 +302,7 @@ class SigmaPlugin:
     report_issue_url: str
     state: SigmaPluginState
     pysigma_version: Specifier
+    capabilities: Set[SigmaPluginCapability] = field(default_factory=set)
 
     @classmethod
     def from_dict(cls, d: Dict) -> "SigmaPlugin":
@@ -303,6 +313,9 @@ class SigmaPlugin:
         kwargs["pysigma_version"] = Specifier(kwargs["pysigma_version"])
         kwargs["type"] = SigmaPluginType[kwargs["type"].upper()]
         kwargs["state"] = SigmaPluginState[kwargs["state"].upper()]
+        kwargs["capabilities"] = {
+            SigmaPluginCapability[c.upper()] for c in kwargs.get("capabilities", [])
+        }
 
         return cls(**kwargs)
 
@@ -322,6 +335,10 @@ class SigmaPlugin:
             return True
         except:
             return False
+
+    def has_capability(self, capability: SigmaPluginCapability) -> bool:
+        """Checks if the plugin has the specified capability."""
+        return capability in self.capabilities
 
     def install(self):
         """Install plugin with pip."""

@@ -896,38 +896,6 @@ class SigmaRuleBase:
                 )
             )
 
-        # parse log source
-        logsource = None
-        try:
-            logsource = SigmaLogSource.from_dict(rule["logsource"], source)
-        except KeyError:
-            errors.append(
-                sigma_exceptions.SigmaLogsourceError(
-                    "Sigma rule must have a log source", source=source
-                )
-            )
-        except AttributeError:
-            errors.append(
-                sigma_exceptions.SigmaLogsourceError(
-                    "Sigma logsource must be a valid YAML map", source=source
-                )
-            )
-        except SigmaError as e:
-            errors.append(e)
-
-        # parse detections
-        detections = None
-        try:
-            detections = SigmaDetections.from_dict(rule["detection"], source)
-        except KeyError:
-            errors.append(
-                sigma_exceptions.SigmaDetectionError(
-                    "Sigma rule must have a detection definitions", source=source
-                )
-            )
-        except SigmaError as e:
-            errors.append(e)
-
         if not collect_errors and errors:
             raise errors[0]
 
@@ -1053,6 +1021,12 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma rule must have a log source", source=source
+                )
+            )
+        except AttributeError:
+            errors.append(
+                sigma_exceptions.SigmaLogsourceError(
+                    "Sigma logsource must be a valid YAML map", source=source
                 )
             )
         except SigmaError as e:

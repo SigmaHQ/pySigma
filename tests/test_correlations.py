@@ -178,7 +178,7 @@ def test_correlation_wrong_type():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid correlation type",
+                "title": "Invalid correlation type",
                 "correlation": {
                     "type": "test",
                     "rules": "failed_login",
@@ -194,7 +194,7 @@ def test_correlation_without_type():
     with pytest.raises(SigmaCorrelationTypeError, match="Sigma correlation rule without type"):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid correlation type",
+                "title": "Invalid correlation type",
                 "correlation": {
                     "rules": "failed_login",
                     "group-by": ["user"],
@@ -211,7 +211,7 @@ def test_correlation_invalid_rule_reference():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid rule reference",
+                "title": "Invalid rule reference",
                 "correlation": {
                     "type": "event_count",
                     "rules": {"test": "test"},
@@ -229,7 +229,7 @@ def test_correlation_without_rule_reference():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid rule reference",
+                "title": "Invalid rule reference",
                 "correlation": {
                     "type": "event_count",
                     "group-by": ["user"],
@@ -247,7 +247,7 @@ def test_correlation_invalid_group_by():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid group-by",
+                "title": "Invalid group-by",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",
@@ -263,7 +263,7 @@ def test_correlation_invalid_timespan():
     with pytest.raises(SigmaTimespanError, match="Timespan '10' is invalid."):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid time span",
+                "title": "Invalid time span",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",
@@ -287,7 +287,7 @@ def test_correlation_without_timespan():
     with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without timespan"):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid time span",
+                "title": "Invalid time span",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",
@@ -304,7 +304,7 @@ def test_correlation_invalid_condition():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid condition",
+                "title": "Invalid condition",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",
@@ -320,7 +320,7 @@ def test_correlation_without_condition():
     with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without condition"):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid condition",
+                "title": "Invalid condition",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",
@@ -348,7 +348,7 @@ def test_value_count_correlation_without_condition_field():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Missing field in condition",
+                "title": "Missing field in condition",
                 "correlation": {
                     "type": "value_count",
                     "rules": "failed_login",
@@ -393,7 +393,7 @@ def test_correlation_invalid_alias():
     ):
         SigmaCorrelationRule.from_dict(
             {
-                "name": "Invalid alias",
+                "title": "Invalid alias",
                 "correlation": {
                     "type": "event_count",
                     "rules": "failed_login",

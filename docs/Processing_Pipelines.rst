@@ -244,6 +244,7 @@ definitions are available:
    "add_condition", "AddConditionTransformation"
    "change_logsource", "ChangeLogsourceTransformation"
    "replace_string", "ReplaceStringTransformation"
+   "map_string", "MapStringTransformation"
    "set_state", SetStateTransformation
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
@@ -259,6 +260,7 @@ definitions are available:
 .. autoclass:: sigma.processing.transformations.AddConditionTransformation
 .. autoclass:: sigma.processing.transformations.ChangeLogsourceTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
+.. autoclass:: sigma.processing.transformations.MapStringTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

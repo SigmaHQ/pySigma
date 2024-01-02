@@ -17,6 +17,7 @@ from sigma.processing.transformations import (
     ConditionTransformation,
     DetectionItemFailureTransformation,
     DropDetectionItemTransformation,
+    MapStringTransformation,
     RuleFailureTransformation,
     FieldMappingTransformation,
     FieldPrefixMappingTransformation,
@@ -1239,6 +1240,41 @@ def test_replace_string_correlation_rule(sigma_correlation_rule, dummy_pipeline)
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     transformation = ReplaceStringTransformation("value", "test")
     transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    assert sigma_correlation_rule == orig_correlation_rule
+
+
+@pytest.fixture
+def map_string_transformation():
+    return MapStringTransformation(
+        {
+            "value1": "mapped1",
+            "value2": ["mapped2A", "mapped2B"],
+        }
+    )
+
+
+def test_map_string_transformation(dummy_pipeline, sigma_rule, map_string_transformation):
+    map_string_transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("mapped1")]),
+                    SigmaDetectionItem(
+                        "field2", [], [SigmaString("mapped2A"), SigmaString("mapped2B")]
+                    ),
+                    SigmaDetectionItem("field3", [], [SigmaString("value3")]),
+                ]
+            )
+        ]
+    )
+
+
+def test_map_string_transformation_correlation_rule(
+    dummy_pipeline, sigma_correlation_rule, map_string_transformation
+):
+    orig_correlation_rule = deepcopy(sigma_correlation_rule)
+    map_string_transformation.apply(dummy_pipeline, sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 

@@ -292,6 +292,25 @@ class ValueTransformation(DetectionItemTransformation):
         """
 
 
+class StringValueTransformation(ValueTransformation):
+    """
+    Base class for transformations that operate on SigmaString values.
+    """
+
+    def apply_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+        if isinstance(val, SigmaString):
+            return self.apply_string_value(field, val)
+
+    @abstractmethod
+    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+        """
+        Perform a value transformation. This method can return:
+
+        * None to drop the value
+        * a single SigmaString object which replaces the original value.
+        """
+
+
 @dataclass
 class ConditionTransformation(Transformation):
     """
@@ -649,7 +668,7 @@ class ChangeLogsourceTransformation(Transformation):
 
 
 @dataclass
-class ReplaceStringTransformation(ValueTransformation):
+class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
     capture groups. It operates on the plain string representation of the SigmaString value.
@@ -669,9 +688,25 @@ class ReplaceStringTransformation(ValueTransformation):
                 f"Regular expression '{self.regex}' is invalid: {str(e)}"
             ) from e
 
-    def apply_value(self, field: str, val: SigmaString) -> SigmaString:
+    def apply_string_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             return SigmaString(self.re.sub(self.replacement, str(val)))
+
+
+@dataclass
+class MapStringTransformation(StringValueTransformation):
+    """
+    Map static string value to one or multiple other strings.
+    """
+
+    mapping: Dict[str, Union[str, List[str]]]
+
+    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+        mapped = self.mapping.get(str(val), None)
+        if isinstance(mapped, str):
+            return SigmaString(mapped)
+        elif isinstance(mapped, list):
+            return [SigmaString(item) for item in mapped]
 
 
 @dataclass
@@ -728,6 +763,7 @@ transformations: Dict[str, Transformation] = {
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
     "replace_string": ReplaceStringTransformation,
+    "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,

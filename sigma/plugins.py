@@ -331,7 +331,7 @@ class SigmaPlugin:
 
     def is_installed(self) -> bool:
         try:
-            subprocess.check_call([sys.executable, "-m", "pip", "-q", "show", self.package])
+            subprocess.check_call([sys.executable, "-m", "pip", "-qqq", "show", self.package])
             return True
         except:
             return False

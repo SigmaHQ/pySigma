@@ -697,16 +697,6 @@ class ReplaceStringTransformation(StringValueTransformation):
 class MapStringTransformation(StringValueTransformation):
     """
     Map static string value to one or multiple other strings.
-
-    YAML example:
-    .. code-block:: yaml
-
-            - type: map_string
-            mapping:
-                value1: mapped1
-                value2:
-                    - mapped2A
-                    - mapped2B
     """
 
     mapping: Dict[str, Union[str, List[str]]]

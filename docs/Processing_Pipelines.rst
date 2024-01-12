@@ -250,6 +250,23 @@ definitions are available:
    "detection_item_failure", "DetectionItemFailureTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
+
+YAML example:
+
+.. code-block:: yaml
+
+  transformations:
+    type: field_name_mapping
+    mapping:
+      EventID: EventCode
+      CommandLine:
+        - command_line
+        - cmdline
+
+This shows how to map the field name `EventID` to `EventCode` and `CommandLine` to `command_line`
+and `cmdline`. For the latter, OR-conditions will be generated to match the value on both fields.
+This is useful if different data models are used in the same system.
+
 .. autoclass:: sigma.processing.transformations.FieldPrefixMappingTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnameSuffixTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnamePrefixTransformation
@@ -261,6 +278,19 @@ definitions are available:
 .. autoclass:: sigma.processing.transformations.ChangeLogsourceTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
 .. autoclass:: sigma.processing.transformations.MapStringTransformation
+
+YAML example:
+
+.. code-block:: yaml
+
+  transformations:
+    type: map_string
+    mapping:
+      value1: mapped1
+      value2:
+        - mapped2A
+        - mapped2B
+
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

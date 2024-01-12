@@ -4,7 +4,7 @@ from pathlib import Path
 from uuid import UUID
 from sigma.correlations import SigmaCorrelationRule
 
-from sigma.rule import SigmaRule
+from sigma.rule import SigmaRule, SigmaRuleBase
 from sigma.exceptions import (
     SigmaCollectionError,
     SigmaError,
@@ -207,6 +207,14 @@ class SigmaCollection:
             rules=[rule for collection in collections for rule in collection],
             errors=[error for collection in collections for error in collection.errors],
         )
+
+    def get_output_rules(self) -> Iterable[SigmaRuleBase]:
+        """Returns an iterator across all rules where the output property is set to true"""
+        return (rule for rule in self.rules if rule._output)
+
+    def get_unrefereced_rules(self) -> Iterable[SigmaRuleBase]:
+        """Returns an iterator across all rules that are not referenced by any other rule"""
+        return (rule for rule in self.rules if not rule._backreferences)
 
     def __iter__(self):
         return iter(self.rules)

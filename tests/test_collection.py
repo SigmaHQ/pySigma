@@ -377,6 +377,18 @@ def test_load_ruleset_with_correlation(rules_with_correlation):
     assert correlation_rule.rules[0].rule == rules_with_correlation.rules[0]
 
 
+def test_get_output_rules(rules_with_correlation):
+    output_rules = list(rules_with_correlation.get_output_rules())
+    assert len(output_rules) == 1
+    assert isinstance(output_rules[0], SigmaCorrelationRule)
+
+
+def test_get_unreferenced_rules(rules_with_correlation):
+    output_rules = list(rules_with_correlation.get_unrefereced_rules())
+    assert len(output_rules) == 1
+    assert isinstance(output_rules[0], SigmaCorrelationRule)
+
+
 def test_load_ruleset_with_correlation_referencing_nonexistent_rule():
     with pytest.raises(SigmaRuleNotFoundError, match="Rule 'rule-2' not found in rule collection"):
         SigmaCollection.from_yaml(

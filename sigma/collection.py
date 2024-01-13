@@ -21,8 +21,12 @@ class SigmaCollection:
 
     rules: List[SigmaRuleBase]
     errors: List[SigmaError] = field(default_factory=list)
-    ids_to_rules: Dict[UUID, SigmaRuleBase] = field(init=False, repr=False, hash=False, compare=False)
-    names_to_rules: Dict[str, SigmaRuleBase] = field(init=False, repr=False, hash=False, compare=False)
+    ids_to_rules: Dict[UUID, SigmaRuleBase] = field(
+        init=False, repr=False, hash=False, compare=False
+    )
+    names_to_rules: Dict[str, SigmaRuleBase] = field(
+        init=False, repr=False, hash=False, compare=False
+    )
 
     def __post_init__(self):
         """

@@ -1,6 +1,8 @@
 from pathlib import Path
 from uuid import UUID
+
 import pytest
+
 from sigma.collection import SigmaCollection, deep_dict_update
 from sigma.correlations import (
     SigmaCorrelationCondition,
@@ -10,8 +12,6 @@ from sigma.correlations import (
     SigmaCorrelationType,
     SigmaRuleReference,
 )
-from sigma.rule import SigmaRule, SigmaLogSource
-from sigma.types import SigmaString
 from sigma.exceptions import (
     SigmaCollectionError,
     SigmaModifierError,
@@ -19,6 +19,7 @@ from sigma.exceptions import (
     SigmaError,
     SigmaRuleNotFoundError,
 )
+from sigma.rule import SigmaRule, SigmaLogSource
 
 
 def test_single_rule():
@@ -384,7 +385,7 @@ def test_get_output_rules(rules_with_correlation):
 
 
 def test_get_unreferenced_rules(rules_with_correlation):
-    output_rules = list(rules_with_correlation.get_unrefereced_rules())
+    output_rules = list(rules_with_correlation.get_unreferenced_rules())
     assert len(output_rules) == 1
     assert isinstance(output_rules[0], SigmaCorrelationRule)
 

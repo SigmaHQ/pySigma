@@ -1,27 +1,32 @@
 from dataclasses import dataclass, field
-from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from pathlib import Path
+from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from uuid import UUID
-from sigma.correlations import SigmaCorrelationRule
 
-from sigma.rule import SigmaRule, SigmaRuleBase
+import yaml
+
+from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import (
     SigmaCollectionError,
     SigmaError,
     SigmaRuleLocation,
     SigmaRuleNotFoundError,
 )
-import yaml
+from sigma.rule import SigmaRule, SigmaRuleBase
 
 
 @dataclass
 class SigmaCollection:
     """Collection of Sigma rules"""
 
-    rules: List[SigmaRule]
+    rules: List[SigmaRuleBase]
     errors: List[SigmaError] = field(default_factory=list)
-    ids_to_rules: Dict[UUID, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
-    names_to_rules: Dict[str, SigmaRule] = field(init=False, repr=False, hash=False, compare=False)
+    ids_to_rules: Dict[UUID, SigmaRuleBase] = field(
+        init=False, repr=False, hash=False, compare=False
+    )
+    names_to_rules: Dict[str, SigmaRuleBase] = field(
+        init=False, repr=False, hash=False, compare=False
+    )
 
     def __post_init__(self):
         """
@@ -160,7 +165,7 @@ class SigmaCollection:
 
         :param inputs: List of strings and :class:`pathlib.Path` objects that reference files or
         directories that should be loaded.
-        :param collect_errors: parse or verification errors are collected in :class:`SigmaRule`
+        :param collect_errors: parse or verification errors are collected in :class:`SigmaRuleBase`
         objects instead of raising them immediately. Defaults to ``False``.
         :param on_beforeload: Optional function that is called for each path to a Sigma rule before the parsing and
         construction of the :class:`SigmaCollection` object is done. The path returned by this function is
@@ -212,7 +217,7 @@ class SigmaCollection:
         """Returns an iterator across all rules where the output property is set to true"""
         return (rule for rule in self.rules if rule._output)
 
-    def get_unrefereced_rules(self) -> Iterable[SigmaRuleBase]:
+    def get_unreferenced_rules(self) -> Iterable[SigmaRuleBase]:
         """Returns an iterator across all rules that are not referenced by any other rule"""
         return (rule for rule in self.rules if not rule._backreferences)
 

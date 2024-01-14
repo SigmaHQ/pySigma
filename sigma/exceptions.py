@@ -272,3 +272,17 @@ class SigmaConversionError(SigmaError):
 
     def __str__(self):
         return super().__str__() + " in rule " + str(self.rule)
+
+
+class SigmaBackendError(SigmaError):
+    """Error in Sigma backend."""
+
+
+@dataclass
+class ExceptionOnUsage:
+    """Raise an exception when the class is used."""
+
+    exception: Exception
+
+    def __getattribute__(self, item):
+        raise object.__getattribute__(self, "exception")

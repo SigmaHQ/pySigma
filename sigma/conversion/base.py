@@ -16,6 +16,8 @@ from sigma.correlations import (
 )
 
 from sigma.exceptions import (
+    ExceptionOnUsage,
+    SigmaBackendError,
     SigmaConfigurationError,
     SigmaConversionError,
     SigmaError,
@@ -1675,16 +1677,26 @@ class TextQueryBackend(Backend):
     def convert_referenced_rules(
         self, referenced_rules: List[SigmaRuleReference], method: Optional[str] = None
     ):
-        return self.referenced_rules_expression_joiner[
-            method or self.default_correlation_method
-        ].join(
-            (
-                self.referenced_rules_expression[method or self.default_correlation_method].format(
-                    ruleid=rule_reference.rule.name or rule_reference.rule.id
+        if (
+            self.referenced_rules_expression is None
+            or self.referenced_rules_expression_joiner is None
+        ):
+            return ExceptionOnUsage(
+                SigmaBackendError(
+                    "Backend doesn't defines referenced rule expression but uses it in correlation query template"
                 )
-                for rule_reference in referenced_rules
             )
-        )
+        else:
+            return self.referenced_rules_expression_joiner[
+                method or self.default_correlation_method
+            ].join(
+                (
+                    self.referenced_rules_expression[
+                        method or self.default_correlation_method
+                    ].format(ruleid=rule_reference.rule.name or rule_reference.rule.id)
+                    for rule_reference in referenced_rules
+                )
+            )
 
     # Implementation of the condition phase of the correlation query.
     def convert_correlation_condition_from_template(

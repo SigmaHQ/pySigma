@@ -1,7 +1,7 @@
 import pytest
 from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
-from sigma.exceptions import SigmaConversionError
+from sigma.exceptions import SigmaBackendError, SigmaConversionError
 from .test_conversion_base import test_backend
 
 
@@ -39,6 +39,18 @@ correlation:
 def test_event_count_correlation_single_rule_with_grouping(
     test_backend, event_count_correlation_rule
 ):
+    assert test_backend.convert(event_count_correlation_rule) == [
+        """EventID=4625
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| where event_count >= 10"""
+    ]
+
+
+def test_generate_query_without_referenced_rules_expression(
+    monkeypatch, test_backend, event_count_correlation_rule
+):
+    monkeypatch.setattr(test_backend, "referenced_rules_expression", None)
+    monkeypatch.setattr(test_backend, "referenced_rules_expression_joiner", None)
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
@@ -85,8 +97,9 @@ def test_value_count_correlation_single_rule_without_grouping(
     ]
 
 
-def test_temporal_correlation_multi_rule_without_condition(test_backend):
-    rule_collection = SigmaCollection.from_yaml(
+@pytest.fixture
+def temporal_correlation_rule():
+    temporal_correlation_rule = SigmaCollection.from_yaml(
         """
 title: Failed logon
 name: failed_logon
@@ -123,7 +136,12 @@ correlation:
         - TargetDomainName
             """
     )
-    assert test_backend.convert(rule_collection) == [
+
+    return temporal_correlation_rule
+
+
+def test_temporal_correlation_multi_rule_without_condition(test_backend, temporal_correlation_rule):
+    assert test_backend.convert(temporal_correlation_rule) == [
         """subsearch { EventID=4625 | set event_type="failed_logon" }
 subsearch { EventID=4624 | set event_type="successful_logon" }
 
@@ -131,6 +149,15 @@ subsearch { EventID=4624 | set event_type="successful_logon" }
 
 | where eventtype_count >= 2"""
     ]
+
+
+def test_referenced_rule_expression_used_but_not_defined(
+    monkeypatch, test_backend, temporal_correlation_rule
+):
+    monkeypatch.setattr(test_backend, "referenced_rules_expression", None)
+    monkeypatch.setattr(test_backend, "referenced_rules_expression_joiner", None)
+    with pytest.raises(SigmaBackendError, match="referenced rule expression"):
+        test_backend.convert(temporal_correlation_rule)
 
 
 @pytest.fixture

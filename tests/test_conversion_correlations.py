@@ -296,9 +296,30 @@ correlation:
     ]
 
 
+def test_correlation_not_supported(monkeypatch, test_backend, event_count_correlation_rule):
+    monkeypatch.setattr(test_backend, "correlation_methods", None)
+    with pytest.raises(NotImplementedError, match="Backend does not support correlation"):
+        test_backend.convert(event_count_correlation_rule)
+
+
 def test_correlation_method_not_supported(test_backend, event_count_correlation_rule):
     with pytest.raises(SigmaConversionError, match="Correlation method 'invalid' is not supported"):
         test_backend.convert(event_count_correlation_rule, correlation_method="invalid")
+
+
+def test_correlation_method_no_supported_for_correlation_type(
+    monkeypatch, test_backend, event_count_correlation_rule
+):
+    monkeypatch.setattr(
+        test_backend,
+        "correlation_methods",
+        {"test": "Test correlation method", "another": "Another correlation method"},
+    )
+    with pytest.raises(
+        SigmaConversionError,
+        match="Correlation method 'another' is not supported by backend for correlation type 'event_count'",
+    ):
+        test_backend.convert(event_count_correlation_rule, correlation_method="another")
 
 
 def test_correlation_type_not_supported(monkeypatch, test_backend, event_count_correlation_rule):

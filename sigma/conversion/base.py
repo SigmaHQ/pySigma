@@ -543,6 +543,13 @@ class Backend(ABC):
         Raises:
             NotImplementedError: If the conversion for the given correlation rule type is not implemented.
         """
+        if self.correlation_methods is None:
+            raise NotImplementedError("Backend does not support correlation rules.")
+        if method not in self.correlation_methods:
+            raise SigmaConversionError(
+                f"Correlation method '{method}' is not supported by backend '{self.name}'."
+            )
+
         if rule.type == SigmaCorrelationType.EVENT_COUNT:
             return self.convert_correlation_event_count_rule(rule, output_format, method)
         elif rule.type == SigmaCorrelationType.VALUE_COUNT:
@@ -1520,9 +1527,9 @@ class TextQueryBackend(Backend):
             )
 
         method = method or self.default_correlation_method
-        if method not in self.correlation_methods or method not in template:
+        if method not in template:
             raise SigmaConversionError(
-                f"Correlation method '{method}' is not supported by backend."
+                f"Correlation method '{method}' is not supported by backend for correlation type '{correlation_type}'."
             )
 
         return [

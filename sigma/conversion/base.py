@@ -114,6 +114,12 @@ class Backend(ABC):
         bool
     ] = False  # Does the backend requires that a processing pipeline is provided?
 
+    # Backends can offer different methods of correlation query generation. That are described by
+    # correlation_methods:
+    correlation_methods: ClassVar[Optional[Dict[str, str]]] = None
+    # The following class variable defines the default method that should be chosen if none is provided.
+    default_correlation_method: ClassVar[str] = "default"
+
     processing_pipeline: ProcessingPipeline
     last_processing_pipeline: ProcessingPipeline
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline()
@@ -848,12 +854,6 @@ class TextQueryBackend(Backend):
     ] = None  # String used as query if final query only contains deferred expression
 
     ### Correlation rule templates
-    # Backends can offer different methods of correlation query generation. That are described by
-    # correlation_methods:
-    correlation_methods: ClassVar[Optional[Dict[str, str]]] = None
-    # The following class variable defines the default method that should be chosen if none is provided.
-    default_correlation_method: ClassVar[str] = "default"
-
     ## Correlation query frame
     # The correlation query frame is the basic structure of a correlation query for each correlation
     # type. It contains the following placeholders:

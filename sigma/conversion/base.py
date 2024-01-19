@@ -545,6 +545,7 @@ class Backend(ABC):
         """
         if self.correlation_methods is None:
             raise NotImplementedError("Backend does not support correlation rules.")
+        method = method or self.default_correlation_method
         if method not in self.correlation_methods:
             raise SigmaConversionError(
                 f"Correlation method '{method}' is not supported by backend '{self.name}'."
@@ -1513,10 +1514,7 @@ class TextQueryBackend(Backend):
     # which itself call convert_correlation_rule_from_template that dispatches to the three
     # correlation query phases: search, aggregation and condition.
     def convert_correlation_rule_from_template(
-        self,
-        rule: SigmaCorrelationRule,
-        correlation_type: SigmaCorrelationTypeLiteral,
-        method: Optional[str] = None,
+        self, rule: SigmaCorrelationRule, correlation_type: SigmaCorrelationTypeLiteral, method: str
     ) -> str:
         template = (
             getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
@@ -1526,7 +1524,6 @@ class TextQueryBackend(Backend):
                 f"Correlation rule type '{correlation_type}' is not supported by backend."
             )
 
-        method = method or self.default_correlation_method
         if method not in template:
             raise SigmaConversionError(
                 f"Correlation method '{method}' is not supported by backend for correlation type '{correlation_type}'."
@@ -1639,14 +1636,9 @@ class TextQueryBackend(Backend):
 
     # Implementation of the aggregation phase of the correlation query.
     def convert_correlation_aggregation_from_template(
-        self,
-        rule: SigmaCorrelationRule,
-        correlation_type: SigmaCorrelationTypeLiteral,
-        method: Optional[str] = None,
+        self, rule: SigmaCorrelationRule, correlation_type: SigmaCorrelationTypeLiteral, method: str
     ) -> str:
-        template = getattr(self, f"{correlation_type}_aggregation_expression")[
-            method or self.default_correlation_method
-        ]
+        template = getattr(self, f"{correlation_type}_aggregation_expression")[method]
         return template.format(
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.rules, method),
@@ -1658,32 +1650,26 @@ class TextQueryBackend(Backend):
         )
 
     def convert_correlation_aggregation_groupby_from_template(
-        self,
-        group_by: Optional[List[str]],
-        method: Optional[str] = None,
+        self, group_by: Optional[List[str]], method: str
     ) -> str:
         if group_by is None:
             if self.groupby_expression_nofield is None:
                 return ""
             else:
-                return self.groupby_expression_nofield[method or self.default_correlation_method]
+                return self.groupby_expression_nofield[method]
         else:
-            return self.groupby_expression[method or self.default_correlation_method].format(
-                fields=self.groupby_field_expression_joiner[
-                    method or self.default_correlation_method
-                ].join(
+            return self.groupby_expression[method].format(
+                fields=self.groupby_field_expression_joiner[method].join(
                     (
-                        self.groupby_field_expression[
-                            method or self.default_correlation_method
-                        ].format(field=self.escape_and_quote_field(field))
+                        self.groupby_field_expression[method].format(
+                            field=self.escape_and_quote_field(field)
+                        )
                         for field in group_by
                     )
                 )
             )
 
-    def convert_referenced_rules(
-        self, referenced_rules: List[SigmaRuleReference], method: Optional[str] = None
-    ):
+    def convert_referenced_rules(self, referenced_rules: List[SigmaRuleReference], method: str):
         if (
             self.referenced_rules_expression is None
             or self.referenced_rules_expression_joiner is None
@@ -1694,13 +1680,11 @@ class TextQueryBackend(Backend):
                 )
             )
         else:
-            return self.referenced_rules_expression_joiner[
-                method or self.default_correlation_method
-            ].join(
+            return self.referenced_rules_expression_joiner[method].join(
                 (
-                    self.referenced_rules_expression[
-                        method or self.default_correlation_method
-                    ].format(ruleid=rule_reference.rule.name or rule_reference.rule.id)
+                    self.referenced_rules_expression[method].format(
+                        ruleid=rule_reference.rule.name or rule_reference.rule.id
+                    )
                     for rule_reference in referenced_rules
                 )
             )
@@ -1711,11 +1695,9 @@ class TextQueryBackend(Backend):
         cond: SigmaCorrelationCondition,
         referenced_rules: List[SigmaRuleReference],
         correlation_type: SigmaCorrelationTypeLiteral,
-        method: Optional[str] = None,
+        method: str,
     ) -> str:
-        template = getattr(self, f"{correlation_type}_condition_expression")[
-            method or self.default_correlation_method
-        ]
+        template = getattr(self, f"{correlation_type}_condition_expression")[method]
         return template.format(
             field=cond.fieldref,
             op=self.correlation_condition_mapping[cond.op],

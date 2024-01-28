@@ -105,14 +105,14 @@ class Backend(ABC):
     """
 
     name: ClassVar[str] = "Base backend"  # A descriptive name of the backend
-    formats: ClassVar[
-        Dict[str, str]
-    ] = {  # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
-        "default": "Default output format",
-    }
-    requires_pipeline: ClassVar[
-        bool
-    ] = False  # Does the backend requires that a processing pipeline is provided?
+    formats: ClassVar[Dict[str, str]] = (
+        {  # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
+            "default": "Default output format",
+        }
+    )
+    requires_pipeline: ClassVar[bool] = (
+        False  # Does the backend requires that a processing pipeline is provided?
+    )
 
     # Backends can offer different methods of correlation query generation. That are described by
     # correlation_methods:
@@ -133,9 +133,9 @@ class Backend(ABC):
     # in-expressions
     convert_or_as_in: ClassVar[bool] = False  # Convert OR as in-expression
     convert_and_as_in: ClassVar[bool] = False  # Convert AND as in-expression
-    in_expressions_allow_wildcards: ClassVar[
-        bool
-    ] = False  # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
+    in_expressions_allow_wildcards: ClassVar[bool] = (
+        False  # Values in list can contain wildcards. If set to False (default) only plain values are converted into in-expressions.
+    )
 
     # not exists: convert as "not exists-expression" or as dedicated expression
     explicit_not_exists_expression: ClassVar[bool] = False
@@ -698,84 +698,88 @@ class TextQueryBackend(Backend):
         ConditionAND,
         ConditionOR,
     )
-    group_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for precedence override grouping as format string with {expr} placeholder
-    parenthesize: bool = False  # Reflect parse tree by putting parenthesis around all expressions - use this for target systems without strict precedence rules.
+    group_expression: ClassVar[Optional[str]] = (
+        None  # Expression for precedence override grouping as format string with {expr} placeholder
+    )
+    parenthesize: bool = (
+        False  # Reflect parse tree by putting parenthesis around all expressions - use this for target systems without strict precedence rules.
+    )
 
     # Generated query tokens
     token_separator: str = " "  # separator inserted between all boolean operators
     or_token: ClassVar[Optional[str]] = None
     and_token: ClassVar[Optional[str]] = None
     not_token: ClassVar[Optional[str]] = None
-    eq_token: ClassVar[
-        Optional[str]
-    ] = None  # Token inserted between field and value (without separator)
+    eq_token: ClassVar[Optional[str]] = (
+        None  # Token inserted between field and value (without separator)
+    )
 
     # String output
     ## Fields
     ### Quoting
-    field_quote: ClassVar[
-        Optional[str]
-    ] = None  # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
-    field_quote_pattern: ClassVar[
-        Optional[Pattern]
-    ] = None  # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
-    field_quote_pattern_negation: ClassVar[
-        bool
-    ] = True  # Negate field_quote_pattern result. Field name is quoted if pattern doesn't matches if set to True (default).
+    field_quote: ClassVar[Optional[str]] = (
+        None  # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
+    )
+    field_quote_pattern: ClassVar[Optional[Pattern]] = (
+        None  # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
+    )
+    field_quote_pattern_negation: ClassVar[bool] = (
+        True  # Negate field_quote_pattern result. Field name is quoted if pattern doesn't matches if set to True (default).
+    )
 
     ### Escaping
-    field_escape: ClassVar[
-        Optional[str]
-    ] = None  # Character to escape particular parts defined in field_escape_pattern.
+    field_escape: ClassVar[Optional[str]] = (
+        None  # Character to escape particular parts defined in field_escape_pattern.
+    )
     field_escape_quote: ClassVar[bool] = True  # Escape quote string defined in field_quote
-    field_escape_pattern: ClassVar[
-        Optional[Pattern]
-    ] = None  # All matches of this pattern are prepended with the string contained in field_escape.
+    field_escape_pattern: ClassVar[Optional[Pattern]] = (
+        None  # All matches of this pattern are prepended with the string contained in field_escape.
+    )
 
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
-    str_quote_pattern: ClassVar[
-        Optional[Pattern]
-    ] = None  # Quote string values that match (or don't match) this pattern
+    str_quote_pattern: ClassVar[Optional[Pattern]] = (
+        None  # Quote string values that match (or don't match) this pattern
+    )
     str_quote_pattern_negation: ClassVar[bool] = True  # Negate str_quote_pattern result
     ### String escaping and filtering
-    escape_char: ClassVar[
-        Optional[str]
-    ] = None  # Escaping character for special characters inside string
+    escape_char: ClassVar[Optional[str]] = (
+        None  # Escaping character for special characters inside string
+    )
     wildcard_multi: ClassVar[Optional[str]] = None  # Character used as multi-character wildcard
     wildcard_single: ClassVar[Optional[str]] = None  # Character used as single-character wildcard
     add_escaped: ClassVar[str] = ""  # Characters quoted in addition to wildcards and string quote
     filter_chars: ClassVar[str] = ""  # Characters filtered
     ### Booleans
-    bool_values: ClassVar[
-        Dict[bool, Optional[str]]
-    ] = {  # Values to which boolean values are mapped.
-        True: None,
-        False: None,
-    }
+    bool_values: ClassVar[Dict[bool, Optional[str]]] = (
+        {  # Values to which boolean values are mapped.
+            True: None,
+            False: None,
+        }
+    )
 
     # String matching operators. if none is appropriate eq_token is used.
     startswith_expression: ClassVar[Optional[str]] = None
     endswith_expression: ClassVar[Optional[str]] = None
     contains_expression: ClassVar[Optional[str]] = None
-    wildcard_match_expression: ClassVar[
-        Optional[str]
-    ] = None  # Special expression if wildcards can't be matched with the eq_token operator
+    wildcard_match_expression: ClassVar[Optional[str]] = (
+        None  # Special expression if wildcards can't be matched with the eq_token operator
+    )
 
     # Regular expressions
     # Regular expression query as format string with placeholders {field}, {regex}, {flag_x} where x
     # is one of the flags shortcuts supported by Sigma (currently i, m and s) and refers to the
     # token stored in the class variable re_flags.
     re_expression: ClassVar[Optional[str]] = None
-    re_escape_char: ClassVar[
-        Optional[str]
-    ] = None  # Character used for escaping in regular expressions
+    re_escape_char: ClassVar[Optional[str]] = (
+        None  # Character used for escaping in regular expressions
+    )
     re_escape: ClassVar[Tuple[str]] = ()  # List of strings that are escaped
     re_escape_escape_char: bool = True  # If True, the escape character is also escaped
-    re_flag_prefix: bool = True  # If True, the flags are prepended as (?x) group at the beginning of the regular expression, e.g. (?i). If this is not supported by the target, it should be set to False.
+    re_flag_prefix: bool = (
+        True  # If True, the flags are prepended as (?x) group at the beginning of the regular expression, e.g. (?i). If this is not supported by the target, it should be set to False.
+    )
     # Mapping from SigmaRegularExpressionFlag values to static string templates that are used in
     # flag_x placeholders in re_expression template.
     # By default, i, m and s are defined. If a flag is not supported by the target query language,
@@ -793,73 +797,73 @@ class TextQueryBackend(Backend):
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
-    cidr_expression: ClassVar[
-        Optional[str]
-    ] = None  # CIDR expression query as format string with placeholders {field}, {value} (the whole CIDR value), {network} (network part only), {prefixlen} (length of network mask prefix) and {netmask} (CIDR network mask only)
+    cidr_expression: ClassVar[Optional[str]] = (
+        None  # CIDR expression query as format string with placeholders {field}, {value} (the whole CIDR value), {network} (network part only), {prefixlen} (length of network mask prefix) and {netmask} (CIDR network mask only)
+    )
 
     # Numeric comparison operators
-    compare_op_expression: ClassVar[
-        Optional[str]
-    ] = None  # Compare operation query as format string with placeholders {field}, {operator} and {value}
-    compare_operators: ClassVar[
-        Optional[Dict[SigmaCompareExpression.CompareOperators, str]]
-    ] = None  # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
+    compare_op_expression: ClassVar[Optional[str]] = (
+        None  # Compare operation query as format string with placeholders {field}, {operator} and {value}
+    )
+    compare_operators: ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = (
+        None  # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
+    )
 
     # Expression for comparing two event fields
-    field_equals_field_expression: ClassVar[
-        Optional[str]
-    ] = None  # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
+    field_equals_field_expression: ClassVar[Optional[str]] = (
+        None  # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
+    )
     field_equals_field_escaping_quoting: Tuple[bool, bool] = (
         True,
         True,
     )  # If regular field-escaping/quoting is applied to field1 and field2. A custom escaping/quoting can be implemented in the convert_condition_field_eq_field_escape_and_quote method.
 
     # Null/None expressions
-    field_null_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for field has null value as format string with {field} placeholder for field name
+    field_null_expression: ClassVar[Optional[str]] = (
+        None  # Expression for field has null value as format string with {field} placeholder for field name
+    )
 
     # Field existence condition expressions.
-    field_exists_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for field existence as format string with {field} placeholder for field name
-    field_not_exists_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
+    field_exists_expression: ClassVar[Optional[str]] = (
+        None  # Expression for field existence as format string with {field} placeholder for field name
+    )
+    field_not_exists_expression: ClassVar[Optional[str]] = (
+        None  # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
+    )
 
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
-    field_in_list_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for field in list of values as format string with placeholders {field}, {op} and {list}
-    or_in_operator: ClassVar[
-        Optional[str]
-    ] = None  # Operator used to convert OR into in-expressions. Must be set if convert_or_as_in is set
-    and_in_operator: ClassVar[
-        Optional[str]
-    ] = None  # Operator used to convert AND into in-expressions. Must be set if convert_and_as_in is set
+    field_in_list_expression: ClassVar[Optional[str]] = (
+        None  # Expression for field in list of values as format string with placeholders {field}, {op} and {list}
+    )
+    or_in_operator: ClassVar[Optional[str]] = (
+        None  # Operator used to convert OR into in-expressions. Must be set if convert_or_as_in is set
+    )
+    and_in_operator: ClassVar[Optional[str]] = (
+        None  # Operator used to convert AND into in-expressions. Must be set if convert_and_as_in is set
+    )
     list_separator: ClassVar[Optional[str]] = None  # List element separator
 
     # Value not bound to a field
-    unbound_value_str_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for string value not bound to a field as format string with placeholder {value}
-    unbound_value_num_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for number value not bound to a field as format string with placeholder {value}
-    unbound_value_re_expression: ClassVar[
-        Optional[str]
-    ] = None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
+    unbound_value_str_expression: ClassVar[Optional[str]] = (
+        None  # Expression for string value not bound to a field as format string with placeholder {value}
+    )
+    unbound_value_num_expression: ClassVar[Optional[str]] = (
+        None  # Expression for number value not bound to a field as format string with placeholder {value}
+    )
+    unbound_value_re_expression: ClassVar[Optional[str]] = (
+        None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
+    )
 
     # Query finalization: appending and concatenating deferred query part
-    deferred_start: ClassVar[
-        Optional[str]
-    ] = None  # String used as separator between main query and deferred parts
-    deferred_separator: ClassVar[
-        Optional[str]
-    ] = None  # String used to join multiple deferred query parts
-    deferred_only_query: ClassVar[
-        Optional[str]
-    ] = None  # String used as query if final query only contains deferred expression
+    deferred_start: ClassVar[Optional[str]] = (
+        None  # String used as separator between main query and deferred parts
+    )
+    deferred_separator: ClassVar[Optional[str]] = (
+        None  # String used to join multiple deferred query parts
+    )
+    deferred_only_query: ClassVar[Optional[str]] = (
+        None  # String used as query if final query only contains deferred expression
+    )
 
     ### Correlation rule templates
     ## Correlation query frame
@@ -927,18 +931,18 @@ class TextQueryBackend(Backend):
     # * {timespan} contains the timespan converted into the target format by the convert_timespan
     #   method.
     # * {groupby} contains the group by expression generated by the groupby_* templates below.
-    event_count_aggregation_expression: ClassVar[
-        Optional[Dict[str, str]]
-    ] = None  # Expression for event count correlation rules
-    value_count_aggregation_expression: ClassVar[
-        Optional[Dict[str, str]]
-    ] = None  # Expression for value count correlation rules
-    temporal_aggregation_expression: ClassVar[
-        Optional[Dict[str, str]]
-    ] = None  # Expression for temporal correlation rules
-    temporal_ordered_aggregation_expression: ClassVar[
-        Optional[Dict[str, str]]
-    ] = None  # Expression for ordered temporal correlation rules
+    event_count_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+        None  # Expression for event count correlation rules
+    )
+    value_count_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+        None  # Expression for value count correlation rules
+    )
+    temporal_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+        None  # Expression for temporal correlation rules
+    )
+    temporal_ordered_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+        None  # Expression for ordered temporal correlation rules
+    )
 
     # Mapping from Sigma timespan to target format timespan specification. This can be:
     # * A dictionary mapping Sigma timespan specifications to target format timespan specifications,
@@ -949,9 +953,9 @@ class TextQueryBackend(Backend):
     # The mapping can be incomplete. Non-existent timespan specifiers will be passed as-is if no
     # mapping is defined for them.
     timespan_mapping: ClassVar[Optional[Dict[str, str]]] = None
-    timespan_seconds: ClassVar[
-        bool
-    ] = False  # If True, timespan is converted to seconds instead of using a more readable timespan specification like 5m.
+    timespan_seconds: ClassVar[bool] = (
+        False  # If True, timespan is converted to seconds instead of using a more readable timespan specification like 5m.
+    )
 
     # Expression for a referenced rule as format string with {ruleid} placeholder that is replaced
     # with the rule name or id similar to the search query expression.
@@ -1054,9 +1058,11 @@ class TextQueryBackend(Backend):
                 (
                     converted
                     for converted in (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
+                        (
+                            self.convert_condition(arg, state)
+                            if self.compare_precedence(cond, arg)
+                            else self.convert_condition_group(arg, state)
+                        )
                         for arg in cond.args
                     )
                     if converted is not None and not isinstance(converted, DeferredQueryExpression)
@@ -1076,9 +1082,11 @@ class TextQueryBackend(Backend):
             op=self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator,
             list=self.list_separator.join(
                 [
-                    self.convert_value_str(arg.value, state)
-                    if isinstance(arg.value, SigmaString)  # string escaping and qouting
-                    else str(arg.value)  # value is number
+                    (
+                        self.convert_value_str(arg.value, state)
+                        if isinstance(arg.value, SigmaString)  # string escaping and qouting
+                        else str(arg.value)
+                    )  # value is number
                     for arg in cond.args
                 ]
             ),
@@ -1100,9 +1108,11 @@ class TextQueryBackend(Backend):
                 (
                     converted
                     for converted in (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
+                        (
+                            self.convert_condition(arg, state)
+                            if self.compare_precedence(cond, arg)
+                            else self.convert_condition_group(arg, state)
+                        )
                         for arg in cond.args
                     )
                     if converted is not None and not isinstance(converted, DeferredQueryExpression)
@@ -1433,12 +1443,16 @@ class TextQueryBackend(Backend):
     ) -> Tuple[str, str]:
         """Escape and quote field names of a field-quals-field expression."""
         return (
-            self.escape_and_quote_field(field1)
-            if self.field_equals_field_escaping_quoting[0]
-            else field1,
-            self.escape_and_quote_field(field2)
-            if self.field_equals_field_escaping_quoting[1]
-            else field2,
+            (
+                self.escape_and_quote_field(field1)
+                if self.field_equals_field_escaping_quoting[0]
+                else field1
+            ),
+            (
+                self.escape_and_quote_field(field2)
+                if self.field_equals_field_escaping_quoting[1]
+                else field2
+            ),
         )
 
     def convert_condition_field_eq_field(

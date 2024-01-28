@@ -17,18 +17,18 @@ from sigma.validators.base import (
 
 @dataclass
 class AllWithoutContainsModifierIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "A field-bound 'all' modifier without 'contains' modifier doesn't matches anything"
+    description: ClassVar[str] = (
+        "A field-bound 'all' modifier without 'contains' modifier doesn't matches anything"
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     detection_item: SigmaDetectionItem
 
 
 @dataclass
 class Base64OffsetWithoutContainsModifierIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "A 'base64offset' modifier must be followed by a 'contains' modifier, because calculated values will be prefixed/suffixed with further characters."
+    description: ClassVar[str] = (
+        "A 'base64offset' modifier must be followed by a 'contains' modifier, because calculated values will be prefixed/suffixed with further characters."
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     detection_item: SigmaDetectionItem
 

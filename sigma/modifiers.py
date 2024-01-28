@@ -326,33 +326,33 @@ class SigmaCompareModifier(SigmaValueModifier):
 class SigmaLessThanModifier(SigmaCompareModifier):
     """Numeric less than (<) matching."""
 
-    op: ClassVar[
-        SigmaCompareExpression.CompareOperators
-    ] = SigmaCompareExpression.CompareOperators.LT
+    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
+        SigmaCompareExpression.CompareOperators.LT
+    )
 
 
 class SigmaLessThanEqualModifier(SigmaCompareModifier):
     """Numeric less than or equal (<=) matching."""
 
-    op: ClassVar[
-        SigmaCompareExpression.CompareOperators
-    ] = SigmaCompareExpression.CompareOperators.LTE
+    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
+        SigmaCompareExpression.CompareOperators.LTE
+    )
 
 
 class SigmaGreaterThanModifier(SigmaCompareModifier):
     """Numeric greater than (>) matching."""
 
-    op: ClassVar[
-        SigmaCompareExpression.CompareOperators
-    ] = SigmaCompareExpression.CompareOperators.GT
+    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
+        SigmaCompareExpression.CompareOperators.GT
+    )
 
 
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     """Numeric greater than or equal (>=) matching."""
 
-    op: ClassVar[
-        SigmaCompareExpression.CompareOperators
-    ] = SigmaCompareExpression.CompareOperators.GTE
+    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
+        SigmaCompareExpression.CompareOperators.GTE
+    )
 
 
 class SigmaFieldReferenceModifier(SigmaValueModifier):

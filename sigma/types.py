@@ -375,9 +375,11 @@ class SigmaString(SigmaType):
     def __len__(self) -> int:
         return sum(
             (
-                len(e)
-                if isinstance(e, str)  # count string parts with number of characters
-                else 1  # everything else is counted as single character
+                (
+                    len(e)
+                    if isinstance(e, str)  # count string parts with number of characters
+                    else 1
+                )  # everything else is counted as single character
                 for e in self.s
             )
         )

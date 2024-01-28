@@ -66,9 +66,9 @@ class ParentChainMixin:
 @dataclass
 class ConditionItem(ParentChainMixin, ABC):
     arg_count: ClassVar[int]
-    token_list: ClassVar[
-        bool
-    ] = False  # determines if the value passed as tokenized is a ParseResult or a simple list object
+    token_list: ClassVar[bool] = (
+        False  # determines if the value passed as tokenized is a ParseResult or a simple list object
+    )
     args: List[
         Union[
             "ConditionItem",

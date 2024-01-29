@@ -14,6 +14,7 @@ from sigma.validators.core.metadata import (
     IdentifierExistenceIssue,
     IdentifierCollisionIssue,
 )
+from .test_correlations import correlation_rule
 
 
 @pytest.fixture
@@ -31,6 +32,15 @@ def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with
             rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")
         ),
     ]
+
+
+def test_sigmavalidator_validate_correlation_rules(correlation_rule):
+    rules = SigmaCollection([correlation_rule])
+    validator = SigmaValidator(
+        {IdentifierExistenceValidator, IdentifierUniquenessValidator, DanglingDetectionValidator}
+    )
+    issues = validator.validate_rules(rules)
+    assert issues == [IdentifierExistenceIssue([correlation_rule])]
 
 
 def test_sigmavalidator_exclusions(rule_with_id, rule_without_id, rules_with_id_collision):

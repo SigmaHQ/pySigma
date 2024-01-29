@@ -3,6 +3,7 @@ from re import Pattern
 import re
 from typing import ClassVar, List, Set
 from sigma.conditions import ConditionIdentifier, ConditionItem, ConditionSelector
+from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetections, SigmaRule
 from sigma.validators.base import (
     SigmaValidationIssue,
@@ -49,6 +50,9 @@ class DanglingDetectionValidator(SigmaRuleValidator):
             return set()
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if isinstance(rule, SigmaCorrelationRule):
+            return []  # Correlation rules do not have detections
+
         detection_names = {  # collect detection names
             name for name in rule.detection.detections.keys()
         }
@@ -70,6 +74,9 @@ class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
     """Detect conditions refering to 'them' with only one detection."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if isinstance(rule, SigmaCorrelationRule):
+            return []  # Correlation rules do not have detections
+
         if (
             any(["them" in condition for condition in rule.detection.condition])
             and len(rule.detection.detections) == 1
@@ -93,6 +100,9 @@ class AllOfThemConditionValidator(SigmaRuleValidator):
     re_all_of_them: ClassVar[Pattern] = re.compile("all\\s+of\\s+them")
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if isinstance(rule, SigmaCorrelationRule):
+            return []  # Correlation rules do not have detections
+
         if any([self.re_all_of_them.search(condition) for condition in rule.detection.condition]):
             return [AllOfThemConditionIssue([rule])]
         else:

@@ -1,12 +1,6 @@
-from uuid import UUID
-from wsgiref.validate import validator
-
 import pytest
-from sigma.exceptions import SigmaValueError
-
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from sigma.types import SigmaString
-
 from sigma.validators.core.logsources import (
     SpecificInsteadOfGenericLogsourceValidator,
     SpecificInsteadOfGenericLogsourceIssue,
@@ -25,6 +19,7 @@ from sigma.validators.core.values import (
     EscapedWildcardIssue,
     EscapedWildcardValidator,
 )
+from .test_correlations import correlation_rule
 
 
 @pytest.fixture
@@ -116,6 +111,11 @@ def test_validator_double_wildcard_valid():
     assert validator.validate(rule) == []
 
 
+def test_validator_double_wildcard_correlation_rule(correlation_rule):
+    validator = DoubleWildcardValidator()
+    assert validator.validate(correlation_rule) == []
+
+
 def test_validator_number_as_string():
     validator = NumberAsStringValidator()
     rule = SigmaRule.from_yaml(
@@ -151,6 +151,11 @@ def test_validator_number_as_string_valid():
     assert validator.validate(rule) == []
 
 
+def test_validator_number_as_string_correlation_rule(correlation_rule):
+    validator = NumberAsStringValidator()
+    assert validator.validate(correlation_rule) == []
+
+
 def test_validator_control_characters():
     validator = ControlCharacterValidator()
     rule = SigmaRule.from_yaml(
@@ -167,6 +172,11 @@ def test_validator_control_characters():
     """
     )
     assert validator.validate(rule) == [ControlCharacterIssue([rule], SigmaString("\temp"))]
+
+
+def test_validator_control_characters_correlation_rule(correlation_rule):
+    validator = ControlCharacterValidator()
+    assert validator.validate(correlation_rule) == []
 
 
 def test_validator_wildcards_instead_of_contains():
@@ -288,6 +298,11 @@ def test_validator_wildcards_instead_of_modifiers_inconsistent():
     assert validator.validate(rule) == []
 
 
+def test_validator_wildcards_instead_of_modifiers_correlation_rule(correlation_rule):
+    validator = WildcardsInsteadOfModifiersValidator()
+    assert validator.validate(correlation_rule) == []
+
+
 def test_validator_sysmon_insteadof_generic_logsource():
     validator = SpecificInsteadOfGenericLogsourceValidator()
     rule = SigmaRule.from_yaml(
@@ -359,6 +374,11 @@ def test_validator_sysmon_insteadof_generic_logsource_other_valid():
     assert validator.validate(rule) == []
 
 
+def test_validator_specific_insteadof_generic_correlation_rule(correlation_rule):
+    validator = SpecificInsteadOfGenericLogsourceValidator()
+    assert validator.validate(correlation_rule) == []
+
+
 def test_validator_escaped_wildcard():
     validator = EscapedWildcardValidator()
     rule = SigmaRule.from_yaml(
@@ -393,3 +413,8 @@ def test_validator_escaped_wildcard_valid():
     """
     )
     assert validator.validate(rule) == []
+
+
+def test_validator_escaped_wildcard_correlation_rule(correlation_rule):
+    validator = EscapedWildcardValidator()
+    assert validator.validate(correlation_rule) == []

@@ -187,21 +187,24 @@ class DuplicateFilenameIssue(SigmaValidationIssue):
 class DuplicateFilenameValidator(SigmaRuleValidator):
     """Check rule filename uniqueness."""
 
-    filenames: Dict[str, List[SigmaRule]]
+    filenames_to_rules: Dict[str, List[SigmaRule]]
+    filenames_to_paths: Dict[str, Set[str]]
 
     def __init__(self):
-        self.filenames = defaultdict(list)
+        self.filenames_to_rules = defaultdict(list)
+        self.filenames_to_paths = defaultdict(set)
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if rule.source is not None:
-            self.filenames[rule.source.path.name].append(rule)
+            self.filenames_to_rules[rule.source.path.name].append(rule)
+            self.filenames_to_paths[rule.source.path.name].add(str(rule.source.path))
         return []
 
     def finalize(self) -> List[SigmaValidationIssue]:
         return [
-            DuplicateFilenameIssue(rules, filename)
-            for filename, rules in self.filenames.items()
-            if len(rules) > 1
+            DuplicateFilenameIssue(self.filenames_to_rules[filename], filename)
+            for filename, paths in self.filenames_to_paths.items()
+            if len(paths) > 1
         ]
 
 

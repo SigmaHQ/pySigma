@@ -4,7 +4,8 @@ from enum import Enum, auto
 import re
 from typing import ClassVar, Dict, List, Optional, Set, Type
 import sigma
-from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleTag
+from sigma.correlations import SigmaCorrelationRule
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
 
 
@@ -70,7 +71,7 @@ class SigmaRuleValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRuleBase) -> List[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
@@ -110,11 +111,14 @@ class SigmaDetectionValidator(SigmaRuleValidator):
         Iterate over all detections and call validate_detection() for each.
         """
         super().validate(rule)
-        return [
-            issue
-            for name, detection in rule.detection.detections.items()
-            for issue in self.validate_detection(name, detection)
-        ]
+        if isinstance(rule, SigmaCorrelationRule):
+            return []
+        else:
+            return [
+                issue
+                for name, detection in rule.detection.detections.items()
+                for issue in self.validate_detection(name, detection)
+            ]
 
     @abstractmethod
     def validate_detection(

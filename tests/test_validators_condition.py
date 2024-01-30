@@ -1,9 +1,5 @@
 import pytest
-from wsgiref.validate import validator
-
 from sigma.rule import SigmaRule
-
-
 from sigma.validators.core.condition import (
     AllOfThemConditionIssue,
     AllOfThemConditionValidator,
@@ -12,6 +8,7 @@ from sigma.validators.core.condition import (
     ThemConditionWithSingleDetectionIssue,
     ThemConditionWithSingleDetectionValidator,
 )
+from .test_correlations import correlation_rule
 
 
 def test_validator_dangling_detection():
@@ -35,6 +32,11 @@ def test_validator_dangling_detection():
     """
     )
     assert validator.validate(rule) == [DanglingDetectionIssue([rule], "unreferenced")]
+
+
+def test_validator_dangling_detection_correlation_rule(correlation_rule):
+    validator = DanglingDetectionValidator()
+    assert validator.validate(correlation_rule) == []
 
 
 def test_validator_dangling_detection_valid():
@@ -136,6 +138,11 @@ def test_validator_them_condition_with_multiple_detection():
     assert validator.validate(rule) == []
 
 
+def test_validator_them_condition_correlation_rule(correlation_rule):
+    validator = ThemConditionWithSingleDetectionValidator()
+    assert validator.validate(correlation_rule) == []
+
+
 def test_validator_all_of_them():
     validator = AllOfThemConditionValidator()
     rule = SigmaRule.from_yaml(
@@ -172,3 +179,8 @@ def test_validator_all_of_them_valid():
     """
     )
     assert validator.validate(rule) == []
+
+
+def test_validator_all_of_them_correlation_rule(correlation_rule):
+    validator = AllOfThemConditionValidator()
+    assert validator.validate(correlation_rule) == []

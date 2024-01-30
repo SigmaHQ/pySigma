@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 from typing import ClassVar, Dict, List, Tuple
+from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaNumber
 
@@ -68,6 +69,9 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
     """Identify usage of specific Windows event identifiers where corresponding generic log sources exist."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if isinstance(rule, SigmaCorrelationRule):
+            return []  # Correlation rules do not have detections
+
         for (
             logsource,
             eventid_mappings,

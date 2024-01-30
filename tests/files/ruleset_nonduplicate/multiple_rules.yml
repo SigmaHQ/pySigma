@@ -1,0 +1,19 @@
+title: Multiple Rules in one file 1
+id: 39d0de91-15ac-4457-8ed1-ff2f8732b52f
+status: experimental
+logsource:
+    category: test
+detection:
+    selection:
+        field1: value1
+    condition: selection
+---
+title: Multiple Rules in one file 2
+id: 17188e31-e629-4a0d-b0be-9d39e3282fca
+status: experimental
+logsource:
+    category: test
+detection:
+    selection:
+        field2: value2
+    condition: selection

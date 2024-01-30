@@ -1,10 +1,9 @@
 from uuid import UUID
-from wsgiref.validate import validator
-
 import pytest
 from sigma.exceptions import SigmaValueError
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from sigma.types import SigmaString
+from .test_correlations import correlation_rule
 
 
 from sigma.modifiers import (
@@ -105,6 +104,11 @@ def test_validator_base64offset_without_contains_modifier():
             [rule], SigmaDetectionItem("field", [SigmaBase64OffsetModifier], ["value"])
         )
     ]
+
+
+def test_validator_invalid_modifier_combination_correlation_rule(correlation_rule):
+    validator = InvalidModifierCombinationsValidator()
+    assert validator.validate(correlation_rule) == []
 
 
 def test_validator_base64offset_after_contains_modifier():

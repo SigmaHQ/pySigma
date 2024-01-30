@@ -352,6 +352,16 @@ def test_validator_duplicate_filename():
     assert validator.finalize() == [DuplicateFilenameIssue([rule1, rule2], "test_rule.yml")]
 
 
+def test_validator_duplicate_filename_multiple_rules_in_one_file():
+    validator = DuplicateFilenameValidator()
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/ruleset_nonduplicate"])
+    rule1 = sigma_collection[0]
+    rule2 = sigma_collection[1]
+    assert validator.validate(rule1) == []
+    assert validator.validate(rule2) == []
+    assert validator.finalize() == []
+
+
 def test_validator_sigmahqfilename():
     validator = FilenameSigmahqValidator()
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])

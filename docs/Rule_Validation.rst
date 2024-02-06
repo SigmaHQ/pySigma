@@ -35,7 +35,7 @@ Usage
 Initialize a *SigmaValidator* object with the set of validators that should be used. The following
 code instantiates it with all available validators:::
 
-    from sigma.validators import validators
+    from sigma.validators.core import validators
     rule_validator = SigmaValidator(validators.values())
 
 *SigmaValidator* instantiation can also be made configurable with YAML files. For this purpose

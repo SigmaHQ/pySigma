@@ -60,9 +60,9 @@ class NumberAsStringValidator(SigmaStringValueValidator):
 
 @dataclass
 class ControlCharacterIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "String contains control character likely caused by missing (double-)slash"
+    description: ClassVar[str] = (
+        "String contains control character likely caused by missing (double-)slash"
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     string: SigmaString
 
@@ -82,27 +82,27 @@ class ControlCharacterValidator(SigmaStringValueValidator):
 
 @dataclass
 class WildcardsInsteadOfContainsModifierIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "String contains wildcards at beginning and end instead of being modified with contains modifier"
+    description: ClassVar[str] = (
+        "String contains wildcards at beginning and end instead of being modified with contains modifier"
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
     detection_item: SigmaDetectionItem
 
 
 @dataclass
 class WildcardInsteadOfStartswithIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "String contains wildcard at end instead of being modified with startswith modifier"
+    description: ClassVar[str] = (
+        "String contains wildcard at end instead of being modified with startswith modifier"
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
     detection_item: SigmaDetectionItem
 
 
 @dataclass
 class WildcardInsteadOfEndswithIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "String contains wildcard at beginning instead of being modified with endswith modifier"
+    description: ClassVar[str] = (
+        "String contains wildcard at beginning instead of being modified with endswith modifier"
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
     detection_item: SigmaDetectionItem
 
@@ -160,9 +160,9 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
 
 @dataclass
 class EscapedWildcardIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "Rule contains an escaped wildcard in the rule logic. Make sure the escape is intentional."
+    description: ClassVar[str] = (
+        "Rule contains an escaped wildcard in the rule logic. Make sure the escape is intentional."
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
     string: SigmaString
 

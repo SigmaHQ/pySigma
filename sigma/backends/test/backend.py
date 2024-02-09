@@ -115,9 +115,9 @@ class TextQueryTestBackend(TextQueryBackend):
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
     correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
-    correlation_search_multi_rule_query_expression: ClassVar[
-        str
-    ] = 'subsearch {{ {query} | set event_type="{ruleid}"{normalization} }}'
+    correlation_search_multi_rule_query_expression: ClassVar[str] = (
+        'subsearch {{ {query} | set event_type="{ruleid}"{normalization} }}'
+    )
     correlation_search_multi_rule_query_expression_joiner: ClassVar[str] = "\n"
 
     correlation_search_field_normalization_expression: ClassVar[str] = " | set {alias}={field}"
@@ -191,9 +191,11 @@ class TextQueryTestBackend(TextQueryBackend):
 
     def finalize_output_list_of_dict(self, queries):
         return [
-            {"query": query, "test": self.testparam}
-            if self.testparam is not None
-            else {"query": query}
+            (
+                {"query": query, "test": self.testparam}
+                if self.testparam is not None
+                else {"query": query}
+            )
             for query in self.finalize_output_default(queries)
         ]
 

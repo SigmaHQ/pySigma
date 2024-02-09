@@ -614,13 +614,15 @@ def test_sigmadetection_processing_item_tracking(processing_item):
     detection.add_applied_processing_item(processing_item)
     assert all(
         [
-            detection_item.was_processed_by("test")
-            if isinstance(detection_item, SigmaDetectionItem)
-            else all(
-                [
-                    sub_detection_item.was_processed_by("test")
-                    for sub_detection_item in detection_item.detection_items
-                ]
+            (
+                detection_item.was_processed_by("test")
+                if isinstance(detection_item, SigmaDetectionItem)
+                else all(
+                    [
+                        sub_detection_item.was_processed_by("test")
+                        for sub_detection_item in detection_item.detection_items
+                    ]
+                )
             )
             for detection_item in detection.detection_items
         ]

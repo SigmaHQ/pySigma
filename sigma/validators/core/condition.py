@@ -88,9 +88,9 @@ class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
 
 @dataclass
 class AllOfThemConditionIssue(SigmaValidationIssue):
-    description: ClassVar[
-        str
-    ] = "Rule contains discouraged 'all of them' condition, use 'all of selection*' instead."
+    description: ClassVar[str] = (
+        "Rule contains discouraged 'all of them' condition, use 'all of selection*' instead."
+    )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 

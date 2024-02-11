@@ -45,6 +45,24 @@ def test_sigmalevel_str():
     assert str(SigmaLevel.MEDIUM) == "medium"
 
 
+def test_sigmalevel_comparation():
+    assert SigmaLevel.HIGH == SigmaLevel.HIGH
+    assert SigmaLevel.HIGH >= SigmaLevel.LOW
+    assert SigmaLevel.HIGH > SigmaLevel.LOW
+    assert SigmaLevel.HIGH != SigmaLevel.LOW
+    assert SigmaLevel.LOW <= SigmaLevel.HIGH
+    assert SigmaLevel.LOW < SigmaLevel.HIGH
+
+
+def test_sigmalevel_comparation_invalid():
+    assert not (SigmaLevel.HIGH == "HIGH")
+    assert not (SigmaLevel.HIGH >= "LOW")
+    assert not (SigmaLevel.HIGH > "LOW")
+    assert not (SigmaLevel.HIGH != "LOW")
+    assert not (SigmaLevel.LOW <= "HIGH")
+    assert not (SigmaLevel.LOW < "HIGH")
+
+
 def test_sigmastatus_str():
     assert str(SigmaStatus.STABLE) == "stable"
 

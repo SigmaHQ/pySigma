@@ -37,11 +37,41 @@ class EnumLowercaseStringMixin:
 
 
 class SigmaStatus(EnumLowercaseStringMixin, Enum):
-    STABLE = auto()
+    UNSUPPORTED = auto()
+    DEPRECATED = auto()
     EXPERIMENTAL = auto()
     TEST = auto()
-    DEPRECATED = auto()
-    UNSUPPORTED = auto()
+    STABLE = auto()
+
+    def __eq__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value == other.value
+        return False
+
+    def __ge__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value >= other.value
+        return False
+
+    def __gt__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value > other.value
+        return False
+
+    def __ne__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value != other.value
+        return False
+
+    def __le__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value <= other.value
+        return False
+
+    def __lt__(self, other):
+        if isinstance(other, SigmaStatus):
+            return self.value < other.value
+        return False
 
 
 class SigmaLevel(EnumLowercaseStringMixin, Enum):

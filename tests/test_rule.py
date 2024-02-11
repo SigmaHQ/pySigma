@@ -49,6 +49,24 @@ def test_sigmastatus_str():
     assert str(SigmaStatus.STABLE) == "stable"
 
 
+def test_sigmastatus_comparation():
+    assert SigmaStatus.STABLE == SigmaStatus.STABLE
+    assert SigmaStatus.STABLE >= SigmaStatus.EXPERIMENTAL
+    assert SigmaStatus.STABLE > SigmaStatus.EXPERIMENTAL
+    assert SigmaStatus.STABLE != SigmaStatus.EXPERIMENTAL
+    assert SigmaStatus.EXPERIMENTAL <= SigmaStatus.STABLE
+    assert SigmaStatus.EXPERIMENTAL < SigmaStatus.STABLE
+
+
+def test_sigmastatus_comparation_invalid():
+    assert not (SigmaStatus.STABLE == "STABLE")
+    assert not (SigmaStatus.STABLE >= "EXPERIMENTAL")
+    assert not (SigmaStatus.STABLE > "EXPERIMENTAL")
+    assert not (SigmaStatus.STABLE != "EXPERIMENTAL")
+    assert not (SigmaStatus.EXPERIMENTAL <= "STABLE")
+    assert not (SigmaStatus.EXPERIMENTAL < "STABLE")
+
+
 ### SigmaRuleTag tests ###
 def test_sigmaruletag_fromstr():
     assert SigmaRuleTag.from_str("namespace.name") == SigmaRuleTag("namespace", "name")

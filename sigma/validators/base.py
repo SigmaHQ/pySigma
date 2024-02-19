@@ -37,11 +37,11 @@ class SigmaValidationIssue(ABC):
 
     description: ClassVar[str] = "Sigma rule validation issue"
     severity: ClassVar[SigmaValidationIssueSeverity]
-    rules: List[SigmaRule]
+    rules: List[SigmaRuleBase]
 
     def __post_init__(self):
-        """Ensure that self.rules contains a list, even when a single rule was provided."""
-        if isinstance(self.rules, SigmaRule):
+        """Ensure that `self.rules` contains a list, even when a single rule was provided."""
+        if isinstance(self.rules, SigmaRuleBase):
             self.rules = [self.rules]
 
     def __str__(self):
@@ -75,7 +75,7 @@ class SigmaRuleValidator(ABC):
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
-        :type rule: SigmaRule
+        :type rule: SigmaRuleBase
         :return: List of validation issue objects describing.
         :rtype: List[SigmaValidationIssue]
         """
@@ -252,7 +252,7 @@ class SigmaTagValidator(SigmaRuleValidator):
     each tag.
     """
 
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRuleBase) -> List[SigmaValidationIssue]:
         super().validate(rule)
         return [issue for tag in rule.tags for issue in self.validate_tag(tag)]
 

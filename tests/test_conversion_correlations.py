@@ -151,6 +151,33 @@ subsearch { EventID=4624 | set event_type="successful_logon" }
     ]
 
 
+def test_temporal_correlation_multi_rule_with_typing_expression(
+    monkeypatch, test_backend, temporal_correlation_rule
+):
+    monkeypatch.setattr(
+        test_backend,
+        "temporal_correlation_query",
+        {"test": "{search}\n{typing}\n\n{aggregate}\n\n{condition}"},
+    )
+    monkeypatch.setattr(
+        test_backend, "correlation_search_multi_rule_query_expression", "( {query} )"
+    )
+    monkeypatch.setattr(
+        test_backend, "correlation_search_multi_rule_query_expression_joiner", " or "
+    )
+    monkeypatch.setattr(test_backend, "typing_expression", "| eval event_type=case({queries})")
+    monkeypatch.setattr(test_backend, "typing_rule_query_expression_joiner", ", ")
+    monkeypatch.setattr(test_backend, "typing_rule_query_expression", '{query}, "{ruleid}"')
+    assert test_backend.convert(temporal_correlation_rule) == [
+        """( EventID=4625 ) or ( EventID=4624 )
+| eval event_type=case(EventID=4625, "failed_logon", EventID=4624, "successful_logon")
+
+| temporal window=5min eventtypes=failed_logon,successful_logon by TargetUserName, TargetDomainName
+
+| where eventtype_count >= 2"""
+    ]
+
+
 def test_referenced_rule_expression_used_but_not_defined(
     monkeypatch, test_backend, temporal_correlation_rule
 ):

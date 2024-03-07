@@ -180,7 +180,7 @@ class InvalidNamespaceTagIssue(SigmaValidationIssue):
 class NamespaceTagValidator(SigmaTagValidator):
     """Validate rule tag name"""
 
-    allowed_namespace = {"attack", "car", "cve", "detection", "stp"}
+    allowed_namespace = {"attack", "car", "stp", "cve", "tlp", "detection"}
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         if tag.namespace not in self.allowed_namespace:

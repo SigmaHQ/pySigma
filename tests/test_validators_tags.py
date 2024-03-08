@@ -178,7 +178,19 @@ def test_validator_duplicate_tags():
             ["attaque.command_and_control"],
             InvalidNamespaceTagIssue,
         ),
-        (NamespaceTagValidator, ["cve.2023.007"], [], InvalidNamespaceTagIssue),
+        (
+            NamespaceTagValidator,
+            [
+                "attack.t1234",
+                "car.2016-04-005",
+                "stp.3k",
+                "cve.2023.007",
+                "tlp.amber",
+                "detection.threat_hunting",
+            ],
+            [],
+            InvalidNamespaceTagIssue,
+        ),
     ],
 )
 def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):

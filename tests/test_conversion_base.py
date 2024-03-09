@@ -21,7 +21,7 @@ from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
 
 
 @pytest.fixture
-def test_backend():
+def test_backend() -> TextQueryTestBackend:
     return TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -42,6 +42,8 @@ def test_backend():
                     field_name_conditions=[IncludeFieldCondition(["prefix"])],
                 ),
                 ProcessingItem(SetStateTransformation("index", "test")),
+                ProcessingItem(SetStateTransformation("data_source", "state_source")),
+                ProcessingItem(SetStateTransformation("output", "state_output")),
             ]
         ),
     )
@@ -2234,6 +2236,69 @@ def test_convert_state(test_backend):
             "state",
         )
         == ['index=test (mappedA="value")']
+    )
+
+
+def test_convert_query_expression(monkeypatch, test_backend: TextQueryTestBackend):
+    monkeypatch.setattr(
+        test_backend,
+        "query_expression",
+        "| from {pipeline_state[data_source]} | where {query} | output {conversion_state[output]}",
+    )
+    monkeypatch.setattr(test_backend, "pipeline_state_default", {"data_source": "default_source"})
+    monkeypatch.setattr(test_backend, "conversion_state_default", {"output": "default_output"})
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """
+            )
+        )
+        == ['| from state_source | where mappedA="value" | output state_output']
+    )
+
+
+def test_convert_query_expression_defaults(
+    monkeypatch,
+    test_backend: TextQueryTestBackend,
+):
+    monkeypatch.setattr(
+        test_backend,
+        "query_expression",
+        "| from {pipeline_state[other_data_source]} | where {query} | output {conversion_state[other_output]}",
+    )
+    monkeypatch.setattr(
+        test_backend, "pipeline_state_default", {"other_data_source": "default_source"}
+    )
+    monkeypatch.setattr(
+        test_backend, "conversion_state_default", {"other_output": "default_output"}
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value
+                condition: sel
+        """
+            )
+        )
+        == ['| from default_source | where mappedA="value" | output default_output']
     )
 
 

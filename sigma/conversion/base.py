@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from collections import defaultdict
+from collections import ChainMap, defaultdict
 import re
 
 from pyparsing import Set
@@ -711,6 +711,21 @@ class TextQueryBackend(Backend):
     eq_token: ClassVar[
         Optional[str]
     ] = None  # Token inserted between field and value (without separator)
+
+    # Query structure
+    # The generated query can be embedded into further structures. One common example are data
+    # source commands that are prepended to the matching condition and specify data repositories or
+    # tables from which the data is queried.
+    # This is specified as format string that contains the following placeholders:
+    # * {query}: The generated query
+    # * {rule}: The Sigma rule from which the query was generated
+    # * {conversion_state} and {pipeline_state}: state of the conversion and pipieline at the end of
+    #   query conversion.
+    query_expression: ClassVar[str] = "{query}"
+    # The following dicts define default values for conversion and pipeline state. They are used if
+    # the respective state is not set.
+    pipeline_state_default: ClassVar[Dict[str, str]] = dict()
+    conversion_state_default: ClassVar[Dict[str, str]] = dict()
 
     # String output
     ## Fields
@@ -1772,12 +1787,25 @@ class TextQueryBackend(Backend):
         Finalize query by appending deferred query parts to the main conversion result as specified
         with deferred_start and deferred_separator.
         """
+        # TODO when Python 3.8 is dropped: replace ChainMap with | operator.
+        pipeline_state = (
+            ChainMap(self.last_processing_pipeline.state, self.pipeline_state_default)
+            if self.last_processing_pipeline is not None
+            else self.pipeline_state_default
+        )
+        conversion_state = ChainMap(state.processing_state, self.conversion_state_default)
+
         if state.has_deferred():
             if isinstance(query, DeferredQueryExpression):
                 query = self.deferred_only_query
             return super().finalize_query(
                 rule,
-                query
+                self.query_expression.format(
+                    query=query,
+                    rule=rule,
+                    conversion_state=conversion_state,
+                    pipeline_state=pipeline_state,
+                )
                 + self.deferred_start
                 + self.deferred_separator.join(
                     (
@@ -1790,4 +1818,15 @@ class TextQueryBackend(Backend):
                 output_format,
             )
         else:
-            return super().finalize_query(rule, query, index, state, output_format)
+            return super().finalize_query(
+                rule,
+                self.query_expression.format(
+                    query=query,
+                    rule=rule,
+                    conversion_state=conversion_state,
+                    pipeline_state=pipeline_state,
+                ),
+                index,
+                state,
+                output_format,
+            )

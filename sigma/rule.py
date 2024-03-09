@@ -46,32 +46,38 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
     def __eq__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value == other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
     def __ge__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value >= other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
     def __gt__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value > other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
     def __ne__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value != other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
     def __le__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value <= other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
     def __lt__(self, other):
         if isinstance(other, SigmaStatus):
             return self.value < other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
 
 class SigmaLevel(EnumLowercaseStringMixin, Enum):
@@ -84,32 +90,38 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
     def __eq__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value == other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
     def __ge__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value >= other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
     def __gt__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value > other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
     def __ne__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value != other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
     def __le__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value <= other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
     def __lt__(self, other):
         if isinstance(other, SigmaLevel):
             return self.value < other.value
-        return False
+
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
 
 
 class SigmaRelatedType(EnumLowercaseStringMixin, Enum):

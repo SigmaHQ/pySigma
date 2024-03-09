@@ -55,12 +55,13 @@ def test_sigmalevel_comparation():
 
 
 def test_sigmalevel_comparation_invalid():
-    assert not (SigmaLevel.HIGH == "HIGH")
-    assert not (SigmaLevel.HIGH >= "LOW")
-    assert not (SigmaLevel.HIGH > "LOW")
-    assert not (SigmaLevel.HIGH != "LOW")
-    assert not (SigmaLevel.LOW <= "HIGH")
-    assert not (SigmaLevel.LOW < "HIGH")
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel .*"):
+        assert SigmaLevel.HIGH == "HIGH"
+        assert SigmaLevel.HIGH >= "LOW"
+        assert SigmaLevel.HIGH > "LOW"
+        assert SigmaLevel.HIGH != "LOW"
+        assert SigmaLevel.LOW <= "HIGH"
+        assert SigmaLevel.LOW < "HIGH"
 
 
 def test_sigmastatus_str():
@@ -77,12 +78,13 @@ def test_sigmastatus_comparation():
 
 
 def test_sigmastatus_comparation_invalid():
-    assert not (SigmaStatus.STABLE == "STABLE")
-    assert not (SigmaStatus.STABLE >= "EXPERIMENTAL")
-    assert not (SigmaStatus.STABLE > "EXPERIMENTAL")
-    assert not (SigmaStatus.STABLE != "EXPERIMENTAL")
-    assert not (SigmaStatus.EXPERIMENTAL <= "STABLE")
-    assert not (SigmaStatus.EXPERIMENTAL < "STABLE")
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus .*"):
+        assert SigmaStatus.STABLE == "STABLE"
+        assert SigmaStatus.STABLE >= "EXPERIMENTAL"
+        assert SigmaStatus.STABLE > "EXPERIMENTAL"
+        assert SigmaStatus.STABLE != "EXPERIMENTAL"
+        assert SigmaStatus.EXPERIMENTAL <= "STABLE"
+        assert SigmaStatus.EXPERIMENTAL < "STABLE"
 
 
 ### SigmaRuleTag tests ###

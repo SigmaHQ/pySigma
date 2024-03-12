@@ -664,8 +664,8 @@ class SigmaRuleBase:
     references: List[str] = field(default_factory=list)
     tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
-    date: Optional[date] = None
-    modified: Optional[date] = None
+    date: Optional["datetime.date"] = None
+    modified: Optional["datetime.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None

@@ -211,6 +211,7 @@ class Backend(ABC):
                 for index, query in enumerate(queries)
             ]
             rule.set_conversion_result(finalized_queries)
+            rule.set_conversion_states(states)
             if rule._output:
                 return finalized_queries
             else:

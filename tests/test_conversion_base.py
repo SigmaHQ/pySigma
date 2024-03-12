@@ -2,6 +2,7 @@ import re
 from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.conversion.base import TextQueryBackend
+from sigma.conversion.state import ConversionState
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.finalization import ConcatenateQueriesFinalizer
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
@@ -2218,10 +2219,8 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
 
 
 def test_convert_state(test_backend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    rules = SigmaCollection.from_yaml(
+        """
             title: Test
             status: test
             logsource:
@@ -2232,11 +2231,21 @@ def test_convert_state(test_backend):
                     fieldA: value
                 condition: sel
         """
-            ),
-            "state",
-        )
-        == ['index=test (mappedA="value")']
     )
+
+    assert test_backend.convert(
+        rules,
+        "state",
+    ) == ['index=test (mappedA="value")']
+    assert rules[0].get_conversion_state() == [
+        ConversionState(
+            processing_state={
+                "index": "test",
+                "data_source": "state_source",
+                "output": "state_output",
+            }
+        )
+    ]
 
 
 def test_convert_query_expression(monkeypatch, test_backend: TextQueryTestBackend):

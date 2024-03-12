@@ -680,6 +680,9 @@ class SigmaRuleBase:
     _conversion_result: Optional[List[Any]] = field(
         init=False, default=None, repr=False, compare=False
     )
+    _conversion_states: Optional[List["sigma.conversion.state.ConversionState"]] = field(
+        init=False, default=None, repr=False, compare=False
+    )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
 
     def __post_init__(self):
@@ -979,6 +982,19 @@ class SigmaRuleBase:
                 "Conversion result not available",
             )
         return self._conversion_result
+
+    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]):
+        """Set conversion state."""
+        self._conversion_states = state
+
+    def get_conversion_state(self) -> List["sigma.conversion.state.ConversionState"]:
+        """Get conversion state."""
+        if self._conversion_states is None:
+            raise sigma_exceptions.SigmaConversionError(
+                self,
+                "Conversion state not available",
+            )
+        return self._conversion_states
 
     def disable_output(self):
         """Disable output of rule."""

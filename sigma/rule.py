@@ -1011,7 +1011,7 @@ class SigmaRuleBase:
             "title": self.title,
         }
         # Convert to string where possible
-        for field in ("id", "status", "level", "author", "description"):
+        for field in ("id", "status", "level", "author", "description", "name"):
             if (s := self.__getattribute__(field)) is not None:
                 d[field] = str(s)
 

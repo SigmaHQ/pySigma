@@ -2243,10 +2243,13 @@ def test_convert_query_expression(monkeypatch, test_backend: TextQueryTestBacken
     monkeypatch.setattr(
         test_backend,
         "query_expression",
-        "| from {pipeline_state[data_source]} | where {query} | output {conversion_state[output]}",
+        "| from {state[data_source]} | where {query} | output {state[output]}",
     )
-    monkeypatch.setattr(test_backend, "pipeline_state_default", {"data_source": "default_source"})
-    monkeypatch.setattr(test_backend, "conversion_state_default", {"output": "default_output"})
+    monkeypatch.setattr(
+        test_backend,
+        "state_defaults",
+        {"data_source": "default_source", "output": "default_output"},
+    )
     assert (
         test_backend.convert(
             SigmaCollection.from_yaml(
@@ -2274,13 +2277,12 @@ def test_convert_query_expression_defaults(
     monkeypatch.setattr(
         test_backend,
         "query_expression",
-        "| from {pipeline_state[other_data_source]} | where {query} | output {conversion_state[other_output]}",
+        "| from {state[other_data_source]} | where {query} | output {state[other_output]}",
     )
     monkeypatch.setattr(
-        test_backend, "pipeline_state_default", {"other_data_source": "default_source"}
-    )
-    monkeypatch.setattr(
-        test_backend, "conversion_state_default", {"other_output": "default_output"}
+        test_backend,
+        "state_defaults",
+        {"other_data_source": "default_source", "other_output": "default_output"},
     )
     assert (
         test_backend.convert(

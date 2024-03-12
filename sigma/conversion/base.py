@@ -719,13 +719,12 @@ class TextQueryBackend(Backend):
     # This is specified as format string that contains the following placeholders:
     # * {query}: The generated query
     # * {rule}: The Sigma rule from which the query was generated
-    # * {conversion_state} and {pipeline_state}: state of the conversion and pipieline at the end of
-    #   query conversion.
+    # * {state}: Conversion state at the end of query generation. This state is initialized with the
+    #   pipeline state.
     query_expression: ClassVar[str] = "{query}"
-    # The following dicts define default values for conversion and pipeline state. They are used if
+    # The following dict defines default values for the conversion state. They are used if
     # the respective state is not set.
-    pipeline_state_default: ClassVar[Dict[str, str]] = dict()
-    conversion_state_default: ClassVar[Dict[str, str]] = dict()
+    state_defaults: ClassVar[Dict[str, str]] = dict()
 
     # String output
     ## Fields
@@ -1788,12 +1787,7 @@ class TextQueryBackend(Backend):
         with deferred_start and deferred_separator.
         """
         # TODO when Python 3.8 is dropped: replace ChainMap with | operator.
-        pipeline_state = (
-            ChainMap(self.last_processing_pipeline.state, self.pipeline_state_default)
-            if self.last_processing_pipeline is not None
-            else self.pipeline_state_default
-        )
-        conversion_state = ChainMap(state.processing_state, self.conversion_state_default)
+        conversion_state = ChainMap(state.processing_state, self.state_defaults)
 
         if state.has_deferred():
             if isinstance(query, DeferredQueryExpression):
@@ -1803,8 +1797,7 @@ class TextQueryBackend(Backend):
                 self.query_expression.format(
                     query=query,
                     rule=rule,
-                    conversion_state=conversion_state,
-                    pipeline_state=pipeline_state,
+                    state=conversion_state,
                 )
                 + self.deferred_start
                 + self.deferred_separator.join(
@@ -1823,8 +1816,7 @@ class TextQueryBackend(Backend):
                 self.query_expression.format(
                     query=query,
                     rule=rule,
-                    conversion_state=conversion_state,
-                    pipeline_state=pipeline_state,
+                    state=conversion_state,
                 ),
                 index,
                 state,

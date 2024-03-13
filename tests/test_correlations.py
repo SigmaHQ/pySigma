@@ -430,6 +430,17 @@ def test_correlation_condition_with_field():
     assert cond.fieldref == "test"
 
 
+def test_correlation_condition_with_field_to_dict():
+    assert SigmaCorrelationCondition(
+        op=SigmaCorrelationConditionOperator.GTE,
+        count=10,
+        fieldref="test"
+    ).to_dict() == {
+        "field": "test",
+        "gte": 10
+    }
+    
+
 def test_correlation_condition_invalid_multicond():
     with pytest.raises(
         SigmaCorrelationConditionError,

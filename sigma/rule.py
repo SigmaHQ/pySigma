@@ -987,7 +987,7 @@ class SigmaRuleBase:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_state(self) -> List["sigma.conversion.state.ConversionState"]:
+    def get_conversion_states(self) -> List["sigma.conversion.state.ConversionState"]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(

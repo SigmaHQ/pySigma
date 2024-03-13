@@ -2237,7 +2237,7 @@ def test_convert_state(test_backend):
         rules,
         "state",
     ) == ['index=test (mappedA="value")']
-    assert rules[0].get_conversion_state() == [
+    assert rules[0].get_conversion_states() == [
         ConversionState(
             processing_state={
                 "index": "test",

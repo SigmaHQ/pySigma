@@ -106,7 +106,9 @@ class SigmaCorrelationCondition:
         return cls(op=cond_op, count=cond_count, fieldref=cond_field, source=source)
 
     def to_dict(self) -> dict:
-        return {self.op.name.lower(): self.count}
+        if not self.fieldref:
+            return {self.op.name.lower(): self.count}
+        return {self.op.name.lower(): self.count, "field": self.fieldref}
 
 
 @dataclass

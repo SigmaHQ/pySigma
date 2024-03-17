@@ -1188,6 +1188,7 @@ def test_sigmarule_to_dict(sigma_rule: SigmaRule):
     assert sigma_rule.to_dict() == {
         "title": "Test",
         "id": "9a6cafa7-1481-4e64-89a1-1f69ed08618c",
+        "name": "test",
         "status": "test",
         "description": "This is a test",
         "references": [

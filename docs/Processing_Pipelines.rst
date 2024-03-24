@@ -166,7 +166,7 @@ Rule Conditions
    :header-rows: 1
 
    "Identifier", "Class"
-   "logosurce", "LogsourceCondition"
+   "logsource", "LogsourceCondition"
    "contains_detection_item", "RuleContainsDetectionItemCondition"
    "processing_item_applied", "RuleProcessingItemAppliedCondition"
 

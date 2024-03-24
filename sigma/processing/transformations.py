@@ -600,7 +600,7 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
 @dataclass
 class AddConditionTransformation(ConditionTransformation):
     """
-    Add a conditional expression to rule conditions.
+    Add a condition expression to rule conditions.
 
     If template is set to True the condition values are interpreted as string templates and the
     following placeholders are replaced:

@@ -611,6 +611,7 @@ class AddConditionTransformation(ConditionTransformation):
     conditions: Dict[str, Union[str, List[str]]] = field(default_factory=dict)
     name: Optional[str] = field(default=None, compare=False)
     template: bool = False
+    negated: bool = False
 
     def __post_init__(self):
         if self.name is None:  # generate random detection item name if none is given
@@ -648,7 +649,7 @@ class AddConditionTransformation(ConditionTransformation):
             super().apply(pipeline, rule)
 
     def apply_condition(self, cond: SigmaCondition) -> None:
-        cond.condition = f"{self.name} and ({cond.condition})"
+        cond.condition = ("not " if self.negated else "") + f"{self.name} and ({cond.condition})"
 
 
 @dataclass

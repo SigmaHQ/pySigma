@@ -172,6 +172,9 @@ class SigmaCorrelationFieldAliases:
     def __iter__(self):
         return iter(self.aliases.values())
 
+    def __len__(self):
+        return len(self.aliases)
+
     @classmethod
     def from_dict(cls, d: dict):
         aliases = {}

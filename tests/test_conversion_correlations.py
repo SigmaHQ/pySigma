@@ -46,6 +46,17 @@ def test_event_count_correlation_single_rule_with_grouping(
     ]
 
 
+def test_correlation_without_normalization_support(
+    monkeypatch, test_backend, event_count_correlation_rule
+):
+    monkeypatch.setattr(test_backend, "correlation_search_field_normalization_expression", None)
+    assert test_backend.convert(event_count_correlation_rule) == [
+        """EventID=4625
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| where event_count >= 10"""
+    ]
+
+
 def test_generate_query_without_referenced_rules_expression(
     monkeypatch, test_backend, event_count_correlation_rule
 ):

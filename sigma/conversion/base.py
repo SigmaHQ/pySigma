@@ -1613,6 +1613,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_search(
         self,
         rule: SigmaCorrelationRule,
+        **kwargs,
     ) -> str:
         if (  # if the correlation rule refers only a single rule and this rule results only in a single query
             len(rule.rules) == 1
@@ -1625,6 +1626,7 @@ class TextQueryBackend(Backend):
                 normalization=self.convert_correlation_search_field_normalization_expression(
                     rule.aliases, rule_reference
                 ),
+                **kwargs,
             )
         else:
             return self.correlation_search_multi_rule_expression.format(
@@ -1633,7 +1635,9 @@ class TextQueryBackend(Backend):
                         self.correlation_search_multi_rule_query_expression.format(
                             rule=rule_reference.rule,
                             ruleid=rule_reference.rule.name or rule_reference.rule.id,
-                            query=query,
+                            query=self.convert_correlation_search_multi_rule_query_postprocess(
+                                query
+                            ),
                             normalization=self.convert_correlation_search_field_normalization_expression(
                                 rule.aliases,
                                 rule_reference,
@@ -1642,33 +1646,43 @@ class TextQueryBackend(Backend):
                         for rule_reference in rule.rules
                         for query in rule_reference.rule.get_conversion_result()
                     )
-                )
+                ),
+                **kwargs,
             )
+
+    def convert_correlation_search_multi_rule_query_postprocess(
+        self,
+        query: str,
+    ) -> str:
+        """This function is called for each query in the multi-rule correlation search phase. It can be used to postprocess the query before it is joined with the other queries."""
+        return query
 
     def convert_correlation_search_field_normalization_expression(
         self,
         aliases: SigmaCorrelationFieldAliases,
         rule_reference: SigmaRule,
     ) -> str:
-        if (
+        if len(aliases) == 0:
+            return ""
+        elif (
             self.correlation_search_field_normalization_expression is None
             or self.correlation_search_field_normalization_expression_joiner is None
         ):
             raise NotImplementedError(
                 "Correlation field normalization is not supported by backend."
             )
-
-        return self.correlation_search_field_normalization_expression_joiner.join(
-            (
-                self.correlation_search_field_normalization_expression.format(
-                    alias=alias.alias,
-                    field=field,
+        else:
+            return self.correlation_search_field_normalization_expression_joiner.join(
+                (
+                    self.correlation_search_field_normalization_expression.format(
+                        alias=alias.alias,
+                        field=field,
+                    )
+                    for alias in aliases
+                    for alias_rule_reference, field in alias.mapping.items()
+                    if alias_rule_reference == rule_reference
                 )
-                for alias in aliases
-                for alias_rule_reference, field in alias.mapping.items()
-                if alias_rule_reference == rule_reference
             )
-        )
 
     # Implementation of the typing phase of the correlation query.
     def convert_correlation_typing(self, rule: SigmaCorrelationRule) -> str:
@@ -1681,13 +1695,20 @@ class TextQueryBackend(Backend):
                         self.typing_rule_query_expression.format(
                             rule=rule_reference.rule,
                             ruleid=rule_reference.rule.name or rule_reference.rule.id,
-                            query=query,
+                            query=self.convert_correlation_typing_query_postprocess(query),
                         )
                         for rule_reference in rule.rules
                         for query in rule_reference.rule.get_conversion_result()
                     )
                 )
             )
+
+    def convert_correlation_typing_query_postprocess(
+        self,
+        query: str,
+    ) -> str:
+        """This function is called for each query in the typing phase of the correlation query. It can be used to postprocess the query before it is joined with the other queries."""
+        return query
 
     # Implementation of the aggregation phase of the correlation query.
     def convert_correlation_aggregation_from_template(

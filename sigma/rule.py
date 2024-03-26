@@ -742,8 +742,8 @@ class SigmaRuleBase:
     references: List[str] = field(default_factory=list)
     tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
-    date: Optional[date] = None
-    modified: Optional[date] = None
+    date: Optional["datetime.date"] = None
+    modified: Optional["datetime.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None
@@ -756,6 +756,9 @@ class SigmaRuleBase:
         init=False, default_factory=list, repr=False, compare=False
     )
     _conversion_result: Optional[List[Any]] = field(
+        init=False, default=None, repr=False, compare=False
+    )
+    _conversion_states: Optional[List["sigma.conversion.state.ConversionState"]] = field(
         init=False, default=None, repr=False, compare=False
     )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
@@ -1057,6 +1060,19 @@ class SigmaRuleBase:
                 "Conversion result not available",
             )
         return self._conversion_result
+
+    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]):
+        """Set conversion state."""
+        self._conversion_states = state
+
+    def get_conversion_states(self) -> List["sigma.conversion.state.ConversionState"]:
+        """Get conversion state."""
+        if self._conversion_states is None:
+            raise sigma_exceptions.SigmaConversionError(
+                self,
+                "Conversion state not available",
+            )
+        return self._conversion_states
 
     def disable_output(self):
         """Disable output of rule."""

@@ -46,6 +46,17 @@ def test_event_count_correlation_single_rule_with_grouping(
     ]
 
 
+def test_correlation_without_normalization_support(
+    monkeypatch, test_backend, event_count_correlation_rule
+):
+    monkeypatch.setattr(test_backend, "correlation_search_field_normalization_expression", None)
+    assert test_backend.convert(event_count_correlation_rule) == [
+        """EventID=4625
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| where event_count >= 10"""
+    ]
+
+
 def test_generate_query_without_referenced_rules_expression(
     monkeypatch, test_backend, event_count_correlation_rule
 ):
@@ -144,6 +155,33 @@ def test_temporal_correlation_multi_rule_without_condition(test_backend, tempora
     assert test_backend.convert(temporal_correlation_rule) == [
         """subsearch { EventID=4625 | set event_type="failed_logon" }
 subsearch { EventID=4624 | set event_type="successful_logon" }
+
+| temporal window=5min eventtypes=failed_logon,successful_logon by TargetUserName, TargetDomainName
+
+| where eventtype_count >= 2"""
+    ]
+
+
+def test_temporal_correlation_multi_rule_with_typing_expression(
+    monkeypatch, test_backend, temporal_correlation_rule
+):
+    monkeypatch.setattr(
+        test_backend,
+        "temporal_correlation_query",
+        {"test": "{search}\n{typing}\n\n{aggregate}\n\n{condition}"},
+    )
+    monkeypatch.setattr(
+        test_backend, "correlation_search_multi_rule_query_expression", "( {query} )"
+    )
+    monkeypatch.setattr(
+        test_backend, "correlation_search_multi_rule_query_expression_joiner", " or "
+    )
+    monkeypatch.setattr(test_backend, "typing_expression", "| eval event_type=case({queries})")
+    monkeypatch.setattr(test_backend, "typing_rule_query_expression_joiner", ", ")
+    monkeypatch.setattr(test_backend, "typing_rule_query_expression", '{query}, "{ruleid}"')
+    assert test_backend.convert(temporal_correlation_rule) == [
+        """( EventID=4625 ) or ( EventID=4624 )
+| eval event_type=case(EventID=4625, "failed_logon", EventID=4624, "successful_logon")
 
 | temporal window=5min eventtypes=failed_logon,successful_logon by TargetUserName, TargetDomainName
 

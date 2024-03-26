@@ -79,6 +79,9 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
 
         raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
 
+    def __hash__(self):
+        return self.value.__hash__()
+
 
 class SigmaLevel(EnumLowercaseStringMixin, Enum):
     INFORMATIONAL = auto()
@@ -122,6 +125,9 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
             return self.value < other.value
 
         raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+
+    def __hash__(self):
+        return self.value.__hash__()
 
 
 class SigmaRelatedType(EnumLowercaseStringMixin, Enum):

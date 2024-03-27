@@ -1165,6 +1165,30 @@ def test_addconditiontransformation_random_name():
     assert len(name) > 6 and name.startswith("_cond_")
 
 
+def test_addconditiontransformation_negated(dummy_pipeline, sigma_rule: SigmaRule):
+    transformation = AddConditionTransformation(
+        {
+            "newfield1": "test",
+            "newfield2": 123,
+            "newfield3": "$category",
+            "listfield": ["value1", "value2"],
+        },
+        "additional",
+        negated=True,
+    )
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert (
+        sigma_rule.detection.parsed_condition[0].condition
+        == "not additional and (test)"  # negated condition expression was added
+    )
+
+
 ### ChangeLogsourceTransformation ###
 def test_changelogsource(dummy_pipeline, sigma_rule: SigmaRule):
     processing_item = ProcessingItem(

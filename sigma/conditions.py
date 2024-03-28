@@ -66,9 +66,9 @@ class ParentChainMixin:
 @dataclass
 class ConditionItem(ParentChainMixin, ABC):
     arg_count: ClassVar[int]
-    token_list: ClassVar[bool] = (
-        False  # determines if the value passed as tokenized is a ParseResult or a simple list object
-    )
+    token_list: ClassVar[
+        bool
+    ] = False  # determines if the value passed as tokenized is a ParseResult or a simple list object
     args: List[
         Union[
             "ConditionItem",
@@ -179,8 +179,10 @@ class ConditionSelector(ConditionItem):
     def __post_init__(self):
         if self.args[0] in ["1", "any"]:
             self.cond_class = ConditionOR
-        else:
+        elif self.args[0] == "all":
             self.cond_class = ConditionAND
+        else:
+            raise SigmaConditionError("Invalid quantifier in selector", source=self.source)
         self.pattern = self.args[1]
 
     def resolve_referenced_detections(self, detections: "sigma.rule.SigmaDetections") -> List[str]:

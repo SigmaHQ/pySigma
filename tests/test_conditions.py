@@ -381,6 +381,11 @@ def test_selector_all_of_them(sigma_simple_detections):
     )
 
 
+def test_selector_invalid_quantifier(sigma_simple_detections):
+    with pytest.raises(SigmaConditionError, match="Invalid quantifier"):
+        ConditionSelector("invalid", "them")
+
+
 def test_keyword_detection(sigma_detections):
     assert SigmaCondition("keywords", sigma_detections).parsed == ConditionOR(
         [

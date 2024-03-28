@@ -197,7 +197,7 @@ class ConditionSelector(ConditionItem):
         return [
             ConditionIdentifier([identifier])
             for identifier in detections.detections.keys()
-            if r.match(identifier)
+            if r.match(identifier) and not identifier.startswith("_")
         ]
 
     def postprocess(

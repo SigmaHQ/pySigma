@@ -179,8 +179,10 @@ class ConditionSelector(ConditionItem):
     def __post_init__(self):
         if self.args[0] in ["1", "any"]:
             self.cond_class = ConditionOR
-        else:
+        elif self.args[0] == "all":
             self.cond_class = ConditionAND
+        else:
+            raise SigmaConditionError("Invalid quantifier in selector", source=self.source)
         self.pattern = self.args[1]
 
     def resolve_referenced_detections(self, detections: "sigma.rule.SigmaDetections") -> List[str]:
@@ -195,7 +197,7 @@ class ConditionSelector(ConditionItem):
         return [
             ConditionIdentifier([identifier])
             for identifier in detections.detections.keys()
-            if r.match(identifier)
+            if r.match(identifier) and not identifier.startswith("_")
         ]
 
     def postprocess(

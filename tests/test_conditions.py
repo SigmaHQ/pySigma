@@ -160,6 +160,30 @@ def sigma_invalid_detections():
     )
 
 
+@pytest.fixture
+def sigma_underscore_detections():
+    return SigmaDetections(
+        {
+            "detection_1": SigmaDetection(
+                [
+                    SigmaDetectionItem(None, [], [SigmaString("val1")]),
+                ]
+            ),
+            "detection_2": SigmaDetection(
+                [
+                    SigmaDetectionItem(None, [], [SigmaString("val2")]),
+                ]
+            ),
+            "_detection_3": SigmaDetection(
+                [
+                    SigmaDetectionItem(None, [], [SigmaString("val3")]),
+                ]
+            ),
+        },
+        list(),
+    )
+
+
 def test_or(sigma_simple_detections):
     assert SigmaCondition(
         "detection1 or detection2", sigma_simple_detections
@@ -379,6 +403,20 @@ def test_selector_all_of_them(sigma_simple_detections):
             ConditionValueExpression(SigmaString("other")),
         ]
     )
+
+
+def test_selector_underscore_filter(sigma_underscore_detections):
+    assert SigmaCondition("any of them", sigma_underscore_detections).parsed == ConditionOR(
+        [
+            ConditionValueExpression(SigmaString("val1")),
+            ConditionValueExpression(SigmaString("val2")),
+        ]
+    )
+
+
+def test_selector_invalid_quantifier(sigma_simple_detections):
+    with pytest.raises(SigmaConditionError, match="Invalid quantifier"):
+        ConditionSelector("invalid", "them")
 
 
 def test_keyword_detection(sigma_detections):

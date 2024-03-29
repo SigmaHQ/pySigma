@@ -736,6 +736,7 @@ class SigmaRuleBase:
     title: str = ""
     id: Optional[UUID] = None
     name: Optional[str] = None
+    taxonomy: Optional[str] = "sigma"
     related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None

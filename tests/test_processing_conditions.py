@@ -14,6 +14,7 @@ from sigma.processing.conditions import (
     MatchStringCondition,
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
+    TaxonomyCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -41,6 +42,7 @@ def sigma_rule():
         """
         title: Test
         status: test
+        taxonomy: test
         logsource:
             category: test_category
             product: test_product
@@ -153,6 +155,10 @@ def test_is_sigma_correlation_rule_with_correlation_rule(
 
 def test_is_sigma_correlation_rule_with_rule(dummy_processing_pipeline, sigma_rule):
     assert not IsSigmaCorrelationRuleCondition().match(dummy_processing_pipeline, sigma_rule)
+
+
+def test_taxonomy_condition_match(dummy_processing_pipeline, sigma_rule):
+    assert TaxonomyCondition("test").match(dummy_processing_pipeline, sigma_rule)
 
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):

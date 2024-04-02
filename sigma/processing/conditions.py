@@ -257,6 +257,22 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
         return isinstance(rule, SigmaCorrelationRule)
 
 
+@dataclass
+class TaxonomyCondition(RuleProcessingCondition):
+    """
+    Matches on rule taxonomy.
+    """
+
+    taxonomy: str
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return rule.taxonomy == self.taxonomy
+
+
 ### Field Name Condition Classes ###
 @dataclass
 class IncludeFieldCondition(FieldNameProcessingCondition):
@@ -395,6 +411,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "processing_item_applied": RuleProcessingItemAppliedCondition,
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
+    "taxonomy": TaxonomyCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

@@ -1016,6 +1016,7 @@ def sigma_rule():
         title="Test",
         id=UUID("9a6cafa7-1481-4e64-89a1-1f69ed08618c"),
         name="test",
+        taxonomy="test",
         status=SigmaStatus.TEST,
         description="This is a test",
         references=[
@@ -1087,6 +1088,7 @@ def test_sigmarule_fromyaml(sigma_rule):
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
     name: test
+    taxonomy: test
     status: test
     description: This is a test
     references:
@@ -1127,6 +1129,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
     name: test
+    taxonomy: test
     status: test
     description: This is a test
     references:

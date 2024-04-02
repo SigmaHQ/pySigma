@@ -736,7 +736,7 @@ class SigmaRuleBase:
     title: str = ""
     id: Optional[UUID] = None
     name: Optional[str] = None
-    taxonomy: Optional[str] = "sigma"
+    taxonomy: str = "sigma"
     related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
@@ -823,6 +823,25 @@ class SigmaRuleBase:
                     )
                 else:
                     rule_name = rule_name
+
+        # Rule taxonomy
+        rule_taxonomy = rule.get("taxonomy", "sigma")
+        if rule_taxonomy is not None:
+            if not isinstance(rule_taxonomy, str):
+                errors.append(
+                    sigma_exceptions.SigmaTaxonomyError(
+                        "Sigma rule taxonomy must be a string", source=source
+                    )
+                )
+            else:
+                if rule_taxonomy == "":
+                    errors.append(
+                        sigma_exceptions.SigmaTaxonomyError(
+                            "Sigma rule taxonomy must not be empty", source=source
+                        )
+                    )
+                else:
+                    rule_taxonomy = rule_taxonomy
 
         # Rule related validation
         rule_related = rule.get("related")
@@ -986,6 +1005,7 @@ class SigmaRuleBase:
                 "title": rule_title,
                 "id": rule_id,
                 "name": rule_name,
+                "taxonomy": rule_taxonomy,
                 "related": rule_related,
                 "level": level,
                 "status": status,

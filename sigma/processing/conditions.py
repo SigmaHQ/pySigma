@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from uuid import UUID
 
 import sigma
 from sigma.correlations import SigmaCorrelationRule
@@ -258,19 +259,32 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
 
 
 @dataclass
-class TaxonomyCondition(RuleProcessingCondition):
+class RuleAttributeEqualsCondition(RuleProcessingCondition):
     """
-    Matches on rule taxonomy.
+    Generic match on rule attributes with string or compatible data types.
     """
 
-    taxonomy: str
+    attribute: str
+    value: str
 
     def match(
         self,
         pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        return rule.taxonomy == self.taxonomy
+        try:  # first try to get built-in attribute
+            value = getattr(rule, self.attribute)
+        except AttributeError:
+            try:
+                value = rule.custom_attributes[self.attribute]
+            except KeyError:
+                return False
+
+        # Finally, value has some comparable type
+        if isinstance(value, (str, int, float, UUID)):  # only match particular types
+            return str(value) == self.value
+        else:
+            return False
 
 
 ### Field Name Condition Classes ###
@@ -411,7 +425,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "processing_item_applied": RuleProcessingItemAppliedCondition,
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
-    "taxonomy": TaxonomyCondition,
+    "rule_attribute": RuleAttributeEqualsCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

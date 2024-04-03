@@ -14,7 +14,7 @@ from sigma.processing.conditions import (
     MatchStringCondition,
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
-    TaxonomyCondition,
+    RuleAttributeEqualsCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -41,6 +41,10 @@ def sigma_rule():
     return SigmaRule.from_yaml(
         """
         title: Test
+        id: 809718e3-f7f5-46f1-931e-d036f0ffb0af
+        related:
+        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          type: derived
         status: test
         taxonomy: test
         logsource:
@@ -52,6 +56,7 @@ def sigma_rule():
                     - value
                     - 123
             condition: sel
+        custom: 123
     """
     )
 
@@ -157,8 +162,28 @@ def test_is_sigma_correlation_rule_with_rule(dummy_processing_pipeline, sigma_ru
     assert not IsSigmaCorrelationRuleCondition().match(dummy_processing_pipeline, sigma_rule)
 
 
-def test_taxonomy_condition_match(dummy_processing_pipeline, sigma_rule):
-    assert TaxonomyCondition("test").match(dummy_processing_pipeline, sigma_rule)
+def test_rule_attribute_taxonomy_condition_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeEqualsCondition("taxonomy", "test").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_attribute_uuid_condition_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeEqualsCondition("id", "809718e3-f7f5-46f1-931e-d036f0ffb0af").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_attribute_custom_condition_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeEqualsCondition("custom", "123").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_attribute_related_condition_nomatch(dummy_processing_pipeline, sigma_rule):
+    assert not RuleAttributeEqualsCondition(
+        "related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9"
+    ).match(dummy_processing_pipeline, sigma_rule)
 
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):

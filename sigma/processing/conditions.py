@@ -1,13 +1,21 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import date
 from uuid import UUID
 
 import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaString, SigmaType, sigma_type
-from typing import Dict, List, Pattern, Literal, Optional, Union
+from typing import ClassVar, Dict, List, Pattern, Literal, Optional, Union
 import re
-from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
+from sigma.rule import (
+    SigmaDetection,
+    SigmaLevel,
+    SigmaRule,
+    SigmaDetectionItem,
+    SigmaLogSource,
+    SigmaStatus,
+)
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 
 
@@ -259,13 +267,39 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
 
 
 @dataclass
-class RuleAttributeEqualsCondition(RuleProcessingCondition):
+class RuleAttributeCondition(RuleProcessingCondition):
     """
-    Generic match on rule attributes with string or compatible data types.
+    Generic match on rule attributes with supported types:
+
+    * strings (exact matches)
+    * UUIDs (exact matches)
+    * numbers (relations: eq, ne, gte, ge, lte, le)
+    * dates (relations: eq, ne, gte, ge, lte, le)
+    * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
+    * Rule statuses (relations: eq, ne, gte, ge, lte, le)
+
+    Fields that contain lists of values, maps or other complex data structures are not supported and
+    raise a SigmaConfigurationError. If the type of the value doesn't allows a particular relation, the
+    condition also raises a SigmaConfigurationError on match.
     """
 
     attribute: str
-    value: str
+    value: Union[str, int, float]
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+    op_methods: ClassVar[Dict[str, str]] = {
+        "eq": "__eq__",
+        "ne": "__ne__",
+        "gte": "__ge__",
+        "gt": "__gt__",
+        "lte": "__le__",
+        "lt": "__lt__",
+    }
+
+    def __post_init__(self):
+        if self.op not in self.op_methods:
+            raise SigmaConfigurationError(
+                f"Invalid operation '{self.op}' in rule attribute condition {str(self)}."
+            )
 
     def match(
         self,
@@ -281,9 +315,51 @@ class RuleAttributeEqualsCondition(RuleProcessingCondition):
                 return False
 
         # Finally, value has some comparable type
-        if isinstance(value, (str, int, float, UUID)):  # only match particular types
-            return str(value) == self.value
+        if isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
+            if self.op == "eq":
+                return str(value) == self.value
+            elif self.op == "ne":
+                return str(value) != self.value
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid operation '{self.op}' for string comparison in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, (int, float)):  # numeric comparison
+            try:
+                compare_value = float(self.value)
+            except ValueError:
+                raise SigmaConfigurationError(
+                    f"Invalid number format '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, date):  # date comparison
+            try:
+                compare_value = date.fromisoformat(self.value)
+            except ValueError:
+                raise SigmaConfigurationError(
+                    f"Invalid date format '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, SigmaLevel):
+            try:
+                compare_value = SigmaLevel[self.value.upper()]
+            except KeyError:
+                raise SigmaConfigurationError(
+                    f"Invalid Sigma severity level '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, SigmaStatus):
+            try:
+                compare_value = SigmaStatus[self.value.upper()]
+            except KeyError:
+                raise SigmaConfigurationError(
+                    f"Invalid Sigma status '{self.value}' in rule attribute condition {str(self)}."
+                )
         else:
+            raise SigmaConfigurationError(
+                f"Unsupported type '{type(value)}' in rule attribute condition {str(self)}."
+            )
+
+        try:
+            return getattr(value, self.op_methods[self.op])(compare_value)
+        except AttributeError:  # operation not supported by value type
             return False
 
 
@@ -425,7 +501,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "processing_item_applied": RuleProcessingItemAppliedCondition,
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
-    "rule_attribute": RuleAttributeEqualsCondition,
+    "rule_attribute": RuleAttributeCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

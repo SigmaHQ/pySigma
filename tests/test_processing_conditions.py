@@ -14,7 +14,7 @@ from sigma.processing.conditions import (
     MatchStringCondition,
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
-    RuleAttributeEqualsCondition,
+    RuleAttributeCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -47,6 +47,7 @@ def sigma_rule():
           type: derived
         status: test
         taxonomy: test
+        date: 2022-02-22
         logsource:
             category: test_category
             product: test_product
@@ -56,6 +57,7 @@ def sigma_rule():
                     - value
                     - 123
             condition: sel
+        level: medium
         custom: 123
     """
     )
@@ -162,28 +164,85 @@ def test_is_sigma_correlation_rule_with_rule(dummy_processing_pipeline, sigma_ru
     assert not IsSigmaCorrelationRuleCondition().match(dummy_processing_pipeline, sigma_rule)
 
 
-def test_rule_attribute_taxonomy_condition_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeEqualsCondition("taxonomy", "test").match(
+def test_rule_attribute_condition_str_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("taxonomy", "test").match(dummy_processing_pipeline, sigma_rule)
+
+
+def test_rule_attribute_condition_invalid_str_op(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid operation.*for string"):
+        RuleAttributeCondition("taxonomy", "test", "gte").match(
+            dummy_processing_pipeline, sigma_rule
+        )
+
+
+def test_rule_attribute_condition_invalid_op(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid operation"):
+        RuleAttributeCondition("custom", "123.4", "invalid")
+
+
+def test_rule_attribute_condition_uuid_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("id", "809718e3-f7f5-46f1-931e-d036f0ffb0af").match(
         dummy_processing_pipeline, sigma_rule
     )
 
 
-def test_rule_attribute_uuid_condition_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeEqualsCondition("id", "809718e3-f7f5-46f1-931e-d036f0ffb0af").match(
+def test_rule_attribute_condition_custom_field_numeric_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("custom", "123.4", "lte").match(
         dummy_processing_pipeline, sigma_rule
     )
 
 
-def test_rule_attribute_custom_condition_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeEqualsCondition("custom", "123").match(
+def test_rule_attribute_condition_invalid_numeric_value(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid number"):
+        RuleAttributeCondition("custom", "something", "lte").match(
+            dummy_processing_pipeline, sigma_rule
+        )
+
+
+def test_rule_attribute_condition_date_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("date", "2022-02-23", "lt").match(
         dummy_processing_pipeline, sigma_rule
     )
 
 
-def test_rule_attribute_related_condition_nomatch(dummy_processing_pipeline, sigma_rule):
-    assert not RuleAttributeEqualsCondition(
-        "related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9"
-    ).match(dummy_processing_pipeline, sigma_rule)
+def test_rule_attribute_condition_invalid_date(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid date"):
+        RuleAttributeCondition("date", "2022-02-23T00:00:00", "lt").match(
+            dummy_processing_pipeline, sigma_rule
+        )
+
+
+def test_rule_attribute_condition_sigmalevel_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("level", "high", "lt").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_attribute_condition_invalid_sigmalevel(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid Sigma severity level"):
+        RuleAttributeCondition("level", "invalid", "lt").match(
+            dummy_processing_pipeline, sigma_rule
+        )
+
+
+def test_rule_attribute_condition_sigmastatus_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleAttributeCondition("status", "stable", "lt").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_attribute_condition_invalid_sigmastatus(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Invalid Sigma status"):
+        RuleAttributeCondition("status", "invalid", "lt").match(
+            dummy_processing_pipeline, sigma_rule
+        )
+
+
+def test_rule_attribute_condition_invalid_rule_field_type(dummy_processing_pipeline, sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="Unsupported type"):
+        RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(
+            dummy_processing_pipeline, sigma_rule
+        )
 
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):

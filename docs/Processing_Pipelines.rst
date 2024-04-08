@@ -169,10 +169,12 @@ Rule Conditions
    "logsource", "LogsourceCondition"
    "contains_detection_item", "RuleContainsDetectionItemCondition"
    "processing_item_applied", "RuleProcessingItemAppliedCondition"
+   "rule_attribute", "RuleAttributeCondition"
 
 .. autoclass:: sigma.processing.conditions.LogsourceCondition
 .. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
 .. autoclass:: sigma.processing.conditions.RuleProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.RuleAttributeCondition
 
 Detection Item Conditions
 =========================

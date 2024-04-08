@@ -172,6 +172,7 @@ Rule Conditions
    "is_sigma_rule": IsSigmaRuleCondition
    "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition
    "rule_attribute", "RuleAttributeCondition"
+   "tag", "RuleTagCondition"
 
 .. autoclass:: sigma.processing.conditions.LogsourceCondition
 .. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
@@ -179,6 +180,7 @@ Rule Conditions
 .. autoclass:: sigma.processing.conditions.IsSigmaRuleCondition
 .. autoclass:: sigma.processing.conditions.IsSigmaCorrelationRuleCondition
 .. autoclass:: sigma.processing.conditions.RuleAttributeCondition
+.. autoclass:: sigma.processing.conditions.RuleTagCondition
 
 Detection Item Conditions
 =========================

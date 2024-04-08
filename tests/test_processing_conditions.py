@@ -15,6 +15,7 @@ from sigma.processing.conditions import (
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
     RuleAttributeCondition,
+    RuleTagCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -57,6 +58,8 @@ def sigma_rule():
                     - value
                     - 123
             condition: sel
+        tags:
+            - test.tag
         level: medium
         custom: 123
     """
@@ -243,6 +246,14 @@ def test_rule_attribute_condition_invalid_rule_field_type(dummy_processing_pipel
         RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(
             dummy_processing_pipeline, sigma_rule
         )
+
+
+def test_rule_tag_condition_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleTagCondition("test.tag").match(dummy_processing_pipeline, sigma_rule)
+
+
+def test_rule_tag_condition_nomatch(dummy_processing_pipeline, sigma_rule):
+    assert not RuleTagCondition("test.notag").match(dummy_processing_pipeline, sigma_rule)
 
 
 def test_include_field_condition_match(dummy_processing_pipeline, detection_item):

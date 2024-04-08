@@ -14,6 +14,7 @@ from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,
     SigmaLogSource,
+    SigmaRuleTag,
     SigmaStatus,
 )
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
@@ -363,6 +364,25 @@ class RuleAttributeCondition(RuleProcessingCondition):
             return False
 
 
+@dataclass
+class RuleTagCondition(RuleProcessingCondition):
+    """
+    Matches if rule is tagged with a specific tag.
+    """
+
+    tag: str
+
+    def __post_init__(self):
+        self.match_tag = SigmaRuleTag.from_str(self.tag)
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return self.match_tag in rule.tags
+
+
 ### Field Name Condition Classes ###
 @dataclass
 class IncludeFieldCondition(FieldNameProcessingCondition):
@@ -502,6 +522,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
     "rule_attribute": RuleAttributeCondition,
+    "tag": RuleTagCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,

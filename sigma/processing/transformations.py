@@ -6,6 +6,7 @@ from typing import (
     Iterable,
     List,
     Dict,
+    Literal,
     Optional,
     Set,
     Union,
@@ -30,6 +31,8 @@ from sigma.exceptions import (
 )
 from sigma.types import (
     Placeholder,
+    SigmaRegularExpression,
+    SigmaRegularExpressionFlag,
     SigmaString,
     SigmaType,
     SpecialChars,
@@ -711,6 +714,55 @@ class MapStringTransformation(StringValueTransformation):
 
 
 @dataclass
+class CaseInsensitiveRegexTransformation(StringValueTransformation):
+    """
+    Transform a string value to a case insensitive regular expression. The following methods are
+    available and can be selected with the method parameter:
+
+    * flag: Add the case insensitive flag to the regular expression.
+    * brackets (default): Wrap each character in a bracket expression like [aA] to match
+      both case variants.
+
+    This transformation is intended to be used to emulate case insensitive matching in backends that
+    don't support it natively.
+    """
+
+    method: Literal["flag", "brackets"] = "brackets"
+
+    def __post_init__(self):
+        if self.method not in self.__annotations__["method"].__args__:
+            raise SigmaConfigurationError(
+                f"Invalid method '{self.method}' for CaseInsensitiveRegexTransformation."
+            )
+        return super().__post_init__()
+
+    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+        regex = ""
+        for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
+            if isinstance(sc, str):  # if component is a string
+                if self.method == "brackets":  # wrap each character in a bracket expression
+                    regex += "".join(f"[{c.lower()}{c.upper()}]" if c.isalpha() else c for c in sc)
+                else:
+                    regex += sc
+            elif (
+                sc == SpecialChars.WILDCARD_MULTI
+            ):  # if component is a wildcard, add it as regex .*
+                regex += ".*"
+            elif (
+                sc == SpecialChars.WILDCARD_SINGLE
+            ):  # if component is a single wildcard, add it as regex .
+                regex += "."
+            elif isinstance(sc, Placeholder):  # Placeholders are not allowed in regex
+                raise SigmaConfigurationError(
+                    f"Placeholder '{sc.name}' can't be converted to a regular expression. Please use a placeholder resolution transformation before."
+                )
+        if self.method == "flag":
+            return SigmaRegularExpression(regex, {SigmaRegularExpressionFlag.IGNORECASE})
+        else:
+            return SigmaRegularExpression(regex)
+
+
+@dataclass
 class SetStateTransformation(Transformation):
     """Set pipeline state key to value."""
 
@@ -766,6 +818,7 @@ transformations: Dict[str, Transformation] = {
     "replace_string": ReplaceStringTransformation,
     "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,
+    "case_insensitive_regex": CaseInsensitiveRegexTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

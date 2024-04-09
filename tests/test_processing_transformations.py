@@ -13,6 +13,7 @@ from sigma.correlations import (
 from sigma.processing import transformations
 from sigma.processing.transformations import (
     AddConditionTransformation,
+    CaseInsensitiveRegexTransformation,
     ChangeLogsourceTransformation,
     ConditionTransformation,
     DetectionItemFailureTransformation,
@@ -43,6 +44,8 @@ from sigma.types import (
     Placeholder,
     SigmaNumber,
     SigmaQueryExpression,
+    SigmaRegularExpression,
+    SigmaRegularExpressionFlag,
     SigmaString,
     SpecialChars,
 )
@@ -1300,6 +1303,29 @@ def test_map_string_transformation_correlation_rule(
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     map_string_transformation.apply(dummy_pipeline, sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
+
+
+def test_case_insensitive_regex_transformation_bracket_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    transformation = CaseInsensitiveRegexTransformation(method="brackets")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression(
+        "[tT][eE][sS][tT].*[vV][aA][lL].[uU][eE]"
+    )
+
+
+def test_case_insenstive_regex_transformation_flags_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    transformation = CaseInsensitiveRegexTransformation(method="flag")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression(
+        "tEsT.*val.ue", {SigmaRegularExpressionFlag.IGNORECASE}
+    )
+
+
+def test_case_insensitive_regex_transformation_invalid_method():
+    with pytest.raises(SigmaConfigurationError, match="Invalid method"):
+        CaseInsensitiveRegexTransformation(method="invalid")
 
 
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):

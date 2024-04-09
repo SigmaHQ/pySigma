@@ -253,6 +253,7 @@ definitions are available:
    "change_logsource", "ChangeLogsourceTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
+   "case_insensitive_regex", "CaseInsensitiveRegexTransformation"
    "set_state", SetStateTransformation
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
@@ -299,6 +300,7 @@ YAML example:
         - mapped2A
         - mapped2B
 
+.. autoclass:: sigma.processing.transformations.CaseInsensitiveRegexTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

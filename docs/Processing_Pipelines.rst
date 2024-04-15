@@ -255,7 +255,7 @@ definitions are available:
    "change_logsource", "ChangeLogsourceTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
-   "case_insensitive_regex", "CaseInsensitiveRegexTransformation"
+   "regex", "RegexTransformation"
    "set_state", SetStateTransformation
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"

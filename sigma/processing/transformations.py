@@ -714,20 +714,22 @@ class MapStringTransformation(StringValueTransformation):
 
 
 @dataclass
-class CaseInsensitiveRegexTransformation(StringValueTransformation):
+class RegexTransformation(StringValueTransformation):
     """
     Transform a string value to a case insensitive regular expression. The following methods are
     available and can be selected with the method parameter:
 
-    * flag: Add the case insensitive flag to the regular expression.
-    * brackets (default): Wrap each character in a bracket expression like [aA] to match
+    * plain: Convert the string to a regular expression without any change to its case. In most
+      cases this should result in a case-sensitive match of the string.
+    * case_insensitive_flag: Add the case insensitive flag to the regular expression.
+    * case_insensitive_brackets (default): Wrap each character in a bracket expression like [aA] to match
       both case variants.
 
     This transformation is intended to be used to emulate case insensitive matching in backends that
     don't support it natively.
     """
 
-    method: Literal["flag", "brackets"] = "brackets"
+    method: Literal["plain", "ignore_case_flag", "ignore_case_brackets"] = "ignore_case_brackets"
 
     def __post_init__(self):
         if self.method not in self.__annotations__["method"].__args__:
@@ -740,7 +742,9 @@ class CaseInsensitiveRegexTransformation(StringValueTransformation):
         regex = ""
         for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
             if isinstance(sc, str):  # if component is a string
-                if self.method == "brackets":  # wrap each character in a bracket expression
+                if (
+                    self.method == "ignore_case_brackets"
+                ):  # wrap each character in a bracket expression
                     regex += "".join(f"[{c.lower()}{c.upper()}]" if c.isalpha() else c for c in sc)
                 else:
                     regex += sc
@@ -756,7 +760,7 @@ class CaseInsensitiveRegexTransformation(StringValueTransformation):
                 raise SigmaConfigurationError(
                     f"Placeholder '{sc.name}' can't be converted to a regular expression. Please use a placeholder resolution transformation before."
                 )
-        if self.method == "flag":
+        if self.method == "ignore_case_flag":
             return SigmaRegularExpression(regex, {SigmaRegularExpressionFlag.IGNORECASE})
         else:
             return SigmaRegularExpression(regex)
@@ -818,7 +822,7 @@ transformations: Dict[str, Transformation] = {
     "replace_string": ReplaceStringTransformation,
     "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,
-    "case_insensitive_regex": CaseInsensitiveRegexTransformation,
+    "regex": RegexTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

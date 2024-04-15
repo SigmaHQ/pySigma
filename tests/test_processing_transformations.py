@@ -13,7 +13,7 @@ from sigma.correlations import (
 from sigma.processing import transformations
 from sigma.processing.transformations import (
     AddConditionTransformation,
-    CaseInsensitiveRegexTransformation,
+    RegexTransformation,
     ChangeLogsourceTransformation,
     ConditionTransformation,
     DetectionItemFailureTransformation,
@@ -1305,27 +1305,34 @@ def test_map_string_transformation_correlation_rule(
     assert sigma_correlation_rule == orig_correlation_rule
 
 
-def test_case_insensitive_regex_transformation_bracket_method(dummy_pipeline):
+def test_regex_transformation_plain_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test*va?ue")])
+    transformation = RegexTransformation(method="plain")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression("test.*va.ue")
+
+
+def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
-    transformation = CaseInsensitiveRegexTransformation(method="brackets")
+    transformation = RegexTransformation(method="ignore_case_brackets")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
         "[tT][eE][sS][tT].*[vV][aA][lL].[uU][eE]"
     )
 
 
-def test_case_insenstive_regex_transformation_flags_method(dummy_pipeline):
+def test_regex_transformation_case_insensitive_flags_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
-    transformation = CaseInsensitiveRegexTransformation(method="flag")
+    transformation = RegexTransformation(method="ignore_case_flag")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
         "tEsT.*val.ue", {SigmaRegularExpressionFlag.IGNORECASE}
     )
 
 
-def test_case_insensitive_regex_transformation_invalid_method():
+def test_regex_transformation_invalid_method():
     with pytest.raises(SigmaConfigurationError, match="Invalid method"):
-        CaseInsensitiveRegexTransformation(method="invalid")
+        RegexTransformation(method="invalid")
 
 
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):

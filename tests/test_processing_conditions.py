@@ -1,4 +1,4 @@
-from sigma.types import SigmaNumber, SigmaString
+from sigma.types import SigmaNull, SigmaNumber, SigmaString
 from sigma import processing
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 import pytest
@@ -6,6 +6,7 @@ from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
     FieldNameProcessingItemAppliedCondition,
+    IsNullCondition,
     IsSigmaCorrelationRuleCondition,
     IsSigmaRuleCondition,
     LogsourceCondition,
@@ -30,6 +31,11 @@ def dummy_processing_pipeline():
 @pytest.fixture
 def detection_item():
     return SigmaDetectionItem("field", [], [SigmaString("value")])
+
+
+@pytest.fixture
+def detection_item_null_value():
+    return SigmaDetectionItem("field", [], [SigmaNull()])
 
 
 @pytest.fixture
@@ -390,6 +396,14 @@ def test_match_string_condition_error_mode():
 def test_match_string_condition_error_mode():
     with pytest.raises(SigmaRegularExpressionError, match="is invalid"):
         MatchStringCondition(pattern="*", cond="any")
+
+
+def test_isnull_condition_match(dummy_processing_pipeline, detection_item_null_value):
+    assert IsNullCondition(cond="all").match(dummy_processing_pipeline, detection_item_null_value)
+
+
+def test_isnull_condition_nomatch(dummy_processing_pipeline, detection_item):
+    assert not IsNullCondition(cond="all").match(dummy_processing_pipeline, detection_item)
 
 
 def test_value_processing_invalid_cond():

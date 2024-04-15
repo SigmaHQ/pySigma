@@ -5,7 +5,7 @@ from uuid import UUID
 
 import sigma
 from sigma.correlations import SigmaCorrelationRule
-from sigma.types import SigmaFieldReference, SigmaString, SigmaType, sigma_type
+from sigma.types import SigmaFieldReference, SigmaNull, SigmaString, SigmaType, sigma_type
 from typing import ClassVar, Dict, List, Pattern, Literal, Optional, Union
 import re
 from sigma.rule import (
@@ -477,6 +477,20 @@ class MatchStringCondition(ValueProcessingCondition):
 
 
 @dataclass
+class IsNullCondition(ValueProcessingCondition):
+    """
+    Match null values. The parameter 'cond' determines for detection items with multiple
+    values if any or all strings must match. Generally, values which aren't strings are skipped in any mode or result in a
+    false result in all match mode.
+    """
+
+    def match_value(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
+    ) -> bool:
+        return isinstance(value, SigmaNull)
+
+
+@dataclass
 class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingCondition):
     """
     Checks if processing item was applied to detection item.
@@ -526,6 +540,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,
+    "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
 }
 field_name_conditions: Dict[str, DetectionItemProcessingCondition] = {

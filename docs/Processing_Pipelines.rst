@@ -190,9 +190,11 @@ Detection Item Conditions
 
    "Identifier", "Class"
    "match_string", "MatchStringCondition"
+   "is_null", "IsNullCondition"
    "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
 
 .. autoclass:: sigma.processing.conditions.MatchStringCondition
+.. autoclass:: sigma.processing.conditions.IsNullCondition
 .. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
 
 Field Name Conditions

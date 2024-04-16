@@ -1,10 +1,13 @@
+import inspect
 from sigma.types import SigmaNull, SigmaNumber, SigmaString
 from sigma import processing
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 import pytest
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
+    DetectionItemProcessingCondition,
     DetectionItemProcessingItemAppliedCondition,
+    FieldNameProcessingCondition,
     FieldNameProcessingItemAppliedCondition,
     IsNullCondition,
     IsSigmaCorrelationRuleCondition,
@@ -13,7 +16,9 @@ from sigma.processing.conditions import (
     IncludeFieldCondition,
     ExcludeFieldCondition,
     MatchStringCondition,
+    ProcessingCondition,
     RuleContainsDetectionItemCondition,
+    RuleProcessingCondition,
     RuleProcessingItemAppliedCondition,
     RuleAttributeCondition,
     RuleTagCondition,
@@ -21,6 +26,11 @@ from sigma.processing.conditions import (
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
 from tests.test_processing_transformations import sigma_correlation_rule
+from sigma.processing.conditions import (
+    rule_conditions,
+    detection_item_conditions,
+    field_name_conditions,
+)
 
 
 @pytest.fixture
@@ -447,3 +457,35 @@ def test_field_name_processing_item_not_applied(pipeline_field_tracking):
     assert not FieldNameProcessingItemAppliedCondition(
         processing_item_id="processing_item"
     ).match_field_name(pipeline_field_tracking, "fieldC")
+
+
+def test_condition_identifiers_completeness():
+    rule_condition_classes = rule_conditions.values()
+    detection_item_condition_classes = detection_item_conditions.values()
+    field_name_condition_classes = field_name_conditions.values()
+
+    def condition_class_filter(c):
+        return (
+            inspect.isclass(c)
+            and not inspect.isabstract(c)
+            and issubclass(c, ProcessingCondition)
+            and not c
+            in (
+                ProcessingCondition,
+                RuleProcessingCondition,
+                DetectionItemProcessingCondition,
+                FieldNameProcessingCondition,
+            )
+        )
+
+    for name, cls in inspect.getmembers(processing.conditions, condition_class_filter):
+        if issubclass(cls, RuleProcessingCondition):
+            assert cls in rule_condition_classes
+        elif issubclass(cls, DetectionItemProcessingCondition):
+            assert cls in detection_item_condition_classes
+        elif issubclass(cls, FieldNameProcessingCondition):
+            assert cls in field_name_condition_classes
+        else:
+            raise AssertionError(
+                f"Class {name} is not a rule, detection item or field name condition"
+            )

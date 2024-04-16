@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from copy import deepcopy
+import inspect
 from re import template
+import re
 from sigma.conditions import ConditionOR, SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
@@ -10,7 +12,8 @@ from sigma.correlations import (
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing import transformations
+from sigma.processing.transformations import transformations
+import sigma.processing.transformations as transformations_module
 from sigma.processing.transformations import (
     AddConditionTransformation,
     RegexTransformation,
@@ -1377,3 +1380,13 @@ def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = DetectionItemFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
         transformation.apply(dummy_pipeline, sigma_rule)
+
+
+def test_transformation_identifier_completeness():
+    classes_with_identifiers = transformations.values()
+
+    def class_filter(c):
+        return inspect.isclass(c) and not inspect.isabstract(c) and issubclass(c, Transformation)
+
+    for cls in inspect.getmembers(transformations_module, class_filter):
+        assert cls[1] in classes_with_identifiers

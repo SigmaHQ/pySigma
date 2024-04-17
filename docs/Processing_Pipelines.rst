@@ -169,8 +169,8 @@ Rule Conditions
    "logsource", "LogsourceCondition"
    "contains_detection_item", "RuleContainsDetectionItemCondition"
    "processing_item_applied", "RuleProcessingItemAppliedCondition"
-   "is_sigma_rule": IsSigmaRuleCondition
-   "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition
+   "is_sigma_rule", IsSigmaRuleCondition
+   "is_sigma_correlation_rule", IsSigmaCorrelationRuleCondition
    "rule_attribute", "RuleAttributeCondition"
    "tag", "RuleTagCondition"
 
@@ -256,6 +256,7 @@ definitions are available:
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
    "regex", "RegexTransformation"
+   "set_value", "SetValueTransformation"
    "set_state", SetStateTransformation
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
@@ -302,7 +303,8 @@ YAML example:
         - mapped2A
         - mapped2B
 
-.. autoclass:: sigma.processing.transformations.CaseInsensitiveRegexTransformation
+.. autoclass:: sigma.processing.transformations.RegexTransformation
+.. autoclass:: sigma.processing.transformations.SetValueTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

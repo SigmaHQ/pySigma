@@ -12,7 +12,7 @@ from sigma.correlations import (
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing.transformations import transformations
+from sigma.processing.transformations import SetValueTransformation, transformations
 import sigma.processing.transformations as transformations_module
 from sigma.processing.transformations import (
     AddConditionTransformation,
@@ -45,6 +45,8 @@ from sigma.processing.conditions import (
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import (
     Placeholder,
+    SigmaBool,
+    SigmaNull,
     SigmaNumber,
     SigmaQueryExpression,
     SigmaRegularExpression,
@@ -1336,6 +1338,68 @@ def test_regex_transformation_case_insensitive_flags_method(dummy_pipeline):
 def test_regex_transformation_invalid_method():
     with pytest.raises(SigmaConfigurationError, match="Invalid method"):
         RegexTransformation(method="invalid")
+
+
+def test_set_value_transformation_string():
+    transformation = SetValueTransformation("testvalue")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("testvalue")
+
+
+def test_set_value_transformation_number():
+    transformation = SetValueTransformation(123)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_set_value_transformation_boolean():
+    transformation = SetValueTransformation(True)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaBool(True)
+
+
+def test_set_value_transformation_none():
+    transformation = SetValueTransformation(None)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNull()
+
+
+def test_set_value_transformation_unsupported_type():
+    with pytest.raises(SigmaConfigurationError, match="Unsupported value type"):
+        SetValueTransformation(object())
+
+
+def test_set_value_transformation_force_unsupported_type():
+    with pytest.raises(SigmaConfigurationError, match="is only allowed for"):
+        SetValueTransformation(None, "num")
+
+
+def test_set_value_transformation_force_string():
+    transformation = SetValueTransformation(123, "str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("123")
+
+
+def test_set_value_transformation_force_number():
+    transformation = SetValueTransformation("123", "num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_set_value_transformation_force_number_type_error():
+    with pytest.raises(SigmaConfigurationError, match="can't be converted to number"):
+        SetValueTransformation("test", "num")
+
+
+def test_set_value_transformation_invalid_force_type():
+    with pytest.raises(SigmaConfigurationError, match="Invalid force_type"):
+        SetValueTransformation("test", "invalid")
 
 
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):

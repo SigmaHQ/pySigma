@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from functools import partial
+from types import NoneType
 from sigma.conditions import ConditionOR, SigmaCondition
 from typing import (
     Any,
@@ -31,6 +32,9 @@ from sigma.exceptions import (
 )
 from sigma.types import (
     Placeholder,
+    SigmaBool,
+    SigmaNull,
+    SigmaNumber,
     SigmaRegularExpression,
     SigmaRegularExpressionFlag,
     SigmaString,
@@ -767,6 +771,55 @@ class RegexTransformation(StringValueTransformation):
 
 
 @dataclass
+class SetValueTransformation(ValueTransformation):
+    """
+    Set value to a fixed value. The type of the value can be enforced to `str` or `num` with the
+    force_type parameter.
+    """
+
+    value: Union[str, int, float, bool, NoneType]
+    force_type: Optional[Literal["str", "num"]] = None
+
+    def __post_init__(self):
+        if self.force_type is None:  # no type forced, use type of value
+            if isinstance(self.value, str):
+                self.sigma_value = SigmaString(self.value)
+            elif isinstance(self.value, bool):
+                self.sigma_value = SigmaBool(self.value)
+            elif isinstance(self.value, (int, float)):
+                self.sigma_value = SigmaNumber(self.value)
+            elif self.value is None:
+                self.sigma_value = SigmaNull()
+            else:
+                raise SigmaConfigurationError(
+                    f"Unsupported value type '{type(self.value)} for {str(self)}'"
+                )
+        else:  # forced type
+            if not isinstance(self.value, (str, int, float)):  # only allowed for certain types
+                raise SigmaConfigurationError(
+                    f"force_type '{self.force_type}' is only allowed for string and numeric values"
+                )
+            if self.force_type == "str":
+                self.sigma_value = SigmaString(str(self.value))
+            elif self.force_type == "num":
+                try:
+                    self.sigma_value = SigmaNumber(self.value)
+                except SigmaValueError:
+                    raise SigmaConfigurationError(
+                        f"Value '{self.value}' can't be converted to number for {str(self)}"
+                    )
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid force_type '{self.force_type}' for {str(self)}"
+                )
+
+        return super().__post_init__()
+
+    def apply_value(self, field: str, val: SigmaType) -> SigmaType:
+        return self.sigma_value
+
+
+@dataclass
 class SetStateTransformation(Transformation):
     """Set pipeline state key to value."""
 
@@ -823,6 +876,7 @@ transformations: Dict[str, Transformation] = {
     "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,
     "regex": RegexTransformation,
+    "set_value": SetValueTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

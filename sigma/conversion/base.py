@@ -1728,7 +1728,12 @@ class TextQueryBackend(Backend):
     def convert_correlation_aggregation_from_template(
         self, rule: SigmaCorrelationRule, correlation_type: SigmaCorrelationTypeLiteral, method: str
     ) -> str:
-        template = getattr(self, f"{correlation_type}_aggregation_expression")[method]
+        templates = getattr(self, f"{correlation_type}_aggregation_expression")
+        if templates is None:
+            raise NotImplementedError(
+                f"Correlation type '{correlation_type}' is not supported by backend."
+            )
+        template = templates[method]
         return template.format(
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.rules, method),
@@ -1787,7 +1792,12 @@ class TextQueryBackend(Backend):
         correlation_type: SigmaCorrelationTypeLiteral,
         method: str,
     ) -> str:
-        template = getattr(self, f"{correlation_type}_condition_expression")[method]
+        templates = getattr(self, f"{correlation_type}_condition_expression")
+        if templates is None:
+            raise NotImplementedError(
+                f"Correlation type '{correlation_type}' is not supported by backend."
+            )
+        template = templates[method]
         return template.format(
             field=cond.fieldref,
             op=self.correlation_condition_mapping[cond.op],

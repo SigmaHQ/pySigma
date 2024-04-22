@@ -12,7 +12,13 @@ from sigma.correlations import (
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing.transformations import SetValueTransformation, transformations
+from sigma.processing.transformations import (
+    AddFieldTransformation,
+    RemoveFieldTransformation,
+    SetFieldTransformation,
+    SetValueTransformation,
+    transformations,
+)
 import sigma.processing.transformations as transformations_module
 from sigma.processing.transformations import (
     AddConditionTransformation,
@@ -1215,6 +1221,85 @@ def test_changelogsource_correlation_rule(sigma_correlation_rule, dummy_pipeline
     transformation = ChangeLogsourceTransformation("test_category", "test_product", "test_service")
     transformation.apply(dummy_pipeline, sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
+
+
+def test_add_fields_transformation_single(dummy_pipeline, sigma_rule):
+    transformation = AddFieldTransformation("added_field")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+        "added_field",
+    ]
+
+
+def test_add_fields_transformation_multiple(dummy_pipeline, sigma_rule):
+    transformation = AddFieldTransformation(["added_field1", "added_field2"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+        "added_field1",
+        "added_field2",
+    ]
+
+
+def test_remove_fields_transformation_single(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation("field1")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_multiple(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation(["field1", "field3"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_single_nonexistent(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation("nonexistent_field")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_multiple_nonexistent(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation(
+        ["nonexistent_field1", "field1", "nonexistent_field2"]
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_set_fields_transformation(dummy_pipeline, sigma_rule):
+    transformation = SetFieldTransformation(["field1", "field2", "field3"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == ["field1", "field2", "field3"]
 
 
 def test_replace_string_simple(dummy_pipeline, sigma_rule: SigmaRule):

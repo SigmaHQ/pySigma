@@ -676,6 +676,65 @@ class ChangeLogsourceTransformation(Transformation):
 
 
 @dataclass
+class AddFieldTransformation(Transformation):
+    """
+    Add one or multiple fields to the Sigma rule. The field is added to the fields list of the rule:
+    """
+
+    field: Union[str, List[str]]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        if isinstance(self.field, str):
+            rule.fields.append(self.field)
+        elif isinstance(self.field, list):
+            rule.fields.extend(self.field)
+
+
+@dataclass
+class RemoveFieldTransformation(Transformation):
+    """
+    Remove one or multiple fields from the Sigma rules field list. If a given field is not in the
+    rules list, it is ignored.
+    """
+
+    field: Union[str, List[str]]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        if isinstance(self.field, str):
+            try:
+                rule.fields.remove(self.field)
+            except ValueError:
+                pass
+        elif isinstance(self.field, list):
+            for field in self.field:
+                try:
+                    rule.fields.remove(field)
+                except ValueError:
+                    pass
+
+
+@dataclass
+class SetFieldTransformation(Transformation):
+    """
+    Set fields to the Sigma rule. The fields are set to the fields list of the transformation.
+    """
+
+    fields: List[str]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        rule.fields = self.fields
+
+
+@dataclass
 class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
@@ -872,6 +931,9 @@ transformations: Dict[str, Transformation] = {
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
+    "add_field": AddFieldTransformation,
+    "remove_field": RemoveFieldTransformation,
+    "set_field": SetFieldTransformation,
     "replace_string": ReplaceStringTransformation,
     "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,

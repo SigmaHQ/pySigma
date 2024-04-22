@@ -253,11 +253,14 @@ definitions are available:
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
    "add_condition", "AddConditionTransformation"
    "change_logsource", "ChangeLogsourceTransformation"
+   "add_field", "AddFieldTransformation"
+   "remove_field", "RemoveFieldTransformation
+   "set_field", "SetFieldTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
    "regex", "RegexTransformation"
    "set_value", "SetValueTransformation"
-   "set_state", SetStateTransformation
+   "set_state", "SetStateTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
 
@@ -288,6 +291,9 @@ This is useful if different data models are used in the same system.
 .. autoclass:: sigma.processing.transformations.QueryExpressionPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.AddConditionTransformation
 .. autoclass:: sigma.processing.transformations.ChangeLogsourceTransformation
+.. autoclass:: sigma.processing.transformations.AddFieldTransformation
+.. autoclass:: sigma.processing.transformations.RemoveFieldTransformation
+.. autoclass:: sigma.processing.transformations.SetFieldTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
 .. autoclass:: sigma.processing.transformations.MapStringTransformation
 

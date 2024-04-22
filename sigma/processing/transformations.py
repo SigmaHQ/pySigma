@@ -1,6 +1,5 @@
 from abc import ABC, abstractmethod
 from functools import partial
-from types import NoneType
 from sigma.conditions import ConditionOR, SigmaCondition
 from typing import (
     Any,
@@ -836,7 +835,7 @@ class SetValueTransformation(ValueTransformation):
     force_type parameter.
     """
 
-    value: Union[str, int, float, bool, NoneType]
+    value: Optional[Union[str, int, float, bool]]
     force_type: Optional[Literal["str", "num"]] = None
 
     def __post_init__(self):

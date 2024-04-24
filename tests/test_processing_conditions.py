@@ -7,8 +7,10 @@ from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
     DetectionItemProcessingCondition,
     DetectionItemProcessingItemAppliedCondition,
+    DetectionItemProcessingStateCondition,
     FieldNameProcessingCondition,
     FieldNameProcessingItemAppliedCondition,
+    FieldNameProcessingStateCondition,
     IsNullCondition,
     IsSigmaCorrelationRuleCondition,
     IsSigmaRuleCondition,
@@ -21,6 +23,7 @@ from sigma.processing.conditions import (
     RuleProcessingCondition,
     RuleProcessingItemAppliedCondition,
     RuleAttributeCondition,
+    RuleProcessingStateCondition,
     RuleTagCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
@@ -120,6 +123,34 @@ def test_rule_processing_item_not_applied(dummy_processing_pipeline, sigma_rule:
     assert not RuleProcessingItemAppliedCondition(processing_item_id="test").match(
         dummy_processing_pipeline,
         sigma_rule,
+    )
+
+
+def test_rule_state_match(dummy_processing_pipeline, sigma_rule):
+    dummy_processing_pipeline.state["key"] = "value"
+    dummy_processing_pipeline.state["number"] = 123
+    assert RuleProcessingStateCondition("key", "value").match(dummy_processing_pipeline, sigma_rule)
+    assert RuleProcessingStateCondition("key", "other_value", "ne").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+    assert RuleProcessingStateCondition("number", 123, "gte").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+    assert RuleProcessingStateCondition("number", 123, "lte").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+    assert RuleProcessingStateCondition("number", 122, "gt").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+    assert RuleProcessingStateCondition("number", 124, "lt").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_state_nomatch(dummy_processing_pipeline, sigma_rule):
+    dummy_processing_pipeline.state["key"] = "value"
+    assert not RuleProcessingStateCondition("key", "other_value").match(
+        dummy_processing_pipeline, sigma_rule
     )
 
 
@@ -351,6 +382,13 @@ def test_exclude_field_condition_re_nomatch(dummy_processing_pipeline, detection
     )
 
 
+def test_field_state_condition_match(dummy_processing_pipeline):
+    dummy_processing_pipeline.state["field"] = "value"
+    assert FieldNameProcessingStateCondition("field", "value").match_field_name(
+        dummy_processing_pipeline, "field"
+    )
+
+
 @pytest.fixture
 def multivalued_detection_item():
     return SigmaDetectionItem("field", [], [SigmaString("value"), SigmaNumber(123)])
@@ -457,6 +495,13 @@ def test_field_name_processing_item_not_applied(pipeline_field_tracking):
     assert not FieldNameProcessingItemAppliedCondition(
         processing_item_id="processing_item"
     ).match_field_name(pipeline_field_tracking, "fieldC")
+
+
+def test_detection_item_state_match(dummy_processing_pipeline, detection_item):
+    dummy_processing_pipeline.state["field"] = "value"
+    assert DetectionItemProcessingStateCondition("field", "value").match(
+        dummy_processing_pipeline, detection_item
+    )
 
 
 def test_condition_identifiers_completeness():

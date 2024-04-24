@@ -240,6 +240,55 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
 
 
 @dataclass
+class ProcessingStateConditionBase:
+    """
+    Base class for processing pipeline state matching. The method match_state can be used by the
+    matching method of the derived condition classes to match the state condition.
+    """
+
+    key: str
+    val: Union[str, int, float, bool]
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+
+    def match_state(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> bool:
+        try:
+            state_val = pipeline.state[self.key]
+        except KeyError:
+            return False
+
+        if self.op == "eq":
+            return state_val == self.val
+        elif self.op == "ne":
+            return state_val != self.val
+        elif self.op == "gte":
+            return state_val >= self.val
+        elif self.op == "gt":
+            return state_val > self.val
+        elif self.op == "lte":
+            return state_val <= self.val
+        elif self.op == "lt":
+            return state_val < self.val
+        else:
+            raise SigmaConfigurationError(
+                f"Invalid operation '{self.op}' in rule state condition {str(self)}."
+            )
+
+
+@dataclass
+class RuleProcessingStateCondition(RuleProcessingCondition, ProcessingStateConditionBase):
+    """
+    Matches on processing pipeline state.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return self.match_state(pipeline)
+
+
+@dataclass
 class IsSigmaRuleCondition(RuleProcessingCondition):
     """
     Checks if rule is a SigmaRule.
@@ -441,6 +490,20 @@ class ExcludeFieldCondition(IncludeFieldCondition):
         return not super().match_field_name(pipeline, detection_item)
 
 
+@dataclass
+class FieldNameProcessingStateCondition(FieldNameProcessingCondition, ProcessingStateConditionBase):
+    """
+    Matches on processing pipeline state in context of a field name condition.
+    """
+
+    def match_field_name(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        field: str,
+    ) -> bool:
+        return self.match_state(pipeline)
+
+
 ### Detection Item Condition Classes ###
 @dataclass
 class MatchStringCondition(ValueProcessingCondition):
@@ -507,6 +570,22 @@ class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingConditi
 
 
 @dataclass
+class DetectionItemProcessingStateCondition(
+    DetectionItemProcessingCondition, ProcessingStateConditionBase
+):
+    """
+    Matches on processing pipeline state in context of a detection item condition.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        detection_item: SigmaDetectionItem,
+    ) -> bool:
+        return self.match_state(pipeline)
+
+
+@dataclass
 class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
     """
     Checks if processing item was applied to a field name.
@@ -533,6 +612,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "processing_item_applied": RuleProcessingItemAppliedCondition,
+    "processing_state": RuleProcessingStateCondition,
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
     "rule_attribute": RuleAttributeCondition,
@@ -542,9 +622,11 @@ detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,
     "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
+    "processing_state": DetectionItemProcessingStateCondition,
 }
 field_name_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,
     "processing_item_applied": FieldNameProcessingItemAppliedCondition,
+    "processing_state": FieldNameProcessingStateCondition,
 }

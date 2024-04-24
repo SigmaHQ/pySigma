@@ -169,14 +169,16 @@ Rule Conditions
    "logsource", "LogsourceCondition"
    "contains_detection_item", "RuleContainsDetectionItemCondition"
    "processing_item_applied", "RuleProcessingItemAppliedCondition"
-   "is_sigma_rule", IsSigmaRuleCondition
-   "is_sigma_correlation_rule", IsSigmaCorrelationRuleCondition
+   "processing_state", "RuleProcessingStateCondition"
+   "is_sigma_rule", "IsSigmaRuleCondition"
+   "is_sigma_correlation_rule", "IsSigmaCorrelationRuleCondition"
    "rule_attribute", "RuleAttributeCondition"
    "tag", "RuleTagCondition"
 
 .. autoclass:: sigma.processing.conditions.LogsourceCondition
 .. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
 .. autoclass:: sigma.processing.conditions.RuleProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.RuleProcessingStateCondition
 .. autoclass:: sigma.processing.conditions.IsSigmaRuleCondition
 .. autoclass:: sigma.processing.conditions.IsSigmaCorrelationRuleCondition
 .. autoclass:: sigma.processing.conditions.RuleAttributeCondition
@@ -192,10 +194,12 @@ Detection Item Conditions
    "match_string", "MatchStringCondition"
    "is_null", "IsNullCondition"
    "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
+   "processing_state", "DetectionItemProcessingStateCondition"
 
 .. autoclass:: sigma.processing.conditions.MatchStringCondition
 .. autoclass:: sigma.processing.conditions.IsNullCondition
 .. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.DetectionItemProcessingStateCondition
 
 Field Name Conditions
 =====================
@@ -207,10 +211,12 @@ Field Name Conditions
    "include_fields", "IncludeFieldCondition"
    "exclude_fields", "ExcludeFieldCondition"
    "processing_item_applied", "FieldNameProcessingItemAppliedCondition"
+   "processing_state", "FieldNameProcessingStateCondition
 
 .. autoclass:: sigma.processing.conditions.IncludeFieldCondition
 .. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
 .. autoclass:: sigma.processing.conditions.FieldNameProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.FieldNameProcessingStateCondition
 
 Base Classes
 ============

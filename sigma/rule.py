@@ -1055,6 +1055,8 @@ class SigmaRuleBase:
             d["tags"] = [str(tag) for tag in self.tags]
         if self.date is not None:
             d["date"] = self.date.isoformat()
+        if self.modified is not None:
+            d["modified"] = self.modified.isoformat()
 
         # custom attributes
         d.update(self.custom_attributes)

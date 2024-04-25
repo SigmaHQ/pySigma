@@ -211,7 +211,7 @@ Field Name Conditions
    "include_fields", "IncludeFieldCondition"
    "exclude_fields", "ExcludeFieldCondition"
    "processing_item_applied", "FieldNameProcessingItemAppliedCondition"
-   "processing_state", "FieldNameProcessingStateCondition
+   "processing_state", "FieldNameProcessingStateCondition"
 
 .. autoclass:: sigma.processing.conditions.IncludeFieldCondition
 .. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
@@ -250,7 +250,7 @@ definitions are available:
 
    "Identifier", "Class"
    "field_name_mapping", "FieldMappingTransformation"
-   "field_name_prefix_mapping", FieldPrefixMappingTransformation
+   "field_name_prefix_mapping", "FieldPrefixMappingTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
    "drop_detection_item", "DropDetectionItemTransformation"
@@ -260,7 +260,7 @@ definitions are available:
    "add_condition", "AddConditionTransformation"
    "change_logsource", "ChangeLogsourceTransformation"
    "add_field", "AddFieldTransformation"
-   "remove_field", "RemoveFieldTransformation
+   "remove_field", "RemoveFieldTransformation"
    "set_field", "SetFieldTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"

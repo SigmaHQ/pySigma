@@ -148,7 +148,7 @@ There are three types of conditions:
   rule pre-processing stage.
 
 In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two further
-attributes hat control the condition matching behavior:
+attributes that control the condition matching behavior:
 
 * `rule_condition_linking`, `detection_item_condition_linking` and `field_name_condition_linking`:
   one of `any` or `all` functions. Controls if one or all of the conditions from the list must match

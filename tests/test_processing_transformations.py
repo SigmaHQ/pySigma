@@ -966,7 +966,7 @@ def test_valuelist_placeholders_correlation_rule(sigma_correlation_rule, dummy_p
 
 def test_valuelist_placeholders_missing(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
-    pipeline = ProcessingPipeline([], {"var1": "val1"})
+    pipeline = ProcessingPipeline([], vars={"var1": "val1"})
     with pytest.raises(SigmaValueError, match="doesn't exist"):
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
 

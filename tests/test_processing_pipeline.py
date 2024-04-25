@@ -593,13 +593,34 @@ def test_processingpipeline_fromdict_error(processing_item_dict_with_error):
         )
 
 
-def test_processingpipeline_error_direct_transofrmations(sigma_rule):
+def test_processingpipeline_error_direct_transformations(sigma_rule):
     """Common error: passing transformations directly instead wrapped in ProcessingItem objects. This should raise an error."""
     with pytest.raises(TypeError, match="must be a ProcessingItem"):
         ProcessingPipeline(
             items=[
                 TransformationPrepend(s="Pre"),
                 TransformationAppend(s="Appended"),
+            ]
+        )
+
+
+def test_processingpipeline_error_direct_postprocessing(sigma_rule):
+    """Common error: passing transformations directly instead wrapped in QueryPostprocessingItem objects. This should raise an error."""
+    with pytest.raises(TypeError, match="must be a QueryPostprocessingItem"):
+        ProcessingPipeline(
+            postprocessing_items=[
+                EmbedQueryTransformation(prefix="[ "),
+                EmbedQueryTransformation(suffix=" ]"),
+            ]
+        )
+
+
+def test_processingpipeline_wrong_finalizer(sigma_rule):
+    with pytest.raises(TypeError, match="must be a Finalizer"):
+        ProcessingPipeline(
+            finalizers=[
+                EmbedQueryTransformation(prefix="[ "),
+                EmbedQueryTransformation(suffix=" ]"),
             ]
         )
 
@@ -788,7 +809,9 @@ def test_processingpipeline_concatenation():
             ),
         ],
         postprocessing_items=[
-            EmbedQueryTransformation(prefix="[ "),
+            QueryPostprocessingItem(
+                EmbedQueryTransformation(prefix="[ "),
+            )
         ],
         finalizers=[ConcatenateQueriesFinalizer()],
         vars={
@@ -804,7 +827,9 @@ def test_processingpipeline_concatenation():
             ),
         ],
         postprocessing_items=[
-            EmbedQueryTransformation(suffix=" ]"),
+            QueryPostprocessingItem(
+                EmbedQueryTransformation(suffix=" ]"),
+            ),
         ],
         finalizers=[JSONFinalizer()],
         vars={
@@ -824,8 +849,8 @@ def test_processingpipeline_concatenation():
             ),
         ],
         postprocessing_items=[
-            EmbedQueryTransformation(prefix="[ "),
-            EmbedQueryTransformation(suffix=" ]"),
+            QueryPostprocessingItem(EmbedQueryTransformation(prefix="[ ")),
+            QueryPostprocessingItem(EmbedQueryTransformation(suffix=" ]")),
         ],
         finalizers=[
             ConcatenateQueriesFinalizer(),
@@ -849,7 +874,7 @@ def test_processingpipeline_sum():
                 ),
             ],
             postprocessing_items=[
-                EmbedQueryTransformation(prefix="[ "),
+                QueryPostprocessingItem(EmbedQueryTransformation(prefix="[ ")),
             ],
             finalizers=[
                 ConcatenateQueriesFinalizer(),
@@ -882,7 +907,7 @@ def test_processingpipeline_sum():
                 ),
             ],
             postprocessing_items=[
-                EmbedQueryTransformation(suffix=" ]"),
+                QueryPostprocessingItem(EmbedQueryTransformation(suffix=" ]")),
             ],
             vars={"c": 5, "d": 6},
         ),
@@ -903,8 +928,8 @@ def test_processingpipeline_sum():
             ),
         ],
         postprocessing_items=[
-            EmbedQueryTransformation(prefix="[ "),
-            EmbedQueryTransformation(suffix=" ]"),
+            QueryPostprocessingItem(EmbedQueryTransformation(prefix="[ ")),
+            QueryPostprocessingItem(EmbedQueryTransformation(suffix=" ]")),
         ],
         finalizers=[
             ConcatenateQueriesFinalizer(),

@@ -403,7 +403,7 @@ class ProcessingPipeline:
     """
 
     items: List[ProcessingItem] = field(default_factory=list)
-    postprocessing_items: List[QueryPostprocessingTransformation] = field(default_factory=list)
+    postprocessing_items: List[QueryPostprocessingItem] = field(default_factory=list)
     finalizers: List[Finalizer] = field(default_factory=list)
     vars: Dict[str, Any] = field(default_factory=dict)
     priority: int = field(default=0)
@@ -434,6 +434,14 @@ class ProcessingPipeline:
             raise TypeError(
                 "Each item in a processing pipeline must be a ProcessingItem - don't use processing classes directly!"
             )
+        if not all(
+            (isinstance(item, QueryPostprocessingItem) for item in self.postprocessing_items)
+        ):
+            raise TypeError(
+                "Each item in a postprocessing pipeline must be a QueryPostprocessingItem - don't use processing classes directly!"
+            )
+        if not all((isinstance(finalizer, Finalizer) for finalizer in self.finalizers)):
+            raise TypeError("Each item in a finalizer pipeline must be a Finalizer")
 
     @classmethod
     def from_dict(cls, d: dict) -> "ProcessingPipeline":

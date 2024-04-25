@@ -714,6 +714,9 @@ class TextQueryBackend(Backend):
     eq_token: ClassVar[Optional[str]] = (
         None  # Token inserted between field and value (without separator)
     )
+    eq_expression: ClassVar[str] = (
+        "{field}{backend.eq_token}{value}"  # Expression for field = value
+    )
 
     # Query structure
     # The generated query can be embedded into further structures. One common example are data
@@ -1305,11 +1308,12 @@ class TextQueryBackend(Backend):
                 expr = self.wildcard_match_expression
                 value = cond.value
             else:
-                expr = "{field}" + self.eq_token + "{value}"
+                expr = self.eq_expression
                 value = cond.value
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                backend=self,
             )
         except TypeError:  # pragma: no cover
             raise NotImplementedError(

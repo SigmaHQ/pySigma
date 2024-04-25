@@ -57,7 +57,7 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
 class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
     """Replace query with template that can refer to the following placeholders:
     * query: the postprocessed query.
-    * rule: the Sigma rule including all its attributes like rule.title.
+    * rule: the Sigma rule including all its attributes like `rule.title`.
     * pipeline: the Sigma processing pipeline where this transformation is applied including all
       current state information in pipeline.state.
 

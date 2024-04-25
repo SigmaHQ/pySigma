@@ -6,6 +6,7 @@ from typing import (
     Iterable,
     List,
     Dict,
+    Literal,
     Optional,
     Set,
     Union,
@@ -30,6 +31,11 @@ from sigma.exceptions import (
 )
 from sigma.types import (
     Placeholder,
+    SigmaBool,
+    SigmaNull,
+    SigmaNumber,
+    SigmaRegularExpression,
+    SigmaRegularExpressionFlag,
     SigmaString,
     SigmaType,
     SpecialChars,
@@ -669,6 +675,65 @@ class ChangeLogsourceTransformation(Transformation):
 
 
 @dataclass
+class AddFieldTransformation(Transformation):
+    """
+    Add one or multiple fields to the Sigma rule. The field is added to the fields list of the rule:
+    """
+
+    field: Union[str, List[str]]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        if isinstance(self.field, str):
+            rule.fields.append(self.field)
+        elif isinstance(self.field, list):
+            rule.fields.extend(self.field)
+
+
+@dataclass
+class RemoveFieldTransformation(Transformation):
+    """
+    Remove one or multiple fields from the Sigma rules field list. If a given field is not in the
+    rules list, it is ignored.
+    """
+
+    field: Union[str, List[str]]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        if isinstance(self.field, str):
+            try:
+                rule.fields.remove(self.field)
+            except ValueError:
+                pass
+        elif isinstance(self.field, list):
+            for field in self.field:
+                try:
+                    rule.fields.remove(field)
+                except ValueError:
+                    pass
+
+
+@dataclass
+class SetFieldTransformation(Transformation):
+    """
+    Set fields to the Sigma rule. The fields are set to the fields list of the transformation.
+    """
+
+    fields: List[str]
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        super().apply(pipeline, rule)
+        rule.fields = self.fields
+
+
+@dataclass
 class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
@@ -708,6 +773,108 @@ class MapStringTransformation(StringValueTransformation):
             return SigmaString(mapped)
         elif isinstance(mapped, list):
             return [SigmaString(item) for item in mapped]
+
+
+@dataclass
+class RegexTransformation(StringValueTransformation):
+    """
+    Transform a string value to a case insensitive regular expression. The following methods are
+    available and can be selected with the method parameter:
+
+    * plain: Convert the string to a regular expression without any change to its case. In most
+      cases this should result in a case-sensitive match of the string.
+    * case_insensitive_flag: Add the case insensitive flag to the regular expression.
+    * case_insensitive_brackets (default): Wrap each character in a bracket expression like [aA] to match
+      both case variants.
+
+    This transformation is intended to be used to emulate case insensitive matching in backends that
+    don't support it natively.
+    """
+
+    method: Literal["plain", "ignore_case_flag", "ignore_case_brackets"] = "ignore_case_brackets"
+
+    def __post_init__(self):
+        if self.method not in self.__annotations__["method"].__args__:
+            raise SigmaConfigurationError(
+                f"Invalid method '{self.method}' for CaseInsensitiveRegexTransformation."
+            )
+        return super().__post_init__()
+
+    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+        regex = ""
+        for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
+            if isinstance(sc, str):  # if component is a string
+                if (
+                    self.method == "ignore_case_brackets"
+                ):  # wrap each character in a bracket expression
+                    regex += "".join(f"[{c.lower()}{c.upper()}]" if c.isalpha() else c for c in sc)
+                else:
+                    regex += sc
+            elif (
+                sc == SpecialChars.WILDCARD_MULTI
+            ):  # if component is a wildcard, add it as regex .*
+                regex += ".*"
+            elif (
+                sc == SpecialChars.WILDCARD_SINGLE
+            ):  # if component is a single wildcard, add it as regex .
+                regex += "."
+            elif isinstance(sc, Placeholder):  # Placeholders are not allowed in regex
+                raise SigmaConfigurationError(
+                    f"Placeholder '{sc.name}' can't be converted to a regular expression. Please use a placeholder resolution transformation before."
+                )
+        if self.method == "ignore_case_flag":
+            return SigmaRegularExpression(regex, {SigmaRegularExpressionFlag.IGNORECASE})
+        else:
+            return SigmaRegularExpression(regex)
+
+
+@dataclass
+class SetValueTransformation(ValueTransformation):
+    """
+    Set value to a fixed value. The type of the value can be enforced to `str` or `num` with the
+    force_type parameter.
+    """
+
+    value: Optional[Union[str, int, float, bool]]
+    force_type: Optional[Literal["str", "num"]] = None
+
+    def __post_init__(self):
+        if self.force_type is None:  # no type forced, use type of value
+            if isinstance(self.value, str):
+                self.sigma_value = SigmaString(self.value)
+            elif isinstance(self.value, bool):
+                self.sigma_value = SigmaBool(self.value)
+            elif isinstance(self.value, (int, float)):
+                self.sigma_value = SigmaNumber(self.value)
+            elif self.value is None:
+                self.sigma_value = SigmaNull()
+            else:
+                raise SigmaConfigurationError(
+                    f"Unsupported value type '{type(self.value)} for {str(self)}'"
+                )
+        else:  # forced type
+            if not isinstance(self.value, (str, int, float)):  # only allowed for certain types
+                raise SigmaConfigurationError(
+                    f"force_type '{self.force_type}' is only allowed for string and numeric values"
+                )
+            if self.force_type == "str":
+                self.sigma_value = SigmaString(str(self.value))
+            elif self.force_type == "num":
+                try:
+                    self.sigma_value = SigmaNumber(self.value)
+                except SigmaValueError:
+                    raise SigmaConfigurationError(
+                        f"Value '{self.value}' can't be converted to number for {str(self)}"
+                    )
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid force_type '{self.force_type}' for {str(self)}"
+                )
+
+        return super().__post_init__()
+
+    def apply_value(self, field: str, val: SigmaType) -> SigmaType:
+        return self.sigma_value
 
 
 @dataclass
@@ -763,9 +930,14 @@ transformations: Dict[str, Transformation] = {
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
+    "add_field": AddFieldTransformation,
+    "remove_field": RemoveFieldTransformation,
+    "set_field": SetFieldTransformation,
     "replace_string": ReplaceStringTransformation,
     "map_string": MapStringTransformation,
     "set_state": SetStateTransformation,
+    "regex": RegexTransformation,
+    "set_value": SetValueTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

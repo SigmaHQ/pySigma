@@ -169,10 +169,20 @@ Rule Conditions
    "logsource", "LogsourceCondition"
    "contains_detection_item", "RuleContainsDetectionItemCondition"
    "processing_item_applied", "RuleProcessingItemAppliedCondition"
+   "processing_state", "RuleProcessingStateCondition"
+   "is_sigma_rule", "IsSigmaRuleCondition"
+   "is_sigma_correlation_rule", "IsSigmaCorrelationRuleCondition"
+   "rule_attribute", "RuleAttributeCondition"
+   "tag", "RuleTagCondition"
 
 .. autoclass:: sigma.processing.conditions.LogsourceCondition
 .. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
 .. autoclass:: sigma.processing.conditions.RuleProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.RuleProcessingStateCondition
+.. autoclass:: sigma.processing.conditions.IsSigmaRuleCondition
+.. autoclass:: sigma.processing.conditions.IsSigmaCorrelationRuleCondition
+.. autoclass:: sigma.processing.conditions.RuleAttributeCondition
+.. autoclass:: sigma.processing.conditions.RuleTagCondition
 
 Detection Item Conditions
 =========================
@@ -182,10 +192,14 @@ Detection Item Conditions
 
    "Identifier", "Class"
    "match_string", "MatchStringCondition"
+   "is_null", "IsNullCondition"
    "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
+   "processing_state", "DetectionItemProcessingStateCondition"
 
 .. autoclass:: sigma.processing.conditions.MatchStringCondition
+.. autoclass:: sigma.processing.conditions.IsNullCondition
 .. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.DetectionItemProcessingStateCondition
 
 Field Name Conditions
 =====================
@@ -197,10 +211,12 @@ Field Name Conditions
    "include_fields", "IncludeFieldCondition"
    "exclude_fields", "ExcludeFieldCondition"
    "processing_item_applied", "FieldNameProcessingItemAppliedCondition"
+   "processing_state", "FieldNameProcessingStateCondition"
 
 .. autoclass:: sigma.processing.conditions.IncludeFieldCondition
 .. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
 .. autoclass:: sigma.processing.conditions.FieldNameProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.FieldNameProcessingStateCondition
 
 Base Classes
 ============
@@ -234,7 +250,7 @@ definitions are available:
 
    "Identifier", "Class"
    "field_name_mapping", "FieldMappingTransformation"
-   "field_name_prefix_mapping", FieldPrefixMappingTransformation
+   "field_name_prefix_mapping", "FieldPrefixMappingTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
    "drop_detection_item", "DropDetectionItemTransformation"
@@ -243,9 +259,14 @@ definitions are available:
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
    "add_condition", "AddConditionTransformation"
    "change_logsource", "ChangeLogsourceTransformation"
+   "add_field", "AddFieldTransformation"
+   "remove_field", "RemoveFieldTransformation"
+   "set_field", "SetFieldTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
-   "set_state", SetStateTransformation
+   "regex", "RegexTransformation"
+   "set_value", "SetValueTransformation"
+   "set_state", "SetStateTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
 
@@ -276,6 +297,9 @@ This is useful if different data models are used in the same system.
 .. autoclass:: sigma.processing.transformations.QueryExpressionPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.AddConditionTransformation
 .. autoclass:: sigma.processing.transformations.ChangeLogsourceTransformation
+.. autoclass:: sigma.processing.transformations.AddFieldTransformation
+.. autoclass:: sigma.processing.transformations.RemoveFieldTransformation
+.. autoclass:: sigma.processing.transformations.SetFieldTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
 .. autoclass:: sigma.processing.transformations.MapStringTransformation
 
@@ -291,6 +315,8 @@ YAML example:
         - mapped2A
         - mapped2B
 
+.. autoclass:: sigma.processing.transformations.RegexTransformation
+.. autoclass:: sigma.processing.transformations.SetValueTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

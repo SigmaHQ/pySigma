@@ -1,6 +1,8 @@
 from dataclasses import dataclass
 from copy import deepcopy
+import inspect
 from re import template
+import re
 from sigma.conditions import ConditionOR, SigmaCondition
 from _pytest.fixtures import fixture
 import pytest
@@ -10,9 +12,17 @@ from sigma.correlations import (
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing import transformations
+from sigma.processing.transformations import (
+    AddFieldTransformation,
+    RemoveFieldTransformation,
+    SetFieldTransformation,
+    SetValueTransformation,
+    transformations,
+)
+import sigma.processing.transformations as transformations_module
 from sigma.processing.transformations import (
     AddConditionTransformation,
+    RegexTransformation,
     ChangeLogsourceTransformation,
     ConditionTransformation,
     DetectionItemFailureTransformation,
@@ -41,8 +51,12 @@ from sigma.processing.conditions import (
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import (
     Placeholder,
+    SigmaBool,
+    SigmaNull,
     SigmaNumber,
     SigmaQueryExpression,
+    SigmaRegularExpression,
+    SigmaRegularExpressionFlag,
     SigmaString,
     SpecialChars,
 )
@@ -952,7 +966,7 @@ def test_valuelist_placeholders_correlation_rule(sigma_correlation_rule, dummy_p
 
 def test_valuelist_placeholders_missing(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
-    pipeline = ProcessingPipeline([], {"var1": "val1"})
+    pipeline = ProcessingPipeline([], vars={"var1": "val1"})
     with pytest.raises(SigmaValueError, match="doesn't exist"):
         transformation.apply(pipeline, sigma_rule_placeholders_simple)
 
@@ -1209,6 +1223,85 @@ def test_changelogsource_correlation_rule(sigma_correlation_rule, dummy_pipeline
     assert sigma_correlation_rule == orig_correlation_rule
 
 
+def test_add_fields_transformation_single(dummy_pipeline, sigma_rule):
+    transformation = AddFieldTransformation("added_field")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+        "added_field",
+    ]
+
+
+def test_add_fields_transformation_multiple(dummy_pipeline, sigma_rule):
+    transformation = AddFieldTransformation(["added_field1", "added_field2"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+        "added_field1",
+        "added_field2",
+    ]
+
+
+def test_remove_fields_transformation_single(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation("field1")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_multiple(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation(["field1", "field3"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_single_nonexistent(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation("nonexistent_field")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_remove_fields_transformation_multiple_nonexistent(dummy_pipeline, sigma_rule):
+    transformation = RemoveFieldTransformation(
+        ["nonexistent_field1", "field1", "nonexistent_field2"]
+    )
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == [
+        "otherfield1",
+        "field2",
+        "field3",
+        "otherfield2",
+    ]
+
+
+def test_set_fields_transformation(dummy_pipeline, sigma_rule):
+    transformation = SetFieldTransformation(["field1", "field2", "field3"])
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.fields == ["field1", "field2", "field3"]
+
+
 def test_replace_string_simple(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = ReplaceStringTransformation("value", "test")
     transformation.apply(dummy_pipeline, sigma_rule)
@@ -1302,6 +1395,98 @@ def test_map_string_transformation_correlation_rule(
     assert sigma_correlation_rule == orig_correlation_rule
 
 
+def test_regex_transformation_plain_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test*va?ue")])
+    transformation = RegexTransformation(method="plain")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression("test.*va.ue")
+
+
+def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    transformation = RegexTransformation(method="ignore_case_brackets")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression(
+        "[tT][eE][sS][tT].*[vV][aA][lL].[uU][eE]"
+    )
+
+
+def test_regex_transformation_case_insensitive_flags_method(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    transformation = RegexTransformation(method="ignore_case_flag")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression(
+        "tEsT.*val.ue", {SigmaRegularExpressionFlag.IGNORECASE}
+    )
+
+
+def test_regex_transformation_invalid_method():
+    with pytest.raises(SigmaConfigurationError, match="Invalid method"):
+        RegexTransformation(method="invalid")
+
+
+def test_set_value_transformation_string():
+    transformation = SetValueTransformation("testvalue")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("testvalue")
+
+
+def test_set_value_transformation_number():
+    transformation = SetValueTransformation(123)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_set_value_transformation_boolean():
+    transformation = SetValueTransformation(True)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaBool(True)
+
+
+def test_set_value_transformation_none():
+    transformation = SetValueTransformation(None)
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNull()
+
+
+def test_set_value_transformation_unsupported_type():
+    with pytest.raises(SigmaConfigurationError, match="Unsupported value type"):
+        SetValueTransformation(object())
+
+
+def test_set_value_transformation_force_unsupported_type():
+    with pytest.raises(SigmaConfigurationError, match="is only allowed for"):
+        SetValueTransformation(None, "num")
+
+
+def test_set_value_transformation_force_string():
+    transformation = SetValueTransformation(123, "str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("123")
+
+
+def test_set_value_transformation_force_number():
+    transformation = SetValueTransformation("123", "num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("test")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_set_value_transformation_force_number_type_error():
+    with pytest.raises(SigmaConfigurationError, match="can't be converted to number"):
+        SetValueTransformation("test", "num")
+
+
+def test_set_value_transformation_invalid_force_type():
+    with pytest.raises(SigmaConfigurationError, match="Invalid force_type"):
+        SetValueTransformation("test", "invalid")
+
+
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = SetStateTransformation("testkey", "testvalue")
     transformation.set_processing_item(
@@ -1344,3 +1529,13 @@ def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = DetectionItemFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
         transformation.apply(dummy_pipeline, sigma_rule)
+
+
+def test_transformation_identifier_completeness():
+    classes_with_identifiers = transformations.values()
+
+    def class_filter(c):
+        return inspect.isclass(c) and not inspect.isabstract(c) and issubclass(c, Transformation)
+
+    for cls in inspect.getmembers(transformations_module, class_filter):
+        assert cls[1] in classes_with_identifiers

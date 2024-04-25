@@ -1,12 +1,22 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
+from datetime import date
+from uuid import UUID
 
 import sigma
 from sigma.correlations import SigmaCorrelationRule
-from sigma.types import SigmaFieldReference, SigmaString, SigmaType, sigma_type
-from typing import Dict, List, Pattern, Literal, Optional, Union
+from sigma.types import SigmaFieldReference, SigmaNull, SigmaString, SigmaType, sigma_type
+from typing import ClassVar, Dict, List, Pattern, Literal, Optional, Union
 import re
-from sigma.rule import SigmaDetection, SigmaRule, SigmaDetectionItem, SigmaLogSource
+from sigma.rule import (
+    SigmaDetection,
+    SigmaLevel,
+    SigmaRule,
+    SigmaDetectionItem,
+    SigmaLogSource,
+    SigmaRuleTag,
+    SigmaStatus,
+)
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
 
 
@@ -230,6 +240,55 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
 
 
 @dataclass
+class ProcessingStateConditionBase:
+    """
+    Base class for processing pipeline state matching. The method match_state can be used by the
+    matching method of the derived condition classes to match the state condition.
+    """
+
+    key: str
+    val: Union[str, int, float, bool]
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+
+    def match_state(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> bool:
+        try:
+            state_val = pipeline.state[self.key]
+        except KeyError:
+            return False
+
+        if self.op == "eq":
+            return state_val == self.val
+        elif self.op == "ne":
+            return state_val != self.val
+        elif self.op == "gte":
+            return state_val >= self.val
+        elif self.op == "gt":
+            return state_val > self.val
+        elif self.op == "lte":
+            return state_val <= self.val
+        elif self.op == "lt":
+            return state_val < self.val
+        else:
+            raise SigmaConfigurationError(
+                f"Invalid operation '{self.op}' in rule state condition {str(self)}."
+            )
+
+
+@dataclass
+class RuleProcessingStateCondition(RuleProcessingCondition, ProcessingStateConditionBase):
+    """
+    Matches on processing pipeline state.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return self.match_state(pipeline)
+
+
+@dataclass
 class IsSigmaRuleCondition(RuleProcessingCondition):
     """
     Checks if rule is a SigmaRule.
@@ -258,19 +317,119 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
 
 
 @dataclass
-class TaxonomyCondition(RuleProcessingCondition):
+class RuleAttributeCondition(RuleProcessingCondition):
     """
-    Matches on rule taxonomy.
+    Generic match on rule attributes with supported types:
+
+    * strings (exact matches)
+    * UUIDs (exact matches)
+    * numbers (relations: eq, ne, gte, ge, lte, le)
+    * dates (relations: eq, ne, gte, ge, lte, le)
+    * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
+    * Rule statuses (relations: eq, ne, gte, ge, lte, le)
+
+    Fields that contain lists of values, maps or other complex data structures are not supported and
+    raise a SigmaConfigurationError. If the type of the value doesn't allows a particular relation, the
+    condition also raises a SigmaConfigurationError on match.
     """
 
-    taxonomy: str
+    attribute: str
+    value: Union[str, int, float]
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+    op_methods: ClassVar[Dict[str, str]] = {
+        "eq": "__eq__",
+        "ne": "__ne__",
+        "gte": "__ge__",
+        "gt": "__gt__",
+        "lte": "__le__",
+        "lt": "__lt__",
+    }
+
+    def __post_init__(self):
+        if self.op not in self.op_methods:
+            raise SigmaConfigurationError(
+                f"Invalid operation '{self.op}' in rule attribute condition {str(self)}."
+            )
 
     def match(
         self,
         pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        return rule.taxonomy == self.taxonomy
+        try:  # first try to get built-in attribute
+            value = getattr(rule, self.attribute)
+        except AttributeError:
+            try:
+                value = rule.custom_attributes[self.attribute]
+            except KeyError:
+                return False
+
+        # Finally, value has some comparable type
+        if isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
+            if self.op == "eq":
+                return str(value) == self.value
+            elif self.op == "ne":
+                return str(value) != self.value
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid operation '{self.op}' for string comparison in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, (int, float)):  # numeric comparison
+            try:
+                compare_value = float(self.value)
+            except ValueError:
+                raise SigmaConfigurationError(
+                    f"Invalid number format '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, date):  # date comparison
+            try:
+                compare_value = date.fromisoformat(self.value)
+            except ValueError:
+                raise SigmaConfigurationError(
+                    f"Invalid date format '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, SigmaLevel):
+            try:
+                compare_value = SigmaLevel[self.value.upper()]
+            except KeyError:
+                raise SigmaConfigurationError(
+                    f"Invalid Sigma severity level '{self.value}' in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, SigmaStatus):
+            try:
+                compare_value = SigmaStatus[self.value.upper()]
+            except KeyError:
+                raise SigmaConfigurationError(
+                    f"Invalid Sigma status '{self.value}' in rule attribute condition {str(self)}."
+                )
+        else:
+            raise SigmaConfigurationError(
+                f"Unsupported type '{type(value)}' in rule attribute condition {str(self)}."
+            )
+
+        try:
+            return getattr(value, self.op_methods[self.op])(compare_value)
+        except AttributeError:  # operation not supported by value type
+            return False
+
+
+@dataclass
+class RuleTagCondition(RuleProcessingCondition):
+    """
+    Matches if rule is tagged with a specific tag.
+    """
+
+    tag: str
+
+    def __post_init__(self):
+        self.match_tag = SigmaRuleTag.from_str(self.tag)
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> bool:
+        return self.match_tag in rule.tags
 
 
 ### Field Name Condition Classes ###
@@ -331,6 +490,20 @@ class ExcludeFieldCondition(IncludeFieldCondition):
         return not super().match_field_name(pipeline, detection_item)
 
 
+@dataclass
+class FieldNameProcessingStateCondition(FieldNameProcessingCondition, ProcessingStateConditionBase):
+    """
+    Matches on processing pipeline state in context of a field name condition.
+    """
+
+    def match_field_name(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        field: str,
+    ) -> bool:
+        return self.match_state(pipeline)
+
+
 ### Detection Item Condition Classes ###
 @dataclass
 class MatchStringCondition(ValueProcessingCondition):
@@ -367,6 +540,20 @@ class MatchStringCondition(ValueProcessingCondition):
 
 
 @dataclass
+class IsNullCondition(ValueProcessingCondition):
+    """
+    Match null values. The parameter 'cond' determines for detection items with multiple
+    values if any or all strings must match. Generally, values which aren't strings are skipped in any mode or result in a
+    false result in all match mode.
+    """
+
+    def match_value(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
+    ) -> bool:
+        return isinstance(value, SigmaNull)
+
+
+@dataclass
 class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingCondition):
     """
     Checks if processing item was applied to detection item.
@@ -380,6 +567,22 @@ class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingConditi
         detection_item: SigmaDetectionItem,
     ) -> bool:
         return detection_item.was_processed_by(self.processing_item_id)
+
+
+@dataclass
+class DetectionItemProcessingStateCondition(
+    DetectionItemProcessingCondition, ProcessingStateConditionBase
+):
+    """
+    Matches on processing pipeline state in context of a detection item condition.
+    """
+
+    def match(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        detection_item: SigmaDetectionItem,
+    ) -> bool:
+        return self.match_state(pipeline)
 
 
 @dataclass
@@ -409,16 +612,21 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "processing_item_applied": RuleProcessingItemAppliedCondition,
+    "processing_state": RuleProcessingStateCondition,
     "is_sigma_rule": IsSigmaRuleCondition,
     "is_sigma_correlation_rule": IsSigmaCorrelationRuleCondition,
-    "taxonomy": TaxonomyCondition,
+    "rule_attribute": RuleAttributeCondition,
+    "tag": RuleTagCondition,
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,
+    "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
+    "processing_state": DetectionItemProcessingStateCondition,
 }
 field_name_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,
     "processing_item_applied": FieldNameProcessingItemAppliedCondition,
+    "processing_state": FieldNameProcessingStateCondition,
 }

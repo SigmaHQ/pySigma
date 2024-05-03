@@ -138,14 +138,16 @@ There are three types of conditions:
 
 * Rule conditions are evaluated to the whole rule. They are defined in the `rule_conditions`
   attribute of a `ProcessingItem`. These can be applied in the rule pre-processing stage and the
-  query post-processing stage.
+  query post-processing stage. These conditions are evaluated for all transformations.
 * Detection item conditions are evaluated for each detection item. They are defined in the
   `detection_item_conditions` attribute of a `ProcessingPipeline`. These can only be applied in the
-  rule pre-processing stage.
-* Field name conditions are evaluated for field names that can be located in detection items or in
-  the field name list of a Sigma rule. They are defined in the `field_name_conditions` attribute of
-  `detection_item_conditions` attribute of a `ProcessingPipeline`. These can only be applied in the
-  rule pre-processing stage.
+  rule pre-processing stage. These conditions are only evaluated for transformations that operate on
+  detection items as well as for field name transformations in the context of detection items.
+* Field name conditions are evaluated for field names that can be located in detection items, in
+  the field name list of a Sigma rule and in field name references inside of values. They are
+  defined in the `field_name_conditions` attribute of `detection_item_conditions` attribute of a
+  `ProcessingPipeline`. These can only be applied in the rule pre-processing stage and are evaluated
+  only for transformations that operate on field names. 
 
 In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two further
 attributes that control the condition matching behavior:

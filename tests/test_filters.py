@@ -1,26 +1,10 @@
 import pytest
+
 from sigma.collection import SigmaCollection
-from sigma.correlations import (
-    SigmaCorrelationCondition,
-    SigmaCorrelationConditionOperator,
-    SigmaCorrelationFieldAliases,
-    SigmaCorrelationRule,
-    SigmaCorrelationTimespan,
-    SigmaCorrelationType,
-    SigmaRuleReference,
-)
-from sigma.exceptions import (
-    SigmaCorrelationConditionError,
-    SigmaCorrelationRuleError,
-    SigmaCorrelationTypeError,
-    SigmaRuleNotFoundError,
-    SigmaTimespanError,
-)
 from sigma.filters import SigmaFilter, SigmaGlobalFilter, SigmaFilterTransformation
-from sigma.pipelines.test import dummy_test_pipeline
 from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation, AddConditionTransformation
+from sigma.processing.transformations import FieldMappingTransformation
 from sigma.rule import SigmaLogSource
 from .test_conversion_base import test_backend
 
@@ -83,31 +67,30 @@ def test_filter_valid_1(meta_filter):
     )
 
 
-def test_event_count_correlation_single_rule_with_grouping(
-        meta_filter,
-        test_backend,
-        rule_collection
-):
-    filter_pipeline = ProcessingPipeline(
+def test_basic_filter_application(meta_filter, test_backend, rule_collection):
+    test_backend.processing_pipeline = meta_filter.to_processing_pipeline()
+
+    assert test_backend.convert(rule_collection) == [
+        """(EventID=4625 or EventID2=4624) and not User=\"Admin\""""
+    ]
+
+
+def test_filter_with_field_mapping_against_it(meta_filter, test_backend, rule_collection):
+
+    test_backend.processing_pipeline += ProcessingPipeline(
         name="Global Filter Pipeline",
         items=[
             ProcessingItem(
-                SigmaFilterTransformation(
-                    negated=True,
-                    conditions={
-                        'User': 'Admin'
-                    }
-                ),
+                FieldMappingTransformation({"User": "User123"}),
                 rule_conditions=[
                     LogsourceCondition(**meta_filter.logsource.to_dict()),
                     # TODO: Add where the rule IDs match
-                ]
+                ],
             ),
-
         ],
     )
-    test_backend.processing_pipeline = filter_pipeline
+    test_backend.backend_processing_pipeline += meta_filter.to_processing_pipeline()
 
     assert test_backend.convert(rule_collection) == [
-        """mappedA=4625"""
+        """(EventID=4625 or EventID2=4624) and not User123=\"Admin\""""
     ]

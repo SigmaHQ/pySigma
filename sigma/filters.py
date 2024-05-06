@@ -6,6 +6,8 @@ from uuid import UUID
 import yaml
 from sigma import exceptions as sigma_exceptions
 from sigma.conditions import SigmaCondition
+from sigma.processing.conditions import LogsourceCondition
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import AddConditionTransformation
 
 from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections
@@ -23,7 +25,9 @@ class SigmaGlobalFilter(SigmaDetections):
 
 class SigmaFilterTransformation(AddConditionTransformation):
     def apply_condition(self, cond: SigmaCondition) -> None:
-        cond.condition = f"({cond.condition}) and " + ("not " if self.negated else "") + f"{self.name}"
+        cond.condition = (
+            f"({cond.condition}) and " + ("not " if self.negated else "") + f"{self.name}"
+        )
 
 
 @dataclass
@@ -39,10 +43,10 @@ class SigmaFilter:
 
     @classmethod
     def from_dict(
-            cls,
-            sigma_filter: dict,
-            collect_errors: bool = False,
-            source: Optional[SigmaFilterLocation] = None,
+        cls,
+        sigma_filter: dict,
+        collect_errors: bool = False,
+        source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
@@ -161,7 +165,9 @@ class SigmaFilter:
         # parse detections
         filter_global_filter = None
         try:
-            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["global_filter"], source)
+            filter_global_filter = SigmaGlobalFilter.from_dict(
+                sigma_filter["global_filter"], source
+            )
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaDetectionError(
@@ -190,3 +196,18 @@ class SigmaFilter:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
+
+    def to_processing_pipeline(self):
+        return ProcessingPipeline(
+            name="Global Filter Pipeline",
+            priority=0,
+            items=[
+                ProcessingItem(
+                    SigmaFilterTransformation(negated=True, conditions={"User": "Admin"}),
+                    rule_conditions=[
+                        LogsourceCondition(**self.logsource.to_dict()),
+                        # TODO: Add where the rule IDs match
+                    ],
+                ),
+            ],
+        )

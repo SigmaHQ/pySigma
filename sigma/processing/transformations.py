@@ -13,7 +13,8 @@ from typing import (
     Pattern,
     Iterator,
     get_args,
-    get_origin, Callable,
+    get_origin,
+    Callable,
 )
 from dataclasses import dataclass, field
 import dataclasses

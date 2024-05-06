@@ -20,7 +20,8 @@ from sigma.processing.transformations import (
     transformations,
     Transformation,
     FieldMappingTransformation,
-    AddFieldnamePrefixTransformation, FieldFunctionTransformation,
+    AddFieldnamePrefixTransformation,
+    FieldFunctionTransformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
@@ -987,7 +988,6 @@ def test_processingpipeline_invalid_concatenation_left():
         )
 
 
-
 @pytest.fixture(scope="module")
 def processing_pipeline_with_field_func_transform():
     return ProcessingPipeline(
@@ -1006,7 +1006,7 @@ def processing_pipeline_with_field_func_transform():
 
 
 def test_processingpipeline_field_name_transformation_in_field_list(
-        processing_pipeline_with_field_func_transform,
+    processing_pipeline_with_field_func_transform,
 ):
     rule = processing_pipeline_with_field_func_transform.apply(
         SigmaRule.from_yaml(

@@ -13,7 +13,7 @@ from typing import (
     Pattern,
     Iterator,
     get_args,
-    get_origin,
+    get_origin, Callable,
 )
 from dataclasses import dataclass, field
 import dataclasses
@@ -354,9 +354,7 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
     mapping: Dict[str, Union[str, List[str]]]
 
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
-        if field in self.mapping:
-            mapping = self.mapping[field]
-            return mapping
+        return self.mapping.get(field)
 
     def apply_detection_item(self, detection_item: SigmaDetectionItem):
         super().apply_detection_item(detection_item)
@@ -395,6 +393,30 @@ class FieldPrefixMappingTransformation(FieldMappingTransformation):
                     return dest + field[len(src) :]
                 else:
                     return [dest_item + field[len(src) :] for dest_item in dest]
+
+
+@dataclass
+class FieldFunctionTransformation(FieldMappingTransformationBase):
+    """Map a field name to another using provided transformation function.
+    You can overwrite transformation by providing explicit mapping for a field."""
+
+    transform_func: Callable[[str], str]
+    mapping: Dict[str, str] = field(default_factory=lambda: {})
+
+    def _transform_name(self, f: str) -> str:
+        return self.mapping.get(f, self.transform_func(f))
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+        super().apply_detection_item(detection_item)
+        f = detection_item.field
+        mapping = self._transform_name(f)
+        if self.processing_item.match_field_name(self.pipeline, f):
+            self.pipeline.field_mappings.add_mapping(f, mapping)
+            detection_item.field = mapping
+            self.processing_item_applied(detection_item)
+
+    def apply_field_name(self, f: str) -> Union[str, List[str]]:
+        return [self._transform_name(f)]
 
 
 @dataclass
@@ -922,6 +944,7 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
+    "field_name_transform": FieldFunctionTransformation,
     "drop_detection_item": DropDetectionItemTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
     "field_name_prefix": AddFieldnamePrefixTransformation,

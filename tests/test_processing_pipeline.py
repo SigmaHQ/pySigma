@@ -20,7 +20,7 @@ from sigma.processing.transformations import (
     transformations,
     Transformation,
     FieldMappingTransformation,
-    AddFieldnamePrefixTransformation,
+    AddFieldnamePrefixTransformation, FieldFunctionTransformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
@@ -985,3 +985,45 @@ def test_processingpipeline_invalid_concatenation_left():
                 ),
             ],
         )
+
+
+
+@pytest.fixture(scope="module")
+def processing_pipeline_with_field_func_transform():
+    return ProcessingPipeline(
+        items=[
+            ProcessingItem(  # Field mappings
+                identifier="field_transform",
+                transformation=FieldFunctionTransformation(
+                    transform_func=lambda f: f.upper(),
+                    mapping={
+                        "fieldA": "mappedA",
+                    },
+                ),
+            ),
+        ]
+    )
+
+
+def test_processingpipeline_field_name_transformation_in_field_list(
+        processing_pipeline_with_field_func_transform,
+):
+    rule = processing_pipeline_with_field_func_transform.apply(
+        SigmaRule.from_yaml(
+            f"""
+            title: Test
+            status: test
+            logsource:
+                category: test
+            detection:
+                sel:
+                    fieldA: valueA
+                    fieldB: valueB
+                condition: sel
+            fields:
+                - fieldA
+                - fieldB
+        """
+        )
+    )
+    assert rule.fields == ["mappedA", "FIELDB"]

@@ -5,6 +5,8 @@ from uuid import UUID
 
 import yaml
 from sigma import exceptions as sigma_exceptions
+from sigma.conditions import SigmaCondition
+from sigma.processing.transformations import AddConditionTransformation
 
 from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections
 
@@ -17,6 +19,11 @@ class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
 
 class SigmaGlobalFilter(SigmaDetections):
     rules: List[UUID] = field(default_factory=list)
+
+
+class SigmaFilterTransformation(AddConditionTransformation):
+    def apply_condition(self, cond: SigmaCondition) -> None:
+        cond.condition = f"({cond.condition}) and " + ("not " if self.negated else "") + f"{self.name}"
 
 
 @dataclass
@@ -32,10 +39,10 @@ class SigmaFilter:
 
     @classmethod
     def from_dict(
-        cls,
-        filter: dict,
-        collect_errors: bool = False,
-        source: Optional[SigmaFilterLocation] = None,
+            cls,
+            sigma_filter: dict,
+            collect_errors: bool = False,
+            source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
@@ -43,7 +50,7 @@ class SigmaFilter:
         errors = []
 
         # Filter ID validation
-        filter_id = filter.get("id")
+        filter_id = sigma_filter.get("id")
         if filter_id is not None:
             try:
                 filter_id = UUID(filter_id)
@@ -55,7 +62,7 @@ class SigmaFilter:
                 )
 
         # Filter title validation
-        filter_title = filter.get("title")
+        filter_title = sigma_filter.get("title")
         if filter_title is None:
             errors.append(
                 sigma_exceptions.SigmaTitleError(
@@ -79,7 +86,7 @@ class SigmaFilter:
             )
 
         # Filter description validation
-        filter_description = filter.get("description")
+        filter_description = sigma_filter.get("description")
         if filter_description is not None and not isinstance(filter_description, str):
             errors.append(
                 sigma_exceptions.SigmaDescriptionError(
@@ -89,7 +96,7 @@ class SigmaFilter:
             )
 
         # Filter author validation
-        filter_author = filter.get("author")
+        filter_author = sigma_filter.get("author")
         if filter_author is not None and not isinstance(filter_author, str):
             errors.append(
                 sigma_exceptions.SigmaAuthorError(
@@ -99,7 +106,7 @@ class SigmaFilter:
             )
 
         # parse rule date if existing
-        filter_date = filter.get("date")
+        filter_date = sigma_filter.get("date")
         if filter_date is not None:
             if not isinstance(filter_date, date) and not isinstance(filter_date, datetime):
                 try:
@@ -116,7 +123,7 @@ class SigmaFilter:
                         )
 
         # parse rule modified if existing
-        filter_modified = filter.get("modified")
+        filter_modified = sigma_filter.get("modified")
         if filter_modified is not None:
             if not isinstance(filter_modified, date) and not isinstance(filter_modified, datetime):
                 try:
@@ -135,7 +142,7 @@ class SigmaFilter:
         # parse log source
         filter_logsource = None
         try:
-            filter_logsource = SigmaLogSource.from_dict(filter["logsource"], source)
+            filter_logsource = SigmaLogSource.from_dict(sigma_filter["logsource"], source)
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
@@ -154,7 +161,7 @@ class SigmaFilter:
         # parse detections
         filter_global_filter = None
         try:
-            filter_global_filter = SigmaGlobalFilter.from_dict(filter["global_filter"], source)
+            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["global_filter"], source)
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaDetectionError(

@@ -16,8 +16,13 @@ from sigma.exceptions import (
     SigmaRuleNotFoundError,
     SigmaTimespanError,
 )
-from sigma.filters import SigmaFilter, SigmaGlobalFilter
+from sigma.filters import SigmaFilter, SigmaGlobalFilter, SigmaFilterTransformation
+from sigma.pipelines.test import dummy_test_pipeline
+from sigma.processing.conditions import LogsourceCondition
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.transformations import FieldMappingTransformation, AddConditionTransformation
 from sigma.rule import SigmaLogSource
+from .test_conversion_base import test_backend
 
 
 @pytest.fixture
@@ -27,13 +32,14 @@ def rule_collection():
 title: Failed login
 name: failed_login
 logsource:
+    category: process_creation
     product: windows
-    service: security
 detection:
     selection:
-        EventID: 4625
-    condition: selection
-        """
+        - EventID: 4625
+        - EventID2: 4624
+    condition: selection 
+"""
     )
 
 
@@ -75,3 +81,33 @@ def test_filter_valid_1(meta_filter):
             "condition": "selection",
         }
     )
+
+
+def test_event_count_correlation_single_rule_with_grouping(
+        meta_filter,
+        test_backend,
+        rule_collection
+):
+    filter_pipeline = ProcessingPipeline(
+        name="Global Filter Pipeline",
+        items=[
+            ProcessingItem(
+                SigmaFilterTransformation(
+                    negated=True,
+                    conditions={
+                        'User': 'Admin'
+                    }
+                ),
+                rule_conditions=[
+                    LogsourceCondition(**meta_filter.logsource.to_dict()),
+                    # TODO: Add where the rule IDs match
+                ]
+            ),
+
+        ],
+    )
+    test_backend.processing_pipeline = filter_pipeline
+
+    assert test_backend.convert(rule_collection) == [
+        """mappedA=4625"""
+    ]

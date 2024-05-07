@@ -405,7 +405,9 @@ class FieldFunctionTransformation(FieldMappingTransformationBase):
     mapping: Dict[str, str] = field(default_factory=lambda: {})
 
     def _transform_name(self, f: str) -> str:
-        return self.mapping.get(f, self.transform_func(f))
+        if f:
+            return self.mapping.get(f, self.transform_func(f))
+        return f
 
     def apply_detection_item(self, detection_item: SigmaDetectionItem):
         super().apply_detection_item(detection_item)

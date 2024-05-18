@@ -29,6 +29,7 @@ correlation:
     group-by:
         - TargetUserName
         - TargetDomainName
+        - fieldB
     timespan: 5m
     condition:
         gte: 10
@@ -41,7 +42,7 @@ def test_event_count_correlation_single_rule_with_grouping(
 ):
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
-| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 
@@ -52,7 +53,7 @@ def test_correlation_without_normalization_support(
     monkeypatch.setattr(test_backend, "correlation_search_field_normalization_expression", None)
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
-| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 
@@ -64,7 +65,7 @@ def test_generate_query_without_referenced_rules_expression(
     monkeypatch.setattr(test_backend, "referenced_rules_expression_joiner", None)
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
-| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 
@@ -256,9 +257,14 @@ correlation:
             failed_logon: TargetDomainName
             successful_logon: TargetDomainName
             discovery_activity: Domain
+        mapped:
+            failed_logon: fieldB
+            successful_logon: fieldC
+            discovery_activity: fieldD
     group-by:
         - user
         - domain
+        - mapped
     condition:
         gte: 2
             """
@@ -269,10 +275,10 @@ def test_temporal_ordered_correlation_multi_rule_with_condition_and_field_normal
     test_backend, temporal_ordered_correlation_rule
 ):
     assert test_backend.convert(temporal_ordered_correlation_rule) == [
-        """subsearch { EventID=4625 | set event_type="failed_logon" | set user=TargetUserName | set domain=TargetDomainName }
-subsearch { EventID=4624 | set event_type="successful_logon" | set user=TargetUserName | set domain=TargetDomainName }
-subsearch { CommandLine in ("*whoami*", "*dsquery*", "*net group*") | set event_type="discovery_activity" | set user=User | set domain=Domain }
-| temporal ordered=true window=1h eventtypes=failed_logon,successful_logon,discovery_activity by user, domain
+        """subsearch { EventID=4625 | set event_type="failed_logon" | set user=TargetUserName | set domain=TargetDomainName | set mapped=mappedB }
+subsearch { EventID=4624 | set event_type="successful_logon" | set user=TargetUserName | set domain=TargetDomainName | set mapped=fieldC }
+subsearch { CommandLine in ("*whoami*", "*dsquery*", "*net group*") | set event_type="discovery_activity" | set user=User | set domain=Domain | set mapped=fieldD }
+| temporal ordered=true window=1h eventtypes=failed_logon,successful_logon,discovery_activity by user, domain, mapped
 | where eventtype_count >= 2 and eventtype_order=failed_logon,successful_logon,discovery_activity"""
     ]
 
@@ -281,7 +287,7 @@ def test_correlation_timespan_in_seconds(monkeypatch, test_backend, event_count_
     monkeypatch.setattr(test_backend, "timespan_seconds", True)
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
-| aggregate window=300 count() as event_count by TargetUserName, TargetDomainName
+| aggregate window=300 count() as event_count by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 

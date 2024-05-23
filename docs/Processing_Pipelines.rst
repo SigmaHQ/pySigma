@@ -268,6 +268,7 @@ definitions are available:
    "map_string", "MapStringTransformation"
    "regex", "RegexTransformation"
    "set_value", "SetValueTransformation"
+   "convert_type", "ConvertTypeTransformation
    "set_state", "SetStateTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
@@ -319,6 +320,7 @@ YAML example:
 
 .. autoclass:: sigma.processing.transformations.RegexTransformation
 .. autoclass:: sigma.processing.transformations.SetValueTransformation
+.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation

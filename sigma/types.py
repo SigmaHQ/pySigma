@@ -363,7 +363,7 @@ class SigmaString(SigmaType):
         return rs
 
     def __repr__(self) -> str:
-        return str(self.s)
+        return str(f"SigmaString({self.s})")
 
     def to_plain(self):
         """Return plain string representation of SigmaString, equivalent to converting it with str()."""

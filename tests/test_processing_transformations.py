@@ -1495,9 +1495,23 @@ def test_convert_type_transformation_num_to_str():
     assert detection_item.value[0] == SigmaString("123")
 
 
+def test_convert_type_transformation_str_to_str():
+    transformation = ConvertTypeTransformation("str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("123")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("123")
+
+
 def test_convert_type_transformation_str_to_num():
     transformation = ConvertTypeTransformation("num")
     detection_item = SigmaDetectionItem("field", [], [SigmaString("123")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_convert_type_transformation_num_to_num():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaNumber(123)])
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaNumber(123)
 

@@ -220,11 +220,6 @@ class SigmaLogSource:
                 "Sigma log source can't be empty", source=self.source
             )
 
-        if not self.custom_attributes is None:
-            raise sigma_exceptions.SigmaLogsourceError(
-                "Sigma log source have custom field", source=self.source
-            )
-
     @classmethod
     def from_dict(
         cls, logsource: dict, source: Optional[SigmaRuleLocation] = None

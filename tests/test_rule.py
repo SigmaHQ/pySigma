@@ -1490,37 +1490,3 @@ def test_sigma_rule_conversion_result_no_result(sigma_rule):
 def test_sigma_rule_disable_output(sigma_rule):
     sigma_rule.disable_output()
     assert sigma_rule._output == False
-
-
-def test_sigmarule_fromyaml_with_custom_logsource_attribute():
-    with pytest.raises(
-        sigma_exceptions.SigmaLogsourceError, match="Sigma log source have custom field"
-    ):
-        sigmarule_from_yaml = SigmaRule.from_yaml(
-            """
-        title: Test
-        id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
-        name: test
-        taxonomy: test
-        status: test
-        description: This is a test
-        references:
-            - ref1
-            - ref2
-        tags:
-            - attack.execution
-            - attack.t1059
-        author: Thomas Patzke
-        date: 2020/07/12
-        logsource:
-            categorie: process_creation
-            product: windows
-        detection:
-            selection:
-                CommandLine|contains: test.exe
-            condition: selection
-        falsepositives:
-            - Everything
-        level: low
-        """
-        )

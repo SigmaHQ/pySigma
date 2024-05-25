@@ -14,6 +14,7 @@ from sigma.correlations import (
 )
 from sigma.processing.transformations import (
     AddFieldTransformation,
+    ConvertTypeTransformation,
     RemoveFieldTransformation,
     SetFieldTransformation,
     SetValueTransformation,
@@ -1485,6 +1486,41 @@ def test_set_value_transformation_force_number_type_error():
 def test_set_value_transformation_invalid_force_type():
     with pytest.raises(SigmaConfigurationError, match="Invalid force_type"):
         SetValueTransformation("test", "invalid")
+
+
+def test_convert_type_transformation_num_to_str():
+    transformation = ConvertTypeTransformation("str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaNumber(123)])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("123")
+
+
+def test_convert_type_transformation_str_to_str():
+    transformation = ConvertTypeTransformation("str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("123")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("123")
+
+
+def test_convert_type_transformation_str_to_num():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("123")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_convert_type_transformation_num_to_num():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaNumber(123)])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaNumber(123)
+
+
+def test_convert_type_transformation_str_to_num_no_number():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("abc")])
+    with pytest.raises(SigmaValueError, match="can't be converted to number"):
+        transformation.apply_detection_item(detection_item)
 
 
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):

@@ -878,6 +878,24 @@ class SetValueTransformation(ValueTransformation):
 
 
 @dataclass
+class ConvertTypeTransformation(ValueTransformation):
+    """
+    Convert type of value. The conversion into strings and numbers is currently supported.
+    """
+
+    target_type: Literal["str", "num"]
+
+    def apply_value(self, field: str, val: SigmaType) -> Optional[Union[SigmaString, SigmaNumber]]:
+        if self.target_type == "str":
+            return SigmaString(str(val))
+        elif self.target_type == "num":
+            try:
+                return SigmaNumber(str(val))
+            except SigmaValueError:
+                raise SigmaValueError(f"Value '{val}' can't be converted to number for {str(self)}")
+
+
+@dataclass
 class SetStateTransformation(Transformation):
     """Set pipeline state key to value."""
 
@@ -938,6 +956,7 @@ transformations: Dict[str, Transformation] = {
     "set_state": SetStateTransformation,
     "regex": RegexTransformation,
     "set_value": SetValueTransformation,
+    "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
 }

@@ -551,7 +551,7 @@ class Backend(ABC):
             raise SigmaConversionError(
                 f"Correlation method '{method}' is not supported by backend '{self.name}'."
             )
-
+        self.last_processing_pipeline.apply(rule)
         if rule.type == SigmaCorrelationType.EVENT_COUNT:
             return self.convert_correlation_event_count_rule(rule, output_format, method)
         elif rule.type == SigmaCorrelationType.VALUE_COUNT:

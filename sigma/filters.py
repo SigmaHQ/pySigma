@@ -211,3 +211,12 @@ class SigmaFilter:
                 ),
             ],
         )
+
+    def to_processing_item(self):
+        return ProcessingItem(
+            SigmaFilterTransformation(negated=True, conditions={"User": "Admin"}),
+            rule_conditions=[
+                LogsourceCondition(**self.logsource.to_dict()),
+                # TODO: Add where the rule IDs match
+            ],
+        )

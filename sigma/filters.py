@@ -28,7 +28,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-            cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], list):
@@ -54,7 +54,11 @@ class SigmaGlobalFilter(SigmaDetections):
             detections={
                 name: SigmaDetection.from_definition(definition, source)
                 for name, definition in detections.items()
-                if name not in ("condition", "rules",)  # TODO Fix standard
+                if name
+                not in (
+                    "condition",
+                    "rules",
+                )  # TODO Fix standard
             },
             condition=condition,
             source=source,
@@ -66,11 +70,12 @@ class SigmaFilterTransformation(ConditionTransformation):
     """
     Adds a filter to the rule by modifying the detection and condition fields to
     """
-    sigma_filter: 'SigmaFilter' = field(default=None)
+
+    sigma_filter: "SigmaFilter" = field(default=None)
     negated: bool = False
 
     def apply(
-            self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
         # TODO Add Templates similar to AddConditionTransformation
         # TODO Only add if rule ID / Rule Name / Logsource matches
@@ -80,9 +85,9 @@ class SigmaFilterTransformation(ConditionTransformation):
 
             # Replace each instance of the original condition name with the new condition name to avoid conflicts
             self.sigma_filter.global_filter.condition[0] = re.sub(
-                rf'[^ ]*{original_cond_name}[^ ]*',
+                rf"[^ ]*{original_cond_name}[^ ]*",
                 cond_name,
-                self.sigma_filter.global_filter.condition[0]
+                self.sigma_filter.global_filter.condition[0],
             )
             rule.detection.detections[cond_name] = condition
 
@@ -92,7 +97,9 @@ class SigmaFilterTransformation(ConditionTransformation):
 
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = (
-                f"({cond.condition}) and " + ("not " if self.negated else "") + f"({self.sigma_filter.global_filter.condition[0]})"
+            f"({cond.condition}) and "
+            + ("not " if self.negated else "")
+            + f"({self.sigma_filter.global_filter.condition[0]})"
         )
 
 
@@ -109,10 +116,10 @@ class SigmaFilter:
 
     @classmethod
     def from_dict(
-            cls,
-            sigma_filter: dict,
-            collect_errors: bool = False,
-            source: Optional[SigmaFilterLocation] = None,
+        cls,
+        sigma_filter: dict,
+        collect_errors: bool = False,
+        source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.

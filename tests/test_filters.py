@@ -69,16 +69,16 @@ def test_filter_valid_1(meta_filter):
 
 def test_basic_filter_application(meta_filter, test_backend, rule_collection):
     # Filter
-    test_backend.processing_pipeline.items.append(meta_filter.to_processing_item())
+    test_backend.processing_pipeline = meta_filter.to_processing_pipeline() + test_backend.processing_pipeline
 
     assert test_backend.convert(rule_collection) == [
-        """(EventID=4625 or EventID2=4624) and not User=\"Admin\""""
+        '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
     ]
 
 
 def test_filter_with_field_mapping_against_it(meta_filter, test_backend, rule_collection):
     # Filter
-    test_backend.processing_pipeline.items.append(meta_filter.to_processing_item())
+    test_backend.processing_pipeline += meta_filter.to_processing_pipeline()
 
     # Field Mapping
     test_backend.processing_pipeline.items.append(
@@ -92,5 +92,5 @@ def test_filter_with_field_mapping_against_it(meta_filter, test_backend, rule_co
     )
 
     assert test_backend.convert(rule_collection) == [
-        '(EventID=4625 or EventID2=4624) and not User123="Admin"'
+        '(EventID=4625 or EventID2=4624) and not User123 startswith "adm_"'
     ]

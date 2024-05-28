@@ -1,4 +1,7 @@
-from dataclasses import dataclass, field
+import random
+import re
+import string
+from dataclasses import dataclass, field, Field
 from datetime import datetime, date
 from typing import List, Optional, Tuple
 from uuid import UUID
@@ -6,11 +9,12 @@ from uuid import UUID
 import yaml
 from sigma import exceptions as sigma_exceptions
 from sigma.conditions import SigmaCondition
+from sigma.exceptions import SigmaRuleLocation
 from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import AddConditionTransformation
+from sigma.processing.transformations import AddConditionTransformation, ConditionTransformation
 
-from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections
+from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections, SigmaDetection, SigmaRule
 
 
 class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
@@ -22,11 +26,73 @@ class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
 class SigmaGlobalFilter(SigmaDetections):
     rules: List[UUID] = field(default_factory=list)
 
+    @classmethod
+    def from_dict(
+            cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+    ) -> "SigmaGlobalFilter":
+        try:
+            if isinstance(detections["condition"], list):
+                condition = detections["condition"]
+            else:
+                condition = [detections["condition"]]
+        except KeyError:
+            raise sigma_exceptions.SigmaConditionError(
+                "Sigma rule must contain at least one condition", source=source
+            )
 
-class SigmaFilterTransformation(AddConditionTransformation):
+        try:
+            if isinstance(detections["rules"], list):
+                rules = detections["rules"]
+            else:
+                rules = [detections["rules"]]
+        except KeyError:
+            raise sigma_exceptions.SigmaConditionError(
+                "Sigma rule must contain at least one condition", source=source
+            )
+
+        return cls(
+            detections={
+                name: SigmaDetection.from_definition(definition, source)
+                for name, definition in detections.items()
+                if name not in ("condition", "rules",)  # TODO Fix standard
+            },
+            condition=condition,
+            source=source,
+        )
+
+
+@dataclass
+class SigmaFilterTransformation(ConditionTransformation):
+    """
+    Adds a filter to the rule by modifying the detection and condition fields to
+    """
+    sigma_filter: 'SigmaFilter' = field(default=None)
+    negated: bool = False
+
+    def apply(
+            self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
+    ) -> None:
+        # TODO Add Templates similar to AddConditionTransformation
+        # TODO Only add if rule ID / Rule Name / Logsource matches
+
+        for original_cond_name, condition in self.sigma_filter.global_filter.detections.items():
+            cond_name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
+
+            # Replace each instance of the original condition name with the new condition name to avoid conflicts
+            self.sigma_filter.global_filter.condition[0] = re.sub(
+                rf'[^ ]*{original_cond_name}[^ ]*',
+                cond_name,
+                self.sigma_filter.global_filter.condition[0]
+            )
+            rule.detection.detections[cond_name] = condition
+
+            self.processing_item_applied(rule.detection.detections[cond_name])
+
+        super().apply(pipeline, rule)
+
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = (
-            f"({cond.condition}) and " + ("not " if self.negated else "") + f"{self.name}"
+                f"({cond.condition}) and " + ("not " if self.negated else "") + f"({self.sigma_filter.global_filter.condition[0]})"
         )
 
 
@@ -43,10 +109,10 @@ class SigmaFilter:
 
     @classmethod
     def from_dict(
-        cls,
-        sigma_filter: dict,
-        collect_errors: bool = False,
-        source: Optional[SigmaFilterLocation] = None,
+            cls,
+            sigma_filter: dict,
+            collect_errors: bool = False,
+            source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
@@ -203,20 +269,11 @@ class SigmaFilter:
             priority=0,
             items=[
                 ProcessingItem(
-                    SigmaFilterTransformation(negated=True, conditions={"User": "Admin"}),
+                    SigmaFilterTransformation(negated=True, sigma_filter=self),
                     rule_conditions=[
                         LogsourceCondition(**self.logsource.to_dict()),
                         # TODO: Add where the rule IDs match
                     ],
                 ),
-            ],
-        )
-
-    def to_processing_item(self):
-        return ProcessingItem(
-            SigmaFilterTransformation(negated=True, conditions={"User": "Admin"}),
-            rule_conditions=[
-                LogsourceCondition(**self.logsource.to_dict()),
-                # TODO: Add where the rule IDs match
             ],
         )

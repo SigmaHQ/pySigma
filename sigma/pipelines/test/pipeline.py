@@ -4,6 +4,7 @@ from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import (
     AddConditionTransformation,
     FieldMappingTransformation,
+    FieldFunctionTransformation,
 )
 
 

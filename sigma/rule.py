@@ -346,6 +346,8 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             field, *modifier_ids = key.split("|")
             if field == "":
                 field = None
+            if field.find(":") != -1:
+                raise sigma_exceptions.SigmaDetectionError(f"Invalid Detection Field, Field contains unexpected ':' char. Syntax Error in '{field}'", source=source)
 
         try:
             modifiers = [modifier_mapping[mod_id] for mod_id in modifier_ids]

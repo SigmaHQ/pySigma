@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import reduce
 from pathlib import Path
 from typing import Callable, Dict, Iterable, List, Optional, Union, IO
 from uuid import UUID
@@ -58,7 +59,11 @@ class SigmaCollection:
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
 
         # Apply filters on each rule and replace the rule with the filtered rule
-        self.rules = [filter.apply_on_rule(rule) for rule in self.rules for filter in filters]
+        self.rules = (
+            [reduce(lambda r, f: f.apply_on_rule(r), filters, rule) for rule in self.rules]
+            if filters
+            else self.rules
+        )
 
         # Sort rules by reference order
         self.rules = list(sorted(self.rules))

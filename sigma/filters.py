@@ -178,7 +178,7 @@ class SigmaFilter(SigmaRuleBase):
 
         return rule
 
-    # def apply_on_rule_collection(self, rule_collection: SigmaCollection) -> SigmaCollection:
-    #     for rule in rule_collection.rules:
-    #         self.apply_on_rule(rule)
-    #     return rule_collection
+    def apply_on_rule_collection(self, rule_collection: "SigmaCollection") -> "SigmaCollection":
+        for rule in rule_collection.rules:
+            self.apply_on_rule(rule)
+        return rule_collection

@@ -13,7 +13,7 @@ from sigma.exceptions import (
     SigmaRuleNotFoundError,
 )
 from sigma.rule import SigmaRule, SigmaRuleBase
-
+from sigma.filters import SigmaFilter
 
 @dataclass
 class SigmaCollection:
@@ -48,8 +48,18 @@ class SigmaCollection:
         This must be called before referencing rules are converted into queries to make references available.
         """
         for rule in self.rules:
+            # Resolves all rule references in the rules property to actual Sigma rules.
             if isinstance(rule, SigmaCorrelationRule):
                 rule.resolve_rule_references(self)
+
+        # Extract all filters from the rules
+        filters: List[SigmaFilter] = [rule for rule in self.rules if isinstance(rule, SigmaFilter)]
+        self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
+
+        # Apply filters on each rule and replace the rule with the filtered rule
+        self.rules = [filter.apply_on_rule(rule) for rule in self.rules for filter in filters]
+
+        # Sort rules by reference order
         self.rules = list(sorted(self.rules))
 
     @classmethod

@@ -1,7 +1,7 @@
 import pytest
 
 from sigma.collection import SigmaCollection
-from sigma.filters import SigmaFilter, SigmaGlobalFilter, SigmaFilterTransformation
+from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation
@@ -28,7 +28,7 @@ detection:
 
 
 @pytest.fixture
-def meta_filter():
+def sigma_filter():
     return SigmaFilter.from_yaml(
         """
 title: Filter Administrator account
@@ -42,13 +42,12 @@ global_filter:
     - df0841c0-9846-4e9f-ad8a-7df91571771b # Login on jump host
   selection:
       User|startswith: 'adm_'
-  condition: selection
+  condition: not selection
   """
     )
 
 
-def test_filter_valid_1(meta_filter):
-    sigma_filter = meta_filter
+def test_filter_valid_1(sigma_filter):
     assert isinstance(sigma_filter, SigmaFilter)
     assert sigma_filter.title == "Filter Administrator account"
     assert sigma_filter.description == "The valid administrator account start with adm_"
@@ -62,32 +61,28 @@ def test_filter_valid_1(meta_filter):
                 "df0841c0-9846-4e9f-ad8a-7df91571771b",
             ],
             "selection": {"User|startswith": "adm_"},
-            "condition": "selection",
+            "condition": "not selection",
         }
     )
 
 
-def test_basic_filter_application(meta_filter, test_backend, rule_collection):
-    # Filter
-    test_backend.processing_pipeline = (
-        meta_filter.to_processing_pipeline() + test_backend.processing_pipeline
-    )
+def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
+    rule_collection.rules += [sigma_filter]
 
     assert test_backend.convert(rule_collection) == [
         '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
     ]
 
 
-def test_filter_with_field_mapping_against_it(meta_filter, test_backend, rule_collection):
-    # Filter
-    test_backend.processing_pipeline += meta_filter.to_processing_pipeline()
+def test_filter_with_field_mapping_against_it(sigma_filter, test_backend, rule_collection):
+    rule_collection.rules += [sigma_filter]
 
     # Field Mapping
     test_backend.processing_pipeline.items.append(
         ProcessingItem(
             FieldMappingTransformation({"User": "User123"}),
             rule_conditions=[
-                LogsourceCondition(**meta_filter.logsource.to_dict()),
+                LogsourceCondition(**sigma_filter.logsource.to_dict()),
                 # TODO: Add where the rule IDs match
             ],
         )

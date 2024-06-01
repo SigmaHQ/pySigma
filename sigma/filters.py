@@ -1,20 +1,16 @@
 import random
 import re
 import string
-from dataclasses import dataclass, field, Field
-from datetime import datetime, date
-from typing import List, Optional, Tuple
+from dataclasses import dataclass, field
+from typing import List, Optional, Union
 from uuid import UUID
 
 import yaml
-from sigma import exceptions as sigma_exceptions
-from sigma.conditions import SigmaCondition
-from sigma.exceptions import SigmaRuleLocation
-from sigma.processing.conditions import LogsourceCondition
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import AddConditionTransformation, ConditionTransformation
 
-from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections, SigmaDetection, SigmaRule
+from sigma import exceptions as sigma_exceptions
+from sigma.correlations import SigmaCorrelationRule
+from sigma.exceptions import SigmaRuleLocation
+from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections, SigmaDetection, SigmaRule, SigmaRuleBase
 
 
 class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
@@ -66,51 +62,11 @@ class SigmaGlobalFilter(SigmaDetections):
 
 
 @dataclass
-class SigmaFilterTransformation(ConditionTransformation):
+class SigmaFilter(SigmaRuleBase):
     """
-    Adds a filter to the rule by modifying the detection and condition fields to
+    SigmaFilter class is used to represent a Sigma filter object.
     """
 
-    sigma_filter: "SigmaFilter" = field(default=None)
-    negated: bool = False
-
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
-    ) -> None:
-        # TODO Add Templates similar to AddConditionTransformation
-        # TODO Only add if rule ID / Rule Name / Logsource matches
-
-        for original_cond_name, condition in self.sigma_filter.global_filter.detections.items():
-            cond_name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
-
-            # Replace each instance of the original condition name with the new condition name to avoid conflicts
-            self.sigma_filter.global_filter.condition[0] = re.sub(
-                rf"[^ ]*{original_cond_name}[^ ]*",
-                cond_name,
-                self.sigma_filter.global_filter.condition[0],
-            )
-            rule.detection.detections[cond_name] = condition
-
-            self.processing_item_applied(rule.detection.detections[cond_name])
-
-        super().apply(pipeline, rule)
-
-    def apply_condition(self, cond: SigmaCondition) -> None:
-        cond.condition = (
-            f"({cond.condition}) and "
-            + ("not " if self.negated else "")
-            + f"({self.sigma_filter.global_filter.condition[0]})"
-        )
-
-
-@dataclass
-class SigmaFilter:
-    title: str
-    description: str
-    id: Optional[UUID] = None
-    author: Optional[str] = None
-    date: Optional["datetime.date"] = None
-    modified: Optional["datetime.date"] = None
     logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
     global_filter: SigmaGlobalFilter = field(default_factory=SigmaGlobalFilter)
 
@@ -124,97 +80,7 @@ class SigmaFilter:
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
-        errors = []
-
-        # Filter ID validation
-        filter_id = sigma_filter.get("id")
-        if filter_id is not None:
-            try:
-                filter_id = UUID(filter_id)
-            except ValueError:
-                errors.append(
-                    sigma_exceptions.SigmaIdentifierError(
-                        "Sigma rule identifier must be an UUID", source=source
-                    )
-                )
-
-        # Filter title validation
-        filter_title = sigma_filter.get("title")
-        if filter_title is None:
-            errors.append(
-                sigma_exceptions.SigmaTitleError(
-                    "Sigma rule must have a title",
-                    source=source,
-                )
-            )
-        elif not isinstance(filter_title, str):
-            errors.append(
-                sigma_exceptions.SigmaTitleError(
-                    "Sigma rule title must be a string",
-                    source=source,
-                )
-            )
-        elif len(filter_title) > 256:
-            errors.append(
-                sigma_exceptions.SigmaTitleError(
-                    "Sigma rule title length must not exceed 256 characters",
-                    source=source,
-                )
-            )
-
-        # Filter description validation
-        filter_description = sigma_filter.get("description")
-        if filter_description is not None and not isinstance(filter_description, str):
-            errors.append(
-                sigma_exceptions.SigmaDescriptionError(
-                    "Sigma rule description must be a string",
-                    source=source,
-                )
-            )
-
-        # Filter author validation
-        filter_author = sigma_filter.get("author")
-        if filter_author is not None and not isinstance(filter_author, str):
-            errors.append(
-                sigma_exceptions.SigmaAuthorError(
-                    "Sigma rule author must be a string",
-                    source=source,
-                )
-            )
-
-        # parse rule date if existing
-        filter_date = sigma_filter.get("date")
-        if filter_date is not None:
-            if not isinstance(filter_date, date) and not isinstance(filter_date, datetime):
-                try:
-                    filter_date = date(*(int(i) for i in filter_date.split("/")))
-                except ValueError:
-                    try:
-                        filter_date = date(*(int(i) for i in filter_date.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaDateError(
-                                f"Rule date '{filter_date}' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
-                        )
-
-        # parse rule modified if existing
-        filter_modified = sigma_filter.get("modified")
-        if filter_modified is not None:
-            if not isinstance(filter_modified, date) and not isinstance(filter_modified, datetime):
-                try:
-                    filter_modified = date(*(int(i) for i in filter_modified.split("/")))
-                except ValueError:
-                    try:
-                        filter_modified = date(*(int(i) for i in filter_modified.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaModifiedError(
-                                f"Rule modified '{filter_modified}' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
-                        )
+        kwargs, errors = super().from_dict(sigma_filter, collect_errors, source)
 
         # parse log source
         filter_logsource = None
@@ -254,14 +120,10 @@ class SigmaFilter:
             raise errors[0]
 
         return cls(
-            title=filter_title,
-            description=filter_description,
-            id=filter_id,
-            author=filter_author,
-            date=filter_date,
-            modified=filter_modified,
             logsource=filter_logsource,
             global_filter=filter_global_filter,
+            errors=errors,
+            **kwargs,
         )
 
     @classmethod
@@ -270,17 +132,45 @@ class SigmaFilter:
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
-    def to_processing_pipeline(self):
-        return ProcessingPipeline(
-            name="Global Filter Pipeline",
-            priority=0,
-            items=[
-                ProcessingItem(
-                    SigmaFilterTransformation(negated=True, sigma_filter=self),
-                    rule_conditions=[
-                        LogsourceCondition(**self.logsource.to_dict()),
-                        # TODO: Add where the rule IDs match
-                    ],
-                ),
-            ],
-        )
+    # def to_processing_pipeline(self):
+    #     return ProcessingPipeline(
+    #         name="Global Filter Pipeline",
+    #         priority=0,
+    #         items=[
+    #             ProcessingItem(
+    #                 SigmaFilterTransformation(negated=True, sigma_filter=self),
+    #                 rule_conditions=[
+    #                     LogsourceCondition(**self.logsource.to_dict()),
+    #                     # TODO: Add where the rule IDs match
+    #                 ],
+    #             ),
+    #         ],
+    #     )
+
+    def apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> Union[SigmaRule, SigmaCorrelationRule]:
+        for original_cond_name, condition in self.global_filter.detections.items():
+            cond_name = "_filt_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
+
+            # Replace each instance of the original condition name with the new condition name to avoid conflicts
+            self.global_filter.condition[0] = re.sub(
+                rf"[^ ]*{original_cond_name}[^ ]*",
+                cond_name,
+                self.global_filter.condition[0],
+            )
+            rule.detection.detections[cond_name] = condition
+
+        for i, condition in enumerate(rule.detection.condition):
+            rule.detection.condition[i] = (
+                    f"({condition}) and "
+                    + f"({self.global_filter.condition[0]})"
+            )
+
+        # Reparse the rule to update the condition
+        rule.detection.__post_init__()
+
+        return rule
+
+    # def apply_on_rule_collection(self, rule_collection: SigmaCollection) -> SigmaCollection:
+    #     for rule in rule_collection.rules:
+    #         self.apply_on_rule(rule)
+    #     return rule_collection

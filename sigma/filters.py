@@ -10,7 +10,14 @@ import yaml
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaRuleLocation
-from sigma.rule import SigmaYAMLLoader, SigmaLogSource, SigmaDetections, SigmaDetection, SigmaRule, SigmaRuleBase
+from sigma.rule import (
+    SigmaYAMLLoader,
+    SigmaLogSource,
+    SigmaDetections,
+    SigmaDetection,
+    SigmaRule,
+    SigmaRuleBase,
+)
 
 
 class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
@@ -147,7 +154,9 @@ class SigmaFilter(SigmaRuleBase):
     #         ],
     #     )
 
-    def apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> Union[SigmaRule, SigmaCorrelationRule]:
+    def apply_on_rule(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule]
+    ) -> Union[SigmaRule, SigmaCorrelationRule]:
         for original_cond_name, condition in self.global_filter.detections.items():
             cond_name = "_filt_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
@@ -161,8 +170,7 @@ class SigmaFilter(SigmaRuleBase):
 
         for i, condition in enumerate(rule.detection.condition):
             rule.detection.condition[i] = (
-                    f"({condition}) and "
-                    + f"({self.global_filter.condition[0]})"
+                f"({condition}) and " + f"({self.global_filter.condition[0]})"
             )
 
         # Reparse the rule to update the condition

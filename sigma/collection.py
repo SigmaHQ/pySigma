@@ -15,6 +15,7 @@ from sigma.exceptions import (
 from sigma.rule import SigmaRule, SigmaRuleBase
 from sigma.filters import SigmaFilter
 
+
 @dataclass
 class SigmaCollection:
     """Collection of Sigma rules"""

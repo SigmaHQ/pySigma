@@ -26,6 +26,7 @@ class SigmaFilterLocation(sigma_exceptions.SigmaRuleLocation):
     pass
 
 
+@dataclass
 class SigmaGlobalFilter(SigmaDetections):
     rules: List[UUID] = field(default_factory=list)
 
@@ -63,6 +64,7 @@ class SigmaGlobalFilter(SigmaDetections):
                     "rules",
                 )  # TODO Fix standard
             },
+            rules=rules,
             condition=condition,
             source=source,
         )
@@ -120,6 +122,12 @@ class SigmaFilter(SigmaRuleBase):
                     "Sigma filter must have a detection definitions", source=source
                 )
             )
+        except TypeError:
+            errors.append(
+                sigma_exceptions.SigmaDetectionError(
+                    "Sigma filter must have a detection definitions", source=source
+                )
+            )
         except sigma_exceptions.SigmaError as e:
             errors.append(e)
 
@@ -139,24 +147,28 @@ class SigmaFilter(SigmaRuleBase):
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
-    # def to_processing_pipeline(self):
-    #     return ProcessingPipeline(
-    #         name="Global Filter Pipeline",
-    #         priority=0,
-    #         items=[
-    #             ProcessingItem(
-    #                 SigmaFilterTransformation(negated=True, sigma_filter=self),
-    #                 rule_conditions=[
-    #                     LogsourceCondition(**self.logsource.to_dict()),
-    #                     # TODO: Add where the rule IDs match
-    #                 ],
-    #             ),
-    #         ],
-    #     )
+    def to_dict(self) -> dict:
+        """Convert rule object into dict."""
+        d = super().to_dict()
+        d.update(
+            {
+                "logsource": self.logsource.to_dict(),
+                "global_filter": self.global_filter.to_dict(),
+            }
+        )
+
+        return d
+
+    def _should_apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
+        # Matches whether the filter.global_filter.rules contains the rule.id
+        return self.global_filter.rules and str(rule.id) in self.global_filter.rules
 
     def apply_on_rule(
         self, rule: Union[SigmaRule, SigmaCorrelationRule]
     ) -> Union[SigmaRule, SigmaCorrelationRule]:
+        if not self._should_apply_on_rule(rule):
+            return rule
+
         for original_cond_name, condition in self.global_filter.detections.items():
             cond_name = "_filt_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
@@ -173,12 +185,7 @@ class SigmaFilter(SigmaRuleBase):
                 f"({condition}) and " + f"({self.global_filter.condition[0]})"
             )
 
-        # Reparse the rule to update the condition
+        # Reparse the rule to update the parsed conditions
         rule.detection.__post_init__()
 
         return rule
-
-    def apply_on_rule_collection(self, rule_collection: "SigmaCollection") -> "SigmaCollection":
-        for rule in rule_collection.rules:
-            self.apply_on_rule(rule)
-        return rule_collection

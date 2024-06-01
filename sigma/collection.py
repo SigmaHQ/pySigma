@@ -103,6 +103,14 @@ class SigmaCollection:
                                 source,
                             )
                         )
+                    elif "global_filter" in rule:  # correlation rule - no global rule merge
+                        parsed_rules.append(
+                            SigmaFilter.from_dict(
+                                rule,
+                                collect_errors,
+                                source,
+                            )
+                        )
                     else:  # merge with global rule and parse as simple rule
                         parsed_rules.append(
                             SigmaRule.from_dict(

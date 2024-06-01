@@ -18,6 +18,26 @@ from .test_conversion_base import test_backend
 
 
 @pytest.fixture
+def sigma_filter():
+    return SigmaFilter.from_yaml(
+        """
+title: Filter Administrator account
+description: The valid administrator account start with adm_
+logsource:
+    category: process_creation
+    product: windows
+global_filter:
+  rules:
+    - 6f3e2987-db24-4c78-a860-b4f4095a7095 # Data Compressed - rar.exe
+    - df0841c0-9846-4e9f-ad8a-7df91571771b # Login on jump host
+  selection:
+      User|startswith: 'adm_'
+  condition: not selection
+  """
+    )
+
+
+@pytest.fixture
 def rule_collection():
     return SigmaCollection.from_yaml(
         """
@@ -37,22 +57,35 @@ detection:
 
 
 @pytest.fixture
-def sigma_filter():
-    return SigmaFilter.from_yaml(
+def event_count_correlation_rule():
+    return SigmaCollection.from_yaml(
         """
-title: Filter Administrator account
-description: The valid administrator account start with adm_
+title: Failed logon
+name: failed_logon
+id: df0841c0-9846-4e9f-ad8a-7df91571771b
+status: test
 logsource:
-    category: process_creation
     product: windows
-global_filter:
-  rules:
-    - 6f3e2987-db24-4c78-a860-b4f4095a7095 # Data Compressed - rar.exe
-    - df0841c0-9846-4e9f-ad8a-7df91571771b # Login on jump host
-  selection:
-      User|startswith: 'adm_'
-  condition: not selection
-  """
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons for a single user (possible brute force attack)
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+        - fieldB
+    timespan: 5m
+    condition:
+        gte: 10
+            """
     )
 
 
@@ -80,6 +113,19 @@ def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
 
     assert test_backend.convert(rule_collection) == [
         '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
+    ]
+
+
+def test_basic_filter_application_against_correlation_rule(
+    sigma_filter, test_backend, event_count_correlation_rule
+):
+    event_count_correlation_rule.rules += [sigma_filter]
+
+    assert test_backend.convert(event_count_correlation_rule) == [
+        'EventID=4625 and not User startswith "adm_"\n'
+        "| aggregate window=5min count() as event_count by TargetUserName, "
+        "TargetDomainName, mappedB\n"
+        "| where event_count >= 10"
     ]
 
 

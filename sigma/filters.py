@@ -186,9 +186,6 @@ class SigmaFilter(SigmaRuleBase):
             )
 
         # Reparse the rule to update the parsed conditions
-        if hasattr(rule, "detection"):
-            rule.detection.__post_init__()
-        if hasattr(rule, "correlation"):
-            rule.correlation.__post_init__()
+        rule.detection.__post_init__()
 
         return rule

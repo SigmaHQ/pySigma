@@ -117,7 +117,7 @@ def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
 
 
 def test_basic_filter_application_against_correlation_rule(
-    sigma_filter, test_backend, event_count_correlation_rule
+        sigma_filter, test_backend, event_count_correlation_rule
 ):
     event_count_correlation_rule.rules += [sigma_filter]
 
@@ -183,6 +183,34 @@ def test_filter_sigma_collection_from_files_duplicated(test_backend):
 
     assert test_backend.convert(rule_collection) == [
         'EventID=1234 and not ComputerName startswith "DC-" and not ComputerName startswith "DC-"'
+    ]
+
+
+def test_filter_sigma_collection_from_ruleset(test_backend):
+    rule_collection = SigmaCollection.load_ruleset(
+        [
+            Path("tests/files/filter_valid"),
+            Path("tests/files/correlation_rule_valid"),
+        ]
+    )
+
+    assert len(rule_collection.rules) == 7
+
+    assert test_backend.convert(rule_collection) == [
+        'mappedA="value1" and mappedB="value2" and not ComputerName startswith "DC-"\n'
+        '| aggregate window=15min count() as event_count by fieldC, fieldD\n'
+        '| where event_count >= 10',
+        'mappedA="value1" and mappedB="value2" and not ComputerName startswith "DC-"\n'
+        '| aggregate window=15min value_count(fieldD) as value_count by fieldC\n'
+        '| where value_count < 10',
+        'subsearch { mappedA="value1" and mappedB="value2" | set '
+        'event_type="base_rule_1" | set field=fieldC }\n'
+        'subsearch { mappedA="value3" and mappedB="value4" | set '
+        'event_type="base_rule_2" | set field=fieldD }\n'
+        '\n'
+        '| temporal window=15min eventtypes=base_rule_1,base_rule_2 by fieldC\n'
+        '\n'
+        '| where eventtype_count >= 2'
     ]
 
 

@@ -1,0 +1,97 @@
+title: Base rule
+description: This is a base rule
+id: 5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64
+name: base_rule
+status: test
+level: informational
+date: 2023-12-09
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Multiple occurrences of base event
+description: This is a correlation rule
+id: 4db3cdb5-aac6-4827-a756-d99475865d32
+status: test
+level: medium
+date: 2023-12-09
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+        - fieldD
+    timespan: 15m
+    condition:
+        gte: 10
+---
+title: Multiple occurrences of base event with different values
+description: This is a correlation rule
+id: 16a288b8-4ed2-440f-9984-7a128e86e006
+date: 2023-12-09
+status: test
+level: medium
+correlation:
+    type: value_count
+    rules:
+        - base_rule
+    group-by:
+        - fieldC
+    timespan: 15m
+    condition:
+        lt: 10
+        field: fieldD
+---
+title: Base rule 1
+description: This is a base rule
+id: 73a9addc-0cf9-44a4-ad18-e3b7a9d1eeb4
+name: base_rule_1
+date: 2023-12-09
+status: test
+level: informational
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value1
+        fieldB: value2
+    condition: selection
+---
+title: Base rule 2
+description: This is a base rule
+id: fce9c855-2951-4e96-b764-dbc1dfdf4993
+name: base_rule_2
+date: 2023-12-09
+status: test
+level: informational
+logsource:
+    category: test
+detection:
+    selection:
+        fieldA: value3
+        fieldB: value4
+    condition: selection
+---
+title: Temporal correlation rule
+description: This is a correlation rule
+id: dc48f97e-237d-42f4-a136-39c94cd53a17
+date: 2023-12-09
+status: test
+level: high
+correlation:
+    type: temporal
+    rules:
+        - base_rule_1
+        - base_rule_2
+    aliases:
+        field:
+            base_rule_1: fieldC
+            base_rule_2: fieldD
+    group-by:
+        - fieldC
+    timespan: 15m

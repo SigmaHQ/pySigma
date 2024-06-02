@@ -51,7 +51,7 @@ class SigmaGlobalFilter(SigmaDetections):
                 rules = [detections["rules"]]
         except KeyError:
             raise sigma_exceptions.SigmaConditionError(
-                "Sigma rule must contain at least one condition", source=source
+                "Sigma rule must contain at least a rules section", source=source
             )
 
         return cls(

@@ -47,9 +47,9 @@ class SigmaError(ValueError):
     def __eq__(self, other: object) -> bool:
         try:
             return (
-                type(self) is type(other)
-                and self.source == other.source
-                and self.args == other.args
+                    type(self) is type(other)
+                    and self.source == other.source
+                    and self.args == other.args
             )
         except AttributeError:
             return False
@@ -207,6 +207,18 @@ class SigmaCorrelationConditionError(SigmaCorrelationRuleError):
 
 class SigmaTimespanError(SigmaCorrelationRuleError):
     """Raised when the timespan for calculating sigma is invalid."""
+
+    pass
+
+
+class SigmaFilterError(SigmaValueError):
+    """Error in Sigma rule filter"""
+
+    pass
+
+
+class SigmaFilterConditionError(SigmaFilterError):
+    """Error in Sigma rule filter condition"""
 
     pass
 

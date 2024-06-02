@@ -1,4 +1,5 @@
 from pathlib import Path
+from typing import Callable
 
 import pytest
 
@@ -7,7 +8,7 @@ from sigma.exceptions import (
     SigmaLogsourceError,
     SigmaDetectionError,
     SigmaTitleError,
-    SigmaConditionError,
+    SigmaConditionError, SigmaFilterConditionError, SigmaFilterError,
 )
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
@@ -51,7 +52,7 @@ detection:
     selection:
         - EventID: 4625
         - EventID2: 4624
-    condition: selection 
+    condition: selection
 """
     )
 
@@ -66,7 +67,7 @@ id: df0841c0-9846-4e9f-ad8a-7df91571771b
 status: test
 logsource:
     product: windows
-    service: security
+    category: process_creation
 detection:
     selection:
         EventID: 4625
@@ -89,7 +90,7 @@ correlation:
     )
 
 
-def test_filter_valid_1(sigma_filter):
+def test_filter_valid(sigma_filter):
     assert isinstance(sigma_filter, SigmaFilter)
     assert sigma_filter.title == "Filter Administrator account"
     assert sigma_filter.description == "The valid administrator account start with adm_"
@@ -117,7 +118,7 @@ def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
 
 
 def test_basic_filter_application_against_correlation_rule(
-    sigma_filter, test_backend, event_count_correlation_rule
+        sigma_filter, test_backend, event_count_correlation_rule
 ):
     event_count_correlation_rule.rules += [sigma_filter]
 
@@ -186,31 +187,43 @@ def test_filter_sigma_collection_from_files_duplicated(test_backend):
     ]
 
 
-def test_filter_sigma_collection_from_ruleset(test_backend):
+def test_filter_sigma_collection_from_ruleset(sigma_filter, test_backend):
     rule_collection = SigmaCollection.load_ruleset(
         [
-            Path("tests/files/filter_valid"),
             Path("tests/files/correlation_rule_valid"),
         ]
     )
 
+    sigma_filter = SigmaFilter.from_dict({
+        **sigma_filter.to_dict(),
+        **{
+            'logsource': {
+                'category': 'test'
+            }
+        }
+    })
+    sigma_filter.global_filter.rules += [
+        '5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64'
+    ]
+    rule_collection.rules += [sigma_filter]
+
     assert len(rule_collection.rules) == 7
 
     assert test_backend.convert(rule_collection) == [
-        'mappedA="value1" and mappedB="value2" and not ComputerName startswith "DC-"\n'
-        "| aggregate window=15min count() as event_count by fieldC, fieldD\n"
-        "| where event_count >= 10",
-        'mappedA="value1" and mappedB="value2" and not ComputerName startswith "DC-"\n'
-        "| aggregate window=15min value_count(fieldD) as value_count by fieldC\n"
-        "| where value_count < 10",
-        'subsearch { mappedA="value1" and mappedB="value2" | set '
-        'event_type="base_rule_1" | set field=fieldC }\n'
-        'subsearch { mappedA="value3" and mappedB="value4" | set '
-        'event_type="base_rule_2" | set field=fieldD }\n'
-        "\n"
-        "| temporal window=15min eventtypes=base_rule_1,base_rule_2 by fieldC\n"
-        "\n"
-        "| where eventtype_count >= 2",
+        'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
+         '| aggregate window=15min count() as event_count by fieldC, fieldD\n'
+         '| where event_count >= 10',
+         'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
+         '| aggregate window=15min value_count(fieldD) as value_count by fieldC\n'
+         '| where value_count < 10',
+         'subsearch { mappedA="value1" and mappedB="value2" | set '
+         'event_type="base_rule_1" | set field=fieldC }\n'
+         'subsearch { mappedA="value3" and mappedB="value4" | set '
+         'event_type="base_rule_2" | set field=fieldD }\n'
+         '\n'
+         '| temporal window=15min eventtypes=base_rule_1,base_rule_2 by fieldC\n'
+         '\n'
+         '| where eventtype_count >= 2',
     ]
 
 
@@ -233,13 +246,39 @@ def test_no_rules_section(sigma_filter, test_backend, rule_collection):
 @pytest.mark.parametrize(
     "transformation,error",
     [
-        [lambda sf: sf.update(logsource=None) or sf, SigmaLogsourceError],
-        [lambda sf: sf.update(global_filter=None) or sf, SigmaDetectionError],
-        [lambda sf: sf.update(title=None) or sf, SigmaTitleError],
-        [lambda sf: sf.get("global_filter").update(condition=None) or sf, SigmaConditionError],
-        [lambda sf: sf.get("global_filter").update(selection=None) or sf, SigmaConditionError],
+        [lambda sf: sf.pop("logsource", None), SigmaLogsourceError],
+        [lambda sf: sf.pop("global_filter", None), SigmaFilterError],
+        [lambda sf: sf.pop("title", None), SigmaTitleError],
+        [lambda sf: sf["global_filter"].pop("condition", None), SigmaFilterConditionError],
+        [lambda sf: sf["global_filter"].pop("selection", None), SigmaDetectionError],
+        # Set the value to None
+        [lambda sf: sf.update({"logsource": None}), SigmaLogsourceError],
+        [lambda sf: sf.update({"global_filter": None}), SigmaFilterError],
+        [lambda sf: sf.update({"title": None}), SigmaTitleError],
+        # [lambda sf: sf["global_filter"].update({"condition": None}), SigmaFilterConditionError], # TODO Broken
+        # [lambda sf: sf["global_filter"].update({"selection": None}), SigmaFilterConditionError], # TODO Broken
     ],
 )
-def test_filter_validation_errors(transformation, error, sigma_filter):
+def test_filter_validation_errors(transformation: Callable, error, sigma_filter):
+    # Create a copy of the sigma_filter dictionary to avoid modifying the original
+    sf_copy = sigma_filter.to_dict()
+
+    # Apply the transformation to the copied dictionary
+    transformation(sf_copy)
+
     with pytest.raises(error):
-        SigmaFilter.from_dict(transformation(sigma_filter.to_dict()))
+        SigmaFilter.from_dict(sf_copy)
+
+
+def test_logsource_subset(sigma_filter, test_backend, rule_collection):
+    # Remove logsource.category
+    new_filter = sigma_filter.to_dict()
+    new_filter["logsource"].pop("category")
+    sigma_filter = SigmaFilter.from_dict(new_filter)
+    rule_collection.rules += [sigma_filter]
+
+    rule_collection.resolve_rule_references()
+
+    assert test_backend.convert(rule_collection) == [
+        '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
+    ]

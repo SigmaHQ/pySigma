@@ -1,7 +1,6 @@
 title: Filter Out Domain Controllers
 description: Filters out any matching events from COMPANYNAME Domain Controllers
 logsource:
-    category: process_creation
     product: windows
 global_filter:
   rules:

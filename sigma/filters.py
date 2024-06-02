@@ -32,7 +32,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+            cls, detections: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], list):
@@ -40,7 +40,7 @@ class SigmaGlobalFilter(SigmaDetections):
             else:
                 condition = [detections["condition"]]
         except KeyError:
-            raise sigma_exceptions.SigmaConditionError(
+            raise sigma_exceptions.SigmaFilterConditionError(
                 "Sigma rule must contain at least one condition", source=source
             )
 
@@ -50,7 +50,7 @@ class SigmaGlobalFilter(SigmaDetections):
             else:
                 rules = [detections["rules"]]
         except KeyError:
-            raise sigma_exceptions.SigmaConditionError(
+            raise sigma_exceptions.SigmaFilterConditionError(
                 "Sigma rule must contain at least a rules section", source=source
             )
 
@@ -59,15 +59,25 @@ class SigmaGlobalFilter(SigmaDetections):
                 name: SigmaDetection.from_definition(definition, source)
                 for name, definition in detections.items()
                 if name
-                not in (
-                    "condition",
-                    "rules",
-                )  # TODO Fix standard
+                   not in (
+                       "condition",
+                       "rules",
+                   )  # TODO Fix standard
             },
             rules=rules,
             condition=condition,
             source=source,
         )
+
+    def to_dict(self) -> dict:
+        d = super().to_dict()
+        d.update(
+            {
+                "rules": self.rules,
+            }
+        )
+
+        return d
 
 
 @dataclass
@@ -81,10 +91,10 @@ class SigmaFilter(SigmaRuleBase):
 
     @classmethod
     def from_dict(
-        cls,
-        sigma_filter: dict,
-        collect_errors: bool = False,
-        source: Optional[SigmaFilterLocation] = None,
+            cls,
+            sigma_filter: dict,
+            collect_errors: bool = False,
+            source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
@@ -118,14 +128,14 @@ class SigmaFilter(SigmaRuleBase):
             )
         except KeyError:
             errors.append(
-                sigma_exceptions.SigmaDetectionError(
+                sigma_exceptions.SigmaFilterError(
                     "Sigma filter must have a global_filter definitions", source=source
                 )
             )
         except TypeError:
             errors.append(
-                sigma_exceptions.SigmaDetectionError(
-                    "Sigma filter must have a detection definitions", source=source
+                sigma_exceptions.SigmaFilterError(
+                    "Sigma filter must have a global_filter definitions", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
@@ -161,10 +171,19 @@ class SigmaFilter(SigmaRuleBase):
 
     def _should_apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
         # Matches whether the filter.global_filter.rules contains the rule.id
-        return self.global_filter.rules and str(rule.id) in self.global_filter.rules
+        if not self.global_filter.rules:
+            return False
+
+        if not str(rule.id) in self.global_filter.rules:
+            return False
+
+        if rule.logsource not in self.logsource:
+            return False
+
+        return True
 
     def apply_on_rule(
-        self, rule: Union[SigmaRule, SigmaCorrelationRule]
+            self, rule: Union[SigmaRule, SigmaCorrelationRule]
     ) -> Union[SigmaRule, SigmaCorrelationRule]:
         if not self._should_apply_on_rule(rule):
             return rule
@@ -182,7 +201,7 @@ class SigmaFilter(SigmaRuleBase):
 
         for i, condition in enumerate(rule.detection.condition):
             rule.detection.condition[i] = (
-                f"({condition}) and " + f"({self.global_filter.condition[0]})"
+                    f"({condition}) and " + f"({self.global_filter.condition[0]})"
             )
 
         # Reparse the rule to update the parsed conditions

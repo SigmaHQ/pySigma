@@ -119,7 +119,7 @@ class SigmaFilter(SigmaRuleBase):
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaDetectionError(
-                    "Sigma filter must have a detection definitions", source=source
+                    "Sigma filter must have a global_filter definitions", source=source
                 )
             )
         except TypeError:

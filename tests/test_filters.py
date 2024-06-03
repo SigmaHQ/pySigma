@@ -8,7 +8,9 @@ from sigma.exceptions import (
     SigmaLogsourceError,
     SigmaDetectionError,
     SigmaTitleError,
-    SigmaConditionError, SigmaFilterConditionError, SigmaFilterError,
+    SigmaConditionError,
+    SigmaFilterConditionError,
+    SigmaFilterError,
 )
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
@@ -118,7 +120,7 @@ def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
 
 
 def test_basic_filter_application_against_correlation_rule(
-        sigma_filter, test_backend, event_count_correlation_rule
+    sigma_filter, test_backend, event_count_correlation_rule
 ):
     event_count_correlation_rule.rules += [sigma_filter]
 
@@ -194,36 +196,29 @@ def test_filter_sigma_collection_from_ruleset(sigma_filter, test_backend):
         ]
     )
 
-    sigma_filter = SigmaFilter.from_dict({
-        **sigma_filter.to_dict(),
-        **{
-            'logsource': {
-                'category': 'test'
-            }
-        }
-    })
-    sigma_filter.global_filter.rules += [
-        '5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64'
-    ]
+    sigma_filter = SigmaFilter.from_dict(
+        {**sigma_filter.to_dict(), **{"logsource": {"category": "test"}}}
+    )
+    sigma_filter.global_filter.rules += ["5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64"]
     rule_collection.rules += [sigma_filter]
 
     assert len(rule_collection.rules) == 7
 
     assert test_backend.convert(rule_collection) == [
         'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
-         '| aggregate window=15min count() as event_count by fieldC, fieldD\n'
-         '| where event_count >= 10',
-         'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
-         '| aggregate window=15min value_count(fieldD) as value_count by fieldC\n'
-         '| where value_count < 10',
-         'subsearch { mappedA="value1" and mappedB="value2" | set '
-         'event_type="base_rule_1" | set field=fieldC }\n'
-         'subsearch { mappedA="value3" and mappedB="value4" | set '
-         'event_type="base_rule_2" | set field=fieldD }\n'
-         '\n'
-         '| temporal window=15min eventtypes=base_rule_1,base_rule_2 by fieldC\n'
-         '\n'
-         '| where eventtype_count >= 2',
+        "| aggregate window=15min count() as event_count by fieldC, fieldD\n"
+        "| where event_count >= 10",
+        'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
+        "| aggregate window=15min value_count(fieldD) as value_count by fieldC\n"
+        "| where value_count < 10",
+        'subsearch { mappedA="value1" and mappedB="value2" | set '
+        'event_type="base_rule_1" | set field=fieldC }\n'
+        'subsearch { mappedA="value3" and mappedB="value4" | set '
+        'event_type="base_rule_2" | set field=fieldD }\n'
+        "\n"
+        "| temporal window=15min eventtypes=base_rule_1,base_rule_2 by fieldC\n"
+        "\n"
+        "| where eventtype_count >= 2",
     ]
 
 

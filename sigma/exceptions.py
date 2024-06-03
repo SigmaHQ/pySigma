@@ -47,9 +47,9 @@ class SigmaError(ValueError):
     def __eq__(self, other: object) -> bool:
         try:
             return (
-                    type(self) is type(other)
-                    and self.source == other.source
-                    and self.args == other.args
+                type(self) is type(other)
+                and self.source == other.source
+                and self.args == other.args
             )
         except AttributeError:
             return False

@@ -32,7 +32,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-            cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], list):
@@ -59,10 +59,10 @@ class SigmaGlobalFilter(SigmaDetections):
                 name: SigmaDetection.from_definition(definition, source)
                 for name, definition in detections.items()
                 if name
-                   not in (
-                       "condition",
-                       "rules",
-                   )  # TODO Fix standard
+                not in (
+                    "condition",
+                    "rules",
+                )  # TODO Fix standard
             },
             rules=rules,
             condition=condition,
@@ -91,10 +91,10 @@ class SigmaFilter(SigmaRuleBase):
 
     @classmethod
     def from_dict(
-            cls,
-            sigma_filter: dict,
-            collect_errors: bool = False,
-            source: Optional[SigmaFilterLocation] = None,
+        cls,
+        sigma_filter: dict,
+        collect_errors: bool = False,
+        source: Optional[SigmaFilterLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
@@ -183,7 +183,7 @@ class SigmaFilter(SigmaRuleBase):
         return True
 
     def apply_on_rule(
-            self, rule: Union[SigmaRule, SigmaCorrelationRule]
+        self, rule: Union[SigmaRule, SigmaCorrelationRule]
     ) -> Union[SigmaRule, SigmaCorrelationRule]:
         if not self._should_apply_on_rule(rule):
             return rule
@@ -201,7 +201,7 @@ class SigmaFilter(SigmaRuleBase):
 
         for i, condition in enumerate(rule.detection.condition):
             rule.detection.condition[i] = (
-                    f"({condition}) and " + f"({self.global_filter.condition[0]})"
+                f"({condition}) and " + f"({self.global_filter.condition[0]})"
             )
 
         # Reparse the rule to update the parsed conditions

@@ -29,7 +29,7 @@ description: The valid administrator account start with adm_
 logsource:
     category: process_creation
     product: windows
-global_filter:
+filter:
   rules:
     - 6f3e2987-db24-4c78-a860-b4f4095a7095 # Data Compressed - rar.exe
     - df0841c0-9846-4e9f-ad8a-7df91571771b # Login on jump host
@@ -99,7 +99,7 @@ def test_filter_valid(sigma_filter):
     assert sigma_filter.logsource == SigmaLogSource.from_dict(
         {"category": "process_creation", "product": "windows"}
     )
-    assert sigma_filter.global_filter == SigmaGlobalFilter.from_dict(
+    assert sigma_filter.filter == SigmaGlobalFilter.from_dict(
         {
             "rules": [
                 "6f3e2987-db24-4c78-a860-b4f4095a7095",
@@ -199,7 +199,7 @@ def test_filter_sigma_collection_from_ruleset(sigma_filter, test_backend):
     sigma_filter = SigmaFilter.from_dict(
         {**sigma_filter.to_dict(), **{"logsource": {"category": "test"}}}
     )
-    sigma_filter.global_filter.rules += ["5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64"]
+    sigma_filter.filter.rules += ["5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64"]
     rule_collection.rules += [sigma_filter]
 
     assert len(rule_collection.rules) == 7
@@ -232,7 +232,7 @@ def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
 
 def test_no_rules_section(sigma_filter, test_backend, rule_collection):
     rule_collection.rules += [sigma_filter]
-    rule_collection.rules[1].global_filter.rules = None
+    rule_collection.rules[1].filter.rules = None
 
     assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
 
@@ -242,16 +242,16 @@ def test_no_rules_section(sigma_filter, test_backend, rule_collection):
     "transformation,error",
     [
         [lambda sf: sf.pop("logsource", None), SigmaLogsourceError],
-        [lambda sf: sf.pop("global_filter", None), SigmaFilterError],
+        [lambda sf: sf.pop("filter", None), SigmaFilterError],
         [lambda sf: sf.pop("title", None), SigmaTitleError],
-        [lambda sf: sf["global_filter"].pop("condition", None), SigmaFilterConditionError],
-        [lambda sf: sf["global_filter"].pop("selection", None), SigmaDetectionError],
+        [lambda sf: sf["filter"].pop("condition", None), SigmaFilterConditionError],
+        [lambda sf: sf["filter"].pop("selection", None), SigmaDetectionError],
         # Set the value to None
         [lambda sf: sf.update({"logsource": None}), SigmaLogsourceError],
-        [lambda sf: sf.update({"global_filter": None}), SigmaFilterError],
+        [lambda sf: sf.update({"filter": None}), SigmaFilterError],
         [lambda sf: sf.update({"title": None}), SigmaTitleError],
-        # [lambda sf: sf["global_filter"].update({"condition": None}), SigmaFilterConditionError], # TODO Broken
-        # [lambda sf: sf["global_filter"].update({"selection": None}), SigmaFilterConditionError], # TODO Broken
+        # [lambda sf: sf["filter"].update({"condition": None}), SigmaFilterConditionError], # TODO Broken
+        # [lambda sf: sf["filter"].update({"selection": None}), SigmaFilterConditionError], # TODO Broken
     ],
 )
 def test_filter_validation_errors(transformation: Callable, error, sigma_filter):

@@ -268,6 +268,16 @@ def test_filter_validation_errors(transformation: Callable, error, sigma_filter)
         SigmaFilter.from_dict(sf_copy)
 
 
+def test_sigma_filter_with_multiple_conditions_raises_error(sigma_filter):
+    # Create a copy of the sigma_filter dictionary to avoid modifying the original
+    sf_copy = sigma_filter.to_dict()
+
+    sf_copy["filter"]["condition"] = ["selection", "not selection"]
+
+    with pytest.raises(SigmaFilterConditionError):
+        SigmaFilter.from_dict(sf_copy)
+
+
 # def test_logsource_subset(sigma_filter, test_backend, rule_collection):
 #     # Remove logsource.category
 #     new_filter = sigma_filter.to_dict()

@@ -27,6 +27,10 @@ class SigmaGlobalFilter(SigmaDetections):
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], list):
+                if len(detections["condition"]) > 1:
+                    raise sigma_exceptions.SigmaFilterConditionError(
+                        "Sigma Filters must only contain one condition in total", source=source
+                    )
                 condition = detections["condition"]
             elif isinstance(detections["condition"], str):
                 condition = [detections["condition"]]

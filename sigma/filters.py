@@ -5,13 +5,10 @@ from dataclasses import dataclass, field
 from typing import List, Optional, Union
 from uuid import UUID
 
-import yaml
-
 from sigma import exceptions as sigma_exceptions
-from sigma.correlations import SigmaCorrelationRule
+from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
 from sigma.exceptions import SigmaRuleLocation
 from sigma.rule import (
-    SigmaYAMLLoader,
     SigmaLogSource,
     SigmaDetections,
     SigmaDetection,
@@ -22,7 +19,7 @@ from sigma.rule import (
 
 @dataclass
 class SigmaGlobalFilter(SigmaDetections):
-    rules: List[UUID] = field(default_factory=list)
+    rules: List[SigmaRuleReference] = field(default_factory=list)
 
     @classmethod
     def from_dict(
@@ -31,21 +28,30 @@ class SigmaGlobalFilter(SigmaDetections):
         try:
             if isinstance(detections["condition"], list):
                 condition = detections["condition"]
-            else:
+            elif isinstance(detections["condition"], str):
                 condition = [detections["condition"]]
+            else:
+                raise sigma_exceptions.SigmaFilterConditionError(
+                    "Sigma filter condition must be a string or a list of strings", source=source
+                )
         except KeyError:
             raise sigma_exceptions.SigmaFilterConditionError(
-                "Sigma rule must contain at least one condition", source=source
+                "Sigma filter must contain at least one condition", source=source
             )
 
         try:
             if isinstance(detections["rules"], list):
-                rules = detections["rules"]
+                rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
+            elif isinstance(detections["rules"], str):
+                rules = [SigmaRuleReference(detections["rules"])]
             else:
-                rules = [detections["rules"]]
+                raise sigma_exceptions.SigmaFilterRuleReferenceError(
+                    "Sigma filter rules field must be a list of Sigma Rule IDs or Rule Titles",
+                    source=source,
+                )
         except KeyError:
-            raise sigma_exceptions.SigmaFilterConditionError(
-                "Sigma rule must contain at least a rules section", source=source
+            raise sigma_exceptions.SigmaFilterRuleReferenceError(
+                "Sigma filter must contain at least a rules section", source=source
             )
 
         return cls(
@@ -102,7 +108,7 @@ class SigmaFilter(SigmaRuleBase):
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
-                    "Sigma rule must have a log source", source=source
+                    "Sigma filter must have a log source", source=source
                 )
             )
         except AttributeError:
@@ -121,13 +127,13 @@ class SigmaFilter(SigmaRuleBase):
         except KeyError:
             errors.append(
                 sigma_exceptions.SigmaFilterError(
-                    "Sigma filter must have a filter definitions", source=source
+                    "Sigma filter must have a filter defined", source=source
                 )
             )
         except TypeError:
             errors.append(
                 sigma_exceptions.SigmaFilterError(
-                    "Sigma filter must have a filter definitions", source=source
+                    "Sigma filter must be a dictionary", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
@@ -143,14 +149,8 @@ class SigmaFilter(SigmaRuleBase):
             **kwargs,
         )
 
-    @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaFilter":
-        """Convert YAML input string with single document into SigmaRule object."""
-        parsed_rule = yaml.load(rule, SigmaYAMLLoader)
-        return cls.from_dict(parsed_rule, collect_errors)
-
     def to_dict(self) -> dict:
-        """Convert rule object into dict."""
+        """Convert filter object into dict."""
         d = super().to_dict()
         d.update(
             {
@@ -162,11 +162,21 @@ class SigmaFilter(SigmaRuleBase):
         return d
 
     def _should_apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
-        # Matches whether the filter.filter.rules contains the rule.id
+        from sigma.collection import SigmaCollection
+
         if not self.filter.rules:
             return False
 
-        if not str(rule.id) in self.filter.rules:
+        # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
+        # then filter each reference to see if the rule is in the reference
+        matches = []
+        for reference in self.filter.rules:
+            try:
+                matches.append(SigmaCollection([rule])[reference.reference])
+            except sigma_exceptions.SigmaRuleNotFoundError:
+                pass
+
+        if all([match is None for match in matches]):
             return False
 
         if rule.logsource not in self.logsource:

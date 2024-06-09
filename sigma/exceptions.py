@@ -223,6 +223,12 @@ class SigmaFilterConditionError(SigmaFilterError):
     pass
 
 
+class SigmaFilterRuleReferenceError(SigmaFilterError):
+    """Error in Sigma rule filter condition"""
+
+    pass
+
+
 class SigmaCollectionError(SigmaError):
     """Error in Sigma collection, e.g. unknown action"""
 

@@ -13,3 +13,4 @@ elif coverage >= 85.0:
     print("COVERAGE_COLOR=orange")
 else:
     print("COVERAGE_COLOR=red")
+

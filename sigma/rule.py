@@ -211,6 +211,7 @@ class SigmaLogSource:
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
+    custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
 
     def __post_init__(self):
         """Ensures that log source is not empty."""
@@ -224,11 +225,15 @@ class SigmaLogSource:
         cls, logsource: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaLogSource":
         """Returns SigmaLogSource object from dict with fields."""
+        custom_attributes = {
+            k: v for k, v in logsource.items() if k not in set(cls.__dataclass_fields__.keys())
+        }
         return cls(
             logsource.get("category"),
             logsource.get("product"),
             logsource.get("service"),
             source,
+            custom_attributes if len(custom_attributes) > 0 else None,
         )
 
     def to_dict(self) -> dict:

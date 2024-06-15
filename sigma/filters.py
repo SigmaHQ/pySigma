@@ -26,21 +26,15 @@ class SigmaGlobalFilter(SigmaDetections):
         cls, detections: dict, source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
-            if isinstance(detections["condition"], list):
-                if len(detections["condition"]) > 1:
-                    raise sigma_exceptions.SigmaFilterConditionError(
-                        "Sigma Filters must only contain one condition in total", source=source
-                    )
-                condition = detections["condition"]
-            elif isinstance(detections["condition"], str):
+            if isinstance(detections["condition"], str):
                 condition = [detections["condition"]]
             else:
                 raise sigma_exceptions.SigmaFilterConditionError(
-                    "Sigma filter condition must be a string or a list of strings", source=source
+                    "Sigma filter condition must be a string", source=source
                 )
         except KeyError:
             raise sigma_exceptions.SigmaFilterConditionError(
-                "Sigma filter must contain at least one condition", source=source
+                "Sigma filter must contain exactly one condition", source=source
             )
 
         try:

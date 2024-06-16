@@ -211,6 +211,24 @@ class SigmaTimespanError(SigmaCorrelationRuleError):
     pass
 
 
+class SigmaFilterError(SigmaValueError):
+    """Error in Sigma rule filter"""
+
+    pass
+
+
+class SigmaFilterConditionError(SigmaFilterError):
+    """Error in Sigma rule filter condition"""
+
+    pass
+
+
+class SigmaFilterRuleReferenceError(SigmaFilterError):
+    """Error in Sigma rule filter condition"""
+
+    pass
+
+
 class SigmaCollectionError(SigmaError):
     """Error in Sigma collection, e.g. unknown action"""
 

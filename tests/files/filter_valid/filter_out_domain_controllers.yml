@@ -1,0 +1,11 @@
+title: Filter Out Domain Controllers
+description: Filters out any matching events from COMPANYNAME Domain Controllers
+logsource:
+    product: windows
+filter:
+  rules:
+    - 951f8d29-1234-1234-1234-0673ff105e6f # CodeIntegrity - Unsigned Kernel Module Loaded
+    - 5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64
+  selection:
+      ComputerName|startswith: 'DC-'
+  condition: not selection

@@ -9,14 +9,13 @@ from sigma.exceptions import (
     SigmaLogsourceError,
     SigmaDetectionError,
     SigmaTitleError,
-    SigmaConditionError,
     SigmaFilterConditionError,
     SigmaFilterError,
     SigmaFilterRuleReferenceError,
 )
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.pipeline import ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.rule import SigmaLogSource
 from .test_conversion_base import test_backend

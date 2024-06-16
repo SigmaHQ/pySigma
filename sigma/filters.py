@@ -44,7 +44,7 @@ class SigmaGlobalFilter(SigmaDetections):
                 rules = [SigmaRuleReference(detections["rules"])]
             else:
                 raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                    "Sigma filter rules field must be a list of Sigma Rule IDs or Rule Titles",
+                    "Sigma filter rules field must be a list of Sigma rule IDs or rule names",
                     source=source,
                 )
         except KeyError:

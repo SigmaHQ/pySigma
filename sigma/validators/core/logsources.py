@@ -6,6 +6,7 @@ from sigma.types import SigmaNumber
 
 from sigma.validators.base import (
     SigmaDetectionItemValidator,
+    SigmaRuleValidator,
     SigmaValidationIssue,
     SigmaValidationIssueSeverity,
 )
@@ -97,6 +98,25 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
                 for event_id in detection_item.value
                 if isinstance(event_id, SigmaNumber)
                 and event_id.number in self.disallowed_logsource_event_ids
+            ]
+        else:
+            return []
+
+
+@dataclass
+class FieldnameLogsourceIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Usage of invalid field name in the log source"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    fieldname: str
+
+
+class FieldnameLogsourceValidator(SigmaRuleValidator):
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if rule.logsource.custom_attributes:
+            return [
+                FieldnameLogsourceIssue(rules=[rule], fieldname=name)
+                for name in rule.logsource.custom_attributes
+                if not name == "definition"
             ]
         else:
             return []

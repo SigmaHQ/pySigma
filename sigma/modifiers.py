@@ -235,10 +235,14 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
     into /param-name while the second dash is left untouched.
     """
 
+    en_dash = chr(int("2013", 16))
+    em_dash = chr(int("2014", 16))
+    horizontal_bar = chr(int("2015", 16))
+
     def modify(self, val: SigmaString) -> SigmaExpansion:
         def callback(p: Placeholder):
             if p.name == "_windash":
-                yield from ("-", "/")
+                yield from ("-", "/", self.en_dash, self.em_dash, self.horizontal_bar)
             else:
                 yield p
 

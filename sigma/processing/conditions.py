@@ -539,6 +539,20 @@ class MatchStringCondition(ValueProcessingCondition):
             return result
 
 
+class ContainsWildcardCondition(ValueProcessingCondition):
+    """
+    Evaluates to True if the value contains a wildcard character.
+    """
+
+    def match_value(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
+    ) -> bool:
+        if isinstance(value, SigmaString):
+            return value.contains_special()
+        else:
+            return False
+
+
 @dataclass
 class IsNullCondition(ValueProcessingCondition):
     """
@@ -620,6 +634,7 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
 }
 detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
     "match_string": MatchStringCondition,
+    "contains_wildcard": ContainsWildcardCondition,
     "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
     "processing_state": DetectionItemProcessingStateCondition,

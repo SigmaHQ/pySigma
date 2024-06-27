@@ -5,6 +5,7 @@ from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionErro
 import pytest
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
+    ContainsWildcardCondition,
     DetectionItemProcessingCondition,
     DetectionItemProcessingItemAppliedCondition,
     DetectionItemProcessingStateCondition,
@@ -444,6 +445,24 @@ def test_match_string_condition_error_mode():
 def test_match_string_condition_error_mode():
     with pytest.raises(SigmaRegularExpressionError, match="is invalid"):
         MatchStringCondition(pattern="*", cond="any")
+
+
+def test_contains_wildcard_condition_match(dummy_processing_pipeline):
+    assert ContainsWildcardCondition(cond="any").match(
+        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("*")])
+    )
+
+
+def test_contains_wildcard_condition_nomatch(dummy_processing_pipeline):
+    assert not ContainsWildcardCondition(cond="any").match(
+        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("value")])
+    )
+
+
+def test_contains_wildcard_condition_nostring(dummy_processing_pipeline):
+    assert not ContainsWildcardCondition(cond="any").match(
+        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaNumber(123)])
+    )
 
 
 def test_isnull_condition_match(dummy_processing_pipeline, detection_item_null_value):

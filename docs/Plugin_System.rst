@@ -43,10 +43,10 @@ the :file:`__init__.py` of the module and add them to the mappings mentioned abo
 Plugin Directory
 ================
 
-The `pySigma plugin directory <https://github.com/SigmaHQ/pySigma-plugin-directory>` is the central
+The `pySigma plugin directory <https://github.com/SigmaHQ/pySigma-plugin-directory>`_ is the central
 list of public available plugins for installation. It's format is described in the `README file of
-the project <https://github.com/SigmaHQ/pySigma-plugin-directory#format>`. The directory itself is
-consumed by the `Sigma CLI <https://github.com/SigmaHQ/sigma-cli>` for discovery. Therefore, each
+the project <https://github.com/SigmaHQ/pySigma-plugin-directory#format>`_. The directory itself is
+consumed by the `Sigma CLI <https://github.com/SigmaHQ/sigma-cli>`_ for discovery. Therefore, each
 plugin that should be available for usage with the CLI must be added to the directory.
 
 Discover Available Plugins

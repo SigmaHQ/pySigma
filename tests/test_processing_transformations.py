@@ -1397,27 +1397,27 @@ def test_map_string_transformation_correlation_rule(
 
 
 def test_regex_transformation_plain_method(dummy_pipeline):
-    detection_item = SigmaDetectionItem("field", [], [SigmaString("test*va?ue")])
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0] == SigmaRegularExpression("test.*va.ue")
+    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\.st.*va.ue")
 
 
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
-    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("\\tE.sT*val?ue")])
     transformation = RegexTransformation(method="ignore_case_brackets")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
-        "[tT][eE][sS][tT].*[vV][aA][lL].[uU][eE]"
+        "\\\\[tT][eE]\.[sS][tT].*[vV][aA][lL].[uU][eE]"
     )
 
 
 def test_regex_transformation_case_insensitive_flags_method(dummy_pipeline):
-    detection_item = SigmaDetectionItem("field", [], [SigmaString("tEsT*val?ue")])
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("\\tE.sT*val?ue")])
     transformation = RegexTransformation(method="ignore_case_flag")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
-        "tEsT.*val.ue", {SigmaRegularExpressionFlag.IGNORECASE}
+        "\\\\tE\\.sT.*val.ue", {SigmaRegularExpressionFlag.IGNORECASE}
     )
 
 

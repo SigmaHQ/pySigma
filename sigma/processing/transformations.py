@@ -832,9 +832,11 @@ class RegexTransformation(StringValueTransformation):
                 if (
                     self.method == "ignore_case_brackets"
                 ):  # wrap each character in a bracket expression
-                    regex += "".join(f"[{c.lower()}{c.upper()}]" if c.isalpha() else c for c in sc)
+                    regex += "".join(
+                        f"[{c.lower()}{c.upper()}]" if c.isalpha() else re.escape(c) for c in sc
+                    )
                 else:
-                    regex += sc
+                    regex += re.escape(sc)
             elif (
                 sc == SpecialChars.WILDCARD_MULTI
             ):  # if component is a wildcard, add it as regex .*

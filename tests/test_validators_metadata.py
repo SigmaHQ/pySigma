@@ -11,8 +11,6 @@ from sigma.validators.core.metadata import (
     IdentifierExistenceIssue,
     IdentifierUniquenessValidator,
     IdentifierCollisionIssue,
-    TitleLengthSigmaHQIssue,
-    TitleLengthSigmaHQValidator,
     DuplicateTitleIssue,
     DuplicateTitleValidator,
     DuplicateReferencesIssue,
@@ -25,8 +23,6 @@ from sigma.validators.core.metadata import (
     DateExistenceIssue,
     DuplicateFilenameValidator,
     DuplicateFilenameIssue,
-    FilenameSigmahqValidator,
-    FilenameSigmahqIssue,
     FilenameLenghValidator,
     FilenameLenghIssue,
     CustomAttributesValidator,
@@ -115,40 +111,6 @@ def test_validator_identifier_uniqueness(rules_with_id_collision):
             rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")
         )
     ]
-
-
-def test_validator_lengthy_title():
-    validator = TitleLengthSigmaHQValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: ThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVeryLongTitleThisIsAVery
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: path\\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == [TitleLengthSigmaHQIssue([rule])]
-
-
-def test_validator_lengthy_title_valid():
-    validator = TitleLengthSigmaHQValidator()
-    rule = SigmaRule.from_yaml(
-        """
-    title: Test
-    status: test
-    logsource:
-        category: test
-    detection:
-        sel:
-            field: path\\*something
-        condition: sel
-    """
-    )
-    assert validator.validate(rule) == []
 
 
 def test_validator_duplicate_title():
@@ -360,20 +322,6 @@ def test_validator_duplicate_filename_multiple_rules_in_one_file():
     assert validator.validate(rule1) == []
     assert validator.validate(rule2) == []
     assert validator.finalize() == []
-
-
-def test_validator_sigmahqfilename():
-    validator = FilenameSigmahqValidator()
-    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
-    rule = sigma_collection[0]
-    assert validator.validate(rule) == [FilenameSigmahqIssue([rule], "Name.yml")]
-
-
-def test_validator_sigmahqfilename_valid():
-    validator = FilenameSigmahqValidator()
-    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_valid"])
-    rule = sigma_collection[0]
-    assert validator.validate(rule) == []
 
 
 def test_validator_filename_lengh():

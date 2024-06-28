@@ -67,22 +67,6 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
 
 
 @dataclass
-class TitleLengthSigmaHQIssue(SigmaValidationIssue):
-    description = "Rule has a title longer than 110 characters"
-    severity = SigmaValidationIssueSeverity.MEDIUM
-
-
-class TitleLengthSigmaHQValidator(SigmaRuleValidator):
-    """Checks if rule has a title length longer than 110."""
-
-    def validate(self, rule: SigmaRule) -> List[TitleLengthSigmaHQIssue]:
-        if len(rule.title) > 110:
-            return [TitleLengthSigmaHQIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
 class DuplicateTitleIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Rule title used by multiple rules"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
@@ -206,25 +190,6 @@ class DuplicateFilenameValidator(SigmaRuleValidator):
             for filename, paths in self.filenames_to_paths.items()
             if len(paths) > 1
         ]
-
-
-@dataclass
-class FilenameSigmahqIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule filemane doesn't match SigmaHQ standard"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
-    filename: str
-
-
-class FilenameSigmahqValidator(SigmaRuleValidator):
-    """Check rule filename match SigmaHQ standard."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        filename_pattern = re.compile(r"[a-z0-9_]{10,90}\.yml")
-        if rule.source is not None:
-            filename = rule.source.path.name
-            if filename_pattern.match(filename) is None or not "_" in filename:
-                return [FilenameSigmahqIssue(rule, filename)]
-        return []
 
 
 @dataclass

@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from pathlib import Path
 from sigma.exceptions import (
     SigmaPipelineNotAllowedForBackendError,
     SigmaPipelineNotFoundError,
@@ -70,17 +71,26 @@ class ProcessingPipelineResolver:
         Resolve a list of
 
         * processing pipeline names from pipelines added to the resolver or
-        * file paths containing processing pipeline YAML definitions
+        * file paths containing processing pipeline YAML definitions or
+        * directories containing processing pipelines YAML definitions
 
-        into a consolidated processing piepline.
+        into a consolidated processing pipeline.
 
         If *target* is specified this is passed in each *resolve_pipeline* call to perform a
         compatibility check for the usage of the specified backend with the pipeline.
         """
+        pipelines = []
+        for spec in pipeline_specs:
+            spec_path = Path(spec)
+            if spec_path.is_dir():
+                for path in spec_path.glob("**/*.yml"):
+                    pipelines.append(self.resolve_pipeline(str(path), target))
+            else:
+                pipelines.append(self.resolve_pipeline(spec, target))
         return (
             sum(
                 sorted(
-                    [self.resolve_pipeline(spec, target) for spec in pipeline_specs],
+                    pipelines,
                     key=lambda p: p.priority,
                 )
             )

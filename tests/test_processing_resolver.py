@@ -5,7 +5,10 @@ from sigma.exceptions import (
 )
 from sigma.processing.resolver import ProcessingPipelineResolver
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
-from sigma.processing.transformations import AddFieldnameSuffixTransformation
+from sigma.processing.transformations import (
+    AddFieldnamePrefixTransformation,
+    AddFieldnameSuffixTransformation,
+)
 from collections.abc import Iterable
 
 
@@ -55,6 +58,21 @@ def test_resolve_file(processing_pipeline_resolver: ProcessingPipelineResolver):
         ],
         name="Test",
         priority=10,
+    )
+
+
+def test_resolve_directory(processing_pipeline_resolver):
+    assert processing_pipeline_resolver.resolve(["tests/files/pipelines"]) == ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                AddFieldnameSuffixTransformation(".test"),
+                identifier="test-1",
+            ),
+            ProcessingItem(
+                AddFieldnamePrefixTransformation("test."),
+                identifier="test-2",
+            ),
+        ],
     )
 
 

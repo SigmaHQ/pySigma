@@ -1,6 +1,5 @@
-import glob
-import os.path
 from dataclasses import dataclass, field
+from pathlib import Path
 from sigma.exceptions import (
     SigmaPipelineNotAllowedForBackendError,
     SigmaPipelineNotFoundError,
@@ -82,9 +81,10 @@ class ProcessingPipelineResolver:
         """
         pipelines = []
         for spec in pipeline_specs:
-            if os.path.isdir(spec):
-                for path in glob.glob("**.yml", root_dir=spec):
-                    pipelines.append(self.resolve_pipeline(f"{spec}/{path}", target))
+            spec_path = Path(spec)
+            if spec_path.is_dir():
+                for path in spec_path.glob("**/*.yml"):
+                    pipelines.append(self.resolve_pipeline(str(path), target))
             else:
                 pipelines.append(self.resolve_pipeline(spec, target))
         return (

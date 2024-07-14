@@ -58,6 +58,18 @@ class ProcessingItemBase:
             if self.rule_condition_linking is None:
                 self.rule_condition_linking = all
 
+        if not isinstance(self.rule_conditions, list):
+            raise SigmaTypeError("Rule processing conditions must be provided as list")
+        for rule_condition in self.rule_conditions:
+            if not isinstance(rule_condition, RuleProcessingCondition):
+                raise SigmaTypeError(
+                    f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition"
+                )
+
+        self.transformation.set_processing_item(
+            self
+        )  # set processing item in transformation object after it is instantiated
+
     @classmethod
     def _parse_conditions(
         self,
@@ -252,9 +264,6 @@ class ProcessingItem(ProcessingItemBase):
             if self.field_name_condition_linking is None:
                 self.field_name_condition_linking = all
 
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
         if not isinstance(self.rule_conditions, list):
             raise SigmaTypeError("Rule processing conditions must be provided as list")
         for rule_condition in self.rule_conditions:
@@ -411,19 +420,6 @@ class QueryPostprocessingItem(ProcessingItemBase):
             d.get("rule_cond_logic"),
             identifier,
         )
-
-    def __post_init__(self):
-        super().__post_init__()
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        if not isinstance(self.rule_conditions, list):
-            raise SigmaTypeError("Rule processing conditions must be provided as list")
-        for rule_condition in self.rule_conditions:
-            if not isinstance(rule_condition, RuleProcessingCondition):
-                raise SigmaTypeError(
-                    f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition"
-                )
 
     def apply(
         self,

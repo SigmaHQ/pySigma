@@ -188,19 +188,20 @@ class SigmaFilter(SigmaRuleBase):
         if not self._should_apply_on_rule(rule):
             return rule
 
+        filter_condition = self.filter.condition[0]
         for original_cond_name, condition in self.filter.detections.items():
             cond_name = "_filt_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
             # Replace each instance of the original condition name with the new condition name to avoid conflicts
-            self.filter.condition[0] = re.sub(
+            filter_condition = re.sub(
                 rf"[^ ]*{original_cond_name}[^ ]*",
                 cond_name,
-                self.filter.condition[0],
+                filter_condition,
             )
             rule.detection.detections[cond_name] = condition
 
         for i, condition in enumerate(rule.detection.condition):
-            rule.detection.condition[i] = f"({condition}) and " + f"({self.filter.condition[0]})"
+            rule.detection.condition[i] = f"({condition}) and " + f"({filter_condition})"
 
         # Reparse the rule to update the parsed conditions
         rule.detection.__post_init__()

@@ -40,10 +40,23 @@ from sigma.types import SigmaFieldReference, SigmaType
 @dataclass
 class ProcessingItemBase:
     transformation: Transformation
-    rule_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    rule_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     rule_condition_negation: bool = False
     rule_conditions: List[RuleProcessingCondition] = field(default_factory=list)
+    rule_condition_logic: Optional[str] = (
+        None  # Full rule condition logic mutually exclusive to linking and negation.
+    )
     identifier: Optional[str] = None
+
+    def __post_init__(self):
+        if self.rule_condition_logic is not None:
+            if self.rule_condition_linking is not None:
+                raise SigmaConfigurationError(
+                    "Rule condition logic is mutually exclusive to linking."
+                )
+        else:
+            if self.rule_condition_linking is None:
+                self.rule_condition_linking = all
 
     @classmethod
     def _parse_conditions(
@@ -129,12 +142,16 @@ class ProcessingItem(ProcessingItemBase):
     converted by a backend.
     """
 
-    detection_item_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    detection_item_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = (
+        None  # any or all
+    )
     detection_item_condition_negation: bool = False
     detection_item_conditions: List[DetectionItemProcessingCondition] = field(default_factory=list)
-    field_name_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    detection_item_condition_logic: Optional[str] = None
+    field_name_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     field_name_condition_negation: bool = False
     field_name_conditions: List[FieldNameProcessingCondition] = field(default_factory=list)
+    field_name_condition_logic: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -154,15 +171,16 @@ class ProcessingItem(ProcessingItemBase):
         condition_linking = {
             "or": any,
             "and": all,
+            None: None,
         }
         rule_condition_linking = condition_linking[
-            d.get("rule_cond_op", "and")
+            d.get("rule_cond_op", None)
         ]  # default: conditions are linked with and operator
         detection_item_condition_linking = condition_linking[
-            d.get("detection_item_cond_op", "and")
+            d.get("detection_item_cond_op", None)
         ]  # same for detection item conditions
         field_name_condition_linking = condition_linking[
-            d.get("field_name_cond_op", "and")
+            d.get("field_name_cond_op", None)
         ]  # same for field name conditions
 
         rule_condition_negation = d.get("rule_cond_not", False)
@@ -178,12 +196,15 @@ class ProcessingItem(ProcessingItemBase):
             if k
             not in {
                 "rule_conditions",
+                "rule_cond_logic",
                 "rule_cond_op",
                 "rule_cond_not",
                 "detection_item_conditions",
+                "detection_item_cond_logic",
                 "detection_item_cond_op",
                 "detection_item_cond_not",
                 "field_name_conditions",
+                "field_name_cond_logic",
                 "field_name_cond_op",
                 "field_name_cond_not",
                 "type",
@@ -200,16 +221,37 @@ class ProcessingItem(ProcessingItemBase):
             rule_condition_linking,
             rule_condition_negation,
             rule_conds,
+            d.get("rule_cond_logic", None),
             identifier,
             detection_item_condition_linking,
             detection_item_condition_negation,
             detection_item_conds,
+            d.get("detection_item_cond_logic", None),
             field_name_condition_linking,
             field_name_condition_negation,
             field_name_conds,
+            d.get("field_name_cond_logic", None),
         )
 
     def __post_init__(self):
+        super().__post_init__()
+        if self.detection_item_condition_logic is not None:
+            if self.detection_item_condition_linking is not None:
+                raise SigmaConfigurationError(
+                    "Detection item condition logic is mutually exclusive to linking."
+                )
+        else:
+            if self.detection_item_condition_linking is None:
+                self.detection_item_condition_linking = all
+        if self.field_name_condition_logic is not None:
+            if self.field_name_condition_linking is not None:
+                raise SigmaConfigurationError(
+                    "Field name condition logic is mutually exclusive to linking."
+                )
+        else:
+            if self.field_name_condition_linking is None:
+                self.field_name_condition_linking = all
+
         self.transformation.set_processing_item(
             self
         )  # set processing item in transformation object after it is instantiated
@@ -330,10 +372,11 @@ class QueryPostprocessingItem(ProcessingItemBase):
         condition_linking = {
             "or": any,
             "and": all,
+            None: None,
         }
         rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
         rule_condition_linking = condition_linking[
-            d.get("rule_cond_op", "and")
+            d.get("rule_cond_op", None)
         ]  # default: conditions are linked with and operator
         rule_condition_negation = d.get("rule_cond_not", False)
 
@@ -345,7 +388,15 @@ class QueryPostprocessingItem(ProcessingItemBase):
         params = {
             k: v
             for k, v in d.items()
-            if k not in {"rule_conditions", "rule_cond_op", "rule_cond_not", "type", "id"}
+            if k
+            not in {
+                "rule_conditions",
+                "rule_cond_logic",
+                "rule_cond_op",
+                "rule_cond_not",
+                "type",
+                "id",
+            }
         }
         try:
             transformation = transformation_class(**params)
@@ -353,10 +404,16 @@ class QueryPostprocessingItem(ProcessingItemBase):
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
         return cls(
-            transformation, rule_condition_linking, rule_condition_negation, rule_conds, identifier
+            transformation,
+            rule_condition_linking,
+            rule_condition_negation,
+            rule_conds,
+            d.get("rule_cond_logic"),
+            identifier,
         )
 
     def __post_init__(self):
+        super().__post_init__()
         self.transformation.set_processing_item(
             self
         )  # set processing item in transformation object after it is instantiated

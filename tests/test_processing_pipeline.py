@@ -203,6 +203,13 @@ def test_processingitem_fromdict(processing_item_dict, processing_item):
     assert ProcessingItem.from_dict(processing_item_dict) == processing_item
 
 
+def test_processingitem_default_linking():
+    processing_item = ProcessingItem(transformation=TransformationAppend(s="Test"))
+    assert processing_item.rule_condition_linking == all
+    assert processing_item.detection_item_condition_linking == all
+    assert processing_item.field_name_condition_linking == all
+
+
 def test_processingitem_fromdict_without_id(processing_item_dict, processing_item):
     del processing_item_dict["id"]
     processing_item.identifier = None
@@ -460,6 +467,49 @@ def test_processingitem_wrong_rule_condition():
     with pytest.raises(SigmaTypeError, match="RuleProcessingCondition"):
         ProcessingItem(
             rule_conditions=[IncludeFieldCondition(fields=["testfield"])],
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_rule_condition_linking_with_logic():
+    with pytest.raises(SigmaConfigurationError, match="Rule condition logic is mutually exclusive"):
+        ProcessingItem(
+            rule_condition_linking=any,
+            rule_conditions=[
+                RuleConditionTrue(dummy="test-true"),
+                RuleConditionFalse(dummy="test-false"),
+            ],
+            rule_condition_logic="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_detection_item_condition_linking_with_logic():
+    with pytest.raises(
+        SigmaConfigurationError, match="Detection item condition logic is mutually exclusive"
+    ):
+        ProcessingItem(
+            detection_item_condition_linking=any,
+            detection_item_conditions=[
+                DetectionItemConditionTrue(dummy="test-true"),
+                DetectionItemConditionFalse(dummy="test-false"),
+            ],
+            detection_item_condition_logic="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_field_name_condition_linking_with_logic():
+    with pytest.raises(
+        SigmaConfigurationError, match="Field name condition logic is mutually exclusive"
+    ):
+        ProcessingItem(
+            field_name_condition_linking=any,
+            field_name_conditions=[
+                FieldNameProcessingItemAppliedCondition("test"),
+                FieldNameProcessingItemAppliedCondition("test"),
+            ],
+            field_name_condition_logic="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 

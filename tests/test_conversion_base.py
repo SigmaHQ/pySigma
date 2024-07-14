@@ -585,7 +585,7 @@ def test_convert_value_expansion_with_all(test_backend):
             )
         )
         == [
-            '(CommandLine contains "-foo" or CommandLine contains "/foo") and (CommandLine contains "-bar" or CommandLine contains "/bar")'
+            '(CommandLine contains "-foo" or CommandLine contains "/foo" or CommandLine contains "–foo" or CommandLine contains "—foo" or CommandLine contains "―foo") and (CommandLine contains "-bar" or CommandLine contains "/bar" or CommandLine contains "–bar" or CommandLine contains "—bar" or CommandLine contains "―bar")'
         ]
     )
 

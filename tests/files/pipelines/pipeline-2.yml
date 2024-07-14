@@ -1,0 +1,6 @@
+name: Test 2
+priority: 20
+transformations:
+  - id: test-2
+    type: field_name_prefix
+    prefix: test.

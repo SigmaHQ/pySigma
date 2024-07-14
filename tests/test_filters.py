@@ -1,3 +1,5 @@
+import copy
+import uuid
 from pathlib import Path
 from typing import Callable
 
@@ -131,6 +133,19 @@ def test_basic_filter_application_against_correlation_rule(
         "TargetDomainName, mappedB\n"
         "| where event_count >= 10"
     ]
+
+
+def test_filter_application_to_several_rules(sigma_filter, test_backend, rule_collection):
+    rule_copy = copy.deepcopy(rule_collection.rules[0])
+    rule_copy.id = uuid.UUID("257f7780-ea6c-48d4-ae8e-2b95b3740d84")
+    sigma_filter.filter.rules.append(SigmaRuleReference(str(rule_copy.id)))
+
+    rule_collection.rules.extend([rule_copy, sigma_filter])
+
+    assert (
+        test_backend.convert(rule_collection)
+        == ['(EventID=4625 or EventID2=4624) and not User startswith "adm_"'] * 2
+    )
 
 
 def test_reducing_rule_collections(sigma_filter, test_backend, rule_collection):

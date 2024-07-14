@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma"
-version = "0.11.8"
+version = "0.11.9"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]
@@ -22,7 +22,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.8"
-packaging = ">= 22.0, < 24.0"
+packaging = "^24.1"
 pyparsing = "^3.1"
 pyyaml = "^6.0"
 requests = "^2.31"

@@ -112,7 +112,7 @@ class FieldnameLogsourceIssue(SigmaValidationIssue):
 
 class FieldnameLogsourceValidator(SigmaRuleValidator):
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.logsource.custom_attributes:
+        if isinstance(rule, SigmaRule) and rule.logsource.custom_attributes:
             return [
                 FieldnameLogsourceIssue(rules=[rule], fieldname=name)
                 for name in rule.logsource.custom_attributes

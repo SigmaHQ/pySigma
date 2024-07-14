@@ -1,8 +1,9 @@
-from wsgiref.validate import validator
-
+from sigma.collection import SigmaCollection
+from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule
 
 from sigma.validators.core.logsources import FieldnameLogsourceIssue, FieldnameLogsourceValidator
+from .test_conversion_correlations import event_count_correlation_rule
 
 
 def test_fieldnamelogsourcevalidator_valid():
@@ -83,3 +84,13 @@ def test_fieldnamelogsourcevalidator_many_invalid():
         FieldnameLogsourceIssue(rule, "editor"),
         FieldnameLogsourceIssue(rule, "description"),
     ]
+
+
+def test_fieldnamelogsourcevalidator_correlation_rule(event_count_correlation_rule):
+    validator = FieldnameLogsourceValidator()
+    correlation_rule = [
+        rule
+        for rule in event_count_correlation_rule.rules
+        if isinstance(rule, SigmaCorrelationRule)
+    ][0]
+    assert validator.validate(correlation_rule) == []

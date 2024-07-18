@@ -6,6 +6,8 @@ from sigma.processing.finalization import ConcatenateQueriesFinalizer, JSONFinal
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
+    FieldNameProcessingCondition,
+    field_name_conditions,
     IncludeFieldCondition,
     LogsourceCondition,
     rule_conditions,
@@ -61,6 +63,22 @@ class DetectionItemConditionFalse(DetectionItemProcessingCondition):
 
 
 @dataclass
+class FieldNameConditionTrue(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, pipeline: ProcessingPipeline, field_name: str) -> bool:
+        return True
+
+
+@dataclass
+class FieldNameConditionFalse(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, pipeline: ProcessingPipeline, field_name: str) -> bool:
+        return False
+
+
+@dataclass
 class TransformationPrepend(Transformation):
     s: str
 
@@ -84,6 +102,8 @@ def inject_test_classes(monkeypatch):
     monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
     monkeypatch.setitem(detection_item_conditions, "true", DetectionItemConditionTrue)
     monkeypatch.setitem(detection_item_conditions, "false", DetectionItemConditionFalse)
+    monkeypatch.setitem(field_name_conditions, "true", FieldNameConditionTrue)
+    monkeypatch.setitem(field_name_conditions, "false", FieldNameConditionFalse)
     monkeypatch.setitem(transformations, "prepend", TransformationPrepend)
     monkeypatch.setitem(transformations, "append", TransformationAppend)
 
@@ -121,6 +141,35 @@ def processing_item_dict():
             {"type": "false", "dummy": "test-false"},
         ],
         "detection_item_cond_op": "or",
+        "field_name_conditions": [
+            {"type": "true", "dummy": "test-true"},
+            {"type": "false", "dummy": "test-false"},
+        ],
+        "field_name_cond_op": "or",
+        "type": "append",
+        "s": "Test",
+    }
+
+
+@pytest.fixture
+def processing_item_with_condition_logic_dict():
+    return {
+        "id": "test",
+        "rule_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "rule_cond_logic": "cond1 and not cond2",
+        "detection_item_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "detection_item_cond_logic": "cond1 and not cond2",
+        "field_name_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "field_name_cond_logic": "cond1 and not cond2",
         "type": "append",
         "s": "Test",
     }
@@ -154,6 +203,34 @@ def processing_item():
             DetectionItemConditionTrue(dummy="test-true"),
             DetectionItemConditionFalse(dummy="test-false"),
         ],
+        field_name_condition_linking=any,
+        field_name_conditions=[
+            FieldNameConditionTrue(dummy="test-true"),
+            FieldNameConditionFalse(dummy="test-false"),
+        ],
+        identifier="test",
+    )
+
+
+@pytest.fixture
+def processing_item_with_condition_logic():
+    return ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        rule_conditions={
+            "cond1": RuleConditionTrue(dummy="test-true"),
+            "cond2": RuleConditionFalse(dummy="test-false"),
+        },
+        rule_condition_logic="cond1 and not cond2",
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_logic="cond1 and not cond2",
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_logic="cond1 and not cond2",
         identifier="test",
     )
 
@@ -648,6 +725,12 @@ def test_processingpipeline_fromyaml(
                   - type: "false"
                     dummy: test-false
               detection_item_cond_op: or
+              field_name_conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              field_name_cond_op: or
               type: append
               s: Test
         postprocessing:

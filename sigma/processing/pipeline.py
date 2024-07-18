@@ -69,7 +69,7 @@ class ProcessingItemBase:
         }
 
     def _check_conditions(
-        self, logic_value, linking_attr, conditions, expected_condition_class, name
+        self, logic_attr, linking_attr, conditions_attr, expected_condition_class, name
     ):
         """
         This method conducts various checks of the conditions provided to the processing item:
@@ -80,16 +80,22 @@ class ProcessingItemBase:
 
         In addition to the checks it sets the linking attribute to `all` if no logic value is provided.
         """
-        if logic_value is not None:
+        logic = self.__getattribute__(logic_attr)
+        conditions = self.__getattribute__(conditions_attr)
+        # Check if logic is mutually exclusive to linking and conditions are provided as dict if
+        # condition logic expression is given.
+        if logic is not None:
             if self.__getattribute__(linking_attr) is not None:
                 raise SigmaConfigurationError(f"{name} logic is mutually exclusive to linking.")
             if not isinstance(conditions, dict):
                 raise SigmaConfigurationError(
                     f"{name}s must be provided as mapping from identifiers to conditions if condition logic is provided."
                 )
-        else:
+        else:  # In case no logic is provided, set linking to all if not provided and simplify condition dict to list.
             if self.__getattribute__(linking_attr) is None:
                 self.__setattr__(linking_attr, all)
+            if isinstance(conditions, dict):
+                self.__setattr__(conditions_attr, list(conditions.values()))
 
         if not isinstance(conditions, (list, dict)):
             raise SigmaTypeError(f"{name}s must be provided as list or dict")
@@ -105,15 +111,35 @@ class ProcessingItemBase:
 
     def __post_init__(self):
         self._check_conditions(
-            self.rule_condition_logic,
+            "rule_condition_logic",
             "rule_condition_linking",
-            self.rule_conditions,
+            "rule_conditions",
             RuleProcessingCondition,
             "Rule condition",
         )
         self.transformation.set_processing_item(
             self
         )  # set processing item in transformation object after it is instantiated
+
+    @classmethod
+    def _parse_condition(cls, condition_class_mapping, cond_def, ref):
+        try:
+            cond_type = cond_def["type"]
+        except KeyError:
+            raise SigmaConfigurationError(f"Missing condition type defined in condition { ref }")
+
+        try:
+            cond_class = condition_class_mapping[cond_type]
+        except KeyError:
+            raise SigmaConfigurationError(
+                f"Unknown condition type '{ cond_type }' in condition { ref }"
+            )
+
+        cond_params = {k: v for k, v in cond_def.items() if k != "type"}
+        try:
+            return cond_class(**cond_params)
+        except (SigmaConfigurationError, TypeError) as e:
+            raise SigmaConfigurationError(f"Error in condition { ref }: { str(e) }") from e
 
     @classmethod
     def _parse_conditions(
@@ -126,43 +152,36 @@ class ProcessingItemBase:
                 Type[FieldNameProcessingCondition],
             ],
         ],
-        cond_defs: Dict,
+        cond_defs: Dict[str, Dict],
     ) -> Union[
         List[RuleProcessingCondition],
+        Dict[str, RuleProcessingCondition],
         List[DetectionItemProcessingCondition],
+        Dict[str, DetectionItemProcessingCondition],
         List[FieldNameProcessingCondition],
+        Dict[str, FieldNameProcessingCondition],
     ]:
-        """Parse dict of conditions into list of condition object instances.
+        """Parse dict of conditions into list or dict of condition object instances.
 
         :param condition_class_mapping: Mapping between condition type identifiers and condition classes.
         :type condition_class_mapping: Dict[str, Union[Type[RuleProcessingCondition], Type[DetectionItemProcessingCondition], Type[FieldNameProcessingCondition]]]
         :param cond_defs: Definition of conditions for the pipeline.
-        :type cond_defs: Dict
-        :return: List of condition classes as defined in dict.
-        :rtype: Union[List[RuleProcessingCondition], List[DetectionItemProcessingCondition], List[FieldNameProcessingCondition]]
+        :type cond_defs: Dict[str, Dict]
+        :return: List or dict of condition classes as defined in dict.
+        :rtype: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition], List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition], List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]]
         """
-        conds = list()
-        for i, cond_def in enumerate(cond_defs):
-            try:
-                cond_type = cond_def["type"]
-            except KeyError:
-                raise SigmaConfigurationError(
-                    f"Missing condition type defined in condition { i + 1 }"
-                )
-
-            try:
-                cond_class = condition_class_mapping[cond_type]
-            except KeyError:
-                raise SigmaConfigurationError(
-                    f"Unknown condition type '{ cond_type }' in condition { i + 1 }"
-                )
-
-            cond_params = {k: v for k, v in cond_def.items() if k != "type"}
-            try:
-                conds.append(cond_class(**cond_params))
-            except (SigmaConfigurationError, TypeError) as e:
-                raise SigmaConfigurationError(f"Error in condition { i + 1 }: { str(e) }") from e
-        return conds
+        if isinstance(cond_defs, dict):
+            return {
+                k: self._parse_condition(condition_class_mapping, v, k)
+                for k, v in cond_defs.items()
+            }
+        elif isinstance(cond_defs, list):
+            return [
+                self._parse_condition(condition_class_mapping, cond_def, str(i + 1))
+                for i, cond_def in enumerate(cond_defs)
+            ]
+        else:
+            raise SigmaTypeError("Conditions must be provided as list or dict")
 
     @classmethod
     def _parse_condition_linking(
@@ -281,16 +300,16 @@ class ProcessingItem(ProcessingItemBase):
     def __post_init__(self):
         super().__post_init__()
         self._check_conditions(
-            self.detection_item_condition_logic,
+            "detection_item_condition_logic",
             "detection_item_condition_linking",
-            self.detection_item_conditions,
+            "detection_item_conditions",
             DetectionItemProcessingCondition,
             "Detection item condition",
         )
         self._check_conditions(
-            self.field_name_condition_logic,
+            "field_name_condition_logic",
             "field_name_condition_linking",
-            self.field_name_conditions,
+            "field_name_conditions",
             FieldNameProcessingCondition,
             "Field name condition",
         )

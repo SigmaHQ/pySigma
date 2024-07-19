@@ -694,7 +694,7 @@ class TextQueryBackend(Backend):
 
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
-    precedence: ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (
+    precedence: ClassVar[Tuple[type[ConditionItem], type[ConditionItem], type[ConditionItem]]] = (
         ConditionNOT,
         ConditionAND,
         ConditionOR,

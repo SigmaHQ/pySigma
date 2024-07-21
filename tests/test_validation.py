@@ -74,6 +74,7 @@ def test_sigmavalidator_from_dict(validators):
             },
         },
         validators,
+        {"filename_min": 10, "filename_max": 90},
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
@@ -85,6 +86,7 @@ def test_sigmavalidator_from_dict(validators):
             NumberAsStringValidator,
         },
     }
+    assert validator.custom_param["filename_min"] == 10
 
 
 def test_sigmavalidator_from_yaml(validators):

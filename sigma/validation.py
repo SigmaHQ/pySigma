@@ -20,21 +20,20 @@ class SigmaValidator:
 
     validators: Set[SigmaRuleValidator]
     exclusions: DefaultDict[UUID, Set[Type[SigmaRuleValidator]]]
-    custom_param: Optional[Dict]
 
     def __init__(
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
         exclusions: Dict[UUID, Set[SigmaRuleValidator]] = dict(),
-        custom_param: Optional[Dict] = None,
+        **kwargs
     ):
         self.validators = {validator() for validator in validators}
         self.exclusions = defaultdict(set, exclusions)
-        self.custom_param = custom_param
+        [self.__setattr__(key, kwargs.get(key)) for key in kwargs.keys()]
 
     @classmethod
     def from_dict(
-        cls, d: Dict, validators: Dict[str, SigmaRuleValidator], custom_param: Optional[Dict] = None
+        cls, d: Dict, validators: Dict[str, SigmaRuleValidator],**kwargs
     ) -> "SigmaValidator":
         """
         Instantiate SigmaValidator from dict definition. The dict should have the following
@@ -49,8 +48,6 @@ class SigmaValidator:
         :type d: Dict
         :param validators: Mapping from string identifiers to validator classes.
         :type validators: Dict[str, SigmaRuleValidator]
-        :param custom_param: Optinal custom parameter
-        :type custom_param: Dict
         :return: Instantiated SigmaValidator
         :rtype: SigmaValidator
         """
@@ -91,16 +88,16 @@ class SigmaValidator:
         except KeyError as e:
             raise SigmaConfigurationError(f"Unknown validator '{ e.args[0] }'")
 
-        return cls(validator_classes, exclusions, custom_param)
+        return cls(validator_classes, exclusions,**kwargs)
 
     @classmethod
     def from_yaml(
         cls,
         validator_config: str,
         validators: Dict[str, SigmaRuleValidator],
-        custom_param: Optional[Dict] = None,
+        **kwargs
     ) -> "SigmaValidator":
-        return cls.from_dict(yaml.safe_load(validator_config), validators, custom_param)
+        return cls.from_dict(yaml.safe_load(validator_config), validators,**kwargs)
 
     def validate_rule(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """

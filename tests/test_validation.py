@@ -73,7 +73,7 @@ def test_sigmavalidator_from_dict(validators):
                 ],
             },
         },
-        validators
+        validators,
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
@@ -180,7 +180,8 @@ def test_issue_string_rendering(rules_with_id_collision):
         == 'issue=IdentifierCollisionIssue severity=high description="Rule identifier used by multiple rules" rules=[32532a0b-e56c-47c9-bcbb-3d88bd670c37, 32532a0b-e56c-47c9-bcbb-3d88bd670c37] identifier=32532a0b-e56c-47c9-bcbb-3d88bd670c37'
     )
 
-def test_sigmavalidator_from_yaml_test(validators):
+
+def test_sigmavalidator_from_yaml_kwargs(validators):
     validator = SigmaValidator.from_yaml(
         """
     validators:
@@ -190,6 +191,25 @@ def test_sigmavalidator_from_yaml_test(validators):
     exclusions:
         c702c6c7-1393-40e5-93f8-91469f3445ad: dangling_detection
     """,
+        validators,
+        test=12,
+    )
+    assert len(validator.validators) >= 10
+    assert validator.test == 12
+
+
+def test_sigmavalidator_from_dict_kwargs(validators):
+    validator = SigmaValidator.from_dict(
+        {
+            "validators": [
+                "all",
+                "-tlptag",
+                "-tlpv1_tag",
+            ],
+            "exclusions": {
+                "c702c6c7-1393-40e5-93f8-91469f3445ad": "dangling_detection",
+            },
+        },
         validators,
         test=12,
     )

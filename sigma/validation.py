@@ -25,7 +25,7 @@ class SigmaValidator:
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
         exclusions: Dict[UUID, Set[SigmaRuleValidator]] = dict(),
-        **kwargs
+        **kwargs,
     ):
         self.validators = {validator() for validator in validators}
         self.exclusions = defaultdict(set, exclusions)
@@ -33,7 +33,7 @@ class SigmaValidator:
 
     @classmethod
     def from_dict(
-        cls, d: Dict, validators: Dict[str, SigmaRuleValidator],**kwargs
+        cls, d: Dict, validators: Dict[str, SigmaRuleValidator], **kwargs
     ) -> "SigmaValidator":
         """
         Instantiate SigmaValidator from dict definition. The dict should have the following
@@ -88,16 +88,13 @@ class SigmaValidator:
         except KeyError as e:
             raise SigmaConfigurationError(f"Unknown validator '{ e.args[0] }'")
 
-        return cls(validator_classes, exclusions,**kwargs)
+        return cls(validator_classes, exclusions, **kwargs)
 
     @classmethod
     def from_yaml(
-        cls,
-        validator_config: str,
-        validators: Dict[str, SigmaRuleValidator],
-        **kwargs
+        cls, validator_config: str, validators: Dict[str, SigmaRuleValidator], **kwargs
     ) -> "SigmaValidator":
-        return cls.from_dict(yaml.safe_load(validator_config), validators,**kwargs)
+        return cls.from_dict(yaml.safe_load(validator_config), validators, **kwargs)
 
     def validate_rule(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """

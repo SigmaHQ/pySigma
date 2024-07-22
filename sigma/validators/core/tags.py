@@ -101,21 +101,14 @@ class DuplicateTagValidator(SigmaRuleValidator):
         return [DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1]
 
 
-@dataclass
-class InvalidDetectionTagIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Invalid detection tagging"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-    tag: SigmaRuleTag
+class NamespaceTagValidator(SigmaTagValidator):
+    """Validate rule tag name"""
 
-
-class DetectionTagValidator(SigmaTagValidator):
-    """Validate rule detection tag"""
-
-    allowed_tags = {"dfir", "emerging_threats", "threat_hunting"}
+    allowed_namespace = {"attack", "car", "stp", "cve", "tlp", "detection"}
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        if tag.namespace == "detection" and tag.name not in self.allowed_tags:
-            return [InvalidDetectionTagIssue([self.rule], tag)]
+        if tag.namespace not in self.allowed_namespace:
+            return [InvalidNamespaceTagIssue([self.rule], tag)]
         return []
 
 
@@ -126,38 +119,42 @@ class InvalidPatternTagIssue(SigmaValidationIssue):
     tag: SigmaRuleTag
 
 
-def invalid_tag_pattern(namespace: str, pattern, tag: SigmaRuleTag) -> bool:
-    tags_pattern = re.compile(pattern)
-    if tag.namespace == namespace and tags_pattern.match(tag.name) is None:
-        return True
-    return False
+class TagPatternValidatorBase(SigmaTagValidator):
+    """Base class for tag pattern validation"""
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        tags_pattern = re.compile(self.pattern)
+        if tag.namespace == self.namespace and tags_pattern.match(tag.name) is None:
+            return [InvalidPatternTagIssue([self.rule], tag)]
+        return []
 
 
-class CARTagValidator(SigmaTagValidator):
+class CARTagValidator(TagPatternValidatorBase):
     """Validate rule CAR tag"""
 
-    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        if invalid_tag_pattern("car", r"\d{4}-\d{2}-\d{3}$", tag):
-            return [InvalidPatternTagIssue([self.rule], tag)]
-        return []
+    namespace = "car"
+    pattern = r"\d{4}-\d{2}-\d{3}$"
 
 
-class CVETagValidator(SigmaTagValidator):
+class CVETagValidator(TagPatternValidatorBase):
     """Validate rule CVE tag"""
 
-    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        if invalid_tag_pattern("cve", r"^\d+\.\d+$", tag):
-            return [InvalidPatternTagIssue([self.rule], tag)]
-        return []
+    namespace = "cve"
+    pattern = r"^\d+\.\d+$"
 
 
-class STPTagValidator(SigmaTagValidator):
+class STPTagValidator(TagPatternValidatorBase):
     """Validate rule STP tag"""
 
-    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        if invalid_tag_pattern("stp", r"^[1-5]{1}[auk]{0,1}$", tag):
-            return [InvalidPatternTagIssue([self.rule], tag)]
-        return []
+    namespace = "stp"
+    pattern = r"^[1-5]{1}[auk]{0,1}$"
+
+
+class DetectionTagValidator(TagPatternValidatorBase):
+    """Validate rule detection tag"""
+
+    namespace = "detection"
+    pattern = r"dfir|emerging_threats|threat_hunting"
 
 
 @dataclass
@@ -165,14 +162,3 @@ class InvalidNamespaceTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid tagging name"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
-
-
-class NamespaceTagValidator(SigmaTagValidator):
-    """Validate rule tag name"""
-
-    allowed_namespace = {"attack", "car", "stp", "cve", "tlp", "detection"}
-
-    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        if tag.namespace not in self.allowed_namespace:
-            return [InvalidNamespaceTagIssue([self.rule], tag)]
-        return []

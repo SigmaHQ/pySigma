@@ -16,7 +16,6 @@ from sigma.validators.core.tags import (
     TLPv1TagValidator,
     TLPv2TagValidator,
     DetectionTagValidator,
-    InvalidDetectionTagIssue,
     CARTagValidator,
     CVETagValidator,
     STPTagValidator,
@@ -145,13 +144,13 @@ def test_validator_duplicate_tags():
             DetectionTagValidator,
             ["detection.new_threats", "cve.2023.007"],
             ["detection.new_threats"],
-            InvalidDetectionTagIssue,
+            InvalidPatternTagIssue,
         ),
         (
             DetectionTagValidator,
             ["detection.emerging_threats", "cve.2022.963"],
             [],
-            InvalidDetectionTagIssue,
+            InvalidPatternTagIssue,
         ),
         (
             CARTagValidator,

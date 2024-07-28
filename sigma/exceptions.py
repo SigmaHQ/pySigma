@@ -241,6 +241,19 @@ class SigmaConfigurationError(SigmaError):
     pass
 
 
+class SigmaPipelineConditionError(SigmaConfigurationError):
+    """Error in Sigma pipeline condition"""
+
+    def __init__(self, expression: str, location: int, error: str, *args, **kwargs):
+        self.expression = expression
+        self.location = location
+        self.error = error
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.error} in expression '{self.expression}' at location {self.location}"
+
+
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
 

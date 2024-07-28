@@ -16,7 +16,9 @@ from typing import (
     Type,
     Union,
 )
+
 from sigma.correlations import SigmaCorrelationRule
+from sigma.processing.condition_expressions import ConditionExpression
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.postprocessing import QueryPostprocessingTransformation
 from sigma.processing.tracking import FieldMappingTracking
@@ -45,7 +47,7 @@ class ProcessingItemBase:
     rule_conditions: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition]] = (
         field(default_factory=list)
     )
-    rule_condition_logic: Optional[str] = (
+    rule_condition_logic: Optional[ConditionExpression] = (
         None  # Full rule condition logic mutually exclusive to linking and negation.
     )
 
@@ -194,6 +196,12 @@ class ProcessingItemBase:
         }
         return condition_linking.get(d.get(op_name, None))
 
+    def _parse_condition_expression(
+        self, condition_type: Literal["rule", "detection_item", "field_name"]
+    ) -> Optional[str]:
+        condition_logic = self.__getattribute__(f"{condition_type}_cond_logic")
+        conditions = self.__getattribute__(f"{condition_type}_conditions")
+
     @classmethod
     def _instantiate_transformation(cls, d: dict, transformations: Dict[str, Type[Transformation]]):
         try:
@@ -233,6 +241,12 @@ class ProcessingItemBase:
             return transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
+
+    def _match_condition_logic(
+        self, condition_type: Literal["rule", "detection_item", "field_name"]
+    ) -> bool:
+        expression = self.__getattribute__(f"{condition_type}_cond_logic")
+        conditions = self.__getattribute__(f"{condition_type}_conditions")
 
     def match_rule_conditions(
         self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]

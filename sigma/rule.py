@@ -204,6 +204,11 @@ class SigmaRuleTag:
     def __str__(self) -> str:
         return f"{self.namespace}.{self.name}"
 
+    def __eq__(self, other) -> bool:
+        if isinstance(other, str):
+            return other == f"{self.namespace}.{self.name}"
+        return super().__eq__(other)
+
 
 @dataclass(frozen=True)
 class SigmaLogSource:

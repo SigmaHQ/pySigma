@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, Iterable, Optional, Set, Union
 
 from pyparsing import (
+    List,
     ParseException,
     Word,
     alphanums,
@@ -99,7 +100,7 @@ class ConditionIdentifier(ConditionExpression):
     """
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: ParseResults | list) -> "ConditionIdentifier":
+    def from_parsed(cls, s: str, l: int, t: ParseResults) -> "ConditionIdentifier":
         expr = cls(l, t[0])
         expr.set_expression(s)
         return expr
@@ -141,7 +142,7 @@ class BinaryConditionOp(ConditionExpression):
     _function: ClassVar[Callable[[Iterable[bool]], bool]]  # any or all
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: ParseResults | list) -> "BinaryConditionOp":
+    def from_parsed(cls, s: str, l: int, t: ParseResults) -> "BinaryConditionOp":
         expr = cls(l, t[0][0], t[0][2])
         expr.set_expression(s)
         return expr
@@ -198,7 +199,7 @@ class ConditionNOT(ConditionExpression):
     condition: ConditionExpression
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: ParseResults | list) -> "ConditionNOT":
+    def from_parsed(cls, s: str, l: int, t: ParseResults) -> "ConditionNOT":
         expr = cls(l, t[0][1])
         expr.set_expression(s)
         return expr

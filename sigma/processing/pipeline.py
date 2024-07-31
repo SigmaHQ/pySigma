@@ -47,8 +47,8 @@ class ProcessingItemBase:
     rule_conditions: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition]] = (
         field(default_factory=list)
     )
-    rule_condition_logic: Optional[ConditionExpression] = (
-        None  # Full rule condition logic mutually exclusive to linking and negation.
+    rule_condition_expression: Optional[ConditionExpression] = (
+        None  # Full rule condition expression mutually exclusive to linking
     )
 
     identifier: Optional[str] = None
@@ -64,14 +64,14 @@ class ProcessingItemBase:
             "rule_conditions": cls._parse_conditions(
                 rule_conditions, d.get("rule_conditions", list())
             ),
-            "rule_condition_logic": d.get("rule_cond_logic", None),
+            "rule_condition_expression": d.get("rule_cond_expr", None),
             "rule_condition_linking": cls._parse_condition_linking(d, "rule_cond_op"),
             "rule_condition_negation": d.get("rule_cond_not", False),
             "transformation": cls._instantiate_transformation(d, transformations),
         }
 
     def _check_conditions(
-        self, logic_attr, linking_attr, conditions_attr, expected_condition_class, name
+        self, expression_attr, linking_attr, conditions_attr, expected_condition_class, name
     ):
         """
         This method conducts various checks of the conditions provided to the processing item:
@@ -82,18 +82,20 @@ class ProcessingItemBase:
 
         In addition to the checks it sets the linking attribute to `all` if no logic value is provided.
         """
-        logic = self.__getattribute__(logic_attr)
+        expr = self.__getattribute__(expression_attr)
         conditions = self.__getattribute__(conditions_attr)
         # Check if logic is mutually exclusive to linking and conditions are provided as dict if
         # condition logic expression is given.
-        if logic is not None:
+        if expr is not None:
             if self.__getattribute__(linking_attr) is not None:
-                raise SigmaConfigurationError(f"{name} logic is mutually exclusive to linking.")
+                raise SigmaConfigurationError(
+                    f"{name} expression is mutually exclusive to linking."
+                )
             if not isinstance(conditions, dict):
                 raise SigmaConfigurationError(
-                    f"{name}s must be provided as mapping from identifiers to conditions if condition logic is provided."
+                    f"{name}s must be provided as mapping from identifiers to conditions if condition expression is provided."
                 )
-        else:  # In case no logic is provided, set linking to all if not provided and simplify condition dict to list.
+        else:  # In case no expression is provided, set linking to all if not provided and simplify condition dict to list.
             if self.__getattribute__(linking_attr) is None:
                 self.__setattr__(linking_attr, all)
             if isinstance(conditions, dict):
@@ -113,7 +115,7 @@ class ProcessingItemBase:
 
     def __post_init__(self):
         self._check_conditions(
-            "rule_condition_logic",
+            "rule_condition_expression",
             "rule_condition_linking",
             "rule_conditions",
             RuleProcessingCondition,
@@ -199,7 +201,7 @@ class ProcessingItemBase:
     def _parse_condition_expression(
         self, condition_type: Literal["rule", "detection_item", "field_name"]
     ) -> Optional[str]:
-        condition_logic = self.__getattribute__(f"{condition_type}_cond_logic")
+        condition_expr = self.__getattribute__(f"{condition_type}_cond_expr")
         conditions = self.__getattribute__(f"{condition_type}_conditions")
 
     @classmethod
@@ -222,15 +224,15 @@ class ProcessingItemBase:
             if k
             not in {
                 "rule_conditions",
-                "rule_cond_logic",
+                "rule_cond_expr",
                 "rule_cond_op",
                 "rule_cond_not",
                 "detection_item_conditions",
-                "detection_item_cond_logic",
+                "detection_item_cond_expr",
                 "detection_item_cond_op",
                 "detection_item_cond_not",
                 "field_name_conditions",
-                "field_name_cond_logic",
+                "field_name_cond_expr",
                 "field_name_cond_op",
                 "field_name_cond_not",
                 "type",
@@ -242,10 +244,10 @@ class ProcessingItemBase:
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
-    def _match_condition_logic(
+    def _match_condition_expression(
         self, condition_type: Literal["rule", "detection_item", "field_name"]
     ) -> bool:
-        expression = self.__getattribute__(f"{condition_type}_cond_logic")
+        expression = self.__getattribute__(f"{condition_type}_cond_expr")
         conditions = self.__getattribute__(f"{condition_type}_conditions")
 
     def match_rule_conditions(
@@ -276,13 +278,13 @@ class ProcessingItem(ProcessingItemBase):
     detection_item_conditions: Union[
         List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition]
     ] = field(default_factory=list)
-    detection_item_condition_logic: Optional[str] = None
+    detection_item_condition_expression: Optional[str] = None
     field_name_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     field_name_condition_negation: bool = False
     field_name_conditions: Union[
         List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]
     ] = field(default_factory=list)
-    field_name_condition_logic: Optional[str] = None
+    field_name_condition_expression: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: dict):
@@ -293,7 +295,7 @@ class ProcessingItem(ProcessingItemBase):
                 "detection_item_conditions": cls._parse_conditions(
                     detection_item_conditions, d.get("detection_item_conditions", list())
                 ),
-                "detection_item_condition_logic": d.get("detection_item_cond_logic", None),
+                "detection_item_condition_expression": d.get("detection_item_cond_expr", None),
                 "detection_item_condition_linking": cls._parse_condition_linking(
                     d, "detection_item_cond_op"
                 ),
@@ -301,7 +303,7 @@ class ProcessingItem(ProcessingItemBase):
                 "field_name_conditions": cls._parse_conditions(
                     field_name_conditions, d.get("field_name_conditions", list())
                 ),
-                "field_name_condition_logic": d.get("field_name_cond_logic", None),
+                "field_name_condition_expression": d.get("field_name_cond_expr", None),
                 "field_name_condition_linking": cls._parse_condition_linking(
                     d, "field_name_cond_op"
                 ),
@@ -314,14 +316,14 @@ class ProcessingItem(ProcessingItemBase):
     def __post_init__(self):
         super().__post_init__()
         self._check_conditions(
-            "detection_item_condition_logic",
+            "detection_item_condition_expression",
             "detection_item_condition_linking",
             "detection_item_conditions",
             DetectionItemProcessingCondition,
             "Detection item condition",
         )
         self._check_conditions(
-            "field_name_condition_logic",
+            "field_name_condition_expression",
             "field_name_condition_linking",
             "field_name_conditions",
             FieldNameProcessingCondition,

@@ -152,24 +152,24 @@ def processing_item_dict():
 
 
 @pytest.fixture
-def processing_item_with_condition_logic_dict():
+def processing_item_with_condition_expr_dict():
     return {
         "id": "test",
         "rule_conditions": {
             "cond1": {"type": "true", "dummy": "test-true"},
             "cond2": {"type": "false", "dummy": "test-false"},
         },
-        "rule_cond_logic": "cond1 and not cond2",
+        "rule_cond_expr": "cond1 and not cond2",
         "detection_item_conditions": {
             "cond1": {"type": "true", "dummy": "test-true"},
             "cond2": {"type": "false", "dummy": "test-false"},
         },
-        "detection_item_cond_logic": "cond1 and not cond2",
+        "detection_item_cond_expr": "cond1 and not cond2",
         "field_name_conditions": {
             "cond1": {"type": "true", "dummy": "test-true"},
             "cond2": {"type": "false", "dummy": "test-false"},
         },
-        "field_name_cond_logic": "cond1 and not cond2",
+        "field_name_cond_expr": "cond1 and not cond2",
         "type": "append",
         "s": "Test",
     }
@@ -213,24 +213,24 @@ def processing_item():
 
 
 @pytest.fixture
-def processing_item_with_condition_logic():
+def processing_item_with_condition_expr():
     return ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_conditions={
             "cond1": RuleConditionTrue(dummy="test-true"),
             "cond2": RuleConditionFalse(dummy="test-false"),
         },
-        rule_condition_logic="cond1 and not cond2",
+        rule_condition_expression="cond1 and not cond2",
         detection_item_conditions={
             "cond1": DetectionItemConditionTrue(dummy="test-true"),
             "cond2": DetectionItemConditionFalse(dummy="test-false"),
         },
-        detection_item_condition_logic="cond1 and not cond2",
+        detection_item_condition_expr="cond1 and not cond2",
         field_name_conditions={
             "cond1": FieldNameConditionTrue(dummy="test-true"),
             "cond2": FieldNameConditionFalse(dummy="test-false"),
         },
-        field_name_condition_logic="cond1 and not cond2",
+        field_name_condition_expr="cond1 and not cond2",
         identifier="test",
     )
 
@@ -556,22 +556,24 @@ def test_processingitem_wrong_rule_condition_dict():
         )
 
 
-def test_processingitem_rule_condition_linking_with_logic():
-    with pytest.raises(SigmaConfigurationError, match="Rule condition logic is mutually exclusive"):
+def test_processingitem_rule_condition_linking_with_expr():
+    with pytest.raises(
+        SigmaConfigurationError, match="Rule condition expression is mutually exclusive"
+    ):
         ProcessingItem(
             rule_condition_linking=any,
             rule_conditions=[
                 RuleConditionTrue(dummy="test-true"),
                 RuleConditionFalse(dummy="test-false"),
             ],
-            rule_condition_logic="cond1 or cond2",
+            rule_condition_expression="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_detection_item_condition_linking_with_logic():
+def test_processingitem_detection_item_condition_linking_with_expr():
     with pytest.raises(
-        SigmaConfigurationError, match="Detection item condition logic is mutually exclusive"
+        SigmaConfigurationError, match="Detection item condition expression is mutually exclusive"
     ):
         ProcessingItem(
             detection_item_condition_linking=any,
@@ -579,46 +581,44 @@ def test_processingitem_detection_item_condition_linking_with_logic():
                 DetectionItemConditionTrue(dummy="test-true"),
                 DetectionItemConditionFalse(dummy="test-false"),
             ],
-            detection_item_condition_logic="cond1 or cond2",
+            detection_item_condition_expression="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_field_name_condition_linking_with_logic():
-    with pytest.raises(
-        SigmaConfigurationError, match="Field name condition logic is mutually exclusive"
-    ):
+def test_processingitem_field_name_condition_linking_with_expr():
+    with pytest.raises(SigmaConfigurationError, match="must be provided as mapping"):
         ProcessingItem(
             field_name_condition_linking=any,
             field_name_conditions=[
                 FieldNameProcessingItemAppliedCondition("test"),
                 FieldNameProcessingItemAppliedCondition("test"),
             ],
-            field_name_condition_logic="cond1 or cond2",
+            detection_item_condition_expression="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_rule_condition_logic_with_list():
+def test_processingitem_rule_condition_expr_with_list():
     with pytest.raises(SigmaConfigurationError, match="mapping from identifiers to conditions"):
         ProcessingItem(
             rule_conditions=[
                 RuleConditionTrue(dummy="test-true"),
                 RuleConditionFalse(dummy="test-false"),
             ],
-            rule_condition_logic="cond1 or cond2",
+            rule_condition_expression="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_detecton_item_condition_logic_with_list():
+def test_processingitem_detecton_item_condition_expr_with_list():
     with pytest.raises(SigmaConfigurationError, match="mapping from identifiers to conditions"):
         ProcessingItem(
             detection_item_conditions=[
                 DetectionItemConditionTrue(dummy="test-true"),
                 DetectionItemConditionFalse(dummy="test-false"),
             ],
-            detection_item_condition_logic="cond1 or cond2",
+            detection_item_condition_expression="cond1 or cond2",
             transformation=SetStateTransformation("test", True),
         )
 

@@ -56,7 +56,7 @@ class InstalledSigmaPlugins:
     ) -> Dict[str, Any]:
         result = dict()
 
-        def is_pipeline(obj):
+        def is_pipeline(obj) -> bool:
             """Checks if an object is a pipeline."""
             return any(
                 [
@@ -67,7 +67,7 @@ class InstalledSigmaPlugins:
                 ]
             )
 
-        def is_validator(obj):
+        def is_validator(obj) -> bool:
             """Checks if an object is a validator."""
             return (
                 inspect.isclass(obj)
@@ -75,11 +75,11 @@ class InstalledSigmaPlugins:
                 and obj.__module__ != "sigma.validators.base"
             )
 
-        def is_backend(obj):
+        def is_backend(obj) -> bool:
             """Checks if an object is a backend."""
             return inspect.isclass(obj) and issubclass(obj, Backend)
 
-        def is_duplicate(container, klass, name):
+        def is_duplicate(container, klass, name) -> bool:
             return name in container and container[name] != klass
 
         if include:

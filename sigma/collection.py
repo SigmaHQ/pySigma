@@ -268,7 +268,7 @@ class SigmaCollection:
             raise SigmaRuleNotFoundError(f"Rule '{ i }' not found in rule collection")
 
 
-def deep_dict_update(dest, src):
+def deep_dict_update(dest: SigmaRule, src: SigmaRule) -> "SigmaRule":
     for k, v in src.items():
         if isinstance(v, dict):
             dest[k] = deep_dict_update(dest.get(k, {}), v)

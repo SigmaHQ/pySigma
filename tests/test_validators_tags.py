@@ -64,7 +64,7 @@ def test_validator_valid_attack_tags():
             field: value
         condition: sel
     tags:
-        - attack.command_and_control
+        - attack.command-and-control
         - attack.t1001.001
         - attack.g0001
         - attack.s0001

@@ -29,7 +29,7 @@ class ATTACKTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {tactic.lower().replace("-", "_") for tactic in mitre_attack_tactics.values()}
+            {tactic.lower() for tactic in mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
             .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets})
             .union({software.lower() for software in mitre_attack_software})

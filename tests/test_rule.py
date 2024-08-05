@@ -1278,7 +1278,7 @@ def test_invalid_related_type():
         - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
           type: derived
         - id: 929a690e-bef0-4204-a928-ef5e620d6fcc
-          type: obsoletes
+          type: obsolete
         - id: 929a690e-bef0-4204-a928-ef5e620d6fff
           type: same
     status: test
@@ -1303,7 +1303,7 @@ def test_invalid_related_id():
         - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
           type: derived
         - id: 929a690e-bef0-4204-a928-ef5e620d6fc
-          type: obsoletes
+          type: obsolete
     status: test
     logsource:
         category: test

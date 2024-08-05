@@ -39,7 +39,7 @@ class SpecialChars(Enum):
 class Placeholder:
     """
     Placeholder class used as stub in a SigmaString to be later replaced by a value contained in a string or
-    receives some configuration-specific special treatmeant, e.g. replacement with a SIEM specific list item.
+    receives some configuration-specific special treatment, e.g. replacement with a SIEM specific list item.
     """
 
     name: str

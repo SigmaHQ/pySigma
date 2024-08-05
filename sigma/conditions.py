@@ -281,7 +281,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         """
         Parse on first access on parsed condition tree.
 
-        The main reason for this behavior is that rule processing occurrs after rule-parsing time. Therefore,
+        The main reason for this behavior is that rule processing occurs after rule-parsing time. Therefore,
         the condition parsing has to be delayed after the processing, as field name or value changes have to be
         reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
         state of the rule.

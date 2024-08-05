@@ -62,7 +62,7 @@ class SigmaTitleError(SigmaError):
 
 
 class SigmaLogsourceError(SigmaError):
-    """Error in Sigma rule logosurce"""
+    """Error in Sigma rule logsource"""
 
     pass
 

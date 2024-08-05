@@ -24,7 +24,7 @@ from sigma.exceptions import (
     SigmaValueError,
 )
 from sigma.conversion.deferred import DeferredQueryExpression
-from typing import Pattern, Union, ClassVar, Optional, Tuple, List, Dict, Any
+from typing import Pattern, Union, ClassVar, Optional, Tuple, List, Dict, Any, Type
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
@@ -694,7 +694,7 @@ class TextQueryBackend(Backend):
 
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
-    precedence: ClassVar[Tuple[ConditionItem, ConditionItem, ConditionItem]] = (
+    precedence: ClassVar[Tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]] = (
         ConditionNOT,
         ConditionAND,
         ConditionOR,

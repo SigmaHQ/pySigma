@@ -109,7 +109,7 @@ class InvalidNamespaceTagIssue(SigmaValidationIssue):
 
 
 class NamespaceTagValidator(SigmaTagValidator):
-    """Validate rule tag name"""
+    """Validate rule tag namespace"""
 
     allowed_namespace = {"attack", "car", "stp", "cve", "tlp", "detection"}
 

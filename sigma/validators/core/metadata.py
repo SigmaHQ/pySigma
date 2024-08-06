@@ -202,10 +202,10 @@ class FilenameLenghIssue(SigmaValidationIssue):
 class FilenameLenghValidator(SigmaRuleValidator):
     """Check rule filename lengh"""
 
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRule, sizemin=10, sizemax=90) -> List[SigmaValidationIssue]:
         if rule.source is not None:
             filename = rule.source.path.name
-            if len(filename) < 10 or len(filename) > 90:
+            if len(filename) < sizemin or len(filename) > sizemax:
                 return [FilenameLenghIssue(rule, filename)]
         return []
 
@@ -261,8 +261,8 @@ class DescriptionLengthIssue(SigmaValidationIssue):
 class DescriptionLengthValidator(SigmaRuleValidator):
     """Checks if rule has a description."""
 
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.description is not None and len(rule.description) < 16:
+    def validate(self, rule: SigmaRule, minlengh=16) -> List[SigmaValidationIssue]:
+        if rule.description is not None and len(rule.description) < minlengh:
             return [DescriptionLengthIssue([rule])]
         else:
             return []

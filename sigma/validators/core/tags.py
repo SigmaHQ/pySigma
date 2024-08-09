@@ -29,7 +29,7 @@ class ATTACKTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {tactic.lower().replace("-", "_") for tactic in mitre_attack_tactics.values()}
+            {tactic.lower() for tactic in mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
             .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets})
             .union({software.lower() for software in mitre_attack_software})
@@ -75,7 +75,7 @@ class TLPv2TagValidator(TLPTagValidatorBase):
         "clear",
         "green",
         "amber",
-        "amber+strict",
+        "amber-strict",
         "red",
     }
 
@@ -112,7 +112,7 @@ class CVETagValidator(SigmaTagValidator):
     """Validate rule CVE tag"""
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
-        tags_pattern = re.compile(r"\d+\.\d+$")
+        tags_pattern = re.compile(r"\d+\-\d+$")
         if tag.namespace == "cve" and tags_pattern.match(tag.name) is None:
             return [InvalidCVETagIssue([self.rule], tag)]
         return []
@@ -128,7 +128,7 @@ class InvalidDetectionTagIssue(SigmaValidationIssue):
 class DetectionTagValidator(SigmaTagValidator):
     """Validate rule detection tag"""
 
-    allowed_tags = {"dfir", "emerging_threats", "threat_hunting"}
+    allowed_tags = {"dfir", "emerging-threats", "threat-hunting"}
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         if tag.namespace == "detection" and tag.name not in self.allowed_tags:

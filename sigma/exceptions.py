@@ -56,13 +56,13 @@ class SigmaError(ValueError):
 
 
 class SigmaTitleError(SigmaError):
-    """Error in Sigma rule logosurce specification"""
+    """Error in Sigma rule title"""
 
     pass
 
 
 class SigmaLogsourceError(SigmaError):
-    """Error in Sigma rule logosurce specification"""
+    """Error in Sigma rule logsource"""
 
     pass
 
@@ -98,7 +98,7 @@ class SigmaAuthorError(SigmaError):
 
 
 class SigmaRelatedError(SigmaError):
-    """Error in Sigma rule related"""
+    """Error in Sigma rule related field"""
 
     pass
 
@@ -110,7 +110,7 @@ class SigmaDateError(SigmaError):
 
 
 class SigmaModifiedError(SigmaError):
-    """Error in Sigma rule modified"""
+    """Error in Sigma rule modified field"""
 
     pass
 
@@ -128,13 +128,13 @@ class SigmaReferencesError(SigmaError):
 
 
 class SigmaFieldsError(SigmaError):
-    """Error in Sigma rule fields"""
+    """Error in Sigma rule fields field"""
 
     pass
 
 
 class SigmaFalsePositivesError(SigmaError):
-    """Error in Sigma rule falsepositives"""
+    """Error in Sigma rule falsepositives field"""
 
     pass
 
@@ -152,7 +152,7 @@ class SigmaLevelError(SigmaError):
 
 
 class SigmaModifierError(SigmaError):
-    """Error in Sigma rule value modifier specification"""
+    """Error in Sigma rule value modifier"""
 
     pass
 
@@ -256,6 +256,12 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
 
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
+
+    pass
+
+
+class SigmaPipelineParsingError(SigmaError):
+    """Error in parsing of a Sigma processing pipeline"""
 
     pass
 

@@ -265,7 +265,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         """
         if "|" in self.condition:
             raise SigmaConditionError(
-                "The pipe syntax in Sigma conditions will be deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax."
+                "The pipe syntax in Sigma conditions has been deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax."
             )
         try:
             parsed = condition.parseString(self.condition, parse_all=True)[0]
@@ -281,7 +281,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         """
         Parse on first access on parsed condition tree.
 
-        The main reason for this behavior is that rule processing occurrs after rule-parsing time. Therefore,
+        The main reason for this behavior is that rule processing occurs after rule-parsing time. Therefore,
         the condition parsing has to be delayed after the processing, as field name or value changes have to be
         reflected. It turned out, that the access time is most appropriate. No caching is done to reflect the current
         state of the rule.

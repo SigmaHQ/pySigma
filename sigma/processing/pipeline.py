@@ -31,7 +31,7 @@ from sigma.processing.conditions import (
     field_name_conditions,
     FieldNameProcessingCondition,
 )
-from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
+from sigma.exceptions import SigmaConfigurationError, SigmaTypeError, SigmaPipelineParsingError
 import yaml
 
 from sigma.types import SigmaFieldReference, SigmaType
@@ -500,7 +500,10 @@ class ProcessingPipeline:
     @classmethod
     def from_yaml(cls, processing_pipeline: str) -> "ProcessingPipeline":
         """Convert YAML input string into processing pipeline."""
-        parsed_pipeline = yaml.safe_load(processing_pipeline)
+        try:
+            parsed_pipeline = yaml.safe_load(processing_pipeline)
+        except yaml.parser.ParserError as e:
+            raise SigmaPipelineParsingError(f"Error in parsing of a Sigma processing pipeline")
         return cls.from_dict(parsed_pipeline)
 
     def apply(

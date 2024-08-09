@@ -81,7 +81,7 @@ class ProcessingPipelineResolver:
         """
         pipelines = []
         for spec in pipeline_specs:
-            spec_path = Path(spec)
+            spec_path = Path(spec.rstrip("/*"))
             if spec_path.is_dir():
                 for path in spec_path.glob("**/*.yml"):
                     pipelines.append(self.resolve_pipeline(str(path), target))

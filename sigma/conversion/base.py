@@ -82,7 +82,7 @@ class Backend(ABC):
       passes the generated queries.
     * finalize_output_<format> finalizes the conversion result of a whole rule set in the specified format.
       By default finalize_output_default is called and outputs a list of all queries. Further formats can be
-      implemented in similar methods. The defaulf format can be specified in the class variable default_format.
+      implemented in similar methods. The default format can be specified in the class variable default_format.
 
     Implementation of a backend:
 
@@ -90,7 +90,7 @@ class Backend(ABC):
        or the final query representation.
     2. If required, implement a per-query finalization step in finalize_query. Each Sigma rule condition
        results in a query. This can embed the generated query into other structures (e.g. boilerplate code,
-       prefix/postifx query parts) or convert the intermediate into a final query representation.
+       prefix/postfix query parts) or convert the intermediate into a final query representation.
     3. If required, implement a finalization step working on all generated queries in finalize. This can
        embed the queries into other data structures (e.g. JSON or XML containers for import into the target
        system) or perform the conversion of an intermediate to the final query representation.

@@ -247,6 +247,12 @@ class SigmaFeatureNotSupportedByBackendError(SigmaError):
     pass
 
 
+class SigmaPipelineParsingError(SigmaError):
+    """Error in parsing of a Sigma processing pipeline"""
+
+    pass
+
+
 class SigmaPipelineNotFoundError(SigmaError, ValueError):
     """An attempt to resolve a processing pipeline from a specifier failed because it was not
     found."""

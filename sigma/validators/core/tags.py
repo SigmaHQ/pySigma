@@ -121,7 +121,7 @@ class NamespaceTagValidator(SigmaTagValidator):
 
 @dataclass
 class InvalidPatternTagIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "The tag use an invalid pattern"
+    description: ClassVar[str] = "The tag is using an invalid pattern"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     tag: SigmaRuleTag
 

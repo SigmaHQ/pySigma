@@ -242,12 +242,4 @@ def parse_condition_expression(
         raise SigmaPipelineConditionError(
             condition_expression, e.column, f"Error parsing condition expression: {e.msg}"
         )
-
-    refids = parsed.resolve(conditions)
-    if len(refids) < len(conditions):
-        raise SigmaPipelineConditionError(
-            condition_expression,
-            parsed.location,
-            f"Pipeline condition contains unreferenced condition items: {', '.join(set(conditions.keys()) - refids)}",
-        )
     return parsed

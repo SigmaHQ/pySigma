@@ -2,6 +2,7 @@ import pytest
 from dataclasses import dataclass
 import re
 from textwrap import dedent
+from sigma.processing.condition_expressions import ConditionAND, ConditionIdentifier, ConditionNOT
 from sigma.processing.finalization import ConcatenateQueriesFinalizer, JSONFinalizer
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
 from sigma.processing.conditions import (
@@ -26,7 +27,7 @@ from sigma.processing.transformations import (
     FieldFunctionTransformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
-from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
+from sigma.exceptions import SigmaConfigurationError, SigmaPipelineConditionError, SigmaTypeError
 from sigma.types import SigmaString
 
 
@@ -220,17 +221,23 @@ def processing_item_with_condition_expr():
             "cond1": RuleConditionTrue(dummy="test-true"),
             "cond2": RuleConditionFalse(dummy="test-false"),
         },
-        rule_condition_expression="cond1 and not cond2",
+        rule_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
         detection_item_conditions={
             "cond1": DetectionItemConditionTrue(dummy="test-true"),
             "cond2": DetectionItemConditionFalse(dummy="test-false"),
         },
-        detection_item_condition_expr="cond1 and not cond2",
+        detection_item_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
         field_name_conditions={
             "cond1": FieldNameConditionTrue(dummy="test-true"),
             "cond2": FieldNameConditionFalse(dummy="test-false"),
         },
-        field_name_condition_expr="cond1 and not cond2",
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
         identifier="test",
     )
 
@@ -278,6 +285,73 @@ def dummy_processing_pipeline():
 
 def test_processingitem_fromdict(processing_item_dict, processing_item):
     assert ProcessingItem.from_dict(processing_item_dict) == processing_item
+
+
+def test_processingitem_fromdict_with_condition_expr(
+    processing_item_with_condition_expr_dict, processing_item_with_condition_expr, sigma_rule
+):
+    assert (
+        ProcessingItem.from_dict(processing_item_with_condition_expr_dict)
+        == processing_item_with_condition_expr
+    )
+
+
+def test_processingitem_condition_expr_unreferenced_rule_condition():
+    with pytest.raises(SigmaPipelineConditionError, match="Rule condition.*contains unreferenced"):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            rule_conditions={
+                "cond1": RuleConditionTrue(dummy="test-true"),
+                "cond2": RuleConditionFalse(dummy="test-false"),
+                "cond3": RuleConditionTrue(dummy="test-unreferenced"),
+            },
+            rule_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
+
+
+def test_processingitem_condition_expr_unreferenced_detection_item_condition():
+    with pytest.raises(
+        SigmaPipelineConditionError, match="Detection item condition.*contains unreferenced"
+    ):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            detection_item_conditions={
+                "cond1": DetectionItemConditionTrue(dummy="test-true"),
+                "cond2": DetectionItemConditionFalse(dummy="test-false"),
+                "cond3": DetectionItemConditionTrue(dummy="test-unreferenced"),
+            },
+            detection_item_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
+
+
+def test_processingitem_condition_expr_unreferenced_field_name_condition():
+    with pytest.raises(
+        SigmaPipelineConditionError, match="Field name condition.*contains unreferenced"
+    ):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            field_name_conditions={
+                "cond1": FieldNameConditionTrue(dummy="test-true"),
+                "cond2": FieldNameConditionFalse(dummy="test-false"),
+                "cond3": FieldNameConditionTrue(dummy="test-unreferenced"),
+            },
+            field_name_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
 
 
 def test_processingitem_default_linking():
@@ -400,6 +474,13 @@ def test_processingitem_apply(processing_item, dummy_processing_pipeline, sigma_
     assert applied and sigma_rule.title == "TestTest"
 
 
+def test_processingitem_apply_condition_expr(
+    processing_item_with_condition_expr, dummy_processing_pipeline, sigma_rule
+):
+    applied = processing_item_with_condition_expr.apply(dummy_processing_pipeline, sigma_rule)
+    assert applied and sigma_rule.title == "TestTest"
+
+
 def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
@@ -462,6 +543,20 @@ def test_processingitem_match_detection_item(dummy_processing_pipeline, detectio
     assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == True
 
 
+def test_processingitem_match_detection_item_dict_detections(
+    dummy_processing_pipeline, detection_item
+):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_linking=any,
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == True
+
+
 def test_processingitem_match_detection_item_all_with_false(
     dummy_processing_pipeline, detection_item
 ):
@@ -514,6 +609,90 @@ def test_processingitem_match_detection_item_negated_false(
         ],
     )
     assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+
+
+def test_processingitem_match_detection_item_with_expression(
+    dummy_processing_pipeline, detection_item
+):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+
+
+def test_processingitem_match_detection_item_with_expression_false(
+    dummy_processing_pipeline, detection_item
+):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionTrue(dummy="test-false"),
+        },
+        detection_item_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert not processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+
+
+def test_processingitem_match_field_name(dummy_processing_pipeline):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions=[
+            FieldNameConditionTrue(dummy="test-true"),
+            FieldNameConditionFalse(dummy="test-false"),
+        ],
+        field_name_condition_linking=any,
+    )
+    assert processing_item.match_field_name(dummy_processing_pipeline, "field") == True
+
+
+def test_processingitem_match_field_name_dict_fields(dummy_processing_pipeline):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_linking=any,
+    )
+    assert processing_item.match_field_name(dummy_processing_pipeline, "field") == True
+
+
+def test_processingitem_match_field_name_with_expression(dummy_processing_pipeline):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert processing_item.match_field_name(dummy_processing_pipeline, "field") == True
+
+
+def test_processingitem_match_field_name_with_expression_false(dummy_processing_pipeline):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionTrue(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert not processing_item.match_field_name(dummy_processing_pipeline, "field")
 
 
 def test_processingitem_rule_condition_no_list_or_dict():

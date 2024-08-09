@@ -28,7 +28,7 @@ class DanglingDetectionValidator(SigmaRuleValidator):
         self, cond: ConditionItem, detections: SigmaDetections
     ) -> Set[str]:
         """
-        Return detection item identifierd referenced by condition.
+        Return detection item identifier referenced by condition.
 
         :param cond: Condition to analyze.
         :type cond: ConditionItem
@@ -65,13 +65,70 @@ class DanglingDetectionValidator(SigmaRuleValidator):
 
 
 @dataclass
+class DanglingConditionIssue(SigmaValidationIssue):
+    description: ClassVar[str] = (
+        "Rule defines a condition that contains references to an unknown detection definition"
+    )
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    condition_name: str
+
+
+class DanglingConditionValidator(SigmaRuleValidator):
+    """Check for non existing detection definitions referenced from the condition."""
+
+    def condition_unknown_referenced_ids(
+        self, cond: ConditionItem, detections: SigmaDetections
+    ) -> Set[str]:
+        """
+        Return set of unknown item identifier referenced by condition.
+
+        :param cond: Condition to analyze.
+        :type cond: ConditionItem
+        :param detections: Detections referenced from condition.
+        :type detections: SigmaDetections
+        :return: Set of unknown referenced detection identifiers.
+        :rtype: Set[str]
+        """
+        if isinstance(cond, ConditionSelector):  # Resolve all referenced ids and return
+            resolved_detections = {
+                cond.identifier for cond in cond.resolve_referenced_detections(detections)
+            }
+            if (
+                resolved_detections == set()
+            ):  # If the function returns an empty set, it means that there was no corresponding detection identifier for the condition identifier.
+                return {cond.pattern}
+            else:
+                return {}
+        elif isinstance(cond, ConditionItem):  # Traverse into subconditions
+            ids = set()
+            for arg in cond.args:
+                ids.update(self.condition_unknown_referenced_ids(arg, detections))
+            return ids
+        else:  # Fallback if something different is encountered: return empty set.
+            return set()
+
+    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+        if isinstance(rule, SigmaCorrelationRule):
+            return []  # Correlation rules do not have detections
+
+        unknown_detection_refs = set()
+        for condition in rule.detection.parsed_condition:
+            parsed_condition = condition.parse(False)
+            unknown_detection_refs.update(
+                self.condition_unknown_referenced_ids(parsed_condition, rule.detection)
+            )
+
+        return [DanglingConditionIssue([rule], name) for name in unknown_detection_refs]
+
+
+@dataclass
 class ThemConditionWithSingleDetectionIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Rule refers to 'them' but has only one condition"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.LOW
 
 
 class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
-    """Detect conditions refering to 'them' with only one detection."""
+    """Detect conditions referring to 'them' with only one detection."""
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):

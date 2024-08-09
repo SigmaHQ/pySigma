@@ -99,17 +99,24 @@ Transformation items are defined as a map as follows:
   be used in future conditions.
 * `type`: the type of the transformation as specified in the identifier to class mappings below: :ref:`transformations`
 * Arbitrary transformation parameters are specified at the samle level.
-* `rule_conditions`, `detection_item_conditions`, `field_name_conditions`: conditions of the type corresponding to the name.
+* `rule_conditions`, `detection_item_conditions`, `field_name_conditions`: conditions of the type
+  corresponding to the name. This can be a list of unnamed conditions that are logically linked with
+  the same operator specified in `*_cond_op` or named conditions that are referenced in the
+  `*_cond_expr` attribute. 
 
 Conditions are specified as follows:
 
 * `type`: defines the condition type. It must be one of the identifiers that are defined in
   :ref:`conditions`
 * `rule_cond_op`, `detection_item_cond_op`, `field_name_cond_op`: boolean operator for the condition
-  result. Must be one of `or` or `and`. Defaults to `and`.
+  result. Must be one of `or` or `and`. Defaults to `and`. Alternatively,
+* `rule_cond_expr`, `detection_item_cond_expr`, `field_name_cond_expr`: specify a boolean expression
+  that references to named condition items.
 * `rule_cond_not`, `detection_item_cond_not`, `field_name_cond_not`: if set to *True*, the condition
   result is negated.
 * Arbitrary conditions parameters are specified on the same level.
+
+Specification of an operator and expression is mutually exclusive. 
 
 Example:
 
@@ -149,12 +156,17 @@ There are three types of conditions:
   `ProcessingPipeline`. These can only be applied in the rule pre-processing stage and are evaluated
   only for transformations that operate on field names. 
 
-In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two further
+Conditions can be specified unnamed as list that are logically linked with the operator specified in
+`*_condition_linking` attributes or named as dict that are referenced in the `*_condition_expression`.
+
+In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are further
 attributes that control the condition matching behavior:
 
 * `rule_condition_linking`, `detection_item_condition_linking` and `field_name_condition_linking`:
   one of `any` or `all` functions. Controls if one or all of the conditions from the list must match
   to result in an overall match.
+* `rule_condition_expression`, `detection_item_condition_expression` and
+  `field_name_condition_expression`: a boolean expression that references to named condition items.
 * `rule_condition_negation`, `detection_item_condition_negation` and
   `field_name_condition_negation`: if set to *True*, the condition result is negated.
 

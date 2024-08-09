@@ -4,11 +4,34 @@ from sigma.validators.core.condition import (
     AllOfThemConditionIssue,
     AllOfThemConditionValidator,
     DanglingDetectionIssue,
+    DanglingConditionIssue,
     DanglingDetectionValidator,
+    DanglingConditionValidator,
     ThemConditionWithSingleDetectionIssue,
     ThemConditionWithSingleDetectionValidator,
 )
 from .test_correlations import correlation_rule
+
+
+def test_validator_dangling_condition():
+    validator = DanglingConditionValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: (referenced1 or referenced2) and referenced3 and referenced4
+    """
+    )
+    assert validator.validate(rule) == [DanglingConditionIssue([rule], "referenced4")]
 
 
 def test_validator_dangling_detection():
@@ -60,6 +83,27 @@ def test_validator_dangling_detection_valid():
     assert validator.validate(rule) == []
 
 
+def test_validator_dangling_condition_valid():
+    validator = DanglingConditionValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: (referenced1 or referenced2) and referenced3
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_dangling_detection_valid_x_of_wildcard():
     validator = DanglingDetectionValidator()
     rule = SigmaRule.from_yaml(
@@ -81,8 +125,50 @@ def test_validator_dangling_detection_valid_x_of_wildcard():
     assert validator.validate(rule) == []
 
 
+def test_validator_dangling_condition_valid_x_of_wildcard():
+    validator = DanglingConditionValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: 1 of referenced*
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_dangling_detection_valid_x_of_them():
     validator = DanglingDetectionValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        referenced1:
+            field1: val1
+        referenced2:
+            field2: val2
+        referenced3:
+            field3: val3
+        condition: 1 of them
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_dangling_condition_valid_x_of_them():
+    validator = DanglingConditionValidator()
     rule = SigmaRule.from_yaml(
         """
     title: Test

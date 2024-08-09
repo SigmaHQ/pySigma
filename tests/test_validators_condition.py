@@ -22,16 +22,16 @@ def test_validator_dangling_condition():
     logsource:
         category: test
     detection:
-        referenced1:
+        selection:
             field1: val1
-        referenced2:
+        filter_main_1:
+            field1: val1
+        filter_main_optional_1:
             field2: val2
-        referenced3:
-            field3: val3
-        condition: (referenced1 or referenced2) and referenced3 and referenced4
+        condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
     """
     )
-    assert validator.validate(rule) == [DanglingConditionIssue([rule], "referenced4")]
+    assert validator.validate(rule) == [DanglingConditionIssue([rule], "filter_optional_*")]
 
 
 def test_validator_dangling_detection():

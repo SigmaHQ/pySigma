@@ -67,7 +67,7 @@ class DanglingDetectionValidator(SigmaRuleValidator):
 @dataclass
 class DanglingConditionIssue(SigmaValidationIssue):
     description: ClassVar[str] = (
-        "Rule defines a condition that contains references to unknown detection definitions"
+        "Rule defines a condition that contains references to an unknown detection definition"
     )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     condition_name: str

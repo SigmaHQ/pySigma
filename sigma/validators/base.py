@@ -71,7 +71,7 @@ class SigmaRuleValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, rule: SigmaRuleBase) -> List[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRuleBase, **kargs) -> List[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.

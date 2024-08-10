@@ -193,20 +193,24 @@ class DuplicateFilenameValidator(SigmaRuleValidator):
 
 
 @dataclass
-class FilenameLenghIssue(SigmaValidationIssue):
+class FilenameLengthIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Rule filename is too short or long"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     filename: str
 
 
-class FilenameLenghValidator(SigmaRuleValidator):
+@dataclass(frozen=True)
+class FilenameLengthValidator(SigmaRuleValidator):
     """Check rule filename lengh"""
+
+    min_size: int = 10
+    max_size: int = 90
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if rule.source is not None:
             filename = rule.source.path.name
-            if len(filename) < 10 or len(filename) > 90:
-                return [FilenameLenghIssue(rule, filename)]
+            if len(filename) < self.min_size or len(filename) > self.max_size:
+                return [FilenameLengthIssue(rule, filename)]
         return []
 
 
@@ -258,11 +262,14 @@ class DescriptionLengthIssue(SigmaValidationIssue):
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
 
 
+@dataclass(frozen=True)
 class DescriptionLengthValidator(SigmaRuleValidator):
     """Checks if rule has a description."""
 
+    min_length: int = 16
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.description is not None and len(rule.description) < 16:
+        if rule.description is not None and len(rule.description) < self.min_length:
             return [DescriptionLengthIssue([rule])]
         else:
             return []

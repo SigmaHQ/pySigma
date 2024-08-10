@@ -1,9 +1,7 @@
 from uuid import UUID
-from wsgiref.validate import validator
 
 import pytest
 from sigma.rule import SigmaRule
-from sigma.types import SigmaString
 from sigma.collection import SigmaCollection
 
 from sigma.validators.core.metadata import (
@@ -23,8 +21,8 @@ from sigma.validators.core.metadata import (
     DateExistenceIssue,
     DuplicateFilenameValidator,
     DuplicateFilenameIssue,
-    FilenameLenghValidator,
-    FilenameLenghIssue,
+    FilenameLengthValidator,
+    FilenameLengthIssue,
     CustomAttributesValidator,
     CustomAttributesIssue,
     DescriptionExistenceValidator,
@@ -324,15 +322,22 @@ def test_validator_duplicate_filename_multiple_rules_in_one_file():
     assert validator.finalize() == []
 
 
-def test_validator_filename_lengh():
-    validator = FilenameLenghValidator()
+def test_validator_filename_length():
+    validator = FilenameLengthValidator()
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
     rule = sigma_collection[0]
-    assert validator.validate(rule) == [FilenameLenghIssue([rule], "Name.yml")]
+    assert validator.validate(rule) == [FilenameLengthIssue([rule], "Name.yml")]
 
 
-def test_validator_filename_lengh_valid():
-    validator = FilenameLenghValidator()
+def test_validator_filename_length_customized_valid():
+    validator = FilenameLengthValidator(min_size=0, max_size=999)
+    sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_filename_errors"])
+    rule = sigma_collection[0]
+    assert validator.validate(rule) == []
+
+
+def test_validator_filename_length_valid():
+    validator = FilenameLengthValidator()
     sigma_collection = SigmaCollection.load_ruleset(["tests/files/rule_valid"])
     rule = sigma_collection[0]
     assert validator.validate(rule) == []
@@ -438,6 +443,23 @@ def test_validator_description_length_valid():
     """
     )
     assert validator.validate(rule) == []
+
+
+def test_validator_description_length_valid_customized():
+    validator = DescriptionLengthValidator(min_length=999)
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    description: it is a simple description
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [DescriptionLengthIssue([rule])]
 
 
 def test_validator_level_existence():

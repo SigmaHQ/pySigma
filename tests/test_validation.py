@@ -1,3 +1,4 @@
+import dataclasses
 from uuid import UUID
 import pytest
 from sigma.exceptions import SigmaConfigurationError
@@ -9,6 +10,7 @@ from sigma.validators.core.values import NumberAsStringValidator
 from tests.test_validators import rule_with_id, rule_without_id, rules_with_id_collision
 from sigma.collection import SigmaCollection
 from sigma.validators.core.metadata import (
+    DescriptionLengthValidator,
     IdentifierExistenceValidator,
     IdentifierUniquenessValidator,
     IdentifierExistenceIssue,
@@ -20,6 +22,13 @@ from .test_correlations import correlation_rule
 @pytest.fixture
 def validators():
     return InstalledSigmaPlugins.autodiscover().validators
+
+
+@pytest.mark.parametrize("validator", InstalledSigmaPlugins.autodiscover().validators.values())
+def test_parametrized_validators_are_frozen(validator):
+    assert not dataclasses.is_dataclass(validator) or (
+        dataclasses.is_dataclass(validator) and validator.__dataclass_params__.frozen
+    )
 
 
 def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with_id_collision):
@@ -72,11 +81,17 @@ def test_sigmavalidator_from_dict(validators):
                     "number_as_string",
                 ],
             },
+            "config": {
+                "description_length": {
+                    "min_length": 100,
+                },
+            },
         },
         validators,
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
+    assert DescriptionLengthValidator(min_length=100) in validator.validators
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
         UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): {DanglingDetectionValidator},
@@ -99,11 +114,15 @@ def test_sigmavalidator_from_yaml(validators):
         bf39335e-e666-4eaf-9416-47f1955b5fb3:
             - attacktag
             - number_as_string
+    config:
+        description_length:
+            min_length: 100
     """,
         validators,
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
+    assert DescriptionLengthValidator(min_length=100) in validator.validators
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
         UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): {DanglingDetectionValidator},

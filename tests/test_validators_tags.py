@@ -91,8 +91,8 @@ def test_validator_invalid_d3fend_tags():
     """
     )
     assert validator.validate(rule) == [
-        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("attack.test1")),
-        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("attack.test2")),
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test1")),
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test2")),
     ]
 
 

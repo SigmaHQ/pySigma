@@ -60,7 +60,7 @@ class D3FENDTagValidator(SigmaTagValidator):
         self.allowed_tags = (
             {tactic.lower() for tactic in mitre_d3fend_tactics.keys()}
             .union({technique.lower() for technique in mitre_d3fend_techniques.keys()})
-            .union({artefact.lower() for artefact in mitre_d3fend_artifacts.keys()})
+            .union({artefact for artefact in mitre_d3fend_artifacts.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:

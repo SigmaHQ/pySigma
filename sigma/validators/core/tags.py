@@ -36,8 +36,8 @@ class ATTACKTagValidator(SigmaTagValidator):
         self.allowed_tags = (
             {tactic.lower() for tactic in mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
-            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets})
-            .union({software.lower() for software in mitre_attack_software})
+            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets.keys()})
+            .union({software.lower() for software in mitre_attack_software.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
@@ -46,6 +46,7 @@ class ATTACKTagValidator(SigmaTagValidator):
         return []
 
 
+@dataclass
 class InvalidD3FENDagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid MITRE D3FEND tagging"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
@@ -57,9 +58,9 @@ class D3FENDTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {tactic.lower() for tactic in mitre_d3fend_tactics.values()}
+            {tactic.lower() for tactic in mitre_d3fend_tactics.keys()}
             .union({technique.lower() for technique in mitre_d3fend_techniques.keys()})
-            .union({artefact.lower() for artefact in mitre_d3fend_artifacts})
+            .union({artefact.lower() for artefact in mitre_d3fend_artifacts.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:

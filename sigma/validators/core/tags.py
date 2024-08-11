@@ -14,6 +14,11 @@ from sigma.data.mitre_attack import (
     mitre_attack_intrusion_sets,
     mitre_attack_software,
 )
+from sigma.data.mitre_d3fend import (
+    mitre_d3fend_tactics,
+    mitre_d3fend_techniques,
+    mitre_d3fend_artifacts,
+)
 import re
 
 
@@ -31,13 +36,36 @@ class ATTACKTagValidator(SigmaTagValidator):
         self.allowed_tags = (
             {tactic.lower() for tactic in mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
-            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets})
-            .union({software.lower() for software in mitre_attack_software})
+            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets.keys()})
+            .union({software.lower() for software in mitre_attack_software.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         if tag.namespace == "attack" and tag.name not in self.allowed_tags:
             return [InvalidATTACKTagIssue([self.rule], tag)]
+        return []
+
+
+@dataclass
+class InvalidD3FENDagIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid MITRE D3FEND tagging"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class D3FENDTagValidator(SigmaTagValidator):
+    """Check for usage of valid MITRE D3FEND tags."""
+
+    def __init__(self) -> None:
+        self.allowed_tags = (
+            {tactic.lower() for tactic in mitre_d3fend_tactics.keys()}
+            .union({technique.lower() for technique in mitre_d3fend_techniques.keys()})
+            .union({artefact for artefact in mitre_d3fend_artifacts.keys()})
+        )
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        if tag.namespace == "d3fend" and tag.name not in self.allowed_tags:
+            return [InvalidD3FENDagIssue([self.rule], tag)]
         return []
 
 
@@ -111,7 +139,15 @@ class InvalidNamespaceTagIssue(SigmaValidationIssue):
 class NamespaceTagValidator(SigmaTagValidator):
     """Validate rule tag namespace"""
 
-    allowed_namespace = {"attack", "car", "stp", "cve", "tlp", "detection"}
+    allowed_namespace = {
+        "attack",
+        "car",
+        "cve",
+        "d3fend",
+        "detection",
+        "stp",
+        "tlp",
+    }
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
         if tag.namespace not in self.allowed_namespace:

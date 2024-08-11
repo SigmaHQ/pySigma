@@ -8,9 +8,11 @@ from sigma.types import SigmaString
 
 from sigma.validators.core.tags import (
     ATTACKTagValidator,
+    D3FENDTagValidator,
     DuplicateTagIssue,
     DuplicateTagValidator,
     InvalidATTACKTagIssue,
+    InvalidD3FENDagIssue,
     InvalidTLPTagIssue,
     TLPTagValidator,
     TLPv1TagValidator,
@@ -66,6 +68,50 @@ def test_validator_valid_attack_tags():
         - attack.g0001
         - attack.s0001
         - attack.s0005
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_invalid_d3fend_tags():
+    validator = D3FENDTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - d3fend.test1
+        - d3fend.test2
+    """
+    )
+    assert validator.validate(rule) == [
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("attack.test1")),
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("attack.test2")),
+    ]
+
+
+def test_validator_valid_d3fend_tags():
+    validator = D3FENDTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - d3fend.isolate
+        - d3fend.d3-mfa
+        - attack.d3f-AccessControlConfiguration
     """
     )
     assert validator.validate(rule) == []

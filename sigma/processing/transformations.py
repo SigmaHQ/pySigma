@@ -71,7 +71,7 @@ class Transformation(ABC):
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         """Apply transformation on Sigma rule."""
-        self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
+        self._pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
             pipeline  # make pipeline accessible from all further options in class property
         )
         self.processing_item_applied(rule)
@@ -120,7 +120,7 @@ class DetectionItemTransformation(Transformation):
             else:
                 if (
                     self.processing_item is None
-                    or self.processing_item.match_detection_item(self.pipeline, detection_item)
+                    or self.processing_item.match_detection_item(self._pipeline, detection_item)
                 ) and (r := self.apply_detection_item(detection_item)) is not None:
                     if isinstance(r, SigmaDetectionItem):
                         r.disable_conversion_to_plain()
@@ -218,12 +218,12 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         match = False
         for value in detection_item.value:
             if self.processing_item is not None and self.processing_item.match_field_in_value(
-                self.pipeline, value
+                self._pipeline, value
             ):
                 new_values.extend(
                     (
                         SigmaFieldReference(mapped_field)
-                        for mapped_field in self._apply_field_name(self.pipeline, value.field)
+                        for mapped_field in self._apply_field_name(self._pipeline, value.field)
                     )
                 )
                 match = True
@@ -361,8 +361,8 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         field = detection_item.field
         mapping = self.get_mapping(field)
-        if mapping is not None and self.processing_item.match_field_name(self.pipeline, field):
-            self.pipeline.field_mappings.add_mapping(field, mapping)
+        if mapping is not None and self.processing_item.match_field_name(self._pipeline, field):
+            self._pipeline.field_mappings.add_mapping(field, mapping)
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)
@@ -413,8 +413,8 @@ class FieldFunctionTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         f = detection_item.field
         mapping = self._transform_name(f)
-        if self.processing_item.match_field_name(self.pipeline, f):
-            self.pipeline.field_mappings.add_mapping(f, mapping)
+        if self.processing_item.match_field_name(self._pipeline, f):
+            self._pipeline.field_mappings.add_mapping(f, mapping)
             detection_item.field = mapping
             self.processing_item_applied(detection_item)
 
@@ -463,10 +463,10 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         if type(orig_field := detection_item.field) is str and (
             self.processing_item is None
-            or self.processing_item.match_field_name(self.pipeline, orig_field)
+            or self.processing_item.match_field_name(self._pipeline, orig_field)
         ):
             detection_item.field += self.suffix
-            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
@@ -485,10 +485,10 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         if type(orig_field := detection_item.field) is str and (
             self.processing_item is None
-            or self.processing_item.match_field_name(self.pipeline, orig_field)
+            or self.processing_item.match_field_name(self._pipeline, orig_field)
         ):
             detection_item.field = self.prefix + detection_item.field
-            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
@@ -581,7 +581,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
 
     def placeholder_replacements(self, p: Placeholder) -> List[str]:
         try:
-            values = self.pipeline.vars[p.name]
+            values = self._pipeline.vars[p.name]
         except KeyError:
             raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
 
@@ -964,6 +964,36 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
         raise SigmaTransformationError(self.message)
 
 
+@dataclass
+class NestedPipelineTransformation(Transformation):
+    """Executes a whole nested processing pipeline as transformation. Main purpose is to apply a
+    whole set of transformations that match the given conditions of the enclosng processing item.
+    """
+
+    pipeline: "sigma.processing.pipeline.ProcessingPipeline"
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> Transformation:
+        from sigma.processing.pipeline import (
+            ProcessingPipeline,
+        )  # TODO: move to top-level after restructuring code
+
+        try:
+            return cls(pipeline=ProcessingPipeline.from_dict(d["pipeline"]))
+        except KeyError:
+            raise SigmaConfigurationError(
+                "Nested pipeline transformation requires a 'pipeline' key."
+            )
+
+    def apply(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule | SigmaCorrelationRule,
+    ) -> None:
+        super().apply(pipeline, rule)
+        self.pipeline.apply(rule)
+
+
 transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
@@ -987,4 +1017,5 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
+    "nested_pipeline": NestedPipelineTransformation,
 }

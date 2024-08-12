@@ -74,6 +74,7 @@ class TransformationAppend(Transformation):
     s: str
 
     def apply(self, pipeline: ProcessingPipeline, rule: SigmaRule) -> SigmaRule:
+        super().apply(pipeline, rule)
         rule.title += self.s
         return rule
 

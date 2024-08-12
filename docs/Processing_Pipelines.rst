@@ -265,9 +265,10 @@ definitions are available:
    "Identifier", "Class"
    "field_name_mapping", "FieldMappingTransformation"
    "field_name_prefix_mapping", "FieldPrefixMappingTransformation"
+   "field_name_transform", "FieldFunctionTransformation"
+   "drop_detection_item", "DropDetectionItemTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
-   "drop_detection_item", "DropDetectionItemTransformation"
    "wildcard_placeholders", "WildcardPlaceholderTransformation"
    "value_placeholders", "ValueListPlaceholderTransformation"
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
@@ -278,12 +279,13 @@ definitions are available:
    "set_field", "SetFieldTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
+   "set_state", "SetStateTransformation"
    "regex", "RegexTransformation"
    "set_value", "SetValueTransformation"
-   "convert_type", "ConvertTypeTransformation
-   "set_state", "SetStateTransformation"
+   "convert_type", "ConvertTypeTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
+   "nested_pipeline", "NestedPipelineTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
 
@@ -304,9 +306,10 @@ and `cmdline`. For the latter, OR-conditions will be generated to match the valu
 This is useful if different data models are used in the same system.
 
 .. autoclass:: sigma.processing.transformations.FieldPrefixMappingTransformation
+.. autoclass:: sigma.processing.transformations.FieldFunctionTransformation
+.. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnameSuffixTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnamePrefixTransformation
-.. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
 .. autoclass:: sigma.processing.transformations.WildcardPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.ValueListPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.QueryExpressionPlaceholderTransformation
@@ -317,6 +320,13 @@ This is useful if different data models are used in the same system.
 .. autoclass:: sigma.processing.transformations.SetFieldTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
 .. autoclass:: sigma.processing.transformations.MapStringTransformation
+.. autoclass:: sigma.processing.transformations.SetStateTransformation
+.. autoclass:: sigma.processing.transformations.RegexTransformation
+.. autoclass:: sigma.processing.transformations.SetValueTransformation
+.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
+.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
+.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
+.. autoclass:: sigma.processing.transformations.NestedPipelineTransformation
 
 YAML example:
 

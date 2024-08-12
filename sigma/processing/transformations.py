@@ -988,7 +988,7 @@ class NestedPipelineTransformation(Transformation):
     def apply(
         self,
         pipeline: "sigma.processing.pipeline.ProcessingPipeline",
-        rule: SigmaRule | SigmaCorrelationRule,
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         super().apply(pipeline, rule)
         self.pipeline.apply(rule)

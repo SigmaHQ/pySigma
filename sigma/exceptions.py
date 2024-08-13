@@ -241,6 +241,12 @@ class SigmaConfigurationError(SigmaError):
     pass
 
 
+class SigmaValidatorConfigurationParsingError(SigmaError):
+    """Error in parsing of a Sigma validation configuration file."""
+
+    pass
+
+
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
 

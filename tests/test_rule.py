@@ -1120,7 +1120,7 @@ def test_sigmarule_fromyaml(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows
@@ -1161,7 +1161,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows

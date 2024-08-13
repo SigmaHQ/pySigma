@@ -147,6 +147,28 @@ def test_sigmalogsource_fromdict_no_service():
     assert logsource == SigmaLogSource("category-id", "product-id", None)
 
 
+def test_sigmalogsource_fromdict_definition():
+    logsource = SigmaLogSource.from_dict(
+        {"category": "category-id", "product": "product-id", "definition": "use it"}
+    )
+    assert logsource == SigmaLogSource("category-id", "product-id", None, "use it")
+
+
+def test_sigmalogsource_fromdict_category_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": 1234, "product": "product-id"})
+
+
+def test_sigmalogsource_fromdict_product_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": "category-id", "product": {"a": "b"}})
+
+
+def test_sigmalogsource_fromdict_service_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": "category-id", "service": ["1", "2", "3"]})
+
+
 def test_sigmalogsource_empty():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="can't be empty.*test.yml"):
         SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))

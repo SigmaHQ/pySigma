@@ -216,6 +216,7 @@ class SigmaLogSource:
     category: Optional[str] = field(default=None)
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
+    definition: Optional[str] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
 
@@ -224,6 +225,18 @@ class SigmaLogSource:
         if self.category is None and self.product is None and self.service is None:
             raise sigma_exceptions.SigmaLogsourceError(
                 "Sigma log source can't be empty", source=self.source
+            )
+        if self.category and not isinstance(self.category, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source category must be string", source=self.source
+            )
+        if self.product and not isinstance(self.product, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source product must be string", source=self.source
+            )
+        if self.service and not isinstance(self.service, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source service must be string", source=self.source
             )
 
     @classmethod
@@ -234,10 +247,12 @@ class SigmaLogSource:
         custom_attributes = {
             k: v for k, v in logsource.items() if k not in set(cls.__dataclass_fields__.keys())
         }
+
         return cls(
             logsource.get("category"),
             logsource.get("product"),
             logsource.get("service"),
+            logsource.get("definition"),
             source,
             custom_attributes if len(custom_attributes) > 0 else None,
         )

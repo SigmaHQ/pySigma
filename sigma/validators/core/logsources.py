@@ -115,7 +115,6 @@ class FieldnameLogsourceValidator(SigmaRuleValidator):
             return [
                 FieldnameLogsourceIssue(rules=[rule], fieldname=name)
                 for name in rule.logsource.custom_attributes
-                if not name == "definition"
             ]
         else:
             return []

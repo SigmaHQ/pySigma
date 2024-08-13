@@ -31,7 +31,7 @@ default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-pl
 
 @dataclass
 class InstalledSigmaPlugins:
-    """Discovery and registrstion of installed backends, pipelines and validator checks as plugins.
+    """Discovery and registration of installed backends, pipelines and validator checks as plugins.
 
     This class represents a set of the objects mentioned above that are available. Further it implements
     autodiscovery of them in the sigma.backends, sigma.pipelines and sigma.validators module namespaces.

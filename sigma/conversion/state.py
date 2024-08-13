@@ -7,7 +7,7 @@ from typing import Any, List, Mapping
 class ConversionState:
     """
     State class which is passed as object to each conversion method in query conversion and
-    finalization phase. All state information that is required in a later phase of the converison
+    finalization phase. All state information that is required in a later phase of the conversion
     should be stored in this class.
 
     The base class implements deferred query expressions, which are generated in the finalization

@@ -23,6 +23,24 @@ import re
 
 
 @dataclass
+class InvalidTagFormatIssue(SigmaValidationIssue):
+    description: ClassVar[str] = "Invalid char in namaspace or name tag"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    tag: SigmaRuleTag
+
+
+class TagFormatValidator(SigmaTagValidator):
+    """Validate rule tag namespace and name allowed char"""
+
+    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+        tags_pattern = re.compile(r"^[a-z0-9\-\_]+\.[a-z0-9\-\_]+$")
+
+        if tags_pattern.match(str(tag)) is None:
+            return [InvalidTagFormatIssue([self.rule], tag)]
+        return []
+
+
+@dataclass
 class InvalidATTACKTagIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Invalid MITRE ATT&CK tagging"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM

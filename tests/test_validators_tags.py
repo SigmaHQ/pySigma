@@ -24,6 +24,8 @@ from sigma.validators.core.tags import (
     InvalidPatternTagIssue,
     NamespaceTagValidator,
     InvalidNamespaceTagIssue,
+    TagFormatValidator,
+    InvalidTagFormatIssue,
 )
 
 
@@ -233,6 +235,18 @@ def test_validator_duplicate_tags():
             ],
             [],
             InvalidNamespaceTagIssue,
+        ),
+        (
+            TagFormatValidator,
+            ["custom.my tag", "custom.my2tag"],
+            ["custom.my tag"],
+            InvalidTagFormatIssue,
+        ),
+        (
+            TagFormatValidator,
+            ["custom.my_tag", "custom.my-tag"],
+            [],
+            InvalidTagFormatIssue,
         ),
     ],
 )

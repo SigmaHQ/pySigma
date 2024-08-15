@@ -238,6 +238,10 @@ class SigmaLogSource:
             raise sigma_exceptions.SigmaLogsourceError(
                 "Sigma log source service must be string", source=self.source
             )
+        if self.definition and not isinstance(self.definition, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source definition must be string", source=self.source
+            )
 
     @classmethod
     def from_dict(
@@ -761,19 +765,21 @@ class SigmaYAMLLoader(yaml.SafeLoader):
 class SigmaRuleBase:
     title: str = ""
     id: Optional[UUID] = None
+    related: Optional[SigmaRelated] = None
     name: Optional[str] = None
     taxonomy: str = "sigma"
-    related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
+    license: Optional[str] = None
     references: List[str] = field(default_factory=list)
-    tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
     date: Optional["datetime.date"] = None
     modified: Optional["datetime.date"] = None
+    tags: List[SigmaRuleTag] = field(default_factory=list)
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None
+    scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
@@ -819,185 +825,6 @@ class SigmaRuleBase:
         SigmaRule object. Else the first recognized error is raised as exception.
         """
         errors = []
-        # Rule identifier may be empty or must be valid UUID
-        rule_id = rule.get("id")
-        if rule_id is not None:
-            try:
-                rule_id = UUID(rule_id)
-            except ValueError:
-                errors.append(
-                    sigma_exceptions.SigmaIdentifierError(
-                        "Sigma rule identifier must be an UUID", source=source
-                    )
-                )
-
-        # Rule name
-        rule_name = rule.get("name")
-        if rule_name is not None:
-            if not isinstance(rule_name, str):
-                errors.append(
-                    sigma_exceptions.SigmaTypeError(
-                        "Sigma rule name must be a string", source=source
-                    )
-                )
-            else:
-                if rule_name == "":
-                    errors.append(
-                        sigma_exceptions.SigmaNameError(
-                            "Sigma rule name must not be empty", source=source
-                        )
-                    )
-                else:
-                    rule_name = rule_name
-
-        # Rule taxonomy
-        rule_taxonomy = rule.get("taxonomy", "sigma")
-        if rule_taxonomy is not None:
-            if not isinstance(rule_taxonomy, str):
-                errors.append(
-                    sigma_exceptions.SigmaTaxonomyError(
-                        "Sigma rule taxonomy must be a string", source=source
-                    )
-                )
-            else:
-                if rule_taxonomy == "":
-                    errors.append(
-                        sigma_exceptions.SigmaTaxonomyError(
-                            "Sigma rule taxonomy must not be empty", source=source
-                        )
-                    )
-                else:
-                    rule_taxonomy = rule_taxonomy
-
-        # Rule related validation
-        rule_related = rule.get("related")
-        if rule_related is not None:
-            if not isinstance(rule_related, list):
-                errors.append(
-                    sigma_exceptions.SigmaRelatedError(
-                        "Sigma rule related must be a list", source=source
-                    )
-                )
-            else:
-                try:
-                    rule_related = SigmaRelated.from_dict(rule_related)
-                except sigma_exceptions.SigmaRelatedError as e:
-                    errors.append(e)
-
-        # Rule level validation
-        level = rule.get("level")
-        if level is not None:
-            try:
-                level = SigmaLevel[level.upper()]
-            except KeyError:
-                errors.append(
-                    sigma_exceptions.SigmaLevelError(
-                        f"'{ level }' is no valid Sigma rule level", source=source
-                    )
-                )
-
-        # Rule status validation
-        status = rule.get("status")
-        if status is not None:
-            if not isinstance(status, str):
-                errors.append(
-                    sigma_exceptions.SigmaStatusError(
-                        "Sigma rule status cannot be a list", source=source
-                    )
-                )
-            else:
-                try:
-                    status = SigmaStatus[status.upper()]
-                except KeyError:
-                    errors.append(
-                        sigma_exceptions.SigmaStatusError(
-                            f"'{ status }' is no valid Sigma rule status", source=source
-                        )
-                    )
-
-        # parse rule date if existing
-        rule_date = rule.get("date")
-        if rule_date is not None:
-            if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
-                try:
-                    rule_date = date(*(int(i) for i in rule_date.split("/")))
-                except ValueError:
-                    try:
-                        rule_date = date(*(int(i) for i in rule_date.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaDateError(
-                                f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
-                        )
-
-        # parse rule modified if existing
-        rule_modified = rule.get("modified")
-        if rule_modified is not None:
-            if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
-                try:
-                    rule_modified = date(*(int(i) for i in rule_modified.split("/")))
-                except ValueError:
-                    try:
-                        rule_modified = date(*(int(i) for i in rule_modified.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaModifiedError(
-                                f"Rule modified '{ rule_modified }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
-                        )
-
-        # Rule fields validation
-        rule_fields = rule.get("fields")
-        if rule_fields is not None and not isinstance(rule_fields, list):
-            errors.append(
-                sigma_exceptions.SigmaFieldsError(
-                    "Sigma rule fields must be a list",
-                    source=source,
-                )
-            )
-
-        # Rule falsepositives validation
-        rule_falsepositives = rule.get("falsepositives")
-        if rule_falsepositives is not None and not isinstance(rule_falsepositives, list):
-            errors.append(
-                sigma_exceptions.SigmaFalsePositivesError(
-                    "Sigma rule falsepositives must be a list",
-                    source=source,
-                )
-            )
-
-        # Rule author validation
-        rule_author = rule.get("author")
-        if rule_author is not None and not isinstance(rule_author, str):
-            errors.append(
-                sigma_exceptions.SigmaAuthorError(
-                    "Sigma rule author must be a string",
-                    source=source,
-                )
-            )
-
-        # Rule description validation
-        rule_description = rule.get("description")
-        if rule_description is not None and not isinstance(rule_description, str):
-            errors.append(
-                sigma_exceptions.SigmaDescriptionError(
-                    "Sigma rule description must be a string",
-                    source=source,
-                )
-            )
-
-        # Rule references validation
-        rule_references = rule.get("references")
-        if rule_references is not None and not isinstance(rule_references, list):
-            errors.append(
-                sigma_exceptions.SigmaReferencesError(
-                    "Sigma rule references must be a list",
-                    source=source,
-                )
-            )
 
         # Rule title validation
         rule_title = rule.get("title")
@@ -1023,6 +850,206 @@ class SigmaRuleBase:
                 )
             )
 
+        # Rule identifier may be empty or must be valid UUID
+        rule_id = rule.get("id")
+        if rule_id is not None:
+            try:
+                rule_id = UUID(rule_id)
+            except ValueError:
+                errors.append(
+                    sigma_exceptions.SigmaIdentifierError(
+                        "Sigma rule identifier must be an UUID", source=source
+                    )
+                )
+
+        # Rule related validation
+        rule_related = rule.get("related")
+        if rule_related is not None:
+            if not isinstance(rule_related, list):
+                errors.append(
+                    sigma_exceptions.SigmaRelatedError(
+                        "Sigma rule related must be a list", source=source
+                    )
+                )
+            else:
+                try:
+                    rule_related = SigmaRelated.from_dict(rule_related)
+                except sigma_exceptions.SigmaRelatedError as e:
+                    errors.append(e)
+
+        # Rule name validation
+        rule_name = rule.get("name")
+        if rule_name is not None:
+            if not isinstance(rule_name, str):
+                errors.append(
+                    sigma_exceptions.SigmaTypeError(
+                        "Sigma rule name must be a string", source=source
+                    )
+                )
+            else:
+                if rule_name == "":
+                    errors.append(
+                        sigma_exceptions.SigmaNameError(
+                            "Sigma rule name must not be empty", source=source
+                        )
+                    )
+                else:
+                    rule_name = rule_name
+
+        # Rule taxonomy validation
+        rule_taxonomy = rule.get("taxonomy", "sigma")
+        if rule_taxonomy is not None:
+            if not isinstance(rule_taxonomy, str):
+                errors.append(
+                    sigma_exceptions.SigmaTaxonomyError(
+                        "Sigma rule taxonomy must be a string", source=source
+                    )
+                )
+            else:
+                if rule_taxonomy == "":
+                    errors.append(
+                        sigma_exceptions.SigmaTaxonomyError(
+                            "Sigma rule taxonomy must not be empty", source=source
+                        )
+                    )
+                else:
+                    rule_taxonomy = rule_taxonomy
+
+        # Rule status validation
+        rule_status = rule.get("status")
+        if rule_status is not None:
+            if not isinstance(rule_status, str):
+                errors.append(
+                    sigma_exceptions.SigmaStatusError(
+                        "Sigma rule status cannot be a list", source=source
+                    )
+                )
+            else:
+                try:
+                    rule_status = SigmaStatus[rule_status.upper()]
+                except KeyError:
+                    errors.append(
+                        sigma_exceptions.SigmaStatusError(
+                            f"'{ rule_status }' is no valid Sigma rule status", source=source
+                        )
+                    )
+
+        # Rule description validation
+        rule_description = rule.get("description")
+        if rule_description is not None and not isinstance(rule_description, str):
+            errors.append(
+                sigma_exceptions.SigmaDescriptionError(
+                    "Sigma rule description must be a string",
+                    source=source,
+                )
+            )
+
+        # Rule license validation
+        rule_license = rule.get("license")
+        if rule_license is not None and not isinstance(rule_license, str):
+            errors.append(
+                sigma_exceptions.SigmaLicenseError(
+                    "Sigma rule license must be a string",
+                    source=source,
+                )
+            )
+
+        # Rule references validation
+        rule_references = rule.get("references")
+        if rule_references is not None and not isinstance(rule_references, list):
+            errors.append(
+                sigma_exceptions.SigmaReferencesError(
+                    "Sigma rule references must be a list",
+                    source=source,
+                )
+            )
+
+        # Rule author validation
+        rule_author = rule.get("author")
+        if rule_author is not None and not isinstance(rule_author, str):
+            errors.append(
+                sigma_exceptions.SigmaAuthorError(
+                    "Sigma rule author must be a string",
+                    source=source,
+                )
+            )
+
+        # parse rule date if existing
+        rule_date = rule.get("date")
+        if rule_date is not None:
+            if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
+                try:
+                    rule_date = date(*(int(i) for i in rule_date.split("-")))
+                except ValueError:
+                    try:
+                        rule_date = date(*(int(i) for i in rule_date.split("/")))
+                    except ValueError:
+                        errors.append(
+                            sigma_exceptions.SigmaDateError(
+                                f"Rule date '{ rule_date }' is invalid, must be yyyy-mm-dd or yyyy/mm/dd",
+                                source=source,
+                            )
+                        )
+
+        # parse rule modified if existing
+        rule_modified = rule.get("modified")
+        if rule_modified is not None:
+            if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
+                try:
+                    rule_modified = date(*(int(i) for i in rule_modified.split("-")))
+                except ValueError:
+                    try:
+                        rule_modified = date(*(int(i) for i in rule_modified.split("/")))
+                    except ValueError:
+                        errors.append(
+                            sigma_exceptions.SigmaModifiedError(
+                                f"Rule modified '{ rule_modified }' is invalid, must be yyyy-mm-dd or yyyy/mm/dd",
+                                source=source,
+                            )
+                        )
+
+        # Rule fields validation
+        rule_fields = rule.get("fields")
+        if rule_fields is not None and not isinstance(rule_fields, list):
+            errors.append(
+                sigma_exceptions.SigmaFieldsError(
+                    "Sigma rule fields must be a list",
+                    source=source,
+                )
+            )
+
+        # Rule falsepositives validation
+        rule_falsepositives = rule.get("falsepositives")
+        if rule_falsepositives is not None and not isinstance(rule_falsepositives, list):
+            errors.append(
+                sigma_exceptions.SigmaFalsePositivesError(
+                    "Sigma rule falsepositives must be a list",
+                    source=source,
+                )
+            )
+
+        # Rule level validation
+        rule_level = rule.get("level")
+        if rule_level is not None:
+            try:
+                rule_level = SigmaLevel[rule_level.upper()]
+            except KeyError:
+                errors.append(
+                    sigma_exceptions.SigmaLevelError(
+                        f"'{ rule_level }' is no valid Sigma rule level", source=source
+                    )
+                )
+
+        # Rule scope validation
+        rule_scope = rule.get("scope")
+        if rule_scope is not None and not isinstance(rule_scope, list):
+            errors.append(
+                sigma_exceptions.SigmaScopeError(
+                    "Sigma rule scope must be a list",
+                    source=source,
+                )
+            )
+
         if not collect_errors and errors:
             raise errors[0]
 
@@ -1030,19 +1057,21 @@ class SigmaRuleBase:
             {
                 "title": rule_title,
                 "id": rule_id,
+                "related": rule_related,
                 "name": rule_name,
                 "taxonomy": rule_taxonomy,
-                "related": rule_related,
-                "level": level,
-                "status": status,
+                "status": rule_status,
                 "description": rule_description,
+                "license": rule_license,
                 "references": rule_references,
-                "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
                 "author": rule_author,
                 "date": rule_date,
                 "modified": rule_modified,
+                "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
                 "fields": rule_fields,
                 "falsepositives": rule_falsepositives,
+                "level": rule_level,
+                "scope": rule_scope,
                 "source": source,
                 "custom_attributes": {
                     k: v

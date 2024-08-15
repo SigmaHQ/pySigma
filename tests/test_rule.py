@@ -169,6 +169,13 @@ def test_sigmalogsource_fromdict_service_not_str():
         SigmaLogSource.from_dict({"category": "category-id", "service": ["1", "2", "3"]})
 
 
+def test_sigmalogsource_fromdict_definition_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict(
+            {"category": "category-id", "definition": ["sysmon", "edr", "siem"]}
+        )
+
+
 def test_sigmalogsource_empty():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="can't be empty.*test.yml"):
         SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
@@ -811,31 +818,38 @@ def test_sigmadetection_dict_and_keyword_to_plain():
 def test_sigmarule_fields_not_list():
     with pytest.raises(sigma_exceptions.SigmaFieldsError, match="must be a list.*test.yml"):
         SigmaRule.from_dict(
-            {"fields": "test"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "fields": "test"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
 def test_sigmarule_bad_uuid():
     with pytest.raises(sigma_exceptions.SigmaIdentifierError, match="must be an UUID.*test.yml"):
         SigmaRule.from_dict(
-            {"id": "no-uuid"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "id": "no-uuid"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
 def test_sigmarule_bad_name():
     with pytest.raises(sigma_exceptions.SigmaTypeError, match="must be a string.*test.yml"):
-        SigmaRule.from_dict({"name": 123}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+        SigmaRule.from_dict(
+            {"title": "test", "name": 123}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_empty_name():
     with pytest.raises(sigma_exceptions.SigmaNameError, match="must not be empty.*test.yml"):
-        SigmaRule.from_dict({"name": ""}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+        SigmaRule.from_dict(
+            {"title": "test", "name": ""}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_bad_description():
     with pytest.raises(sigma_exceptions.SigmaDescriptionError, match="must be a string.*test.yml"):
         SigmaRule.from_dict(
-            {"description": ["1", "2"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "description": ["1", "2"]},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
@@ -843,7 +857,9 @@ def test_sigmarule_bad_level():
     with pytest.raises(
         sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
     ):
-        SigmaRule.from_dict({"level": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+        SigmaRule.from_dict(
+            {"title": "test", "level": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_bad_status():
@@ -851,7 +867,8 @@ def test_sigmarule_bad_status():
         sigma_exceptions.SigmaStatusError, match="no valid Sigma rule status.*test.yml"
     ):
         SigmaRule.from_dict(
-            {"status": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "status": "bad"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
@@ -860,19 +877,23 @@ def test_sigmarule_bad_status_type():
         sigma_exceptions.SigmaStatusError, match="Sigma rule status cannot be a list.*test.yml"
     ):
         SigmaRule.from_dict(
-            {"status": ["test"]}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "status": ["test"]},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
 def test_sigmarule_bad_date():
     with pytest.raises(sigma_exceptions.SigmaDateError, match="Rule date.*test.yml"):
-        SigmaRule.from_dict({"date": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+        SigmaRule.from_dict(
+            {"title": "test", "date": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+        )
 
 
 def test_sigmarule_bad_modified():
     with pytest.raises(sigma_exceptions.SigmaModifiedError, match="Rule modified.*test.yml"):
         SigmaRule.from_dict(
-            {"modified": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "modified": "bad"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
@@ -882,7 +903,8 @@ def test_sigmarule_bad_falsepositives():
         match="Sigma rule falsepositives must be a list.*test.yml",
     ):
         SigmaRule.from_dict(
-            {"falsepositives": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "falsepositives": "bad"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 
@@ -892,7 +914,30 @@ def test_sigmarule_bad_references():
         match="Sigma rule references must be a list.*test.yml",
     ):
         SigmaRule.from_dict(
-            {"references": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
+            {"title": "test", "references": "bad"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_bad_license():
+    with pytest.raises(
+        sigma_exceptions.SigmaLicenseError,
+        match="Sigma rule license must be a string.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "license": 1234},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_bad_scope():
+    with pytest.raises(
+        sigma_exceptions.SigmaScopeError,
+        match="Sigma rule scope must be a list.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "scope": "windows AD"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
 
 

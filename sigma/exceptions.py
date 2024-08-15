@@ -151,6 +151,18 @@ class SigmaLevelError(SigmaError):
     pass
 
 
+class SigmaLicenseError(SigmaError):
+    """Error in Sigma rule license"""
+
+    pass
+
+
+class SigmaScopeError(SigmaError):
+    """Error in Sigma rule scope"""
+
+    pass
+
+
 class SigmaModifierError(SigmaError):
     """Error in Sigma rule value modifier"""
 

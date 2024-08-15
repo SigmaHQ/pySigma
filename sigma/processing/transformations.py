@@ -964,6 +964,24 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
         raise SigmaTransformationError(self.message)
 
 
+@dataclass
+class SetCustomAttributeTransformation(Transformation):
+    """
+    Sets an arbitrary custom attribute on a rule, that can be used by a backend during processing.
+    """
+
+    attribute: str
+    value: Any
+
+    def apply(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> None:
+        super().apply(pipeline, rule)
+        rule.custom_attributes[self.attribute] = self.value
+
+
 transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
@@ -987,4 +1005,5 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
+    "set_custom_attribute": SetCustomAttributeTransformation,
 }

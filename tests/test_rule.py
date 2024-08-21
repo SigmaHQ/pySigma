@@ -349,6 +349,13 @@ def test_sigmadetectionitem_key_value_single_regexp_to_plain():
     }
 
 
+def test_sigmadetectionitem_key_value_single_regexp_trailing_backslashes_to_plain():
+    """Key-value detection with one value."""
+    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp\\\\").to_plain() == {
+        "key|re": "reg.*exp\\\\"
+    }
+
+
 def test_sigmadetectionitem_key_value_list():
     """Key-value detection with value list."""
     assert SigmaDetectionItem.from_mapping("key", ["string", 123]) == SigmaDetectionItem(

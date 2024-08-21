@@ -492,6 +492,10 @@ def test_re_to_plain():
     assert SigmaRegularExpression("test.*").to_plain() == "test.*"
 
 
+def test_re_to_plain_trailing_backslash():
+    assert SigmaRegularExpression("test\\\\").to_plain() == "test\\\\"
+
+
 def test_re_invalid():
     with pytest.raises(SigmaRegularExpressionError):
         SigmaRegularExpression("(test.*")

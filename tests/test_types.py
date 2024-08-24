@@ -117,6 +117,10 @@ def test_strings_escaping_end():
     assert SigmaString("finalescape\\").s == ("finalescape\\",)
 
 
+def test_strings_from_str():
+    assert SigmaString.from_str("test*string\\\\") == SigmaString("test\*string\\\\\\\\")
+
+
 def test_string_placeholders_single():
     assert SigmaString("test1%var%test2").insert_placeholders().s == (
         "test1",

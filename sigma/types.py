@@ -148,6 +148,13 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
 
+    @classmethod
+    def from_str(cls, s: str) -> "SigmaString":
+        sigma_string = SigmaString()
+        sigma_string.s = (s,)
+        sigma_string.original = s
+        return sigma_string
+
     def __getitem__(self, idx: Union[int, slice]) -> "SigmaString":
         """
         Index SigmaString parts with transparent handling of special characters.

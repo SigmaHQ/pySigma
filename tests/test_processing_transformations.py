@@ -1349,6 +1349,32 @@ def test_replace_string_wildcard(dummy_pipeline):
     )
 
 
+def test_replace_string_backslashes(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field": "\\value\\",
+                },
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("\\\\", "\\\\\\\\\\\\\\\\")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"].detection_items[0].value[0] == SigmaString(
+        "\\\\\\\\value\\\\\\\\"
+    )
+
+    another_transformation = ReplaceStringTransformation("somethingdifferent", "nothing")
+    another_transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"].detection_items[0].value[0] == SigmaString(
+        "\\\\\\\\value\\\\\\\\"
+    )
+
+
 def test_replace_string_invalid():
     with pytest.raises(SigmaRegularExpressionError, match="Regular expression.*invalid"):
         ReplaceStringTransformation("*", "test")

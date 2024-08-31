@@ -9,6 +9,7 @@ import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import (
     SigmaModifier,
+    SigmaRegularExpressionModifier,
     modifier_mapping,
     reverse_modifier_mapping,
     SigmaValueModifier,
@@ -384,7 +385,14 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             val = [None]
 
         # Map Python types to Sigma typing classes
-        val = [sigma_type(v) for v in val]
+        val = [
+            (
+                SigmaString.from_str(v)
+                if SigmaRegularExpressionModifier in modifiers
+                else sigma_type(v)
+            )
+            for v in val
+        ]
 
         return cls(field, modifiers, val, source=source)
 

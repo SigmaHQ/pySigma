@@ -117,6 +117,10 @@ def test_strings_escaping_end():
     assert SigmaString("finalescape\\").s == ("finalescape\\",)
 
 
+def test_strings_from_str():
+    assert SigmaString.from_str("test*string\\\\") == SigmaString("test\*string\\\\\\\\")
+
+
 def test_string_placeholders_single():
     assert SigmaString("test1%var%test2").insert_placeholders().s == (
         "test1",
@@ -510,6 +514,10 @@ def test_re_add_flags():
 
 def test_re_to_plain():
     assert SigmaRegularExpression("test.*").to_plain() == "test.*"
+
+
+def test_re_to_plain_trailing_backslash():
+    assert SigmaRegularExpression("test\\\\").to_plain() == "test\\\\"
 
 
 def test_re_invalid():

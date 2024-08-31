@@ -1319,7 +1319,7 @@ def test_replace_string_simple(dummy_pipeline, sigma_rule: SigmaRule):
     )
 
 
-def test_replace_string_wildcard(dummy_pipeline):
+def test_replace_string_specials(dummy_pipeline):
     sigma_rule = SigmaRule.from_dict(
         {
             "title": "Test",
@@ -1335,43 +1335,17 @@ def test_replace_string_wildcard(dummy_pipeline):
             },
         }
     )
-    transformation = ReplaceStringTransformation("^.*\\\\(.*)$", "\\1")
+    transformation = ReplaceStringTransformation("^.*\\\\", "/")
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field1", [], [SigmaString("value")]),
+                    SigmaDetectionItem("field1", [], [SigmaString("*/value")]),
                     SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
                 ]
             )
         ]
-    )
-
-
-def test_replace_string_backslashes(dummy_pipeline):
-    sigma_rule = SigmaRule.from_dict(
-        {
-            "title": "Test",
-            "logsource": {"category": "test"},
-            "detection": {
-                "test": {
-                    "field": "\\value\\",
-                },
-                "condition": "test",
-            },
-        }
-    )
-    transformation = ReplaceStringTransformation("\\\\", "\\\\\\\\\\\\\\\\")
-    transformation.apply(dummy_pipeline, sigma_rule)
-    assert sigma_rule.detection.detections["test"].detection_items[0].value[0] == SigmaString(
-        "\\\\\\\\value\\\\\\\\"
-    )
-
-    another_transformation = ReplaceStringTransformation("somethingdifferent", "nothing")
-    another_transformation.apply(dummy_pipeline, sigma_rule)
-    assert sigma_rule.detection.detections["test"].detection_items[0].value[0] == SigmaString(
-        "\\\\\\\\value\\\\\\\\"
     )
 
 

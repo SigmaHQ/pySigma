@@ -479,6 +479,24 @@ class SigmaString(SigmaType):
             else:
                 yield item
 
+    def iter_parts(self) -> Iterable[Union[str, SpecialChars]]:
+        for item in self.s:
+            yield item
+
+    def map_parts(
+        self,
+        func: Callable[[Union[str, SpecialChars]], Optional[Union[str, SpecialChars]]],
+        filter_func: Callable[[Union[str, SpecialChars]], bool] = lambda x: True,
+    ) -> "SigmaString":
+        s = self.__class__()
+        s.s = tuple(
+            filter(
+                lambda x: x is not None,  # filter out None results
+                (func(item) if filter_func(item) else item for item in self.iter_parts()),
+            )
+        )
+        return s
+
     def convert(
         self,
         escape_char: Optional[str] = "\\",

@@ -113,8 +113,8 @@ class SigmaValidator:
             return cls.from_dict(yaml.safe_load(validator_config), validators)
         except yaml.parser.ParserError as e:
             raise SigmaValidatorConfigurationParsingError(
-                f"Error in parsing of a Sigma validation configuration file."
-            )
+                f"Error in parsing of a Sigma validation configuration file: {str(e)}"
+            ) from e
 
     def validate_rule(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """

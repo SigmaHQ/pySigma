@@ -16,6 +16,7 @@ from sigma.processing.transformations import (
     AddFieldTransformation,
     ConvertTypeTransformation,
     RemoveFieldTransformation,
+    SetCustomAttributeTransformation,
     SetFieldTransformation,
     SetValueTransformation,
     transformations,
@@ -1565,6 +1566,26 @@ def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = DetectionItemFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
         transformation.apply(dummy_pipeline, sigma_rule)
+
+
+def test_set_custom_attribute(dummy_pipeline, sigma_rule):
+    transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
+    transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
+
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert "custom_key" in sigma_rule.custom_attributes
+    assert sigma_rule.custom_attributes["custom_key"] == "custom_value"
+    assert sigma_rule.was_processed_by("test")
+
+
+def test_set_custom_attribute_correlation_rule(dummy_pipeline, sigma_correlation_rule):
+    transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
+    transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
+
+    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    assert "custom_key" in sigma_correlation_rule.custom_attributes
+    assert sigma_correlation_rule.custom_attributes["custom_key"] == "custom_value"
+    assert sigma_correlation_rule.was_processed_by("test")
 
 
 def test_transformation_identifier_completeness():

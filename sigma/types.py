@@ -842,7 +842,7 @@ class SigmaExpansion(NoPlainConversionMixin, SigmaType):
     expanded values and is converted as follows:
 
     1. the whole expansion is handled as group which is enclosed in parentheses.
-    2. the values contained in the expansion are linked with OR, independend from the linking of the
+    2. the values contained in the expansion are linked with OR, independent from the linking of the
        context that encloses the expansion.
     """
 

@@ -132,10 +132,11 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
 
 
 class SigmaRelatedType(EnumLowercaseStringMixin, Enum):
+    CORRELATION = auto()
+    DERIVED = auto()
+    MERGED = auto()
     OBSOLETE = auto()
     RENAMED = auto()
-    MERGED = auto()
-    DERIVED = auto()
     SIMILAR = auto()
 
 
@@ -499,7 +500,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
 @dataclass
 class SigmaDetection(ParentChainMixin):
     """
-    A detection is a set of atomic event defitionions represented by SigmaDetectionItem instances. SigmaDetectionItems
+    A detection is a set of atomic event definitions represented by SigmaDetectionItem instances. SigmaDetectionItems
     of a SigmaDetection are OR-linked.
 
     A detection can be defined by:
@@ -579,10 +580,10 @@ class SigmaDetection(ParentChainMixin):
         }
 
         if len(detection_items) == 0:  # pragma: no cover
-            return None  # This case is catched by the post init check, so it shouldn't happen.
+            return None  # This case is caught by the post init check, so it shouldn't happen.
         if len(detection_items) == 1:  # Only one detection item? Return it as result.
             return detection_items[0]
-        else:  # More than one detection iten, it depends now on the types
+        else:  # More than one detection item, it depends now on the types
             if dict in detection_items_types and len(detection_items_types) > 1:
                 # Merging dicts with other types isn't possibly, at least not in a simple way.
                 # This case can appear in a programmatically instantiated detection, but can't be
@@ -606,7 +607,7 @@ class SigmaDetection(ParentChainMixin):
                     for k, v in detection_item_converted.items():
                         if k not in merged:  # key doesn't exists in merged dict: just add
                             merged[k] = v
-                        else:  # key collision, now the things get complicated...
+                        else:  # key collision, now things get complicated...
                             if "|all" in k:  # key contains 'all' modifier
                                 if not isinstance(
                                     merged[k], list
@@ -620,7 +621,7 @@ class SigmaDetection(ParentChainMixin):
                             else:  # key collision without all modifier: trying to merge both keys into one and-linked key
                                 ev = merged[k]  # already existing value
 
-                                # Value normalization: extract value from signle-valued lists
+                                # Value normalization: extract value from single-valued lists
                                 if isinstance(ev, list) and len(ev) == 1:
                                     ev = ev[0]
                                 if isinstance(v, list) and len(v) == 1:
@@ -900,7 +901,7 @@ class SigmaRuleBase:
             except KeyError:
                 errors.append(
                     sigma_exceptions.SigmaLevelError(
-                        f"'{ level }' is no valid Sigma rule level", source=source
+                        f"'{ level }' is not a valid Sigma rule level", source=source
                     )
                 )
 
@@ -919,7 +920,7 @@ class SigmaRuleBase:
                 except KeyError:
                     errors.append(
                         sigma_exceptions.SigmaStatusError(
-                            f"'{ status }' is no valid Sigma rule status", source=source
+                            f"'{ status }' is not a valid Sigma rule status", source=source
                         )
                     )
 
@@ -928,34 +929,28 @@ class SigmaRuleBase:
         if rule_date is not None:
             if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
                 try:
-                    rule_date = date(*(int(i) for i in rule_date.split("/")))
+                    rule_date = date(*(int(i) for i in rule_date.split("-")))
                 except ValueError:
-                    try:
-                        rule_date = date(*(int(i) for i in rule_date.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaDateError(
-                                f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
+                    errors.append(
+                        sigma_exceptions.SigmaDateError(
+                            f"Rule date '{ rule_date }' is invalid, must be yyyy-mm-dd",
+                            source=source,
                         )
+                    )
 
         # parse rule modified if existing
         rule_modified = rule.get("modified")
         if rule_modified is not None:
             if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
                 try:
-                    rule_modified = date(*(int(i) for i in rule_modified.split("/")))
+                    rule_modified = date(*(int(i) for i in rule_modified.split("-")))
                 except ValueError:
-                    try:
-                        rule_modified = date(*(int(i) for i in rule_modified.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaModifiedError(
-                                f"Rule modified '{ rule_modified }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
+                    errors.append(
+                        sigma_exceptions.SigmaModifiedError(
+                            f"Rule modified '{ rule_modified }' is invalid, must be yyyy-mm-dd",
+                            source=source,
                         )
+                    )
 
         # Rule fields validation
         rule_fields = rule.get("fields")

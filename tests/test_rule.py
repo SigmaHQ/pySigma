@@ -848,14 +848,14 @@ def test_sigmarule_bad_description():
 
 def test_sigmarule_bad_level():
     with pytest.raises(
-        sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
+        sigma_exceptions.SigmaLevelError, match="not a valid Sigma rule level.*test.yml"
     ):
         SigmaRule.from_dict({"level": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 
 def test_sigmarule_bad_status():
     with pytest.raises(
-        sigma_exceptions.SigmaStatusError, match="no valid Sigma rule status.*test.yml"
+        sigma_exceptions.SigmaStatusError, match="not a valid Sigma rule status.*test.yml"
     ):
         SigmaRule.from_dict(
             {"status": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
@@ -1127,7 +1127,7 @@ def test_sigmarule_fromyaml(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows
@@ -1168,7 +1168,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows

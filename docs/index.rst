@@ -14,7 +14,8 @@ pySigma Documentation
 Overview
 ********
 
-pySigma is a Python library for parsing, transformation and conversion of Sigma rules. The following
+pySigma is a Python library for parsing, transformation and conversion of Sigma rules. All
+functionality is located within the `sigma` package. The following
 picture summarizes the conversion process from a Sigma rule into a query, which is covered by pySigma:
 
 .. image:: images/conversion.png

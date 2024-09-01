@@ -1,7 +1,9 @@
-from sigma.processing.pipeline import ProcessingPipeline
+import pytest
+from sigma.processing.pipeline import ProcessingPipeline, QueryPostprocessingItem
 from sigma.processing.postprocessing import (
     EmbedQueryInJSONTransformation,
     EmbedQueryTransformation,
+    NestedQueryPostprocessingTransformation,
     QuerySimpleTemplateTransformation,
     QueryTemplateTransformation,
     ReplaceQueryTransformation,
@@ -81,3 +83,45 @@ def test_embed_query_in_json_transformation_list(dummy_pipeline, sigma_rule):
 def test_replace_query_transformation(dummy_pipeline, sigma_rule):
     transformation = ReplaceQueryTransformation("v\\w+e", "replaced")
     assert transformation.apply(dummy_pipeline, sigma_rule, 'field="value"') == 'field="replaced"'
+
+
+@pytest.fixture
+def nested_query_postprocessing_transformation():
+    return NestedQueryPostprocessingTransformation(
+        items=[
+            QueryPostprocessingItem(ReplaceQueryTransformation("foo", "bar")),
+            QueryPostprocessingItem(EmbedQueryTransformation("[", "]"), identifier="test"),
+            QueryPostprocessingItem(
+                QuerySimpleTemplateTransformation("title = {rule.title}\nquery = {query}")
+            ),
+        ]
+    )
+
+
+def test_nested_query_postprocessing_transformation_from_dict(
+    nested_query_postprocessing_transformation,
+):
+    assert (
+        NestedQueryPostprocessingTransformation.from_dict(
+            {
+                "items": [
+                    {"type": "replace", "pattern": "foo", "replacement": "bar"},
+                    {"type": "embed", "prefix": "[", "suffix": "]", "id": "test"},
+                    {
+                        "type": "simple_template",
+                        "template": "title = {rule.title}\nquery = {query}",
+                    },
+                ],
+            }
+        )
+        == nested_query_postprocessing_transformation
+    )
+
+
+def test_nested_query_postprocessing_transformation(
+    nested_query_postprocessing_transformation, dummy_pipeline, sigma_rule
+):
+    transformation = nested_query_postprocessing_transformation()
+    result = transformation.apply(dummy_pipeline, sigma_rule, 'field="foobar"')
+    assert result == 'title = Test\nquery = [field="barbar"]'
+    assert sigma_rule.was_processed_by("test")

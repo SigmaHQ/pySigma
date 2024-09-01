@@ -983,7 +983,7 @@ class NestedProcessingTransformation(Transformation):
         self._nested_pipeline = ProcessingPipeline(items=self.items)
 
     @classmethod
-    def from_dict(cls, d: Dict) -> Transformation:
+    def from_dict(cls, d: Dict) -> "NestedProcessingTransformation":
         from sigma.processing.pipeline import (
             ProcessingItem,
         )  # TODO: move to top-level after restructuring code

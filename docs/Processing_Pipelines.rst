@@ -285,7 +285,7 @@ definitions are available:
    "convert_type", "ConvertTypeTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
-   "nested_pipeline", "NestedPipelineTransformation"
+   "nest", "NestedProcessingTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
 
@@ -326,7 +326,7 @@ This is useful if different data models are used in the same system.
 .. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
 .. autoclass:: sigma.processing.transformations.RuleFailureTransformation
 .. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
-.. autoclass:: sigma.processing.transformations.NestedPipelineTransformation
+.. autoclass:: sigma.processing.transformations.NestedProcessingTransformation
 
 YAML example:
 

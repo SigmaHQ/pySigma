@@ -15,7 +15,7 @@ from sigma.correlations import (
 from sigma.processing.transformations import (
     AddFieldTransformation,
     ConvertTypeTransformation,
-    NestedPipelineTransformation,
+    NestedProcessingTransformation,
     RemoveFieldTransformation,
     SetFieldTransformation,
     SetValueTransformation,
@@ -1575,45 +1575,37 @@ def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
 
 @pytest.fixture
 def nested_pipeline_transformation():
-    return NestedPipelineTransformation(
-        pipeline=ProcessingPipeline(
-            name="Test",
-            priority=10,
-            items=[
-                ProcessingItem(
-                    transformation=TransformationAppend(s="Test"),
-                    rule_condition_linking=any,
-                    rule_conditions=[
-                        RuleConditionTrue(dummy="test-true"),
-                        RuleConditionFalse(dummy="test-false"),
-                    ],
-                    identifier="test",
-                )
-            ],
-        )
+    return NestedProcessingTransformation(
+        items=[
+            ProcessingItem(
+                transformation=TransformationAppend(s="Test"),
+                rule_condition_linking=any,
+                rule_conditions=[
+                    RuleConditionTrue(dummy="test-true"),
+                    RuleConditionFalse(dummy="test-false"),
+                ],
+                identifier="test",
+            )
+        ],
     )
 
 
 def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation):
     assert (
-        NestedPipelineTransformation.from_dict(
+        NestedProcessingTransformation.from_dict(
             {
-                "pipeline": {
-                    "name": "Test",
-                    "priority": 10,
-                    "transformations": [
-                        {
-                            "id": "test",
-                            "rule_conditions": [
-                                {"type": "true", "dummy": "test-true"},
-                                {"type": "false", "dummy": "test-false"},
-                            ],
-                            "rule_cond_op": "or",
-                            "type": "append",
-                            "s": "Test",
-                        }
-                    ],
-                }
+                "items": [
+                    {
+                        "id": "test",
+                        "rule_conditions": [
+                            {"type": "true", "dummy": "test-true"},
+                            {"type": "false", "dummy": "test-false"},
+                        ],
+                        "rule_cond_op": "or",
+                        "type": "append",
+                        "s": "Test",
+                    }
+                ],
             }
         )
         == nested_pipeline_transformation
@@ -1630,7 +1622,7 @@ def test_nested_pipeline_transformation_from_dict_apply(
 
 def test_nested_pipeline_transformation_no_pipeline():
     with pytest.raises(SigmaConfigurationError, match="requires a 'pipeline' key"):
-        NestedPipelineTransformation.from_dict({"test": "fails"})
+        NestedProcessingTransformation.from_dict({"test": "fails"})
 
 
 def test_transformation_identifier_completeness():

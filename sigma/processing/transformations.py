@@ -965,24 +965,34 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 
 
 @dataclass
-class NestedPipelineTransformation(Transformation):
-    """Executes a whole nested processing pipeline as transformation. Main purpose is to apply a
+class NestedProcessingTransformation(Transformation):
+    """Executes a nested processing pipeline as transformation. Main purpose is to apply a
     whole set of transformations that match the given conditions of the enclosng processing item.
     """
 
-    pipeline: "sigma.processing.pipeline.ProcessingPipeline"
+    items: List["sigma.processing.pipeline.ProcessingItem"]
+    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
+        init=False, compare=False, repr=False
+    )
 
-    @classmethod
-    def from_dict(cls, d: Dict) -> Transformation:
+    def __post_init__(self):
         from sigma.processing.pipeline import (
             ProcessingPipeline,
         )  # TODO: move to top-level after restructuring code
 
+        self._nested_pipeline = ProcessingPipeline(items=self.items)
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> Transformation:
+        from sigma.processing.pipeline import (
+            ProcessingItem,
+        )  # TODO: move to top-level after restructuring code
+
         try:
-            return cls(pipeline=ProcessingPipeline.from_dict(d["pipeline"]))
+            return cls(items=[ProcessingItem.from_dict(item) for item in d["items"]])
         except KeyError:
             raise SigmaConfigurationError(
-                "Nested pipeline transformation requires a 'pipeline' key."
+                "Nested processing transformation requires a 'items' key."
             )
 
     def apply(
@@ -991,7 +1001,12 @@ class NestedPipelineTransformation(Transformation):
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         super().apply(pipeline, rule)
-        self.pipeline.apply(rule)
+        self._nested_pipeline.apply(rule)
+        pipeline.applied.extend(self._nested_pipeline.applied)
+        pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
+        pipeline.field_name_applied_ids.update(self._nested_pipeline.field_name_applied_ids)
+        pipeline.field_mappings.merge(self._nested_pipeline.field_mappings)
+        pipeline.state.update(self._nested_pipeline.state)
 
 
 transformations: Dict[str, Transformation] = {
@@ -1017,5 +1032,5 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
-    "nested_pipeline": NestedPipelineTransformation,
+    "nest": NestedProcessingTransformation,
 }

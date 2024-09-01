@@ -55,20 +55,20 @@ class SigmaError(ValueError):
             return False
 
 
-class SigmaTitleError(SigmaError):
-    """Error in Sigma rule title"""
+class SigmaValueError(SigmaError):
+    """Error in Sigma rule value"""
 
     pass
 
 
-class SigmaLogsourceError(SigmaError):
-    """Error in Sigma rule logsource"""
+class SigmaBackendError(SigmaError):
+    """Error in Sigma backend."""
 
     pass
 
 
-class SigmaDetectionError(SigmaError):
-    """Error in Sigma rule detection"""
+class SigmaCollectionError(SigmaError):
+    """Error in Sigma collection, e.g. unknown action"""
 
     pass
 
@@ -79,74 +79,31 @@ class SigmaConditionError(SigmaError):
     pass
 
 
-class SigmaIdentifierError(SigmaError):
-    """Error in Sigma rule identifier"""
+class SigmaConfigurationError(SigmaError):
+    """Error in configuration of a Sigma processing pipeline"""
 
     pass
 
 
-class SigmaNameError(SigmaError):
-    """Error in Sigma rule name"""
+class SigmaConversionError(SigmaError):
+    """Rule conversion failed."""
+
+    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
+        self.rule = rule
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return super().__str__() + " in rule " + str(self.rule)
+
+
+class SigmaDetectionError(SigmaError):
+    """Error in Sigma rule detection"""
 
     pass
 
 
-class SigmaAuthorError(SigmaError):
-    """Error in Sigma rule author"""
-
-    pass
-
-
-class SigmaRelatedError(SigmaError):
-    """Error in Sigma rule related field"""
-
-    pass
-
-
-class SigmaDateError(SigmaError):
-    """Error in Sigma rule date"""
-
-    pass
-
-
-class SigmaModifiedError(SigmaError):
-    """Error in Sigma rule modified field"""
-
-    pass
-
-
-class SigmaDescriptionError(SigmaError):
-    """Error in Sigma rule description"""
-
-    pass
-
-
-class SigmaReferencesError(SigmaError):
-    """Error in Sigma rule references"""
-
-    pass
-
-
-class SigmaFieldsError(SigmaError):
-    """Error in Sigma rule fields field"""
-
-    pass
-
-
-class SigmaFalsePositivesError(SigmaError):
-    """Error in Sigma rule falsepositives field"""
-
-    pass
-
-
-class SigmaStatusError(SigmaError):
-    """Error in Sigma rule status"""
-
-    pass
-
-
-class SigmaLevelError(SigmaError):
-    """Error in Sigma rule level"""
+class SigmaFeatureNotSupportedByBackendError(SigmaError):
+    """Sigma feature is not supported by the backend."""
 
     pass
 
@@ -157,20 +114,34 @@ class SigmaModifierError(SigmaError):
     pass
 
 
-class SigmaTypeError(SigmaModifierError):
-    """Sigma modifier not applicable on value type"""
+class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
+    """One or multiple processing pipelines doesn't matches the given backend."""
 
-    pass
+    def __init__(self, spec: str, backend: str, *args, **kwargs):
+        self.wrong_pipeline = spec
+        self.backend = backend
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return (
+            f"Processing pipelines not allowed for backend '{self.backend}': {self.wrong_pipeline}"
+        )
 
 
-class SigmaValueError(SigmaError):
-    """Error in Sigma rule value"""
+class SigmaPipelineNotFoundError(SigmaError, ValueError):
+    """An attempt to resolve a processing pipeline from a specifier failed because it was not
+    found."""
 
-    pass
+    def __init__(self, spec: str, *args, **kwargs):
+        self.spec = spec
+        super().__init__(*args, **kwargs)
+
+    def __str__(self):
+        return f"Processing pipeline '{self.spec}' not found"
 
 
-class SigmaRegularExpressionError(SigmaValueError):
-    """Error in regular expression contained in Sigma rule"""
+class SigmaPipelineParsingError(SigmaError):
+    """Error in parsing of a Sigma processing pipeline"""
 
     pass
 
@@ -181,20 +152,41 @@ class SigmaPlaceholderError(SigmaValueError):
     pass
 
 
+class SigmaPluginNotFoundError(SigmaError):
+    """Plugin was not found."""
+
+    pass
+
+
+class SigmaRegularExpressionError(SigmaValueError):
+    """Error in regular expression contained in Sigma rule"""
+
+    pass
+
+
+class SigmaTransformationError(SigmaError):
+    """Error while transformation. Can be raised intentionally by FailureTransformation."""
+
+    pass
+
+
+class SigmaTypeError(SigmaModifierError):
+    """Sigma modifier not applicable on value type"""
+
+    pass
+
+
+class SigmaValidatorConfigurationParsingError(SigmaError):
+    """Error in parsing of a Sigma validation configuration file."""
+
+    pass
+
+
+# Meta Rule Correlation Error
+
+
 class SigmaCorrelationRuleError(SigmaValueError):
     """Error in Sigma correlation rule."""
-
-    pass
-
-
-class SigmaCorrelationTypeError(SigmaCorrelationRuleError):
-    """Wrong Sigma correlation type."""
-
-    pass
-
-
-class SigmaRuleNotFoundError(SigmaCorrelationRuleError):
-    """Sigma rule not found."""
 
     pass
 
@@ -205,10 +197,25 @@ class SigmaCorrelationConditionError(SigmaCorrelationRuleError):
     pass
 
 
+class SigmaCorrelationTypeError(SigmaCorrelationRuleError):
+    """Wrong Sigma correlation type."""
+
+    pass
+
+
 class SigmaTimespanError(SigmaCorrelationRuleError):
     """Raised when the timespan for calculating sigma is invalid."""
 
     pass
+
+
+class SigmaRuleNotFoundError(SigmaCorrelationRuleError):
+    """Sigma rule not found."""
+
+    pass
+
+
+# Meta Filter Error
 
 
 class SigmaFilterError(SigmaValueError):
@@ -229,83 +236,103 @@ class SigmaFilterRuleReferenceError(SigmaFilterError):
     pass
 
 
-class SigmaCollectionError(SigmaError):
-    """Error in Sigma collection, e.g. unknown action"""
+# Rule Fields error
+
+
+class SigmaAuthorError(SigmaError):
+    """Error in Sigma rule author"""
 
     pass
 
 
-class SigmaConfigurationError(SigmaError):
-    """Error in configuration of a Sigma processing pipeline"""
+class SigmaDateError(SigmaError):
+    """Error in Sigma rule date"""
 
     pass
 
 
-class SigmaValidatorConfigurationParsingError(SigmaError):
-    """Error in parsing of a Sigma validation configuration file."""
+class SigmaDescriptionError(SigmaError):
+    """Error in Sigma rule description"""
 
     pass
 
 
-class SigmaFeatureNotSupportedByBackendError(SigmaError):
-    """Sigma feature is not supported by the backend."""
+class SigmaFalsePositivesError(SigmaError):
+    """Error in Sigma rule falsepositives field"""
 
     pass
 
 
-class SigmaPipelineParsingError(SigmaError):
-    """Error in parsing of a Sigma processing pipeline"""
+class SigmaFieldsError(SigmaError):
+    """Error in Sigma rule fields field"""
 
     pass
 
 
-class SigmaPipelineNotFoundError(SigmaError, ValueError):
-    """An attempt to resolve a processing pipeline from a specifier failed because it was not
-    found."""
+class SigmaIdentifierError(SigmaError):
+    """Error in Sigma rule identifier"""
 
-    def __init__(self, spec: str, *args, **kwargs):
-        self.spec = spec
-        super().__init__(*args, **kwargs)
-
-    def __str__(self):
-        return f"Processing pipeline '{self.spec}' not found"
+    pass
 
 
-class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
-    """One or multiple processing pipelines doesn't matches the given backend."""
+class SigmaLevelError(SigmaError):
+    """Error in Sigma rule level"""
 
-    def __init__(self, spec: str, backend: str, *args, **kwargs):
-        self.wrong_pipeline = spec
-        self.backend = backend
-        super().__init__(*args, **kwargs)
-
-    def __str__(self):
-        return (
-            f"Processing pipelines not allowed for backend '{self.backend}': {self.wrong_pipeline}"
-        )
+    pass
 
 
-class SigmaTransformationError(SigmaError):
-    """Error while transformation. Can be raised intentionally by FailureTransformation."""
+class SigmaLicenseError(SigmaError):
+    """Error in Sigma rule license"""
+
+    pass
 
 
-class SigmaPluginNotFoundError(SigmaError):
-    """Plugin was not found."""
+class SigmaLogsourceError(SigmaError):
+    """Error in Sigma rule logsource"""
+
+    pass
 
 
-class SigmaConversionError(SigmaError):
-    """Rule conversion failed."""
+class SigmaModifiedError(SigmaError):
+    """Error in Sigma rule modified field"""
 
-    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
-        self.rule = rule
-        super().__init__(*args, **kwargs)
-
-    def __str__(self):
-        return super().__str__() + " in rule " + str(self.rule)
+    pass
 
 
-class SigmaBackendError(SigmaError):
-    """Error in Sigma backend."""
+class SigmaNameError(SigmaError):
+    """Error in Sigma rule name"""
+
+    pass
+
+
+class SigmaReferencesError(SigmaError):
+    """Error in Sigma rule references"""
+
+    pass
+
+
+class SigmaRelatedError(SigmaError):
+    """Error in Sigma rule related field"""
+
+    pass
+
+
+class SigmaScopeError(SigmaError):
+    """Error in Sigma rule scope"""
+
+    pass
+
+
+class SigmaStatusError(SigmaError):
+    """Error in Sigma rule status"""
+
+    pass
+
+
+class SigmaTitleError(SigmaError):
+    """Error in Sigma rule title"""
+
+    pass
 
 
 @dataclass

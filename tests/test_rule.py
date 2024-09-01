@@ -174,6 +174,13 @@ def test_sigmalogsource_empty():
         SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 
+def test_sigmalogsource_fromdict_definition_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict(
+            {"category": "category-id", "definition": ["sysmon", "edr", "siem"]}
+        )
+
+
 def test_sigmalogsource_str():
     with pytest.raises(
         sigma_exceptions.SigmaLogsourceError,
@@ -1519,3 +1526,25 @@ def test_sigma_rule_conversion_result_no_result(sigma_rule):
 def test_sigma_rule_disable_output(sigma_rule):
     sigma_rule.disable_output()
     assert sigma_rule._output == False
+
+
+def test_sigmarule_bad_license():
+    with pytest.raises(
+        sigma_exceptions.SigmaLicenseError,
+        match="Sigma rule license must be a string.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "license": 1234},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_bad_scope():
+    with pytest.raises(
+        sigma_exceptions.SigmaScopeError,
+        match="Sigma rule scope must be a list.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "scope": "windows AD"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )

@@ -163,7 +163,7 @@ class DateExistenceValidator(SigmaRuleValidator):
 
 @dataclass
 class DuplicateFilenameIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule filemane used by multiple rules"
+    description: ClassVar[str] = "Rule filename used by multiple rules"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     filename: str
 
@@ -201,7 +201,7 @@ class FilenameLengthIssue(SigmaValidationIssue):
 
 @dataclass(frozen=True)
 class FilenameLengthValidator(SigmaRuleValidator):
-    """Check rule filename lengh"""
+    """Check rule filename length"""
 
     min_size: int = 10
     max_size: int = 90

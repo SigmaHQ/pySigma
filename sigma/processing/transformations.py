@@ -762,7 +762,7 @@ class SetFieldTransformation(Transformation):
 class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
-    capture groups. It operates on the plain string representation of the SigmaString value.
+    capture groups. It operates on the plain string parts of the SigmaString value.
 
     This is basically an interface to re.sub() and can use all features available there.
     """
@@ -781,7 +781,9 @@ class ReplaceStringTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
-            return SigmaString(self.re.sub(self.replacement, str(val)))
+            return val.map_parts(
+                lambda s: self.re.sub(self.replacement, s), lambda p: isinstance(p, str)
+            )
 
 
 @dataclass
@@ -965,6 +967,24 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 
 
 @dataclass
+class SetCustomAttributeTransformation(Transformation):
+    """
+    Sets an arbitrary custom attribute on a rule, that can be used by a backend during processing.
+    """
+
+    attribute: str
+    value: Any
+
+    def apply(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> None:
+        super().apply(pipeline, rule)
+        rule.custom_attributes[self.attribute] = self.value
+
+
+@dataclass
 class NestedProcessingTransformation(Transformation):
     """Executes a nested processing pipeline as transformation. Main purpose is to apply a
     whole set of transformations that match the given conditions of the enclosng processing item.
@@ -1032,5 +1052,6 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
+    "set_custom_attribute": SetCustomAttributeTransformation,
     "nest": NestedProcessingTransformation,
 }

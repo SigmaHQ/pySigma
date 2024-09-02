@@ -42,7 +42,6 @@ specific_to_generic_logsource_mapping: Dict[str, Tuple[SigmaLogSource, Dict[int,
         21: "wmi_event",
         22: "dns_query",
         23: "file_delete",
-        26: "file_delete",
         24: "clipboard_change",
         25: "process_tampering",
         26: "file_delete_detected",
@@ -116,7 +115,6 @@ class FieldnameLogsourceValidator(SigmaRuleValidator):
             return [
                 FieldnameLogsourceIssue(rules=[rule], fieldname=name)
                 for name in rule.logsource.custom_attributes
-                if not name == "definition"
             ]
         else:
             return []

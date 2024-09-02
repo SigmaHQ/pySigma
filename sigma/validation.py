@@ -1,7 +1,7 @@
 from collections import defaultdict
 from typing import DefaultDict, Dict, Iterable, Iterator, List, Set, Type, Union
 from uuid import UUID
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaValidatorConfigurationParsingError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
 import yaml
@@ -25,7 +25,7 @@ class SigmaValidator:
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
         exclusions: Dict[UUID, Set[SigmaRuleValidator]] = dict(),
-        config: Dict[str, Dict[str, Union[str, int, float, bool]]] = dict(),
+        config: Dict[str, Dict[str, Union[str, int, float, bool, tuple]]] = dict(),
     ):
         self.validators = {
             validator(**config.get(validator.__name__, {})) for validator in validators
@@ -98,6 +98,9 @@ class SigmaValidator:
                 raise SigmaConfigurationError(
                     f"Configuration for validator '{ validator_name }' is not a dict."
                 )
+            for k, v in params.items():
+                if isinstance(v, list):
+                    params[k] = tuple(v)
             configuration[validators[validator_name].__name__] = params
 
         return cls(validator_classes, exclusions, configuration)
@@ -106,7 +109,12 @@ class SigmaValidator:
     def from_yaml(
         cls, validator_config: str, validators: Dict[str, SigmaRuleValidator]
     ) -> "SigmaValidator":
-        return cls.from_dict(yaml.safe_load(validator_config), validators)
+        try:
+            return cls.from_dict(yaml.safe_load(validator_config), validators)
+        except yaml.parser.ParserError as e:
+            raise SigmaValidatorConfigurationParsingError(
+                f"Error in parsing of a Sigma validation configuration file: {str(e)}"
+            ) from e
 
     def validate_rule(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """

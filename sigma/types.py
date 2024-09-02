@@ -148,6 +148,13 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
 
+    @classmethod
+    def from_str(cls, s: str) -> "SigmaString":
+        sigma_string = SigmaString()
+        sigma_string.s = (s,)
+        sigma_string.original = s
+        return sigma_string
+
     def __getitem__(self, idx: Union[int, slice]) -> "SigmaString":
         """
         Index SigmaString parts with transparent handling of special characters.
@@ -478,6 +485,24 @@ class SigmaString(SigmaType):
                     yield char
             else:
                 yield item
+
+    def iter_parts(self) -> Iterable[Union[str, SpecialChars]]:
+        for item in self.s:
+            yield item
+
+    def map_parts(
+        self,
+        func: Callable[[Union[str, SpecialChars]], Optional[Union[str, SpecialChars]]],
+        filter_func: Callable[[Union[str, SpecialChars]], bool] = lambda x: True,
+    ) -> "SigmaString":
+        s = self.__class__()
+        s.s = tuple(
+            filter(
+                lambda x: x is not None,  # filter out None results
+                (func(item) if filter_func(item) else item for item in self.iter_parts()),
+            )
+        )
+        return s
 
     def convert(
         self,
@@ -817,7 +842,7 @@ class SigmaExpansion(NoPlainConversionMixin, SigmaType):
     expanded values and is converted as follows:
 
     1. the whole expansion is handled as group which is enclosed in parentheses.
-    2. the values contained in the expansion are linked with OR, independend from the linking of the
+    2. the values contained in the expansion are linked with OR, independent from the linking of the
        context that encloses the expansion.
     """
 

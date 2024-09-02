@@ -31,7 +31,7 @@ default_plugin_directory = "https://raw.githubusercontent.com/SigmaHQ/pySigma-pl
 
 @dataclass
 class InstalledSigmaPlugins:
-    """Discovery and registrstion of installed backends, pipelines and validator checks as plugins.
+    """Discovery and registration of installed backends, pipelines and validator checks as plugins.
 
     This class represents a set of the objects mentioned above that are available. Further it implements
     autodiscovery of them in the sigma.backends, sigma.pipelines and sigma.validators module namespaces.
@@ -101,7 +101,7 @@ class InstalledSigmaPlugins:
                     # Add exported objects to submodules
                     # This is to ensure backwards compatibility with older plugins
                     # that do not use __all__ to export their objects, but instead
-                    # rely on gloal variables that map function/class names to objects
+                    # rely on global variables that map function/class names to objects
                     # The global variable name is the "directory_name" in this case,
                     # which is either "backends", "pipelines" or "validators".
                     if directory_name in imported_module.__dict__:

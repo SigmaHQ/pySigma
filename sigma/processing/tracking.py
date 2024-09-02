@@ -64,3 +64,8 @@ class FieldMappingTracking(UserDict):
             self[source].update(target)
         for t in target:
             self.target_fields[t].add(source)
+
+    def merge(self, other: "FieldMappingTracking") -> None:
+        """Merge another FieldMappingTracking into this one."""
+        for source, target_set in other.items():
+            self.add_mapping(source, list(target_set))

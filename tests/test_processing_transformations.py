@@ -15,6 +15,7 @@ from sigma.correlations import (
 from sigma.processing.transformations import (
     AddFieldTransformation,
     ConvertTypeTransformation,
+    NestedProcessingTransformation,
     RemoveFieldTransformation,
     SetCustomAttributeTransformation,
     SetFieldTransformation,
@@ -44,7 +45,6 @@ from sigma.processing.transformations import (
 )
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import (
-    DetectionItemProcessingItemAppliedCondition,
     FieldNameProcessingItemAppliedCondition,
     IncludeFieldCondition,
     RuleContainsDetectionItemCondition,
@@ -68,6 +68,12 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,
     SigmaValueError,
+)
+from tests.test_processing_pipeline import (
+    RuleConditionFalse,
+    RuleConditionTrue,
+    TransformationAppend,
+    inject_test_classes,
 )
 
 
@@ -390,7 +396,7 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
         "fieldD": True,
     }
     assert sigma_rule.was_processed_by("test")
-    assert transformation.pipeline.field_mappings == {
+    assert transformation._pipeline.field_mappings == {
         "field1": {"fieldA"},
         "field3": {"fieldC", "fieldD"},
     }
@@ -463,7 +469,7 @@ def test_field_prefix_mapping(dummy_pipeline, field_prefix_mapping_transformatio
         "otherfield2",
     ]
     assert sigma_rule.was_processed_by("test")
-    assert field_prefix_mapping_transformation.pipeline.field_mappings == {
+    assert field_prefix_mapping_transformation._pipeline.field_mappings == {
         "test1.field": {"mapped1.field"},
         "test2.field": {
             "mapped2a.field",
@@ -679,7 +685,7 @@ def test_add_fieldname_suffix_tracking(
         False,
     ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"field1.test"}}
+    assert processing_item.transformation._pipeline.field_mappings == {"field1": {"field1.test"}}
 
 
 def test_add_fieldname_suffix_transformation_correlation_rule(
@@ -768,7 +774,7 @@ def test_add_fieldname_prefix_tracking(
         False,
     ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"test.field1"}}
+    assert processing_item.transformation._pipeline.field_mappings == {"field1": {"test.field1"}}
 
 
 def test_add_fieldname_prefix_correlation_rule(
@@ -1586,6 +1592,58 @@ def test_set_custom_attribute_correlation_rule(dummy_pipeline, sigma_correlation
     assert "custom_key" in sigma_correlation_rule.custom_attributes
     assert sigma_correlation_rule.custom_attributes["custom_key"] == "custom_value"
     assert sigma_correlation_rule.was_processed_by("test")
+
+
+@pytest.fixture
+def nested_pipeline_transformation():
+    return NestedProcessingTransformation(
+        items=[
+            ProcessingItem(
+                transformation=TransformationAppend(s="Test"),
+                rule_condition_linking=any,
+                rule_conditions=[
+                    RuleConditionTrue(dummy="test-true"),
+                    RuleConditionFalse(dummy="test-false"),
+                ],
+                identifier="test",
+            )
+        ],
+    )
+
+
+def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation):
+    assert (
+        NestedProcessingTransformation.from_dict(
+            {
+                "items": [
+                    {
+                        "id": "test",
+                        "rule_conditions": [
+                            {"type": "true", "dummy": "test-true"},
+                            {"type": "false", "dummy": "test-false"},
+                        ],
+                        "rule_cond_op": "or",
+                        "type": "append",
+                        "s": "Test",
+                    }
+                ],
+            }
+        )
+        == nested_pipeline_transformation
+    )
+
+
+def test_nested_pipeline_transformation_from_dict_apply(
+    dummy_pipeline, sigma_rule, nested_pipeline_transformation
+):
+    nested_pipeline_transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.title == "TestTest"
+    assert sigma_rule.was_processed_by("test")
+
+
+def test_nested_pipeline_transformation_no_items():
+    with pytest.raises(SigmaConfigurationError, match="requires an 'items' key"):
+        NestedProcessingTransformation.from_dict({"test": "fails"})
 
 
 def test_transformation_identifier_completeness():

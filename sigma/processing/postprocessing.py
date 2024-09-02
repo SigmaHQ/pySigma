@@ -4,6 +4,7 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Union
 import sigma
+from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
 from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
@@ -151,6 +152,9 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
     """Applies a list of query postprocessing transformations to the query in a nested manner."""
 
     items: List["sigma.processing.pipeline.QueryPostprocessingItem"]
+    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
+        init=False, compare=False, default=None
+    )
 
     def __post_init__(self):
         from sigma.processing.pipeline import (
@@ -161,12 +165,17 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
-        return NestedQueryPostprocessingTransformation(
-            items=[
-                sigma.processing.pipeline.QueryPostprocessingItem.from_dict(item)
-                for item in d["items"]
-            ]
-        )
+        try:
+            return NestedQueryPostprocessingTransformation(
+                items=[
+                    sigma.processing.pipeline.QueryPostprocessingItem.from_dict(item)
+                    for item in d["items"]
+                ]
+            )
+        except KeyError:
+            raise SigmaConfigurationError(
+                "Nested post-processing transformation requires an 'items' key."
+            )
 
     def apply(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: Any

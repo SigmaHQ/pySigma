@@ -1,4 +1,5 @@
 import pytest
+from sigma.exceptions import SigmaConfigurationError
 from sigma.processing.pipeline import ProcessingPipeline, QueryPostprocessingItem
 from sigma.processing.postprocessing import (
     EmbedQueryInJSONTransformation,
@@ -118,10 +119,19 @@ def test_nested_query_postprocessing_transformation_from_dict(
     )
 
 
+def test_nested_query_postprocessing_transformation_no_items():
+    with pytest.raises(
+        SigmaConfigurationError,
+        match="Nested post-processing transformation requires an 'items' key.",
+    ):
+        NestedQueryPostprocessingTransformation.from_dict({})
+
+
 def test_nested_query_postprocessing_transformation(
     nested_query_postprocessing_transformation, dummy_pipeline, sigma_rule
 ):
-    transformation = nested_query_postprocessing_transformation()
-    result = transformation.apply(dummy_pipeline, sigma_rule, 'field="foobar"')
+    result = nested_query_postprocessing_transformation.apply(
+        dummy_pipeline, sigma_rule, 'field="foobar"'
+    )
     assert result == 'title = Test\nquery = [field="barbar"]'
     assert sigma_rule.was_processed_by("test")

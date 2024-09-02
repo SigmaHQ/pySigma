@@ -1620,8 +1620,8 @@ def test_nested_pipeline_transformation_from_dict_apply(
     assert sigma_rule.was_processed_by("test")
 
 
-def test_nested_pipeline_transformation_no_pipeline():
-    with pytest.raises(SigmaConfigurationError, match="requires a 'pipeline' key"):
+def test_nested_pipeline_transformation_no_items():
+    with pytest.raises(SigmaConfigurationError, match="requires an 'items' key"):
         NestedProcessingTransformation.from_dict({"test": "fails"})
 
 

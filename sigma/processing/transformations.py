@@ -992,7 +992,7 @@ class NestedProcessingTransformation(Transformation):
             return cls(items=[ProcessingItem.from_dict(item) for item in d["items"]])
         except KeyError:
             raise SigmaConfigurationError(
-                "Nested processing transformation requires a 'items' key."
+                "Nested processing transformation requires an 'items' key."
             )
 
     def apply(

@@ -285,6 +285,7 @@ definitions are available:
    "convert_type", "ConvertTypeTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
+   "set_custom_attribute", "SetCustomAttributeTransformation"
    "nest", "NestedProcessingTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
@@ -320,13 +321,6 @@ This is useful if different data models are used in the same system.
 .. autoclass:: sigma.processing.transformations.SetFieldTransformation
 .. autoclass:: sigma.processing.transformations.ReplaceStringTransformation
 .. autoclass:: sigma.processing.transformations.MapStringTransformation
-.. autoclass:: sigma.processing.transformations.SetStateTransformation
-.. autoclass:: sigma.processing.transformations.RegexTransformation
-.. autoclass:: sigma.processing.transformations.SetValueTransformation
-.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
-.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
-.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
-.. autoclass:: sigma.processing.transformations.NestedProcessingTransformation
 
 YAML example:
 
@@ -339,6 +333,31 @@ YAML example:
       value2:
         - mapped2A
         - mapped2B
+
+.. autoclass:: sigma.processing.transformations.SetStateTransformation
+.. autoclass:: sigma.processing.transformations.RegexTransformation
+.. autoclass:: sigma.processing.transformations.SetValueTransformation
+.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
+.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
+.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
+.. autoclass:: sigma.processing.transformations.SetCustomAttributeTransformation
+.. autoclass:: sigma.processing.transformations.NestedProcessingTransformation
+
+YAML example:
+
+.. code-block:: yaml
+
+  transformations:
+    type: nest
+    items:
+      - type: field_name_mapping
+        mapping:
+          EventID: EventCode
+          CommandLine:
+            - command_line
+            - cmdline
+      - type: set_state
+        state: processed
 
 .. autoclass:: sigma.processing.transformations.RegexTransformation
 .. autoclass:: sigma.processing.transformations.SetValueTransformation
@@ -361,12 +380,14 @@ Query Post-Processing Transformations
    "template", "QueryTemplateTransformation"
    "json", "EmbedQueryInJSONTransformation"
    "replace", "ReplaceQueryTransformation"
+   "nest", "NestedQueryPostprocessingTransformation"
 
 .. autoclass:: sigma.processing.postprocessing.EmbedQueryTransformation
 .. autoclass:: sigma.processing.postprocessing.QuerySimpleTemplateTransformation
 .. autoclass:: sigma.processing.postprocessing.QueryTemplateTransformation
 .. autoclass:: sigma.processing.postprocessing.EmbedQueryInJSONTransformation
 .. autoclass:: sigma.processing.postprocessing.ReplaceQueryTransformation
+.. autoclass:: sigma.processing.postprocessing.NestedQueryPostprocessingTransformation
 
 Output Finalization Transformations
 ====================================
@@ -381,11 +402,13 @@ Output Finalization Transformations
    "template", "TemplateFinalizer"
    "json", "JSONFinalizer"
    "yaml", "YAMLFinalizer"
+   "nested", "NestedFinalizer"
 
 .. autoclass:: sigma.processing.finalization.ConcatenateQueriesFinalizer
 .. autoclass:: sigma.processing.finalization.TemplateFinalizer
 .. autoclass:: sigma.processing.finalization.JSONFinalizer
 .. autoclass:: sigma.processing.finalization.YAMLFinalizer
+.. autoclass:: sigma.processing.finalization.NestedFinalizer
 
 Base Classes
 ============

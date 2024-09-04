@@ -240,6 +240,10 @@ class SigmaLogSource:
             raise sigma_exceptions.SigmaLogsourceError(
                 "Sigma log source service must be string", source=self.source
             )
+        if self.definition and not isinstance(self.definition, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source definition must be string", source=self.source
+            )
 
     @classmethod
     def from_dict(
@@ -775,6 +779,7 @@ class SigmaRuleBase:
     related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
+    license: Optional[str] = None
     references: List[str] = field(default_factory=list)
     tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
@@ -783,6 +788,7 @@ class SigmaRuleBase:
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None
+    scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
@@ -894,21 +900,21 @@ class SigmaRuleBase:
                     errors.append(e)
 
         # Rule level validation
-        level = rule.get("level")
-        if level is not None:
+        rule_level = rule.get("level")
+        if rule_level is not None:
             try:
-                level = SigmaLevel[level.upper()]
+                rule_level = SigmaLevel[rule_level.upper()]
             except KeyError:
                 errors.append(
                     sigma_exceptions.SigmaLevelError(
-                        f"'{ level }' is not a valid Sigma rule level", source=source
+                        f"'{ rule_level }' is not a valid Sigma rule level", source=source
                     )
                 )
 
         # Rule status validation
-        status = rule.get("status")
-        if status is not None:
-            if not isinstance(status, str):
+        rule_status = rule.get("status")
+        if rule_status is not None:
+            if not isinstance(rule_status, str):
                 errors.append(
                     sigma_exceptions.SigmaStatusError(
                         "Sigma rule status cannot be a list", source=source
@@ -916,11 +922,11 @@ class SigmaRuleBase:
                 )
             else:
                 try:
-                    status = SigmaStatus[status.upper()]
+                    rule_status = SigmaStatus[rule_status.upper()]
                 except KeyError:
                     errors.append(
                         sigma_exceptions.SigmaStatusError(
-                            f"'{ status }' is not a valid Sigma rule status", source=source
+                            f"'{ rule_status }' is not a valid Sigma rule status", source=source
                         )
                     )
 
@@ -1026,6 +1032,25 @@ class SigmaRuleBase:
                 )
             )
 
+        # Rule scope validation
+        rule_scope = rule.get("scope")
+        if rule_scope is not None and not isinstance(rule_scope, list):
+            errors.append(
+                sigma_exceptions.SigmaScopeError(
+                    "Sigma rule scope must be a list",
+                    source=source,
+                )
+            )
+        # Rule license validation
+        rule_license = rule.get("license")
+        if rule_license is not None and not isinstance(rule_license, str):
+            errors.append(
+                sigma_exceptions.SigmaLicenseError(
+                    "Sigma rule license must be a string",
+                    source=source,
+                )
+            )
+
         if not collect_errors and errors:
             raise errors[0]
 
@@ -1036,8 +1061,8 @@ class SigmaRuleBase:
                 "name": rule_name,
                 "taxonomy": rule_taxonomy,
                 "related": rule_related,
-                "level": level,
-                "status": status,
+                "level": rule_level,
+                "status": rule_status,
                 "description": rule_description,
                 "references": rule_references,
                 "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
@@ -1046,6 +1071,8 @@ class SigmaRuleBase:
                 "modified": rule_modified,
                 "fields": rule_fields,
                 "falsepositives": rule_falsepositives,
+                "scope": rule_scope,
+                "license": rule_license,
                 "source": source,
                 "custom_attributes": {
                     k: v

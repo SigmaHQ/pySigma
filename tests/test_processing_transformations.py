@@ -1348,8 +1348,40 @@ def test_replace_string_specials(dummy_pipeline):
         [
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field1", [], [SigmaString("*/value")]),
+                    SigmaDetectionItem("field1", [], [SigmaString("/value")]),
                     SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_backslashes(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": r"backslash\\value",
+                        "field2": r"backslash\\\\value",
+                        "field3": r"plainwildcard\*value",
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("value", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString(r"backslash\\test")]),
+                    SigmaDetectionItem("field2", [], [SigmaString(r"backslash\\\\test")]),
+                    SigmaDetectionItem("field3", [], [SigmaString(r"plainwildcard\*test")]),
                 ]
             )
         ]

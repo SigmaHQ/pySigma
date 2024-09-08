@@ -436,9 +436,22 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             )
 
         if len(self.original_value) > 1:
-            value = [value.to_plain() for value in self.original_value]
+            value = [
+                (
+                    value.to_plain(True)
+                    if isinstance(value, SigmaString)
+                    and SigmaRegularExpressionModifier in self.modifiers
+                    else value.to_plain()
+                )
+                for value in self.original_value
+            ]
         else:
-            value = self.original_value[0].to_plain()
+            value = (
+                self.original_value[0].to_plain(True)
+                if isinstance(self.original_value[0], SigmaString)
+                and SigmaRegularExpressionModifier in self.modifiers
+                else self.original_value[0].to_plain()
+            )
 
         if (
             self.is_keyword() and len(self.modifiers) == 0

@@ -355,10 +355,17 @@ class SigmaString(SigmaType):
             )
 
     def __str__(self) -> str:
+        return self.to_plain()
+
+    def to_plain(self, regex: bool = False) -> str:
+        """Generate string representation of SigmaString with or without regex escaping."""
         rs = ""
         for s in self.s:
             if isinstance(s, str):
-                rs += s
+                if regex:
+                    rs += s
+                else:
+                    rs += s.replace("*", "\\*").replace("?", "\\?")
             elif isinstance(s, SpecialChars):
                 rs += special_char_mapping[s]
             elif isinstance(s, Placeholder):
@@ -372,9 +379,9 @@ class SigmaString(SigmaType):
     def __repr__(self) -> str:
         return str(f"SigmaString({self.s})")
 
-    def to_plain(self):
-        """Return plain string representation of SigmaString, equivalent to converting it with str()."""
-        return str(self)
+    def to_plain_regex(self):
+        """Return plain string representation of SigmaString with reduced escaping."""
+        return self._stringify(True)
 
     def __bytes__(self) -> bytes:
         return str(self).encode()

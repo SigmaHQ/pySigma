@@ -320,6 +320,20 @@ def test_strings_to_string():
     assert str(SigmaString("test*?")) == "test*?"
 
 
+def test_strings_with_plain_wildcards_to_string():
+    plain_s = "value\*with\?plain*wild?cards"
+    s = SigmaString(plain_s)
+    assert s.s == (
+        "value*with?plain",
+        SpecialChars.WILDCARD_MULTI,
+        "wild",
+        SpecialChars.WILDCARD_SINGLE,
+        "cards",
+    )
+    assert str(s) == plain_s
+    assert SigmaString(str(s)) == s
+
+
 def test_strings_with_placeholder_to_string():
     assert str(SigmaString("te%var%st").insert_placeholders()) == "te%var%st"
 

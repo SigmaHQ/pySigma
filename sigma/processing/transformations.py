@@ -762,13 +762,17 @@ class SetFieldTransformation(Transformation):
 class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
-    capture groups. It operates on the plain string parts of the SigmaString value.
+    capture groups. Normally, the replacement operates on the plain string representation of the
+    SigmaString. This allows also to include special characters and placeholders in the replacement.
+    By enabling the skip_special parameter, the replacement is only applied to the plain string
+    parts of a SigmaString and special characters and placeholders are left untouched.
 
-    This is basically an interface to re.sub() and can use all features available there.
+    The replacement is implemented with re.sub() and can use all features available there.
     """
 
     regex: str
     replacement: str
+    skip_special: bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -781,9 +785,15 @@ class ReplaceStringTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
-            return val.map_parts(
-                lambda s: self.re.sub(self.replacement, s), lambda p: isinstance(p, str)
-            )
+            if self.skip_special:
+                return val.map_parts(
+                    lambda s: self.re.sub(self.replacement, s), lambda p: isinstance(p, str)
+                )
+            else:
+                sigma_string_plain = str(val)
+                replaced = self.re.sub(self.replacement, sigma_string_plain)
+                postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
+                return SigmaString(postprocessed_backslashes)
 
 
 @dataclass

@@ -160,7 +160,8 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
 @dataclass
 class LogsourceCondition(RuleProcessingCondition):
     """
-    Matches log source on rule. Not specified log source fields are ignored.
+    Matches log source on rule. Not specified log source fields are ignored. For Correlation rules,
+    the condition returns true if any of the associated rules have the required log source fields.
     """
 
     category: Optional[str] = field(default=None)
@@ -178,6 +179,11 @@ class LogsourceCondition(RuleProcessingCondition):
         if isinstance(rule, SigmaRule):
             return rule.logsource in self.logsource
         elif isinstance(rule, SigmaCorrelationRule):
+            # Will only return true if the rules have been resolved in advance
+            for ref in rule.rules:
+                if hasattr(ref, "rule") and isinstance(ref.rule, (SigmaRule, SigmaCorrelationRule)):
+                    if self.match(pipeline, ref.rule):
+                        return True
             return False
 
 

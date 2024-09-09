@@ -119,12 +119,15 @@ def test_logsource_match_correlation_rule_prod(dummy_processing_pipeline, sigma_
     )
 
 
-def test_logsource_both_no_match_correlation_rule(dummy_processing_pipeline, sigma_correlated_rules):
+def test_logsource_both_no_match_correlation_rule(
+    dummy_processing_pipeline, sigma_correlated_rules
+):
     sigma_correlated_rules.resolve_rule_references()
     assert not LogsourceCondition(category="test_category", product="test_product").match(
         dummy_processing_pipeline,
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
+
 
 def test_logsource_no_match_correlation_rule(dummy_processing_pipeline, sigma_correlated_rules):
     sigma_correlated_rules.resolve_rule_references()
@@ -663,6 +666,6 @@ def sigma_correlated_rules():
                         },
                     },
                 },
-            }
+            },
         ]
     )

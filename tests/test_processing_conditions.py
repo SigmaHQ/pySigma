@@ -119,7 +119,7 @@ def test_logsource_match_correlation_rule_prod(dummy_processing_pipeline, sigma_
     )
 
 
-def test_logsource_both_no_match_correlation_rule(
+def test_logsource_no_match_correlation_rule_both(
     dummy_processing_pipeline, sigma_correlated_rules
 ):
     sigma_correlated_rules.resolve_rule_references()

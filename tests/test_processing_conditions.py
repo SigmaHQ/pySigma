@@ -1,4 +1,7 @@
 import inspect
+from typing import cast
+from sigma.collection import SigmaCollection
+from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaNull, SigmaNumber, SigmaString
 from sigma import processing
 from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
@@ -100,7 +103,38 @@ def test_logsource_no_match(dummy_processing_pipeline, sigma_rule):
     )
 
 
-def test_logsource_match_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
+def test_logsource_match_correlation_rule_cat(dummy_processing_pipeline, sigma_correlated_rules):
+    sigma_correlated_rules.resolve_rule_references()
+    assert LogsourceCondition(category="test_category").match(
+        dummy_processing_pipeline,
+        cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
+    )
+
+
+def test_logsource_match_correlation_rule_prod(dummy_processing_pipeline, sigma_correlated_rules):
+    sigma_correlated_rules.resolve_rule_references()
+    assert LogsourceCondition(product="test_product").match(
+        dummy_processing_pipeline,
+        cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
+    )
+
+
+def test_logsource_both_no_match_correlation_rule(dummy_processing_pipeline, sigma_correlated_rules):
+    sigma_correlated_rules.resolve_rule_references()
+    assert not LogsourceCondition(category="test_category", product="test_product").match(
+        dummy_processing_pipeline,
+        cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
+    )
+
+def test_logsource_no_match_correlation_rule(dummy_processing_pipeline, sigma_correlated_rules):
+    sigma_correlated_rules.resolve_rule_references()
+    assert not LogsourceCondition(service="test_service").match(
+        dummy_processing_pipeline,
+        cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
+    )
+
+
+def test_logsource_no_rule_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
     assert not LogsourceCondition(category="test_category", product="other_product").match(
         dummy_processing_pipeline,
         sigma_correlation_rule,
@@ -553,3 +587,82 @@ def test_condition_identifiers_completeness():
             raise AssertionError(
                 f"Class {name} is not a rule, detection item or field name condition"
             )
+
+
+@pytest.fixture
+def sigma_correlated_rules():
+    return SigmaCollection.from_dicts(
+        [
+            {
+                "title": "Test 1",
+                "name": "testrule_1",
+                "logsource": {"category": "test_category"},
+                "detection": {
+                    "test": [
+                        {
+                            "field1": "value1",
+                            "field2": "value2",
+                            "field3": "value3",
+                        }
+                    ],
+                    "condition": "test",
+                },
+                "fields": [
+                    "otherfield1",
+                    "field1",
+                    "field2",
+                    "field3",
+                    "otherfield2",
+                ],
+            },
+            {
+                "title": "Test 2",
+                "name": "testrule_2",
+                "logsource": {"product": "test_product"},
+                "detection": {
+                    "test": [
+                        {
+                            "field1": "value1",
+                            "field2": "value2",
+                            "field3": "value3",
+                        }
+                    ],
+                    "condition": "test",
+                },
+                "fields": [
+                    "otherfield1",
+                    "field1",
+                    "field2",
+                    "field3",
+                    "otherfield2",
+                ],
+            },
+            {
+                "title": "Test",
+                "status": "test",
+                "correlation": {
+                    "type": "value_count",
+                    "rules": [
+                        "testrule_1",
+                        "testrule_2",
+                    ],
+                    "timespan": "5m",
+                    "group-by": [
+                        "testalias",
+                        "field2",
+                        "field3",
+                    ],
+                    "condition": {
+                        "gte": 10,
+                        "field": "field1",
+                    },
+                    "aliases": {
+                        "testalias": {
+                            "testrule_1": "field1",
+                            "testrule_2": "field2",
+                        },
+                    },
+                },
+            }
+        ]
+    )

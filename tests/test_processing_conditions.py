@@ -21,6 +21,7 @@ from sigma.processing.conditions import (
     MatchStringCondition,
     ProcessingCondition,
     RuleContainsDetectionItemCondition,
+    RuleContainsFieldCondition,
     RuleProcessingCondition,
     RuleProcessingItemAppliedCondition,
     RuleAttributeCondition,
@@ -191,6 +192,22 @@ def test_rule_contains_detection_item_correlation_rule(
     sigma_correlation_rule, dummy_processing_pipeline
 ):
     assert not RuleContainsDetectionItemCondition(field="fieldA", value="value").match(
+        dummy_processing_pipeline, sigma_correlation_rule
+    )
+
+
+def test_rule_contains_field_match(dummy_processing_pipeline, sigma_rule):
+    assert RuleContainsFieldCondition("fieldA").match(dummy_processing_pipeline, sigma_rule)
+
+
+def test_rule_contains_field_nomatch(dummy_processing_pipeline, sigma_rule):
+    assert not RuleContainsFieldCondition("non_existing").match(
+        dummy_processing_pipeline, sigma_rule
+    )
+
+
+def test_rule_contains_field_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
+    assert not RuleContainsFieldCondition("fieldA").match(
         dummy_processing_pipeline, sigma_correlation_rule
     )
 

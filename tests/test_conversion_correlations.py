@@ -2,6 +2,8 @@ import pytest
 from sigma.backends.test import TextQueryTestBackend
 from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaBackendError, SigmaConversionError
+from sigma.processing.pipeline import ProcessingPipeline, QueryPostprocessingItem
+from sigma.processing.postprocessing import EmbedQueryTransformation
 from .test_conversion_base import test_backend
 
 
@@ -385,3 +387,18 @@ def test_correlation_normalization_not_supported(
         NotImplementedError, match="Correlation field normalization is not supported"
     ):
         test_backend.convert(temporal_ordered_correlation_rule)
+
+
+def test_correlation_query_postprocessing(event_count_correlation_rule):
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            postprocessing_items=[
+                QueryPostprocessingItem(EmbedQueryTransformation(prefix="[ ", suffix=" ]"))
+            ]
+        )
+    )
+    assert test_backend.convert(event_count_correlation_rule) == [
+        """[ EventID=4625
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, fieldB
+| where event_count >= 10 ]"""
+    ]

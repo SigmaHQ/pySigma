@@ -200,7 +200,8 @@ class Backend(ABC):
             ]
 
             error_state = "finalizing query for"
-            finalized_queries = [  # 3. Postprocess generated query
+            # 3. Postprocess generated query if not part of a correlation rule
+            finalized_queries = [
                 self.finalize_query(
                     rule,
                     query,
@@ -209,7 +210,7 @@ class Backend(ABC):
                     output_format or self.default_format,
                 )
                 for index, query in enumerate(queries)
-            ]
+            ] if not rule._backreferences else queries
             rule.set_conversion_result(finalized_queries)
             rule.set_conversion_states(states)
             if rule._output:
@@ -552,18 +553,38 @@ class Backend(ABC):
                 f"Correlation method '{method}' is not supported by backend '{self.name}'."
             )
         self.last_processing_pipeline.apply(rule)
-        if rule.type == SigmaCorrelationType.EVENT_COUNT:
-            return self.convert_correlation_event_count_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.VALUE_COUNT:
-            return self.convert_correlation_value_count_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.TEMPORAL:
-            return self.convert_correlation_temporal_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.TEMPORAL_ORDERED:
-            return self.convert_correlation_temporal_ordered_rule(rule, output_format, method)
-        else:
+        correlation_methods = {
+            SigmaCorrelationType.EVENT_COUNT: self.convert_correlation_event_count_rule,
+            SigmaCorrelationType.VALUE_COUNT: self.convert_correlation_value_count_rule,
+            SigmaCorrelationType.TEMPORAL: self.convert_correlation_temporal_rule,
+            SigmaCorrelationType.TEMPORAL_ORDERED: self.convert_correlation_temporal_ordered_rule,
+        }
+        if rule.type not in correlation_methods:
             raise NotImplementedError(
                 f"Conversion of correlation rule type {rule.type} is not implemented."
             )
+
+        # Convert the correlation rule depending on its type
+        queries = correlation_methods[rule.type](rule, output_format, method)
+
+        states = [
+            ConversionState(processing_state=dict(self.last_processing_pipeline.state))
+            for _ in queries
+        ]
+
+        # Apply the finalization step
+        finalized_query = [
+            self.finalize_query(
+                rule,
+                query,
+                index,
+                states[index],
+                output_format or self.default_format,
+            )
+            for index, query in enumerate(queries)
+        ]
+
+        return finalized_query
 
     @abstractmethod
     def convert_correlation_event_count_rule(

@@ -201,16 +201,20 @@ class Backend(ABC):
 
             error_state = "finalizing query for"
             # 3. Postprocess generated query if not part of a correlation rule
-            finalized_queries = [
-                self.finalize_query(
-                    rule,
-                    query,
-                    index,
-                    states[index],
-                    output_format or self.default_format,
-                )
-                for index, query in enumerate(queries)
-            ] if not rule._backreferences else queries
+            finalized_queries = (
+                [
+                    self.finalize_query(
+                        rule,
+                        query,
+                        index,
+                        states[index],
+                        output_format or self.default_format,
+                    )
+                    for index, query in enumerate(queries)
+                ]
+                if not rule._backreferences
+                else queries
+            )
             rule.set_conversion_result(finalized_queries)
             rule.set_conversion_states(states)
             if rule._output:

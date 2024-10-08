@@ -1356,6 +1356,50 @@ def test_replace_string_specials(dummy_pipeline):
     )
 
 
+def test_replace_string_placeholder(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field|expand": "foo%var%bar",
+                },
+                "condition": "test",
+            },
+        }
+    )
+    s_before = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s_before == SigmaString("foo%var%bar").insert_placeholders()
+
+    transformation = ReplaceStringTransformation("bar", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s == SigmaString("foo%var%test").insert_placeholders()
+
+
+def test_replace_string_no_placeholder(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field": "foo%var%bar",
+                },
+                "condition": "test",
+            },
+        }
+    )
+    s_before = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s_before == SigmaString("foo%var%bar")
+
+    transformation = ReplaceStringTransformation("bar", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s == SigmaString("foo%var%test")
+
+
 def test_replace_string_skip_specials(dummy_pipeline):
     sigma_rule = SigmaRule.from_dict(
         {

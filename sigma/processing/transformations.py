@@ -793,7 +793,10 @@ class ReplaceStringTransformation(StringValueTransformation):
                 sigma_string_plain = str(val)
                 replaced = self.re.sub(self.replacement, sigma_string_plain)
                 postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
-                return SigmaString(postprocessed_backslashes)
+                if val.contains_placeholder():  # Preserve placeholders
+                    return SigmaString(postprocessed_backslashes).insert_placeholders()
+                else:
+                    return SigmaString(postprocessed_backslashes)
 
 
 @dataclass

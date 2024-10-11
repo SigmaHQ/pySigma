@@ -10,10 +10,11 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
-    "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",    
+    "Programming Language :: Python :: 3.13", 
     "Topic :: Security"
 ]
 packages = [
@@ -21,7 +22,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 packaging = "^24.1"
 pyparsing = "^3.1"
 pyyaml = "^6.0"

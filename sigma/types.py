@@ -565,6 +565,17 @@ class SigmaString(SigmaType):
                 )
         return s
 
+    def to_regex(self) -> "SigmaRegularExpression":
+        """Convert SigmaString into a regular expression."""
+        return SigmaRegularExpression(
+            self.convert(
+                escape_char="\\",
+                wildcard_multi=".*",
+                wildcard_single=".",
+                add_escaped=".*+?^$[](){}\\|",
+            )
+        )
+
 
 class SigmaCasedString(SigmaString):
     """Case-sensitive string matching."""

@@ -388,6 +388,19 @@ def test_strings_convert_invalid_part():
         s.convert()
 
 
+def test_strings_to_regex():
+    s = SigmaString("Test*Special?(Plain)[\\*\\?]")
+    assert s.s == (
+        "Test",
+        SpecialChars.WILDCARD_MULTI,
+        "Special",
+        SpecialChars.WILDCARD_SINGLE,
+        "(Plain)[*?]",
+    )
+    r = s.to_regex()
+    assert r.regexp == "Test.*Special.\\(Plain\\)\\[\\*\\?\\]"
+
+
 def test_string_index(sigma_string):
     assert sigma_string[3] == SigmaString("s")
 
@@ -474,6 +487,18 @@ def test_string_map_parts(sigma_string):
         "TEST",
         SpecialChars.WILDCARD_MULTI,
         "STR*ING",
+        SpecialChars.WILDCARD_MULTI,
+    )
+
+
+def test_string_map_parts_interpret_special(sigma_string):
+    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str), True).s == (
+        SpecialChars.WILDCARD_MULTI,
+        "TEST",
+        SpecialChars.WILDCARD_MULTI,
+        "STR",
+        SpecialChars.WILDCARD_MULTI,
+        "ING",
         SpecialChars.WILDCARD_MULTI,
     )
 

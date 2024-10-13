@@ -503,6 +503,52 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
     )
 
 
+def test_convert_value_str_wildcard_to_regex(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "wildcard_match_expression", '{field} match "{regex}"')
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA match ".*va.*lue.*"']
+    )
+
+
+def test_convert_value_str_wildcard_to_regex_cased(test_backend, monkeypatch):
+    monkeypatch.setattr(
+        test_backend, "case_sensitive_match_expression", '{field} casematch "{regex}"'
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains|cased: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA casematch ".*va.*lue.*"']
+    )
+
+
 def test_convert_value_str_contains_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "contains_expression", None)
     assert (
@@ -1827,6 +1873,29 @@ def test_convert_unbound_values(test_backend):
             )
         )
         == ['_="value1" or _="value2" or _=123']
+    )
+
+
+def test_convert_unbound_values_regex(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "unbound_value_str_expression", '_=~"{regex}"')
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    - value*1
+                    - value?2
+                condition: sel
+        """
+            )
+        )
+        == ['_=~"value.*1" or _=~"value.2"']
     )
 
 

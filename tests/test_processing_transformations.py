@@ -1416,13 +1416,43 @@ def test_replace_string_skip_specials(dummy_pipeline):
             },
         }
     )
-    transformation = ReplaceStringTransformation("^.*\\\\", "/", True)
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True)
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field1", [], [SigmaString("*/value")]),
+                    SigmaDetectionItem("field1", [], [SigmaString("*/\\?/value")]),
+                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_skip_specials_with_interpret_specials(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "*\\value",
+                        "field2": 123,
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True, True)
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("*/?/value")]),
                     SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
                 ]
             )

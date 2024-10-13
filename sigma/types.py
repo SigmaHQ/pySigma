@@ -501,14 +501,21 @@ class SigmaString(SigmaType):
         self,
         func: Callable[[Union[str, SpecialChars]], Optional[Union[str, SpecialChars]]],
         filter_func: Callable[[Union[str, SpecialChars]], bool] = lambda x: True,
+        interpret_special: bool = False,
     ) -> "SigmaString":
         s = self.__class__()
-        s.s = tuple(
-            filter(
-                lambda x: x is not None,  # filter out None results
-                (func(item) if filter_func(item) else item for item in self.iter_parts()),
-            )
-        )
+        parts = []
+        for item in self.iter_parts():
+            if filter_func(item):
+                result = func(item)
+                if result is not None:
+                    if interpret_special:
+                        parts.extend(SigmaString(result).s)
+                    else:
+                        parts.append(result)
+            else:
+                parts.append(item)
+        s.s = tuple(parts)
         return s
 
     def convert(
@@ -564,6 +571,17 @@ class SigmaString(SigmaType):
                     f"Trying to convert SigmaString containing part of type '{type(c).__name__}'"
                 )
         return s
+
+    def to_regex(self) -> "SigmaRegularExpression":
+        """Convert SigmaString into a regular expression."""
+        return SigmaRegularExpression(
+            self.convert(
+                escape_char="\\",
+                wildcard_multi=".*",
+                wildcard_single=".",
+                add_escaped=".*+?^$[](){}\\|",
+            )
+        )
 
 
 class SigmaCasedString(SigmaString):

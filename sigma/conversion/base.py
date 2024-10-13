@@ -807,7 +807,7 @@ class TextQueryBackend(Backend):
     endswith_expression: ClassVar[Optional[str]] = None
     contains_expression: ClassVar[Optional[str]] = None
     wildcard_match_expression: ClassVar[Optional[str]] = (
-        None  # Special expression if wildcards can't be matched with the eq_token operator
+        None  # Special expression if wildcards can't be matched with the eq_token operator.
     )
 
     # Regular expressions
@@ -831,6 +831,7 @@ class TextQueryBackend(Backend):
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
+    # {regex} contains the value expressed as regular expression.
     case_sensitive_match_expression: ClassVar[Optional[str]] = None
     # Case sensitive string matching operators similar to standard string matching. If not provided,
     # case_sensitive_match_expression is used.
@@ -888,10 +889,10 @@ class TextQueryBackend(Backend):
 
     # Value not bound to a field
     unbound_value_str_expression: ClassVar[Optional[str]] = (
-        None  # Expression for string value not bound to a field as format string with placeholder {value}
+        None  # Expression for string value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_num_expression: ClassVar[Optional[str]] = (
-        None  # Expression for number value not bound to a field as format string with placeholder {value}
+        None  # Expression for number value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_re_expression: ClassVar[Optional[str]] = (
         None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
@@ -1339,6 +1340,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(), state),
                 backend=self,
             )
         except TypeError:  # pragma: no cover
@@ -1388,6 +1390,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(), state),
             )
         except TypeError:  # pragma: no cover
             raise NotImplementedError(
@@ -1563,7 +1566,8 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only strings."""
         return self.unbound_value_str_expression.format(
-            value=self.convert_value_str(cond.value, state)
+            value=self.convert_value_str(cond.value, state),
+            regex=self.convert_value_re(cond.value.to_regex(), state),
         )
 
     def convert_condition_val_num(

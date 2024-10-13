@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 from copy import deepcopy
 import inspect
-from re import template
-import re
 from sigma.conditions import ConditionOR, SigmaCondition
-from _pytest.fixtures import fixture
 import pytest
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,

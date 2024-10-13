@@ -118,7 +118,7 @@ def test_strings_escaping_end():
 
 
 def test_strings_from_str():
-    assert SigmaString.from_str("test*string\\\\") == SigmaString("test\*string\\\\\\\\")
+    assert SigmaString.from_str("test*string\\\\") == SigmaString("test\\*string\\\\\\\\")
 
 
 def test_string_placeholders_single():
@@ -321,7 +321,7 @@ def test_strings_to_string():
 
 
 def test_strings_with_plain_wildcards_to_string():
-    plain_s = "value\*with\?plain*wild?cards"
+    plain_s = r"value\*with\?plain*wild?cards"
     s = SigmaString(plain_s)
     assert s.s == (
         "value*with?plain",

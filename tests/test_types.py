@@ -478,6 +478,18 @@ def test_string_map_parts(sigma_string):
     )
 
 
+def test_string_map_parts_interpret_special(sigma_string):
+    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str), True).s == (
+        SpecialChars.WILDCARD_MULTI,
+        "TEST",
+        SpecialChars.WILDCARD_MULTI,
+        "STR",
+        SpecialChars.WILDCARD_MULTI,
+        "ING",
+        SpecialChars.WILDCARD_MULTI,
+    )
+
+
 def test_cased_string(sigma_string):
     assert SigmaCasedString.from_sigma_string(sigma_string) == SigmaCasedString("*Test*Str\\*ing*")
 

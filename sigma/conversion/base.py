@@ -807,8 +807,11 @@ class TextQueryBackend(Backend):
 
     # String matching operators. if none is appropriate eq_token is used.
     startswith_expression: ClassVar[Optional[str]] = None
+    startswith_expression_allow_special: ClassVar[bool] = False
     endswith_expression: ClassVar[Optional[str]] = None
+    endswith_expression_allow_special: ClassVar[bool] = False
     contains_expression: ClassVar[Optional[str]] = None
+    contains_expression_allow_special: ClassVar[bool] = False
     wildcard_match_expression: ClassVar[Optional[str]] = (
         None  # Special expression if wildcards can't be matched with the eq_token operator.
     )
@@ -839,8 +842,11 @@ class TextQueryBackend(Backend):
     # Case sensitive string matching operators similar to standard string matching. If not provided,
     # case_sensitive_match_expression is used.
     case_sensitive_startswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_startswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_endswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_endswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_contains_expression: ClassVar[Optional[str]] = None
+    case_sensitive_contains_expression_allow_special: ClassVar[bool] = False
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -1309,9 +1315,10 @@ class TextQueryBackend(Backend):
                 self.startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.startswith_expression
@@ -1320,7 +1327,9 @@ class TextQueryBackend(Backend):
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.endswith_expression_allow_special or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.endswith_expression
                 value = cond.value[1:]
@@ -1328,7 +1337,10 @@ class TextQueryBackend(Backend):
                 self.contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.contains_expression
                 value = cond.value[1:-1]
@@ -1360,9 +1372,10 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.case_sensitive_startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.case_sensitive_startswith_expression
@@ -1371,7 +1384,10 @@ class TextQueryBackend(Backend):
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.case_sensitive_endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.case_sensitive_endswith_expression_allow_special
+                    or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.case_sensitive_endswith_expression
                 value = cond.value[1:]
@@ -1379,7 +1395,10 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.case_sensitive_contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.case_sensitive_contains_expression
                 value = cond.value[1:-1]

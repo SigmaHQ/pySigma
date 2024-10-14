@@ -328,6 +328,29 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
     )
 
 
+def test_convert_value_str_startswith_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "startswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "va*lue"
+                    field A|startswith: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA startswith "va*lue" and \'field A\' startswith "va*lue"']
+    )
+
+
 def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "startswith_expression", None)
     assert (
@@ -416,6 +439,29 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
     )
 
 
+def test_convert_value_str_endswith_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "endswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "va*lue"
+                    field A|endswith: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA endswith "va*lue" and \'field A\' endswith "va*lue"']
+    )
+
+
 def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "endswith_expression", None)
     assert (
@@ -500,6 +546,28 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
             )
         )
         == ['mappedA match "*va*lue*"']
+    )
+
+
+def test_convert_value_str_contains_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "contains_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA contains "va*lue"']
     )
 
 

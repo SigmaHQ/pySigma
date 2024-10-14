@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 from copy import deepcopy
 import inspect
-from re import template
-import re
 from sigma.conditions import ConditionOR, SigmaCondition
-from _pytest.fixtures import fixture
 import pytest
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -1543,7 +1540,7 @@ def test_regex_transformation_plain_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\.st.*va.ue")
+    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\\.st.*va.ue")
 
 
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
@@ -1551,7 +1548,7 @@ def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
     transformation = RegexTransformation(method="ignore_case_brackets")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
-        "\\\\[tT][eE]\.[sS][tT].*[vV][aA][lL].[uU][eE]"
+        "\\\\[tT][eE]\\.[sS][tT].*[vV][aA][lL].[uU][eE]"
     )
 
 

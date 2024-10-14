@@ -389,16 +389,22 @@ def test_strings_convert_invalid_part():
 
 
 def test_strings_to_regex():
-    s = SigmaString("Test*Special?(Plain)[\\*\\?]")
+    s = SigmaString("Test*Special?(Plain)/[\\*\\?]")
     assert s.s == (
         "Test",
         SpecialChars.WILDCARD_MULTI,
         "Special",
         SpecialChars.WILDCARD_SINGLE,
-        "(Plain)[*?]",
+        "(Plain)/[*?]",
     )
     r = s.to_regex()
-    assert r.regexp == "Test.*Special.\\(Plain\\)\\[\\*\\?\\]"
+    assert r.regexp == "Test.*Special.\\(Plain\\)/\\[\\*\\?\\]"
+
+
+def test_strings_to_regex_with_additional_escape_chars():
+    s = SigmaString("Test*Special?(Plain)/[\\*\\?]")
+    r = s.to_regex("/")
+    assert r.regexp == "Test.*Special.\\(Plain\\)\\/\\[\\*\\?\\]"
 
 
 def test_string_index(sigma_string):

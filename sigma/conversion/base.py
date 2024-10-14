@@ -778,6 +778,10 @@ class TextQueryBackend(Backend):
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
+    # Characters to escape in addition in regular expression representation of string (regex
+    # template variable) to default escaping characters.
+    add_escaped_re: ClassVar[str] = ""
+
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
@@ -1339,7 +1343,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
-                regex=self.convert_value_re(value.to_regex(), state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
                 backend=self,
             )
         except TypeError:  # pragma: no cover
@@ -1389,7 +1393,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
-                regex=self.convert_value_re(value.to_regex(), state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
             )
         except TypeError:  # pragma: no cover
             raise NotImplementedError(
@@ -1566,7 +1570,7 @@ class TextQueryBackend(Backend):
         """Conversion of value-only strings."""
         return self.unbound_value_str_expression.format(
             value=self.convert_value_str(cond.value, state),
-            regex=self.convert_value_re(cond.value.to_regex(), state),
+            regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
     def convert_condition_val_num(

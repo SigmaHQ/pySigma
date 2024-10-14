@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 from copy import deepcopy
 import inspect
-from re import template
-import re
 from sigma.conditions import ConditionOR, SigmaCondition
-from _pytest.fixtures import fixture
 import pytest
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -1416,13 +1413,43 @@ def test_replace_string_skip_specials(dummy_pipeline):
             },
         }
     )
-    transformation = ReplaceStringTransformation("^.*\\\\", "/", True)
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True)
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field1", [], [SigmaString("*/value")]),
+                    SigmaDetectionItem("field1", [], [SigmaString("*/\\?/value")]),
+                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_skip_specials_with_interpret_specials(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "*\\value",
+                        "field2": 123,
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True, True)
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("*/?/value")]),
                     SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
                 ]
             )
@@ -1513,7 +1540,7 @@ def test_regex_transformation_plain_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\.st.*va.ue")
+    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\\.st.*va.ue")
 
 
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
@@ -1521,7 +1548,7 @@ def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
     transformation = RegexTransformation(method="ignore_case_brackets")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
-        "\\\\[tT][eE]\.[sS][tT].*[vV][aA][lL].[uU][eE]"
+        "\\\\[tT][eE]\\.[sS][tT].*[vV][aA][lL].[uU][eE]"
     )
 
 

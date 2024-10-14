@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 import re
 
-from pyparsing import Set
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,

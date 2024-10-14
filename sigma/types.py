@@ -572,14 +572,14 @@ class SigmaString(SigmaType):
                 )
         return s
 
-    def to_regex(self) -> "SigmaRegularExpression":
+    def to_regex(self, custom_escaped: str = "") -> "SigmaRegularExpression":
         """Convert SigmaString into a regular expression."""
         return SigmaRegularExpression(
             self.convert(
                 escape_char="\\",
                 wildcard_multi=".*",
                 wildcard_single=".",
-                add_escaped=".*+?^$[](){}\\|",
+                add_escaped=".*+?^$[](){}\\|" + custom_escaped,
             )
         )
 

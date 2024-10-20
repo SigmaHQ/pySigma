@@ -342,6 +342,73 @@ correlation:
     ]
 
 
+def test_correlation_generate_chained_rule(test_backend):
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Successful login
+name: successful_login
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID:
+            - 528
+            - 4624
+    condition: selection
+---
+title: Single failed login
+name: failed_login
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID:
+            - 529
+            - 4625
+    condition: selection
+---
+title: Multiple failed logons
+name: multiple_failed_login
+correlation:
+    type: event_count
+    rules:
+        - failed_login
+    generate: true
+    group-by:
+        - User
+    timespan: 10m
+    condition:
+        gte: 10
+---
+title: Multiple Failed Logins Followed by Successful Login
+status: test
+correlation:
+    type: temporal_ordered
+    rules:
+        - multiple_failed_login
+        - successful_login
+    generate: true
+    group-by:
+        - User
+    timespan: 10m
+            """
+    )
+
+    assert test_backend.convert(rule_collection) == [
+        """EventID in (528, 4624)""",
+        """EventID in (529, 4625)""",
+        """EventID in (529, 4625)
+| aggregate window=10min count() as event_count by User
+| where event_count >= 10""",
+        """subsearch { EventID in (529, 4625)\n| aggregate window=10min count() as event_count by User\n| where event_count >= 10 | set event_type="multiple_failed_login" }
+subsearch { EventID in (528, 4624) | set event_type="successful_login" }
+| temporal ordered=true window=10min eventtypes=multiple_failed_login,successful_login by User
+| where eventtype_count >= 2 and eventtype_order=multiple_failed_login,successful_login""",
+    ]
+
+
 def test_correlation_not_supported(monkeypatch, test_backend, event_count_correlation_rule):
     monkeypatch.setattr(test_backend, "correlation_methods", None)
     with pytest.raises(NotImplementedError, match="Backend does not support correlation"):

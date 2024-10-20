@@ -1715,7 +1715,11 @@ class TextQueryBackend(Backend):
                             ),
                         )
                         for rule_reference in rule.rules
-                        for query in rule_reference.rule.get_conversion_result()
+                        for query in (
+                            rule_reference.rule.get_conversion_result()
+                            if not isinstance(rule_reference.rule, SigmaCorrelationRule)
+                            else self.convert_correlation_rule(rule_reference.rule)
+                        )
                     )
                 ),
                 **kwargs,

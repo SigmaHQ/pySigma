@@ -765,7 +765,9 @@ class ReplaceStringTransformation(StringValueTransformation):
     capture groups. Normally, the replacement operates on the plain string representation of the
     SigmaString. This allows also to include special characters and placeholders in the replacement.
     By enabling the skip_special parameter, the replacement is only applied to the plain string
-    parts of a SigmaString and special characters and placeholders are left untouched.
+    parts of a SigmaString and special characters and placeholders are left untouched. The
+    interpret_special option determines for skip_special if special characters and placeholders are
+    interpreted in the replacement result or not.
 
     The replacement is implemented with re.sub() and can use all features available there.
     """
@@ -773,6 +775,7 @@ class ReplaceStringTransformation(StringValueTransformation):
     regex: str
     replacement: str
     skip_special: bool = False
+    interpret_special: bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -787,13 +790,18 @@ class ReplaceStringTransformation(StringValueTransformation):
         if isinstance(val, SigmaString):
             if self.skip_special:
                 return val.map_parts(
-                    lambda s: self.re.sub(self.replacement, s), lambda p: isinstance(p, str)
+                    lambda s: self.re.sub(self.replacement, s),
+                    lambda p: isinstance(p, str),
+                    self.interpret_special,
                 )
             else:
                 sigma_string_plain = str(val)
                 replaced = self.re.sub(self.replacement, sigma_string_plain)
                 postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
-                return SigmaString(postprocessed_backslashes)
+                if val.contains_placeholder():  # Preserve placeholders
+                    return SigmaString(postprocessed_backslashes).insert_placeholders()
+                else:
+                    return SigmaString(postprocessed_backslashes)
 
 
 @dataclass

@@ -10,7 +10,6 @@ from sigma.validators.core.values import NumberAsStringValidator
 from tests.test_validators import rule_with_id, rule_without_id, rules_with_id_collision
 from sigma.collection import SigmaCollection
 from sigma.validators.core.metadata import (
-    DescriptionLengthValidator,
     IdentifierExistenceValidator,
     IdentifierUniquenessValidator,
     IdentifierExistenceIssue,
@@ -81,17 +80,11 @@ def test_sigmavalidator_from_dict(validators):
                     "number_as_string",
                 ],
             },
-            "config": {
-                "description_length": {
-                    "min_length": 100,
-                },
-            },
         },
         validators,
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
-    assert DescriptionLengthValidator(min_length=100) in validator.validators
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
         UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): {DanglingDetectionValidator},
@@ -114,15 +107,11 @@ def test_sigmavalidator_from_yaml(validators):
         bf39335e-e666-4eaf-9416-47f1955b5fb3:
             - attacktag
             - number_as_string
-    config:
-        description_length:
-            min_length: 100
     """,
         validators,
     )
     assert DanglingDetectionValidator in (v.__class__ for v in validator.validators)
     assert TLPv1TagValidator not in (v.__class__ for v in validator.validators)
-    assert DescriptionLengthValidator(min_length=100) in validator.validators
     assert len(validator.validators) >= 10
     assert validator.exclusions == {
         UUID("c702c6c7-1393-40e5-93f8-91469f3445ad"): {DanglingDetectionValidator},

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 import re
 
-from pyparsing import Set
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
@@ -779,6 +778,10 @@ class TextQueryBackend(Backend):
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
+    # Characters to escape in addition in regular expression representation of string (regex
+    # template variable) to default escaping characters.
+    add_escaped_re: ClassVar[str] = ""
+
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
@@ -804,10 +807,13 @@ class TextQueryBackend(Backend):
 
     # String matching operators. if none is appropriate eq_token is used.
     startswith_expression: ClassVar[Optional[str]] = None
+    startswith_expression_allow_special: ClassVar[bool] = False
     endswith_expression: ClassVar[Optional[str]] = None
+    endswith_expression_allow_special: ClassVar[bool] = False
     contains_expression: ClassVar[Optional[str]] = None
+    contains_expression_allow_special: ClassVar[bool] = False
     wildcard_match_expression: ClassVar[Optional[str]] = (
-        None  # Special expression if wildcards can't be matched with the eq_token operator
+        None  # Special expression if wildcards can't be matched with the eq_token operator.
     )
 
     # Regular expressions
@@ -831,12 +837,16 @@ class TextQueryBackend(Backend):
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
+    # {regex} contains the value expressed as regular expression.
     case_sensitive_match_expression: ClassVar[Optional[str]] = None
     # Case sensitive string matching operators similar to standard string matching. If not provided,
     # case_sensitive_match_expression is used.
     case_sensitive_startswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_startswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_endswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_endswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_contains_expression: ClassVar[Optional[str]] = None
+    case_sensitive_contains_expression_allow_special: ClassVar[bool] = False
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -888,10 +898,10 @@ class TextQueryBackend(Backend):
 
     # Value not bound to a field
     unbound_value_str_expression: ClassVar[Optional[str]] = (
-        None  # Expression for string value not bound to a field as format string with placeholder {value}
+        None  # Expression for string value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_num_expression: ClassVar[Optional[str]] = (
-        None  # Expression for number value not bound to a field as format string with placeholder {value}
+        None  # Expression for number value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_re_expression: ClassVar[Optional[str]] = (
         None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
@@ -1305,9 +1315,10 @@ class TextQueryBackend(Backend):
                 self.startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.startswith_expression
@@ -1316,7 +1327,9 @@ class TextQueryBackend(Backend):
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.endswith_expression_allow_special or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.endswith_expression
                 value = cond.value[1:]
@@ -1324,7 +1337,10 @@ class TextQueryBackend(Backend):
                 self.contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.contains_expression
                 value = cond.value[1:-1]
@@ -1339,6 +1355,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
                 backend=self,
             )
         except TypeError:  # pragma: no cover
@@ -1355,9 +1372,10 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.case_sensitive_startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.case_sensitive_startswith_expression
@@ -1366,7 +1384,10 @@ class TextQueryBackend(Backend):
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.case_sensitive_endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.case_sensitive_endswith_expression_allow_special
+                    or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.case_sensitive_endswith_expression
                 value = cond.value[1:]
@@ -1374,7 +1395,10 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.case_sensitive_contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.case_sensitive_contains_expression
                 value = cond.value[1:-1]
@@ -1388,6 +1412,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
             )
         except TypeError:  # pragma: no cover
             raise NotImplementedError(
@@ -1563,7 +1588,8 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only strings."""
         return self.unbound_value_str_expression.format(
-            value=self.convert_value_str(cond.value, state)
+            value=self.convert_value_str(cond.value, state),
+            regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
     def convert_condition_val_num(

@@ -4,6 +4,7 @@ from functools import partial
 from sigma.conditions import ConditionOR, SigmaCondition
 from typing import (
     Any,
+    ClassVar,
     Iterable,
     List,
     Dict,
@@ -301,6 +302,7 @@ class ValueTransformation(DetectionItemTransformation):
         """
 
 
+@dataclass
 class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
     """
     Transforms the 'Hashes' field in Sigma rules by creating separate detection items for each hash type.
@@ -325,21 +327,10 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             FileMD5: '987B65CD9B9F4E9A1AFD8F8B48CF64A7'
     """
 
-    def __init__(
-        self, valid_hash_algos: List[str], field_prefix: str = None, drop_algo_prefix: bool = False
-    ):
-        """
-        Initializes the HashesDetectionItemTransformation.
-
-        Args:
-            valid_hash_algos (List[str]): List of valid hash algorithms supported by the pipeline/backend.
-            field_prefix (str, optional): Prefix to use for the new detection items. Defaults to None.
-            drop_algo_prefix (bool, optional): Whether to drop the algorithm prefix in the new field name. Defaults to False.
-        """
-        self.valid_hash_algos = valid_hash_algos
-        self.field_prefix = field_prefix or ""
-        self.drop_algo_prefix = drop_algo_prefix
-        self.hash_lengths = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
+    valid_hash_algos: List[str]
+    field_prefix: str = ""
+    drop_algo_prefix: bool = False
+    hash_lengths: ClassVar[Dict[int, str]] = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem

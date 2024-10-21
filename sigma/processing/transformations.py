@@ -299,7 +299,8 @@ class ValueTransformation(DetectionItemTransformation):
 
         The type annotation of the val argument is used to skip incompatible values.
         """
-            
+
+
 class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
     """
     Transforms the 'Hashes' field in Sigma rules by creating separate detection items for each hash type.
@@ -324,7 +325,9 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             FileMD5: '987B65CD9B9F4E9A1AFD8F8B48CF64A7'
     """
 
-    def __init__(self, valid_hash_algos: List[str], field_prefix: str = None, drop_algo_prefix: bool = False):
+    def __init__(
+        self, valid_hash_algos: List[str], field_prefix: str = None, drop_algo_prefix: bool = False
+    ):
         """
         Initializes the HashesDetectionItemTransformation.
 
@@ -336,12 +339,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         self.valid_hash_algos = valid_hash_algos
         self.field_prefix = field_prefix or ""
         self.drop_algo_prefix = drop_algo_prefix
-        self.hash_lengths = {
-            32: "MD5",
-            40: "SHA1",
-            64: "SHA256",
-            128: "SHA512"
-        }
+        self.hash_lengths = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
@@ -360,15 +358,17 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             Exception: If no valid hash algorithms were found in the detection item.
         """
         algo_dict = self._parse_hash_values(detection_item.value)
-        
+
         if not algo_dict:
             raise Exception(
                 f"No valid hash algo found in Hashes field. Please use one of the following: {', '.join(self.valid_hash_algos)}"
             )
-        
+
         return self._create_new_detection_items(algo_dict)
 
-    def _parse_hash_values(self, values: Union[SigmaString, List[SigmaString]]) -> Dict[str, List[str]]:
+    def _parse_hash_values(
+        self, values: Union[SigmaString, List[SigmaString]]
+    ) -> Dict[str, List[str]]:
         """
         Parses the hash values from the detection item.
 
@@ -381,13 +381,13 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         algo_dict = defaultdict(list)
         if not isinstance(values, list):
             values = [values]
-        
+
         for value in values:
             hash_algo, hash_value = self._extract_hash_algo_and_value(value.to_plain())
             if hash_algo:
                 field_name = self._get_field_name(hash_algo)
                 algo_dict[field_name].append(hash_value)
-        
+
         return algo_dict
 
     def _extract_hash_algo_and_value(self, value: str) -> Tuple[str, str]:
@@ -407,7 +407,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         else:
             hash_value = parts[0]
             hash_algo = self._determine_hash_algo_by_length(hash_value)
-        
+
         return (hash_algo, hash_value) if hash_algo in self.valid_hash_algos else ("", hash_value)
 
     def _determine_hash_algo_by_length(self, hash_value: str) -> str:
@@ -449,11 +449,12 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
                 SigmaDetectionItem(
                     field=k if k != "keyword" else None,
                     modifiers=[],
-                    value=[SigmaString(x) for x in v]
+                    value=[SigmaString(x) for x in v],
                 )
-                for k, v in algo_dict.items() if k
+                for k, v in algo_dict.items()
+                if k
             ],
-            item_linking=ConditionOR
+            item_linking=ConditionOR,
         )
 
 

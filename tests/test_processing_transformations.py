@@ -1795,70 +1795,100 @@ def hashes_transformation():
     return HashesFieldsDetectionItemTransformation(
         valid_hash_algos=["MD5", "SHA1", "SHA256", "SHA512"],
         field_prefix="File",
-        drop_algo_prefix=False
+        drop_algo_prefix=False,
     )
 
+
 def test_hashes_transformation_single_hash(hashes_transformation):
-    detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")])
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
     result = hashes_transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 1
     assert result.detection_items[0].field == "FileSHA1"
-    assert result.detection_items[0].value == [SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")]
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+
 
 def test_hashes_transformation_multiple_hashes(hashes_transformation):
-    detection_item = SigmaDetectionItem("Hashes", [], [
-        SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
-        SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7")
-    ])
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
+            SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"),
+        ],
+    )
     result = hashes_transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 2
     assert result.detection_items[0].field == "FileSHA1"
-    assert result.detection_items[0].value == [SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")]
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
     assert result.detection_items[1].field == "FileMD5"
     assert result.detection_items[1].value == [SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7")]
     assert result.item_linking == ConditionOR
+
 
 def test_hashes_transformation_drop_algo_prefix():
     transformation = HashesFieldsDetectionItemTransformation(
         valid_hash_algos=["MD5", "SHA1", "SHA256", "SHA512"],
         field_prefix="File",
-        drop_algo_prefix=True
+        drop_algo_prefix=True,
     )
-    detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")])
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
     result = transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 1
     assert result.detection_items[0].field == "File"
-    assert result.detection_items[0].value == [SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")]
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+
 
 def test_hashes_transformation_invalid_hash(hashes_transformation):
     detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
     with pytest.raises(Exception, match="No valid hash algo found"):
         hashes_transformation.apply_detection_item(detection_item)
 
+
 def test_hashes_transformation_mixed_valid_invalid(hashes_transformation):
-    detection_item = SigmaDetectionItem("Hashes", [], [
-        SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
-        SigmaString("INVALID=123456"),
-        SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7")
-    ])
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
+            SigmaString("INVALID=123456"),
+            SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"),
+        ],
+    )
     result = hashes_transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 2
     assert result.detection_items[0].field == "FileSHA1"
-    assert result.detection_items[0].value == [SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")]
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
     assert result.detection_items[1].field == "FileMD5"
     assert result.detection_items[1].value == [SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7")]
 
+
 def test_hashes_transformation_auto_detect_hash_type(hashes_transformation):
-    detection_item = SigmaDetectionItem("Hashes", [], [
-        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025"),  # SHA1
-        SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7"),  # MD5
-        SigmaString("A" * 64),  # SHA256
-        SigmaString("B" * 128),  # SHA512
-    ])
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("5F1CBC3D99558307BC1250D084FA968521482025"),  # SHA1
+            SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7"),  # MD5
+            SigmaString("A" * 64),  # SHA256
+            SigmaString("B" * 128),  # SHA512
+        ],
+    )
     result = hashes_transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 4
@@ -1867,10 +1897,15 @@ def test_hashes_transformation_auto_detect_hash_type(hashes_transformation):
     assert result.detection_items[2].field == "FileSHA256"
     assert result.detection_items[3].field == "FileSHA512"
 
+
 def test_hashes_transformation_pipe_separator(hashes_transformation):
-    detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("SHA1|5F1CBC3D99558307BC1250D084FA968521482025")])
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1|5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
     result = hashes_transformation.apply_detection_item(detection_item)
     assert isinstance(result, SigmaDetection)
     assert len(result.detection_items) == 1
     assert result.detection_items[0].field == "FileSHA1"
-    assert result.detection_items[0].value == [SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")]
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]

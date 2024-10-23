@@ -164,8 +164,9 @@ class TextQueryTestBackend(TextQueryBackend):
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
         testparam: Optional[str] = None,
+        **kwargs,
     ):
-        super().__init__(processing_pipeline, collect_errors)
+        super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.testparam = testparam
 
     def finalize_query_test(self, rule, query, index, state):

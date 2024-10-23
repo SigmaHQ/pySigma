@@ -6,7 +6,7 @@ from sigma.conversion.state import ConversionState
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.finalization import ConcatenateQueriesFinalizer
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
-from sigma.processing.postprocessing import EmbedQueryTransformation
+from sigma.processing.postprocessing import EmbedQueryTransformation, QueryTemplateTransformation
 from sigma.processing.transformations import (
     AddFieldnamePrefixTransformation,
     AddFieldnameSuffixTransformation,
@@ -78,6 +78,38 @@ def test_backend_pipeline_with_postprocessing():
         )
         == ['[ mappedA="valueA" and fieldB="valueB" and fieldC="valueC" ]']
     )
+
+
+def test_backend_options_passing_to_pipeline():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            postprocessing_items=[
+                QueryPostprocessingItem(
+                    QueryTemplateTransformation(
+                        "query='{{query}}', state={{pipeline.vars.backend_test}}"
+                    )
+                )
+            ]
+        ),
+        test="testvalue",
+    )
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field: value
+                condition: sel
+            """
+        )
+    )
+    assert test_backend.last_processing_pipeline.vars["backend_test"] == "testvalue"
+    assert result == ["query='field=\"value\"', state=testvalue"]
 
 
 def test_backend_and_custom_pipeline(test_backend):

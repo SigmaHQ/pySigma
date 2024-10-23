@@ -143,10 +143,12 @@ class Backend(ABC):
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
+        **backend_options: Dict,
     ):
         self.processing_pipeline = processing_pipeline
         self.errors = list()
         self.collect_errors = collect_errors
+        self.backend_options = backend_options
 
     def convert(
         self,
@@ -182,6 +184,9 @@ class Backend(ABC):
                 self.backend_processing_pipeline
                 + self.processing_pipeline
                 + self.output_format_processing_pipeline[output_format or self.default_format]
+            )
+            self.last_processing_pipeline.vars.update(
+                {"backend_" + key: value for key, value in self.backend_options.items()}
             )
 
             error_state = "applying processing pipeline on"

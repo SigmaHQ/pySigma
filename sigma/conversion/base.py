@@ -581,7 +581,7 @@ class Backend(ABC):
         ]
 
         # Apply the finalization step
-        finalized_query = [
+        finalized_queries = [
             self.finalize_query(
                 rule,
                 query,
@@ -591,8 +591,10 @@ class Backend(ABC):
             )
             for index, query in enumerate(queries)
         ]
+        rule.set_conversion_result(finalized_queries)
+        rule.set_conversion_states(states)
 
-        return finalized_query
+        return finalized_queries
 
     @abstractmethod
     def convert_correlation_event_count_rule(
@@ -1720,11 +1722,7 @@ class TextQueryBackend(Backend):
                             ),
                         )
                         for rule_reference in rule.rules
-                        for query in (
-                            rule_reference.rule.get_conversion_result()
-                            if not isinstance(rule_reference.rule, SigmaCorrelationRule)
-                            else self.convert_correlation_rule(rule_reference.rule)
-                        )
+                        for query in rule_reference.rule.get_conversion_result()
                     )
                 ),
                 **kwargs,

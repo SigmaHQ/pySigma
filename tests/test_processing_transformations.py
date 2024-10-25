@@ -17,7 +17,6 @@ from sigma.processing.transformations import (
     SetCustomAttributeTransformation,
     SetFieldTransformation,
     SetValueTransformation,
-    transformations,
 )
 import sigma.processing.transformations as transformations_module
 from sigma.processing.transformations import (
@@ -48,6 +47,7 @@ from sigma.processing.conditions import (
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
 )
+from sigma.processing import transformations
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import (
     Placeholder,

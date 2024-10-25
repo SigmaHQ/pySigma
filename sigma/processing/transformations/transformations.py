@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from collections import defaultdict
+import dataclasses
 from functools import partial
 from sigma.conditions import ConditionOR, SigmaCondition
 from typing import (
@@ -22,6 +23,14 @@ import string
 import re
 import sigma
 from sigma.correlations import SigmaCorrelationRule
+from sigma.processing.transformations.base import (
+    ConditionTransformation,
+    DetectionItemTransformation,
+    FieldMappingTransformationBase,
+    StringValueTransformation,
+    Transformation,
+    ValueTransformation,
+)
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
     SigmaRegularExpressionError,

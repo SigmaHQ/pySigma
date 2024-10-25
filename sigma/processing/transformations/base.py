@@ -1,15 +1,12 @@
 from abc import ABC, abstractmethod
-from collections import defaultdict
 from functools import partial
-from sigma.conditions import ConditionOR, SigmaCondition
+from sigma.conditions import SigmaCondition
 from typing import (
     Any,
-    ClassVar,
     Iterable,
     List,
     Dict,
     Optional,
-    Tuple,
     Union,
 )
 from dataclasses import dataclass, field

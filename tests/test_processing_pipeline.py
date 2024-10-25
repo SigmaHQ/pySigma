@@ -17,12 +17,12 @@ from sigma.processing.conditions import (
 from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     SetStateTransformation,
-    transformations,
     Transformation,
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
     FieldFunctionTransformation,
 )
+from sigma.processing import transformations
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 from sigma.types import SigmaString

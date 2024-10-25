@@ -859,13 +859,17 @@ class SigmaRuleBase:
             """
             nonlocal errors, rule, source
             result = rule.get(name)
-            if result is not None and not isinstance(result, date) and not isinstance(result, datetime):
+            if (
+                result is not None
+                and not isinstance(result, date)
+                and not isinstance(result, datetime)
+            ):
                 error = True
                 try:
-                    result = str(result) # forcifully convert whatever the type is into string
+                    result = str(result)  # forcifully convert whatever the type is into string
                     accepted_regexps = (
-                        "([1-3][0-9][0-9][0-9])-([01][0-9])-([0-3][0-9])",   # 1000-01-01 .. 3999-12-31
-                        "([1-3][0-9][0-9][0-9])/([01]?[0-9])/([0-3]?[0-9])"  # 1000/1/1, 1000/01/01 .. 3999/12/31
+                        "([1-3][0-9][0-9][0-9])-([01][0-9])-([0-3][0-9])",  # 1000-01-01 .. 3999-12-31
+                        "([1-3][0-9][0-9][0-9])/([01]?[0-9])/([0-3]?[0-9])",  # 1000/1/1, 1000/01/01 .. 3999/12/31
                     )
                     for date_regexp in accepted_regexps:
                         matcher = re.fullmatch(date_regexp, result)
@@ -878,8 +882,7 @@ class SigmaRuleBase:
                 if error:
                     errors.append(
                         exception_class(
-                            f"Rule {name} '{ result }' is invalid, use yyyy-mm-dd",
-                            source=source
+                            f"Rule {name} '{ result }' is invalid, use yyyy-mm-dd", source=source
                         )
                     )
             return result

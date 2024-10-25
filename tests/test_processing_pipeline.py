@@ -1,9 +1,12 @@
 import pytest
 from dataclasses import dataclass
-import re
-from textwrap import dedent
 from sigma.processing.finalization import ConcatenateQueriesFinalizer, JSONFinalizer
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
+from sigma.processing.pipeline import (
+    ProcessingPipeline,
+    ProcessingItem,
+    QueryPostprocessingItem,
+)
+from sigma.processing.transformations import transformations
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
     IncludeFieldCondition,
@@ -22,7 +25,6 @@ from sigma.processing.transformations import (
     AddFieldnamePrefixTransformation,
     FieldFunctionTransformation,
 )
-from sigma.processing import transformations
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
 from sigma.types import SigmaString

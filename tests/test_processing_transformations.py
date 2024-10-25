@@ -1,54 +1,61 @@
-from dataclasses import dataclass
-from copy import deepcopy
 import inspect
-from sigma.conditions import ConditionOR, SigmaCondition
+from copy import deepcopy
+from dataclasses import dataclass
+
 import pytest
+
+import sigma.processing.transformations as transformations_module
+from sigma.conditions import ConditionOR, SigmaCondition
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
     SigmaCorrelationFieldAliases,
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing.transformations import (
-    AddFieldTransformation,
-    ConvertTypeTransformation,
-    NestedProcessingTransformation,
-    RemoveFieldTransformation,
-    SetCustomAttributeTransformation,
-    SetFieldTransformation,
-    SetValueTransformation,
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaRegularExpressionError,
+    SigmaTransformationError,
+    SigmaValueError,
 )
-import sigma.processing.transformations as transformations_module
-from sigma.processing.transformations import (
-    AddConditionTransformation,
-    RegexTransformation,
-    ChangeLogsourceTransformation,
-    ConditionTransformation,
-    DetectionItemFailureTransformation,
-    DropDetectionItemTransformation,
-    MapStringTransformation,
-    RuleFailureTransformation,
-    FieldMappingTransformation,
-    FieldPrefixMappingTransformation,
-    AddFieldnameSuffixTransformation,
-    AddFieldnamePrefixTransformation,
-    SetStateTransformation,
-    Transformation,
-    WildcardPlaceholderTransformation,
-    ValueListPlaceholderTransformation,
-    QueryExpressionPlaceholderTransformation,
-    ReplaceStringTransformation,
-    HashesFieldsDetectionItemTransformation,
-)
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.modifiers import SigmaExpandModifier
 from sigma.processing.conditions import (
     FieldNameProcessingItemAppliedCondition,
     IncludeFieldCondition,
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
 )
-from sigma.processing import transformations
-from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
+from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.transformations import (
+    AddConditionTransformation,
+    AddFieldnamePrefixTransformation,
+    AddFieldnameSuffixTransformation,
+    AddFieldTransformation,
+    ChangeLogsourceTransformation,
+    ConvertTypeTransformation,
+    DetectionItemFailureTransformation,
+    DropDetectionItemTransformation,
+    FieldMappingTransformation,
+    FieldPrefixMappingTransformation,
+    HashesFieldsDetectionItemTransformation,
+    MapStringTransformation,
+    NestedProcessingTransformation,
+    QueryExpressionPlaceholderTransformation,
+    RegexTransformation,
+    RemoveFieldTransformation,
+    ReplaceStringTransformation,
+    RuleFailureTransformation,
+    SetCustomAttributeTransformation,
+    SetFieldTransformation,
+    SetStateTransformation,
+    SetValueTransformation,
+    Transformation,
+    ValueListPlaceholderTransformation,
+    WildcardPlaceholderTransformation,
+    transformations,
+)
+from sigma.processing.transformations.base import ConditionTransformation
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
 from sigma.types import (
     Placeholder,
     SigmaBool,
@@ -59,13 +66,6 @@ from sigma.types import (
     SigmaRegularExpressionFlag,
     SigmaString,
     SpecialChars,
-)
-from sigma.modifiers import SigmaExpandModifier
-from sigma.exceptions import (
-    SigmaConfigurationError,
-    SigmaRegularExpressionError,
-    SigmaTransformationError,
-    SigmaValueError,
 )
 from tests.test_processing_pipeline import (
     RuleConditionFalse,

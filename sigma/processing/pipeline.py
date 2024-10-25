@@ -19,9 +19,9 @@ from typing import (
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.tracking import FieldMappingTracking
-from sigma.processing import transformations
+from sigma.processing.transformations import transformations
 from sigma.rule import SigmaDetectionItem, SigmaRule
-from sigma.processing.transformations import Transformation
+from sigma.processing.transformations.base import Transformation
 from sigma.processing.postprocessing import query_postprocessing_transformations
 from sigma.processing.conditions import (
     rule_conditions,

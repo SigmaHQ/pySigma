@@ -1,5 +1,40 @@
 from typing import Dict
 from sigma.processing.transformations.base import Transformation
+from sigma.processing.transformations.condition import AddConditionTransformation
+from sigma.processing.transformations.detection_item import DropDetectionItemTransformation
+from sigma.processing.transformations.failure import (
+    DetectionItemFailureTransformation,
+    RuleFailureTransformation,
+)
+from sigma.processing.transformations.fields import (
+    AddFieldTransformation,
+    AddFieldnamePrefixTransformation,
+    AddFieldnameSuffixTransformation,
+    FieldFunctionTransformation,
+    FieldMappingTransformation,
+    FieldPrefixMappingTransformation,
+    RemoveFieldTransformation,
+    SetFieldTransformation,
+)
+from sigma.processing.transformations.meta import NestedProcessingTransformation
+from sigma.processing.transformations.placeholder import (
+    QueryExpressionPlaceholderTransformation,
+    ValueListPlaceholderTransformation,
+    WildcardPlaceholderTransformation,
+)
+from sigma.processing.transformations.rule import (
+    ChangeLogsourceTransformation,
+    SetCustomAttributeTransformation,
+)
+from sigma.processing.transformations.state import SetStateTransformation
+from sigma.processing.transformations.values import (
+    ConvertTypeTransformation,
+    HashesFieldsDetectionItemTransformation,
+    MapStringTransformation,
+    RegexTransformation,
+    ReplaceStringTransformation,
+    SetValueTransformation,
+)
 
 transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,

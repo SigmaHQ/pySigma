@@ -1,5 +1,4 @@
 from typing import (
-    Any,
     List,
     Dict,
     Union,
@@ -16,18 +15,6 @@ from sigma.exceptions import (
     SigmaTransformationError,
     SigmaConfigurationError,
 )
-
-
-@dataclass
-class SetStateTransformation(Transformation):
-    """Set pipeline state key to value."""
-
-    key: str
-    val: Any
-
-    def apply(self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule) -> None:
-        super().apply(pipeline, rule)
-        pipeline.state[self.key] = self.val
 
 
 @dataclass

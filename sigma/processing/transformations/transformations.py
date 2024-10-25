@@ -13,10 +13,7 @@ from typing import (
     Set,
     Tuple,
     Union,
-    Pattern,
     Iterator,
-    get_args,
-    get_origin,
     Callable,
 )
 from dataclasses import dataclass, field
@@ -26,7 +23,7 @@ import string
 import re
 import sigma
 from sigma.correlations import SigmaCorrelationRule
-from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaRuleBase
+from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,

@@ -10,6 +10,7 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
 )
 from sigma.types import (
+    CompareOperators,
     SigmaBool,
     SigmaCasedString,
     SigmaCompareExpression,
@@ -788,13 +789,9 @@ def test_cidr_invalid():
 
 def test_compare_to_plain():
     with pytest.raises(SigmaValueError, match="can't be converted into a plain representation"):
-        SigmaCompareExpression(
-            SigmaNumber(123), SigmaCompareExpression.CompareOperators.LTE
-        ).to_plain()
+        SigmaCompareExpression(SigmaNumber(123), CompareOperators.LTE).to_plain()
 
 
 def test_compare_string():
     with pytest.raises(SigmaTypeError, match="expects number"):
-        SigmaCompareExpression(
-            SigmaString("123"), SigmaCompareExpression.CompareOperators.LTE
-        ).to_plain()
+        SigmaCompareExpression(SigmaString("123"), CompareOperators.LTE).to_plain()

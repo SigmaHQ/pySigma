@@ -1,84 +1,37 @@
-from abc import ABC, abstractmethod
-from collections import defaultdict
-import dataclasses
-from functools import partial
-from sigma.conditions import ConditionOR, SigmaCondition
+from abc import abstractmethod
+from sigma.conditions import SigmaCondition
 from typing import (
     Any,
-    ClassVar,
     Iterable,
     List,
     Dict,
-    Literal,
     Optional,
-    Set,
-    Tuple,
     Union,
     Iterator,
-    Callable,
 )
 from dataclasses import dataclass, field
 import random
 import string
-import re
 import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
     ConditionTransformation,
     DetectionItemTransformation,
-    FieldMappingTransformationBase,
-    StringValueTransformation,
     Transformation,
     ValueTransformation,
 )
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
-    SigmaRegularExpressionError,
     SigmaTransformationError,
     SigmaValueError,
     SigmaConfigurationError,
 )
 from sigma.types import (
     Placeholder,
-    SigmaBool,
-    SigmaNull,
-    SigmaNumber,
-    SigmaRegularExpression,
-    SigmaRegularExpressionFlag,
     SigmaString,
-    SigmaType,
     SpecialChars,
     SigmaQueryExpression,
 )
-
-
-@dataclass
-class DropDetectionItemTransformation(DetectionItemTransformation):
-    """Deletes detection items. This should only used in combination with a detection item
-    condition."""
-
-    class DeleteSigmaDetectionItem(SigmaDetectionItem):
-        """Class is used to mark detection item as to be deleted. It's just for having all the
-        detection item functionality available."""
-
-        @classmethod
-        def create(cls):
-            return cls(None, [], [])
-
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> Optional[SigmaDetectionItem]:
-        """This function only marks detection items for deletion."""
-        return self.DeleteSigmaDetectionItem.create()
-
-    def apply_detection(self, detection: SigmaDetection):
-        super().apply_detection(detection)
-        detection.detection_items = list(
-            filter(
-                lambda d: not isinstance(d, self.DeleteSigmaDetectionItem),
-                detection.detection_items,
-            )
-        )
 
 
 @dataclass

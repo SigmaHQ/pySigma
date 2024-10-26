@@ -4,6 +4,13 @@ from uuid import UUID
 
 import sigma
 from sigma.correlations import SigmaCorrelationRule
+from sigma.processing.conditions.base import (
+    DetectionItemProcessingCondition,
+    FieldNameProcessingCondition,
+    RuleDetectionItemCondition,
+    RuleProcessingCondition,
+    ValueProcessingCondition,
+)
 from sigma.types import SigmaNull, SigmaString, SigmaType, sigma_type
 from typing import ClassVar, Dict, List, Pattern, Literal, Optional, Union
 import re

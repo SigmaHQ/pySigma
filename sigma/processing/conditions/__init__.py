@@ -1,8 +1,34 @@
 from sigma.processing.conditions.base import (
+    ProcessingCondition,
     DetectionItemProcessingCondition,
+    FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
 from typing import Dict
+
+from sigma.processing.conditions.fields import ExcludeFieldCondition, IncludeFieldCondition
+from sigma.processing.conditions.rule import (
+    IsSigmaCorrelationRuleCondition,
+    IsSigmaRuleCondition,
+    LogsourceCondition,
+    RuleAttributeCondition,
+    RuleContainsDetectionItemCondition,
+    RuleContainsFieldCondition,
+    RuleTagCondition,
+)
+from sigma.processing.conditions.state import (
+    DetectionItemProcessingItemAppliedCondition,
+    DetectionItemProcessingStateCondition,
+    FieldNameProcessingItemAppliedCondition,
+    FieldNameProcessingStateCondition,
+    RuleProcessingItemAppliedCondition,
+    RuleProcessingStateCondition,
+)
+from sigma.processing.conditions.values import (
+    ContainsWildcardCondition,
+    IsNullCondition,
+    MatchStringCondition,
+)
 
 
 rule_conditions: Dict[str, RuleProcessingCondition] = {

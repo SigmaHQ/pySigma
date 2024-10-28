@@ -1,77 +1,17 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import sigma
 from sigma.processing.conditions.base import (
     DetectionItemProcessingCondition,
-    FieldNameProcessingCondition,
     RuleProcessingCondition,
     ValueProcessingCondition,
 )
 from sigma.types import SigmaNull, SigmaString, SigmaType
-from typing import Dict, List, Pattern, Literal, Optional
+from typing import Dict
 import re
-from sigma.rule import SigmaDetectionItem
-from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
+from sigma.exceptions import SigmaRegularExpressionError
 
 
-@dataclass
-class IncludeFieldCondition(FieldNameProcessingCondition):
-    """
-    Matches on field name if it is contained in fields list. The parameter 'type' determines if field names are matched as
-    plain string ("plain") or regular expressions ("re").
-    """
-
-    fields: List[str]
-    type: Literal["plain", "re"] = field(default="plain")
-    patterns: List[Pattern] = field(init=False, repr=False, default_factory=list)
-
-    def __post_init__(self):
-        """
-        Check if type is known and pre-compile regular expressions.
-        """
-        if self.type == "plain":
-            pass
-        elif self.type == "re":
-            self.patterns = [re.compile(field) for field in self.fields]
-        else:
-            raise SigmaConfigurationError(
-                f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'."
-            )
-
-    def match_field_name(
-        self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
-        field: Optional[str],
-    ) -> bool:
-        if field is None:
-            return False
-        elif self.type == "plain":
-            return field in self.fields
-        else:  # regular expression matching
-            try:
-                return any((pattern.match(field) for pattern in self.patterns))
-            except Exception as e:
-                msg = f" (while processing field '{field}'"
-                if len(e.args) > 1:
-                    e.args = (e.args[0] + msg,) + e.args[1:]
-                else:
-                    e.args = (e.args[0] + msg,)
-                raise
-
-
-@dataclass
-class ExcludeFieldCondition(IncludeFieldCondition):
-    """Matches on field name if it is not contained in fields list."""
-
-    def match_field_name(
-        self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
-        detection_item: SigmaDetectionItem,
-    ) -> bool:
-        return not super().match_field_name(pipeline, detection_item)
-
-
-### Detection Item Condition Classes ###
 @dataclass
 class MatchStringCondition(ValueProcessingCondition):
     """

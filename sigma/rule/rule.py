@@ -6,7 +6,7 @@ from enum import Enum, auto
 from datetime import date, datetime
 import yaml
 import sigma
-from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
+from sigma.types import SigmaType, SigmaNull, SigmaString, sigma_type
 from sigma.modifiers import (
     SigmaModifier,
     SigmaRegularExpressionModifier,
@@ -27,7 +27,6 @@ from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import (
     SigmaRuleLocation,
-    SigmaTypeError,
     SigmaError,
 )
 

@@ -4,6 +4,7 @@ from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
 from uuid import UUID
 from enum import Enum, auto
 import sigma
+from sigma.rule.base import EnumLowercaseStringMixin, SigmaRuleBase
 from sigma.types import SigmaType, SigmaNull, SigmaString, sigma_type
 from sigma.modifiers import (
     SigmaModifier,

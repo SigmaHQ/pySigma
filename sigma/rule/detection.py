@@ -1,7 +1,6 @@
 from dataclasses import InitVar, dataclass, field
-from typing import Any, Dict, Optional, Union, Sequence, List, Mapping, Type
+from typing import Dict, Optional, Union, Sequence, List, Mapping, Type
 import sigma
-from sigma.rule.base import SigmaRuleBase
 from sigma.types import SigmaType, SigmaNull, SigmaString, sigma_type
 from sigma.modifiers import (
     SigmaModifier,
@@ -21,10 +20,7 @@ from sigma.conditions import (
 )
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import (
-    SigmaRuleLocation,
-    SigmaError,
-)
+from sigma.exceptions import SigmaRuleLocation
 
 
 @dataclass
@@ -501,82 +497,3 @@ class SigmaDetections:
     def __getitem__(self, key: str) -> SigmaDetection:
         """Get detection by name"""
         return self.detections[key]
-
-
-@dataclass
-class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
-    """
-    A single Sigma rule.
-    """
-
-    logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
-    detection: SigmaDetections = field(default_factory=SigmaDetections)
-
-    @classmethod
-    def from_dict(
-        cls,
-        rule: dict,
-        collect_errors: bool = False,
-        source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaRule":
-        """
-        Convert Sigma rule parsed in dict structure into SigmaRule object.
-
-        if collect_errors is set to False exceptions are collected in the errors property of the resulting
-        SigmaRule object. Else the first recognized error is raised as exception.
-        """
-        kwargs, errors = super().from_dict(rule, collect_errors, source)
-
-        # parse log source
-        logsource = None
-        try:
-            logsource = SigmaLogSource.from_dict(rule["logsource"], source)
-        except KeyError:
-            errors.append(
-                sigma_exceptions.SigmaLogsourceError(
-                    "Sigma rule must have a log source", source=source
-                )
-            )
-        except AttributeError:
-            errors.append(
-                sigma_exceptions.SigmaLogsourceError(
-                    "Sigma logsource must be a valid YAML map", source=source
-                )
-            )
-        except SigmaError as e:
-            errors.append(e)
-
-        # parse detections
-        detections = None
-        try:
-            detections = SigmaDetections.from_dict(rule["detection"], source)
-        except KeyError:
-            errors.append(
-                sigma_exceptions.SigmaDetectionError(
-                    "Sigma rule must have a detection definitions", source=source
-                )
-            )
-        except SigmaError as e:
-            errors.append(e)
-
-        if not collect_errors and errors:
-            raise errors[0]
-
-        return cls(
-            logsource=logsource,
-            detection=detections,
-            errors=errors,
-            **kwargs,
-        )
-
-    def to_dict(self) -> dict:
-        """Convert rule object into dict."""
-        d = super().to_dict()
-        d.update(
-            {
-                "logsource": self.logsource.to_dict(),
-                "detection": self.detection.to_dict(),
-            }
-        )
-
-        return d

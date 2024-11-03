@@ -6,6 +6,7 @@ import yaml
 import sigma
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation
+from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
 
 
 class EnumLowercaseStringMixin:

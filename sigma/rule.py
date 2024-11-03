@@ -5,6 +5,7 @@ from uuid import UUID
 from enum import Enum, auto
 from datetime import date, datetime
 import yaml
+import re
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import (
@@ -847,6 +848,45 @@ class SigmaRuleBase:
         SigmaRule object. Else the first recognized error is raised as exception.
         """
         errors = []
+
+        def get_rule_as_date(name: str, exception_class) -> Optional[date]:
+            """
+            Accepted string based date formats are in range 1000-01-01 .. 3999-12-31:
+              * XXXX-XX-XX                                 -- fully corresponds to yaml date format
+              * XXXX/XX/XX, XXXX/XX/X, XXXX/X/XX, XXXX/X/X -- often occurs in the US-based sigmas
+            Not accepted are ambiguous dates such as:
+                2024-01-1, 24-1-24, 24/1/1, ...
+            """
+            nonlocal errors, rule, source
+            result = rule.get(name)
+            if (
+                result is not None
+                and not isinstance(result, date)
+                and not isinstance(result, datetime)
+            ):
+                error = True
+                try:
+                    result = str(result)  # forcifully convert whatever the type is into string
+                    accepted_regexps = (
+                        "([1-3][0-9][0-9][0-9])-([01][0-9])-([0-3][0-9])",  # 1000-01-01 .. 3999-12-31
+                        "([1-3][0-9][0-9][0-9])/([01]?[0-9])/([0-3]?[0-9])",  # 1000/1/1, 1000/01/01 .. 3999/12/31
+                    )
+                    for date_regexp in accepted_regexps:
+                        matcher = re.fullmatch(date_regexp, result)
+                        if matcher:
+                            result = date(int(matcher[1]), int(matcher[2]), int(matcher[3]))
+                            error = False
+                            break
+                except Exception:
+                    pass
+                if error:
+                    errors.append(
+                        exception_class(
+                            f"Rule {name} '{ result }' is invalid, use yyyy-mm-dd", source=source
+                        )
+                    )
+            return result
+
         # Rule identifier may be empty or must be valid UUID
         rule_id = rule.get("id")
         if rule_id is not None:
@@ -944,32 +984,10 @@ class SigmaRuleBase:
                     )
 
         # parse rule date if existing
-        rule_date = rule.get("date")
-        if rule_date is not None:
-            if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
-                try:
-                    rule_date = date(*(int(i) for i in rule_date.split("-")))
-                except ValueError:
-                    errors.append(
-                        sigma_exceptions.SigmaDateError(
-                            f"Rule date '{ rule_date }' is invalid, must be yyyy-mm-dd",
-                            source=source,
-                        )
-                    )
+        rule_date = get_rule_as_date("date", sigma_exceptions.SigmaDateError)
 
         # parse rule modified if existing
-        rule_modified = rule.get("modified")
-        if rule_modified is not None:
-            if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
-                try:
-                    rule_modified = date(*(int(i) for i in rule_modified.split("-")))
-                except ValueError:
-                    errors.append(
-                        sigma_exceptions.SigmaModifiedError(
-                            f"Rule modified '{ rule_modified }' is invalid, must be yyyy-mm-dd",
-                            source=source,
-                        )
-                    )
+        rule_modified = get_rule_as_date("modified", sigma_exceptions.SigmaModifiedError)
 
         # Rule fields validation
         rule_fields = rule.get("fields")

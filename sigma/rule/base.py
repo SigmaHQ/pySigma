@@ -9,11 +9,6 @@ from sigma.exceptions import SigmaRuleLocation
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
 
 
-class EnumLowercaseStringMixin:
-    def __str__(self) -> str:
-        return self.name.lower()
-
-
 class SigmaYAMLLoader(yaml.SafeLoader):
     """Custom YAML loader implementing additional functionality for Sigma."""
 
@@ -35,18 +30,18 @@ class SigmaRuleBase:
     id: Optional[UUID] = None
     name: Optional[str] = None
     taxonomy: str = "sigma"
-    related: Optional[SigmaRelated] = None
-    status: Optional[SigmaStatus] = None
+    related: Optional["sigma.rule.attributes.SigmaRelated"] = None
+    status: Optional["sigma.rule.attributes.SigmaStatus"] = None
     description: Optional[str] = None
     license: Optional[str] = None
     references: List[str] = field(default_factory=list)
-    tags: List[SigmaRuleTag] = field(default_factory=list)
+    tags: List["sigma.rule.attributes.SigmaRuleTag"] = field(default_factory=list)
     author: Optional[str] = None
     date: Optional["datetime.date"] = None
     modified: Optional["datetime.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
-    level: Optional[SigmaLevel] = None
+    level: Optional["sigma.rule.attributes.SigmaLevel"] = None
     scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)

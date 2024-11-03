@@ -2,11 +2,15 @@ from dataclasses import dataclass, field
 from typing import Optional, List, Type
 from uuid import UUID
 from enum import Enum, auto
-from sigma.rule.base import EnumLowercaseStringMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import (
     SigmaRuleLocation,
 )
+
+
+class EnumLowercaseStringMixin:
+    def __str__(self) -> str:
+        return self.name.lower()
 
 
 class SigmaStatus(EnumLowercaseStringMixin, Enum):

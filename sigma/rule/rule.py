@@ -7,6 +7,8 @@ from sigma.exceptions import (
     SigmaRuleLocation,
     SigmaError,
 )
+from sigma.rule.detection import SigmaDetections
+from sigma.rule.logsource import SigmaLogSource
 
 
 @dataclass

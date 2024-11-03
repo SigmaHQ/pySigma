@@ -345,7 +345,7 @@ class SigmaRuleBase:
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRule":
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRuleBase":
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)

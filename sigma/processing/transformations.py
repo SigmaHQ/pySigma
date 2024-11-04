@@ -1165,9 +1165,10 @@ class NestedProcessingTransformation(Transformation):
 
     def __post_init__(self):
         from sigma.processing.pipeline import (
-            ProcessingPipeline,
+            ProcessingPipeline, ProcessingItem
         )  # TODO: move to top-level after restructuring code
 
+        self.items = [i if isinstance(i, ProcessingItem) else ProcessingItem.from_dict(i) for i in self.items]
         self._nested_pipeline = ProcessingPipeline(items=self.items)
 
     @classmethod

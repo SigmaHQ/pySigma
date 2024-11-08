@@ -11,6 +11,7 @@ from sigma.processing.postprocessing import (
 )
 from sigma.rule import SigmaRule
 from .test_processing_transformations import dummy_pipeline, sigma_rule
+from .test_backend_identifier import DummyBackend
 
 
 def test_embed_query_transformation(dummy_pipeline, sigma_rule):
@@ -53,8 +54,9 @@ state = {{ pipeline.state.test }}
     """
     )
     dummy_pipeline.state["test"] = "teststate"
+
     assert (
-        transformation.apply(dummy_pipeline, sigma_rule, 'field="value"')
+        transformation.apply(dummy_pipeline, sigma_rule, 'field="value"', DummyBackend)
         == """
 title = Test
 query = field="value"

@@ -235,7 +235,9 @@ class ProcessingItem(ProcessingItemBase):
                 )
 
     def apply(
-        self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
+        self,
+        pipeline: "ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         """
         Matches condition against rule and performs transformation if condition is true or not present.
@@ -372,6 +374,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         pipeline: "ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
         query: str,
+        backend: "Backend" = None,
     ) -> Tuple[str, bool]:
         """
         Matches condition against rule and performs transformation of query if condition is true or not present.
@@ -380,7 +383,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         if self.match_rule_conditions(
             pipeline, rule
         ):  # apply transformation if conditions match or no condition defined
-            result = self.transformation.apply(pipeline, rule, query)
+            result = self.transformation.apply(pipeline, rule, query, backend)
             return (result, True)
         else:  # just pass rule through
             return (query, False)
@@ -521,10 +524,12 @@ class ProcessingPipeline:
                 self.applied_ids.add(itid)
         return rule
 
-    def postprocess_query(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def postprocess_query(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any, backend: Any = None
+    ) -> Any:
         """Post-process queries with postprocessing_items."""
         for item in self.postprocessing_items:
-            query, applied = item.apply(self, rule, query)
+            query, applied = item.apply(self, rule, query, backend)
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)
         return query

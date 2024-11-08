@@ -21,7 +21,10 @@ class QueryPostprocessingTransformation(Transformation):
 
     @abstractmethod
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: Any
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: Any,
     ) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
 
@@ -49,7 +52,11 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
         self.suffix = self.suffix or ""
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: str,
+        backend: Any = None,
     ) -> str:
         super().apply(pipeline, rule, query)
         return self.prefix + query + self.suffix
@@ -71,7 +78,11 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
     template: str
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: str,
+        backend: Any = None,
     ) -> str:
         return self.template.format(
             query=query,
@@ -96,9 +107,13 @@ class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBas
     """
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: str,
+        backend: Any,
     ) -> str:
-        return self.j2template.render(query=query, rule=rule, pipeline=pipeline)
+        return self.j2template.render(query=query, rule=rule, pipeline=pipeline, backend=backend)
 
 
 @dataclass
@@ -124,7 +139,11 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
         self.parsed_json = json.loads(self.json_template)
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: str,
+        backend: Any = None,
     ):
         super().apply(pipeline, rule, query)
         return json.dumps(self._replace_placeholder(self.parsed_json, query))
@@ -141,7 +160,11 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
         self.re = re.compile(self.pattern)
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: str
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: str,
+        backend: Any = None,
     ):
         super().apply(pipeline, rule, query)
         return self.re.sub(self.replacement, query)
@@ -178,7 +201,11 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
             )
 
     def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: Any
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: SigmaRule,
+        query: Any,
+        backend: Any = None,
     ) -> Any:
         super().apply(pipeline, rule, query)
         query = self._nested_pipeline.postprocess_query(rule, query)

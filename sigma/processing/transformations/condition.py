@@ -37,9 +37,7 @@ class AddConditionTransformation(ConditionTransformation):
         if self.name is None:  # generate random detection item name if none is given
             self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
-    ) -> None:
+    def apply(self, rule: SigmaRule) -> None:
         if isinstance(rule, SigmaRule):
             if self.template:
                 conditions = {
@@ -66,7 +64,7 @@ class AddConditionTransformation(ConditionTransformation):
 
             rule.detection.detections[self.name] = SigmaDetection.from_definition(conditions)
             self.processing_item_applied(rule.detection.detections[self.name])
-            super().apply(pipeline, rule)
+            super().apply(rule)
 
     def apply_condition(self, cond: SigmaCondition) -> None:
         cond.condition = ("not " if self.negated else "") + f"{self.name} and ({cond.condition})"

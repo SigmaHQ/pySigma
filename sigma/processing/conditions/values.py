@@ -29,9 +29,7 @@ class MatchStringCondition(ValueProcessingCondition):
                 f"Regular expression '{self.pattern}' is invalid: {str(e)}"
             ) from e
 
-    def match_value(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_value(self, value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
             result = self.re.match(str(value))
         else:
@@ -48,9 +46,7 @@ class ContainsWildcardCondition(ValueProcessingCondition):
     Evaluates to True if the value contains a wildcard character.
     """
 
-    def match_value(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_value(self, value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
             return value.contains_special()
         else:
@@ -65,7 +61,5 @@ class IsNullCondition(ValueProcessingCondition):
     false result in all match mode.
     """
 
-    def match_value(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_value(self, value: SigmaType) -> bool:
         return isinstance(value, SigmaNull)

@@ -4,17 +4,35 @@ from dataclasses import dataclass, field
 import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaType
-from typing import Literal, Union
+from typing import Literal, Optional, Union
 from sigma.rule import (
     SigmaDetection,
     SigmaRule,
     SigmaDetectionItem,
 )
-from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaProcessingItemError,
+    SigmaRegularExpressionError,
+)
 
 
+@dataclass
 class ProcessingCondition(ABC):
     """Anchor base class for all processing condition types."""
+
+    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
+        init=False, compare=False, default=None
+    )
+
+    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline"):
+        if self._pipeline is None:
+            self._pipeline = pipeline
+        else:
+            raise SigmaProcessingItemError(f"Pipeline for condition was already set.")
+
+    def _clear_pipeline(self) -> None:
+        self._pipeline = None
 
 
 @dataclass
@@ -26,7 +44,6 @@ class RuleProcessingCondition(ProcessingCondition, ABC):
     @abstractmethod
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         """Match condition on Sigma rule."""
@@ -39,14 +56,11 @@ class FieldNameProcessingCondition(ProcessingCondition, ABC):
     """
 
     @abstractmethod
-    def match_field_name(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: str
-    ) -> bool:
+    def match_field_name(self, field: str) -> bool:
         "The method match is called for each field name and must return a bool result."
 
     def match_detection_item(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
         """
@@ -60,37 +74,33 @@ class FieldNameProcessingCondition(ProcessingCondition, ABC):
         * `match_detection_item_value` for the whole value list of a detection item and
         * `match_value` for single detection items values.
         """
-        return self.match_detection_item_field(
-            pipeline, detection_item
-        ) or self.match_detection_item_value(pipeline, detection_item)
+        return self.match_detection_item_field(detection_item) or self.match_detection_item_value(
+            detection_item
+        )
 
     def match_detection_item_field(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
         """Returns True if the field of the detection item matches the implemented field name condition."""
-        return self.match_field_name(pipeline, detection_item.field)
+        return self.match_field_name(detection_item.field)
 
     def match_detection_item_value(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
         """Returns True if any value of a detection item contains a field reference to a field name
         matching the implemented field name condition. Processing actions must only be applied to
         matching individual values determined by `match_value`."""
-        return any((self.match_value(pipeline, value) for value in detection_item.value))
+        return any((self.match_value(value) for value in detection_item.value))
 
-    def match_value(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_value(self, value: SigmaType) -> bool:
         """
         Checks if a detection item value matches the field name condition implemented in
         `match_field_name` if it is a field reference. For all other types the method returns False.
         """
         if isinstance(value, SigmaFieldReference):
-            return self.match_field_name(pipeline, value.field)
+            return self.match_field_name(value.field)
         else:
             return False
 
@@ -104,7 +114,6 @@ class DetectionItemProcessingCondition(ProcessingCondition, ABC):
     @abstractmethod
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
         """Match condition on Sigma rule."""
@@ -134,17 +143,12 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
-        return self.match_func(
-            (self.match_value(pipeline, value) for value in detection_item.value)
-        )
+        return self.match_func((self.match_value(value) for value in detection_item.value))
 
     @abstractmethod
-    def match_value(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", value: SigmaType
-    ) -> bool:
+    def match_value(self, value: SigmaType) -> bool:
         """Match condition on detection item values."""
 
 
@@ -154,7 +158,6 @@ class RuleDetectionItemCondition(RuleProcessingCondition, ABC):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         if isinstance(rule, SigmaRule):

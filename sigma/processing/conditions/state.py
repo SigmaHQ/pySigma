@@ -12,7 +12,7 @@ from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,
 )
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaProcessingItemError
 
 
 @dataclass
@@ -25,7 +25,6 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         return rule.was_processed_by(self.processing_item_id)
@@ -42,11 +41,15 @@ class ProcessingStateConditionBase:
     val: Union[str, int, float, bool]
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
 
-    def match_state(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> bool:
+    def match_state(self) -> bool:
         try:
-            state_val = pipeline.state[self.key]
+            state_val = self._pipeline.state[self.key]
         except KeyError:
             return False
+        except AttributeError:
+            raise SigmaProcessingItemError(
+                "No processing pipeline was passed to condition, but required by it"
+            )
 
         if self.op == "eq":
             return state_val == self.val
@@ -74,10 +77,9 @@ class RuleProcessingStateCondition(RuleProcessingCondition, ProcessingStateCondi
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        return self.match_state(pipeline)
+        return self.match_state()
 
 
 @dataclass
@@ -88,10 +90,9 @@ class FieldNameProcessingStateCondition(FieldNameProcessingCondition, Processing
 
     def match_field_name(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         field: str,
     ) -> bool:
-        return self.match_state(pipeline)
+        return self.match_state()
 
 
 @dataclass
@@ -104,7 +105,6 @@ class DetectionItemProcessingItemAppliedCondition(DetectionItemProcessingConditi
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
         return detection_item.was_processed_by(self.processing_item_id)
@@ -120,10 +120,9 @@ class DetectionItemProcessingStateCondition(
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
-        return self.match_state(pipeline)
+        return self.match_state()
 
 
 @dataclass
@@ -134,14 +133,11 @@ class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
 
     processing_item_id: str
 
-    def match_field_name(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", field: str
-    ) -> bool:
-        return pipeline.field_was_processed_by(field, self.processing_item_id)
+    def match_field_name(self, field: str) -> bool:
+        return self._pipeline.field_was_processed_by(field, self.processing_item_id)
 
     def match_detection_item(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ):
         return detection_item.was_processed_by(self.processing_item_id)

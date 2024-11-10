@@ -38,7 +38,6 @@ class LogsourceCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         if isinstance(rule, SigmaRule):
@@ -47,7 +46,7 @@ class LogsourceCondition(RuleProcessingCondition):
             # Will only return true if the rules have been resolved in advance
             for ref in rule.rules:
                 if hasattr(ref, "rule") and isinstance(ref.rule, (SigmaRule, SigmaCorrelationRule)):
-                    if self.match(pipeline, ref.rule):
+                    if self.match(ref.rule):
                         return True
             return False
 
@@ -109,7 +108,6 @@ class IsSigmaRuleCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         return isinstance(rule, SigmaRule)
@@ -123,7 +121,6 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         return isinstance(rule, SigmaCorrelationRule)
@@ -166,7 +163,6 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         try:  # first try to get built-in attribute
@@ -239,7 +235,6 @@ class RuleTagCondition(RuleProcessingCondition):
 
     def match(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
         return self.match_tag in rule.tags

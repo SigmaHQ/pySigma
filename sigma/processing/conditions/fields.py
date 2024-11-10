@@ -34,7 +34,6 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
 
     def match_field_name(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         field: Optional[str],
     ) -> bool:
         if field is None:
@@ -59,7 +58,6 @@ class ExcludeFieldCondition(IncludeFieldCondition):
 
     def match_field_name(
         self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
         detection_item: SigmaDetectionItem,
     ) -> bool:
-        return not super().match_field_name(pipeline, detection_item)
+        return not super().match_field_name(detection_item)

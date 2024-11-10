@@ -12,6 +12,6 @@ class SetStateTransformation(Transformation):
     key: str
     val: Any
 
-    def apply(self, pipeline: "sigma.processing.pipeline.Proces", rule: SigmaRule) -> None:
-        super().apply(pipeline, rule)
-        pipeline.state[self.key] = self.val
+    def apply(self, rule: SigmaRule) -> None:
+        super().apply(rule)
+        self._pipeline.state[self.key] = self.val

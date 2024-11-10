@@ -34,7 +34,7 @@ from sigma.types import SigmaString
 class RuleConditionTrue(RuleProcessingCondition):
     dummy: str
 
-    def match(self, pipeline: ProcessingPipeline, rule: SigmaRule) -> bool:
+    def match(self, rule: SigmaRule) -> bool:
         return True
 
 
@@ -42,7 +42,7 @@ class RuleConditionTrue(RuleProcessingCondition):
 class RuleConditionFalse(RuleProcessingCondition):
     dummy: str
 
-    def match(self, pipeline: ProcessingPipeline, rule: SigmaRule) -> bool:
+    def match(self, rule: SigmaRule) -> bool:
         return False
 
 
@@ -50,7 +50,7 @@ class RuleConditionFalse(RuleProcessingCondition):
 class DetectionItemConditionTrue(DetectionItemProcessingCondition):
     dummy: str
 
-    def match(self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem) -> bool:
+    def match(self, detection_item: SigmaDetectionItem) -> bool:
         return True
 
 
@@ -58,7 +58,7 @@ class DetectionItemConditionTrue(DetectionItemProcessingCondition):
 class DetectionItemConditionFalse(DetectionItemProcessingCondition):
     dummy: str
 
-    def match(self, pipeline: ProcessingPipeline, detection_item: SigmaDetectionItem) -> bool:
+    def match(self, detection_item: SigmaDetectionItem) -> bool:
         return False
 
 
@@ -66,7 +66,8 @@ class DetectionItemConditionFalse(DetectionItemProcessingCondition):
 class TransformationPrepend(Transformation):
     s: str
 
-    def apply(self, pipeline: ProcessingPipeline, rule: SigmaRule) -> SigmaRule:
+    def apply(self, rule: SigmaRule) -> SigmaRule:
+        super().apply(rule)
         rule.title = self.s + rule.title
         return rule
 
@@ -75,8 +76,8 @@ class TransformationPrepend(Transformation):
 class TransformationAppend(Transformation):
     s: str
 
-    def apply(self, pipeline: ProcessingPipeline, rule: SigmaRule) -> SigmaRule:
-        super().apply(pipeline, rule)
+    def apply(self, rule: SigmaRule) -> SigmaRule:
+        super().apply(rule)
         rule.title += self.s
         return rule
 
@@ -314,12 +315,12 @@ def test_processingitem_fromdict_unknown_transformation_parameter():
         )
 
 
-def test_processingitem_apply(processing_item, dummy_processing_pipeline, sigma_rule):
-    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+def test_processingitem_apply(processing_item, sigma_rule):
+    applied = processing_item.apply(sigma_rule)
     assert applied and sigma_rule.title == "TestTest"
 
 
-def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
+def test_processingitem_apply_notapplied_all_with_false(sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_linking=all,
@@ -328,11 +329,11 @@ def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipelin
             RuleConditionFalse(dummy="test-false"),
         ],
     )
-    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    applied = processing_item.apply(sigma_rule)
     assert not applied and sigma_rule.title == "Test"
 
 
-def test_processingitem_apply_negated_true(dummy_processing_pipeline, sigma_rule):
+def test_processingitem_apply_negated_true(sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_negation=True,
@@ -340,11 +341,11 @@ def test_processingitem_apply_negated_true(dummy_processing_pipeline, sigma_rule
             RuleConditionTrue(dummy="test-true"),
         ],
     )
-    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    applied = processing_item.apply(sigma_rule)
     assert not applied and sigma_rule.title == "Test"
 
 
-def test_processingitem_apply_negated_false(dummy_processing_pipeline, sigma_rule):
+def test_processingitem_apply_negated_false(sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_negation=True,
@@ -352,11 +353,11 @@ def test_processingitem_apply_negated_false(dummy_processing_pipeline, sigma_rul
             RuleConditionFalse(dummy="test-false"),
         ],
     )
-    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    applied = processing_item.apply(sigma_rule)
     assert applied and sigma_rule.title == "TestTest"
 
 
-def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipeline, sigma_rule):
+def test_processingitem_apply_notapplied_all_with_false(sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         rule_condition_linking=all,
@@ -365,11 +366,11 @@ def test_processingitem_apply_notapplied_all_with_false(dummy_processing_pipelin
             RuleConditionFalse(dummy="test-false"),
         ],
     )
-    applied = processing_item.apply(dummy_processing_pipeline, sigma_rule)
+    applied = processing_item.apply(sigma_rule)
     assert not applied and sigma_rule.title == "Test"
 
 
-def test_processingitem_match_detection_item(dummy_processing_pipeline, detection_item):
+def test_processingitem_match_detection_item(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         detection_item_condition_linking=any,
@@ -378,12 +379,10 @@ def test_processingitem_match_detection_item(dummy_processing_pipeline, detectio
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == True
+    assert processing_item.match_detection_item(detection_item) == True
 
 
-def test_processingitem_match_detection_item_all_with_false(
-    dummy_processing_pipeline, detection_item
-):
+def test_processingitem_match_detection_item_all_with_false(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         detection_item_condition_linking=all,
@@ -392,12 +391,10 @@ def test_processingitem_match_detection_item_all_with_false(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
+    assert processing_item.match_detection_item(detection_item) == False
 
 
-def test_processingitem_match_detection_item_any_without_true(
-    dummy_processing_pipeline, detection_item
-):
+def test_processingitem_match_detection_item_any_without_true(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         detection_item_condition_linking=any,
@@ -406,12 +403,10 @@ def test_processingitem_match_detection_item_any_without_true(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
+    assert processing_item.match_detection_item(detection_item) == False
 
 
-def test_processingitem_match_detection_item_negated_true(
-    dummy_processing_pipeline, detection_item
-):
+def test_processingitem_match_detection_item_negated_true(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         detection_item_condition_negation=True,
@@ -419,12 +414,10 @@ def test_processingitem_match_detection_item_negated_true(
             DetectionItemConditionTrue(dummy="test-true"),
         ],
     )
-    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item) == False
+    assert processing_item.match_detection_item(detection_item) == False
 
 
-def test_processingitem_match_detection_item_negated_false(
-    dummy_processing_pipeline, detection_item
-):
+def test_processingitem_match_detection_item_negated_false(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
         detection_item_condition_negation=True,
@@ -432,7 +425,7 @@ def test_processingitem_match_detection_item_negated_false(
             DetectionItemConditionFalse(dummy="test-false"),
         ],
     )
-    assert processing_item.match_detection_item(dummy_processing_pipeline, detection_item)
+    assert processing_item.match_detection_item(detection_item)
 
 
 def test_processingitem_rule_condition_nolist():
@@ -487,19 +480,15 @@ def test_postprocessingitem_fromdict(postprocessing_item_dict, postprocessing_it
     assert QueryPostprocessingItem.from_dict(postprocessing_item_dict) == postprocessing_item
 
 
-def test_postprocessingitem_apply(
-    postprocessing_item: QueryPostprocessingItem, dummy_processing_pipeline, sigma_rule
-):
-    postprocessing_item.apply(
-        dummy_processing_pipeline, sigma_rule, "field=value"
-    ) == "[ field=value ]"
+def test_postprocessingitem_apply(postprocessing_item: QueryPostprocessingItem, sigma_rule):
+    postprocessing_item.apply(sigma_rule, "field=value") == "[ field=value ]"
 
 
 def test_postprocessingitem_apply_false_condition(
-    postprocessing_item: QueryPostprocessingItem, dummy_processing_pipeline, sigma_rule, monkeypatch
+    postprocessing_item: QueryPostprocessingItem, sigma_rule, monkeypatch
 ):
     monkeypatch.setattr(postprocessing_item, "rule_conditions", [RuleConditionFalse(dummy="test")])
-    assert postprocessing_item.apply(dummy_processing_pipeline, sigma_rule, "field=value") == (
+    assert postprocessing_item.apply(sigma_rule, "field=value") == (
         "field=value",
         False,
     )

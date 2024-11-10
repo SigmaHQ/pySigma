@@ -23,10 +23,8 @@ class ChangeLogsourceTransformation(Transformation):
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
-    ) -> None:
-        super().apply(pipeline, rule)
+    def apply(self, rule: SigmaRule) -> None:
+        super().apply(rule)
         logsource = SigmaLogSource(self.category, self.product, self.service)
         rule.logsource = logsource
 
@@ -40,10 +38,6 @@ class SetCustomAttributeTransformation(Transformation):
     attribute: str
     value: Any
 
-    def apply(
-        self,
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
-        rule: Union[SigmaRule, SigmaCorrelationRule],
-    ) -> None:
-        super().apply(pipeline, rule)
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+        super().apply(rule)
         rule.custom_attributes[self.attribute] = self.value

@@ -31,7 +31,12 @@ from sigma.processing.conditions import (
     field_name_conditions,
     FieldNameProcessingCondition,
 )
-from sigma.exceptions import SigmaConfigurationError, SigmaTypeError, SigmaPipelineParsingError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaProcessingItemError,
+    SigmaTypeError,
+    SigmaPipelineParsingError,
+)
 import yaml
 
 from sigma.types import SigmaFieldReference, SigmaType
@@ -44,6 +49,7 @@ class ProcessingItemBase:
     rule_condition_negation: bool = False
     rule_conditions: List[RuleProcessingCondition] = field(default_factory=list)
     identifier: Optional[str] = None
+    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
     @classmethod
     def _parse_conditions(
@@ -108,15 +114,29 @@ class ProcessingItemBase:
                 f"Unknown transformation type '{ transformation_class_name }'"
             )
 
-    def match_rule_conditions(
-        self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
-    ):
+    def match_rule_conditions(self, rule: Union[SigmaRule, SigmaCorrelationRule]):
         cond_result = self.rule_condition_linking(
-            [condition.match(pipeline, rule) for condition in self.rule_conditions]
+            [condition.match(rule) for condition in self.rule_conditions]
         )
         if self.rule_condition_negation:
             cond_result = not cond_result
         return not self.rule_conditions or cond_result
+
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
+        if self._pipeline is None:
+            self._pipeline = pipeline
+        else:
+            raise SigmaProcessingItemError(f"Pipeline for processing item was already set.")
+
+        self.transformation.set_pipeline(pipeline)
+        for rule_condition in self.rule_conditions:
+            rule_condition.set_pipeline(self._pipeline)
+
+    def _clear_pipeline(self) -> None:
+        self._pipeline = None
+        self.transformation._clear_pipeline()
+        for rule_condition in self.rule_conditions:
+            rule_condition._clear_pipeline()
 
 
 @dataclass
@@ -235,40 +255,47 @@ class ProcessingItem(ProcessingItemBase):
                     f"Detection item processing condition '{str(field_name_condition)}' is not a FieldNameProcessingCondition"
                 )
 
-    def apply(
-        self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
-    ) -> bool:
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
+        super().set_pipeline(pipeline)
+        for detection_item_condition in self.detection_item_conditions:
+            detection_item_condition.set_pipeline(self._pipeline)
+        for field_name_condition in self.field_name_conditions:
+            field_name_condition.set_pipeline(self._pipeline)
+
+    def _clear_pipeline(self) -> None:
+        super()._clear_pipeline()
+        for detection_item_condition in self.detection_item_conditions:
+            detection_item_condition._clear_pipeline()
+        for field_name_condition in self.field_name_conditions:
+            field_name_condition._clear_pipeline()
+
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
         """
         Matches condition against rule and performs transformation if condition is true or not present.
         Returns Sigma rule and bool if transformation was applied.
         """
         if self.match_rule_conditions(
-            pipeline, rule
+            rule
         ):  # apply transformation if conditions match or no condition defined
-            self.transformation.apply(pipeline, rule)
+            self.transformation.apply(rule)
             return True
         else:  # just pass rule through
             return False
 
-    def match_detection_item(
-        self, pipeline: "ProcessingPipeline", detection_item: SigmaDetectionItem
-    ) -> bool:
+    def match_detection_item(self, detection_item: SigmaDetectionItem) -> bool:
         """
         Evalutates detection item and field name conditions from processing item to detection item
         and returns result.
         """
         detection_item_cond_result = self.detection_item_condition_linking(
-            [
-                condition.match(pipeline, detection_item)
-                for condition in self.detection_item_conditions
-            ]
+            [condition.match(detection_item) for condition in self.detection_item_conditions]
         )
         if self.detection_item_condition_negation:
             detection_item_cond_result = not detection_item_cond_result
 
         field_name_cond_result = self.field_name_condition_linking(
             [
-                condition.match_detection_item(pipeline, detection_item)
+                condition.match_detection_item(detection_item)
                 for condition in self.field_name_conditions
             ]
         )
@@ -277,28 +304,25 @@ class ProcessingItem(ProcessingItemBase):
 
         return detection_item_cond_result and field_name_cond_result
 
-    def match_field_name(self, pipeline: "ProcessingPipeline", field: Optional[str]) -> bool:
+    def match_field_name(self, field: Optional[str]) -> bool:
         """
         Evaluate field name conditions on field names and return result.
         """
         field_name_cond_result = self.field_name_condition_linking(
-            [
-                condition.match_field_name(pipeline, field)
-                for condition in self.field_name_conditions
-            ]
+            [condition.match_field_name(field) for condition in self.field_name_conditions]
         )
         if self.field_name_condition_negation:
             field_name_cond_result = not field_name_cond_result
 
         return field_name_cond_result
 
-    def match_field_in_value(self, pipeline: "ProcessingPipeline", value: SigmaType) -> bool:
+    def match_field_in_value(self, value: SigmaType) -> bool:
         """
         Evaluate field name conditions in field reference values and return result.
         """
         if isinstance(value, SigmaFieldReference):
             field_name_cond_result = self.field_name_condition_linking(
-                [condition.match_value(pipeline, value) for condition in self.field_name_conditions]
+                [condition.match_value(value) for condition in self.field_name_conditions]
             )
             if self.field_name_condition_negation:
                 field_name_cond_result = not field_name_cond_result
@@ -370,7 +394,6 @@ class QueryPostprocessingItem(ProcessingItemBase):
 
     def apply(
         self,
-        pipeline: "ProcessingPipeline",
         rule: Union[SigmaRule, SigmaCorrelationRule],
         query: str,
     ) -> Tuple[str, bool]:
@@ -379,9 +402,9 @@ class QueryPostprocessingItem(ProcessingItemBase):
         Returns query and bool if transformation was applied.
         """
         if self.match_rule_conditions(
-            pipeline, rule
+            rule
         ):  # apply transformation if conditions match or no condition defined
-            result = self.transformation.apply(pipeline, rule, query)
+            result = self.transformation.apply(rule, query)
             return (result, True)
         else:  # just pass rule through
             return (query, False)
@@ -443,6 +466,25 @@ class ProcessingPipeline:
         if not all((isinstance(finalizer, Finalizer) for finalizer in self.finalizers)):
             raise TypeError("Each item in a finalizer pipeline must be a Finalizer")
 
+        # Initialize contained items with just instantiated processing pipeline as context.
+        self.set_pipeline()
+
+    def set_pipeline(self):
+        for processing_item in self.items:
+            processing_item.set_pipeline(self)
+        for postprocessing_item in self.postprocessing_items:
+            postprocessing_item.set_pipeline(self)
+        for finalizer in self.finalizers:
+            finalizer.set_pipeline(self)
+
+    def _clear_pipeline(self):
+        for processing_item in self.items:
+            processing_item._clear_pipeline()
+        for postprocessing_item in self.postprocessing_items:
+            postprocessing_item._clear_pipeline()
+        for finalizer in self.finalizers:
+            finalizer._pipeline = None
+
     @classmethod
     def from_dict(cls, d: dict) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
@@ -452,7 +494,8 @@ class ProcessingPipeline:
         processing_items = list()
         for i, item in enumerate(items):
             try:
-                processing_items.append(ProcessingItem.from_dict(item))
+                processing_item = ProcessingItem.from_dict(item)
+                processing_items.append(processing_item)
             except SigmaConfigurationError as e:
                 raise SigmaConfigurationError(
                     f"Error in processing rule { i + 1 }: { str(e) }"
@@ -516,7 +559,7 @@ class ProcessingPipeline:
         self.field_mappings = FieldMappingTracking()
         self.state = dict()
         for item in self.items:
-            applied = item.apply(self, rule)
+            applied = item.apply(rule)
             self.applied.append(applied)
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)
@@ -525,14 +568,14 @@ class ProcessingPipeline:
     def postprocess_query(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         """Post-process queries with postprocessing_items."""
         for item in self.postprocessing_items:
-            query, applied = item.apply(self, rule, query)
+            query, applied = item.apply(rule, query)
             if applied and (itid := item.identifier):
                 self.applied_ids.add(itid)
         return query
 
     def finalize(self, output: Any) -> Any:
         for finalizer in self.finalizers:
-            output = finalizer.apply(self, output)
+            output = finalizer.apply(output)
         return output
 
     def track_field_processing_items(
@@ -565,6 +608,9 @@ class ProcessingPipeline:
             return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
+
+        self._clear_pipeline()
+        other._clear_pipeline()
 
         return self.__class__(
             items=self.items + other.items,

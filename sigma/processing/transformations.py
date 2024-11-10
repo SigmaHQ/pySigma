@@ -1122,7 +1122,7 @@ class RuleFailureTransformation(Transformation):
     def apply(
         self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule
     ) -> None:
-        raise SigmaTransformationError(self.message)
+        raise SigmaTransformationError(self.message, source=rule.source)
 
 
 @dataclass
@@ -1136,7 +1136,7 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
     message: str
 
     def apply_detection_item(self, detection_item: SigmaDetectionItem) -> None:
-        raise SigmaTransformationError(self.message)
+        raise SigmaTransformationError(self.message, source=detection_item.source)
 
 
 @dataclass

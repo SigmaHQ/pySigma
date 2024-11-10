@@ -493,6 +493,34 @@ def test_postprocessingitem_apply(
     ) == "[ field=value ]"
 
 
+def test_postprocessingitem_apply_false_condition(
+    postprocessing_item: QueryPostprocessingItem, dummy_processing_pipeline, sigma_rule, monkeypatch
+):
+    monkeypatch.setattr(postprocessing_item, "rule_conditions", [RuleConditionFalse(dummy="test")])
+    assert postprocessing_item.apply(dummy_processing_pipeline, sigma_rule, "field=value") == (
+        "field=value",
+        False,
+    )
+
+
+def test_postprocessingitem_condition_not_list():
+    with pytest.raises(SigmaTypeError, match="must be provided as list"):
+        QueryPostprocessingItem(
+            transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+            rule_conditions=RuleConditionTrue(dummy="test-true"),
+            identifier="test",
+        )
+
+
+def test_postprocessingitem_wrong_condition_type():
+    with pytest.raises(SigmaTypeError, match="is not a RuleProcessingCondition"):
+        QueryPostprocessingItem(
+            transformation=EmbedQueryTransformation(prefix="[ ", suffix=" ]"),
+            rule_conditions=[DetectionItemConditionTrue(dummy="test-true")],
+            identifier="test",
+        )
+
+
 def test_processingpipeline_fromdict(
     processing_item_dict,
     processing_item,

@@ -47,6 +47,7 @@ from sigma.processing.conditions import (
     IncludeFieldCondition,
     RuleContainsDetectionItemCondition,
     RuleProcessingItemAppliedCondition,
+    rule_conditions,
 )
 from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.types import (
@@ -71,7 +72,6 @@ from tests.test_processing_pipeline import (
     RuleConditionFalse,
     RuleConditionTrue,
     TransformationAppend,
-    inject_test_classes,
 )
 
 
@@ -1752,7 +1752,10 @@ def nested_pipeline_transformation():
     )
 
 
-def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation):
+def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation, monkeypatch):
+    monkeypatch.setitem(transformations, "append", TransformationAppend)
+    monkeypatch.setitem(rule_conditions, "true", RuleConditionTrue)
+    monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
     assert (
         NestedProcessingTransformation.from_dict(
             {
@@ -1771,6 +1774,37 @@ def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation
             }
         )
         == nested_pipeline_transformation
+    )
+
+
+def test_nested_pipeline_transformation_from_yaml(nested_pipeline_transformation, monkeypatch):
+    monkeypatch.setitem(transformations, "append", TransformationAppend)
+    monkeypatch.setitem(rule_conditions, "true", RuleConditionTrue)
+    monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
+    assert (
+        ProcessingPipeline.from_yaml(
+            """
+        name: Test
+        priority: 100
+        transformations:
+            - type: nest
+              items:
+              - id: test
+                type: append
+                s: Test
+                rule_conditions:
+                - type: "true"
+                  dummy: test-true
+                - type: "false"
+                  dummy: test-false
+                rule_cond_op: or
+        """
+        )
+        == ProcessingPipeline(
+            name="Test",
+            priority=100,
+            items=[ProcessingItem(nested_pipeline_transformation)],
+        )
     )
 
 

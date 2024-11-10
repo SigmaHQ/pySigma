@@ -1752,7 +1752,10 @@ def nested_pipeline_transformation():
     )
 
 
-def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation):
+def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation, monkeypatch):
+    monkeypatch.setitem(transformations, "append", TransformationAppend)
+    monkeypatch.setitem(rule_conditions, "true", RuleConditionTrue)
+    monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
     assert (
         NestedProcessingTransformation.from_dict(
             {

@@ -1548,7 +1548,7 @@ def test_regex_transformation_empty_string(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("")])
     transformation = RegexTransformation(method="plain")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0] == SigmaRegularExpression("")
+    assert detection_item.value[0] == SigmaString("")
 
 
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):

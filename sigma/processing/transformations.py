@@ -1000,7 +1000,7 @@ class RegexTransformation(StringValueTransformation):
 
         # empty string can not be convert into a simple regex
         if val == "":
-            return SigmaRegularExpression("")
+            return val
 
         for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
             if isinstance(sc, str):  # if component is a string

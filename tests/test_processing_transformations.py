@@ -1544,6 +1544,13 @@ def test_regex_transformation_plain_method(dummy_pipeline):
     assert detection_item.value[0] == SigmaRegularExpression("\\\\te\\.st.*va.ue")
 
 
+def test_regex_transformation_empty_string(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("")])
+    transformation = RegexTransformation(method="plain")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaRegularExpression("")
+
+
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\tE.sT*val?ue")])
     transformation = RegexTransformation(method="ignore_case_brackets")

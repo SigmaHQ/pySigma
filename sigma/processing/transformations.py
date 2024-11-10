@@ -997,6 +997,11 @@ class RegexTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
         regex = ""
+
+        # empty string can not be convert into a simple regex
+        if val == "":
+            return SigmaRegularExpression("")
+
         for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
             if isinstance(sc, str):  # if component is a string
                 if (

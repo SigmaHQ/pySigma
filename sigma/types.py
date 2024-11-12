@@ -821,6 +821,8 @@ class SigmaFieldReference(NoPlainConversionMixin, SigmaType):
     """Type for referencing to other fields for comparison between them."""
 
     field: str
+    wildcard_start: Union[SpecialChars, None] = None
+    wildcard_end: Union[SpecialChars, None] = None
 
 
 @dataclass

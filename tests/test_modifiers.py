@@ -38,6 +38,7 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaCompareExpression,
     SigmaCIDRExpression,
+    SpecialChars,
 )
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
@@ -413,6 +414,29 @@ def test_fieldref(dummy_detection_item):
     assert SigmaFieldReferenceModifier(dummy_detection_item, []).modify(
         SigmaString("field")
     ) == SigmaFieldReference("field")
+
+
+def test_fieldref_contains(dummy_detection_item):
+    fieldref = SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field"))
+    assert (
+        SigmaContainsModifier(dummy_detection_item, [SigmaFieldReferenceModifier]).modify(fieldref)
+    ) == SigmaFieldReference("field", SpecialChars.WILDCARD_MULTI, SpecialChars.WILDCARD_MULTI)
+
+
+def test_fieldref_startswith(dummy_detection_item):
+    fieldref = SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field"))
+    assert (
+        SigmaStartswithModifier(dummy_detection_item, [SigmaFieldReferenceModifier]).modify(
+            fieldref
+        )
+    ) == SigmaFieldReference("field", SpecialChars.WILDCARD_MULTI, None)
+
+
+def test_fieldref_endswith(dummy_detection_item):
+    fieldref = SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field"))
+    assert (
+        SigmaEndswithModifier(dummy_detection_item, [SigmaFieldReferenceModifier]).modify(fieldref)
+    ) == SigmaFieldReference("field", None, SpecialChars.WILDCARD_MULTI)
 
 
 def test_fieldref_wildcard(dummy_detection_item):

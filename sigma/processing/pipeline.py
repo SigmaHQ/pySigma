@@ -383,6 +383,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         if self.match_rule_conditions(
             pipeline, rule
         ):  # apply transformation if conditions match or no condition defined
+            # result = self.transformation.apply(pipeline, rule, query, backend)
             result = self.transformation.apply(pipeline, rule, query, backend)
             return (result, True)
         else:  # just pass rule through

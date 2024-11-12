@@ -51,6 +51,7 @@ def test_query_template_transformation(dummy_pipeline: ProcessingPipeline, sigma
 title = {{ rule.title }}
 query = {{ query }}
 state = {{ pipeline.state.test }}
+backend_id = {{ backend.identifier }}
     """
     )
     dummy_pipeline.state["test"] = "teststate"
@@ -61,6 +62,7 @@ state = {{ pipeline.state.test }}
 title = Test
 query = field="value"
 state = teststate
+backend_id = dummy
     """
     )
 

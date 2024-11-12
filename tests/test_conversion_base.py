@@ -2803,3 +2803,178 @@ def test_convert_without_output(test_backend):
 
     assert rule._conversion_result == ['mappedA="value" and \'field A\'="value"']
     assert result == []
+
+
+def test_convert_not_as_not_eq(test_backend, monkeypatch):
+    """Test that NOT conditions are converted using not_eq expressions when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_eq_token", "!=")
+    monkeypatch.setattr(test_backend, "not_eq_expression", "{field}{backend.not_eq_token}{value}")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA: value1
+                condition: not sel
+        """
+            )
+        )
+        == ['mappedA!="value1"']
+    )
+
+
+def test_convert_not_startswith(test_backend, monkeypatch):
+    """Test negated startswith expression when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_startswith_expression", "{field} not_startswith {value}")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "val"
+                condition: not sel
+        """
+            )
+        )
+        == ['mappedA not_startswith "val"']
+    )
+
+
+def test_convert_not_contains(test_backend, monkeypatch):
+    """Test negated contains expression when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_contains_expression", "{field} not_contains {value}")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "val"
+                condition: not sel
+        """
+            )
+        )
+        == ['mappedA not_contains "val"']
+    )
+
+
+def test_convert_not_re(test_backend, monkeypatch):
+    """Test negated regular expression when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_re_expression", "{field}!=/{regex}/")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|re: "val.*"
+                condition: not sel
+        """
+            )
+        )
+        == ["mappedA!=/val.*/"]
+    )
+
+
+def test_convert_not_cidr(test_backend, monkeypatch):
+    """Test negated CIDR expression when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_cidr_expression", "cidrnotmatch('{field}', \"{value}\")")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|cidr: "192.168.1.0/24"
+                condition: not sel
+        """
+            )
+        )
+        == ["cidrnotmatch('mappedA', \"192.168.1.0/24\")"]
+    )
+
+
+def test_convert_not_and_group(test_backend, monkeypatch):
+    """Test that NOT with AND group is handled correctly when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_eq_token", "!=")
+    monkeypatch.setattr(test_backend, "not_eq_expression", "{field}{backend.not_eq_token}{value}")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel2:
+                    fieldB: value2
+                condition: not (sel1 and sel2)
+        """
+            )
+        )
+        == ['(mappedA!="value1" and mappedB!="value2")']
+    )
+
+
+def test_convert_not_or_group(test_backend, monkeypatch):
+    """Test that NOT with OR group is handled correctly when convert_not_as_not_eq is True"""
+    monkeypatch.setattr(test_backend, "convert_not_as_not_eq", True)
+    monkeypatch.setattr(test_backend, "not_eq_token", "!=")
+    monkeypatch.setattr(test_backend, "not_eq_expression", "{field}{backend.not_eq_token}{value}")
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldA: value1
+                sel2:
+                    fieldB: value2
+                condition: not (sel1 or sel2)
+        """
+            )
+        )
+        == ['(mappedA!="value1" or mappedB!="value2")']
+    )

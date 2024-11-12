@@ -1,8 +1,6 @@
-from abc import abstractmethod
 from collections import defaultdict
-from sigma.conditions import ConditionOR, SigmaCondition
+from sigma.conditions import ConditionOR
 from typing import (
-    Any,
     ClassVar,
     List,
     Dict,
@@ -11,7 +9,7 @@ from typing import (
     Tuple,
     Union,
 )
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 import re
 from sigma.processing.transformations.base import (
     DetectionItemTransformation,
@@ -273,6 +271,11 @@ class RegexTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
         regex = ""
+
+        # empty string can not be convert into a simple regex
+        if val == "":
+            return val
+
         for sc in val.s:  # iterate over all SigmaString components (strings and special chars)
             if isinstance(sc, str):  # if component is a string
                 if (

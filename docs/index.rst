@@ -10,6 +10,7 @@ pySigma Documentation
    Backends
    Rule_Validation
    Plugin_System
+   Breaking_Changes
 
 Overview
 ********

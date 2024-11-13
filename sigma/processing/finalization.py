@@ -5,7 +5,7 @@ from typing import Any, Dict, List, Literal, Optional
 
 import yaml
 import sigma
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError
 
 from sigma.processing.templates import TemplateBase
 
@@ -14,6 +14,10 @@ from sigma.processing.templates import TemplateBase
 class Finalizer:
     """Conversion output transformation base class."""
 
+    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
+        init=False, compare=False, default=None
+    )
+
     @classmethod
     def from_dict(cls, d: dict) -> "Finalizer":
         try:
@@ -21,14 +25,16 @@ class Finalizer:
         except TypeError as e:
             raise SigmaConfigurationError("Error in instantiation of finalizer: " + str(e))
 
+    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
+        if self._pipeline is None:
+            self._pipeline = pipeline
+        else:
+            raise SigmaTransformationError("Pipeline for finalizer was already set.")
+
     @abstractmethod
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
-    ) -> Any:
+    def apply(self, queries: List[Any]) -> Any:
         """Finalize output by applying a transformation to the list of generated and postprocessed queries.
 
-        :param pipeline: Processing pipeline this transformation was contained.
-        :type pipeline: sigma.processing.pipeline.ProcessingPipeline
         :param queries: List of converted and postprocessed queries that should be finalized.
         :type queries: List[Any]
         :return: Output that can be used in further processing of the conversion result.
@@ -45,9 +51,7 @@ class ConcatenateQueriesFinalizer(Finalizer):
     prefix: str = ""
     suffix: str = ""
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[str]
-    ) -> str:
+    def apply(self, queries: List[str]) -> str:
         return self.prefix + self.separator.join(queries) + self.suffix
 
 
@@ -55,9 +59,7 @@ class ConcatenateQueriesFinalizer(Finalizer):
 class JSONFinalizer(Finalizer):
     indent: Optional[int] = None
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
-    ) -> str:
+    def apply(self, queries: List[Any]) -> str:
         return json.dumps(queries, indent=self.indent)
 
 
@@ -65,9 +67,7 @@ class JSONFinalizer(Finalizer):
 class YAMLFinalizer(Finalizer):
     indent: Optional[int] = None
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
-    ) -> str:
+    def apply(self, queries: List[Any]) -> str:
         yaml.safe_dump(queries, indent=self.indent)
 
 
@@ -85,10 +85,8 @@ class TemplateFinalizer(Finalizer, TemplateBase):
     controls the Jinja2 HTML/XML auto-escaping.
     """
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
-    ) -> str:
-        return self.j2template.render(queries=queries, pipeline=pipeline)
+    def apply(self, queries: List[Any]) -> str:
+        return self.j2template.render(queries=queries, pipeline=self._pipeline)
 
 
 @dataclass
@@ -120,9 +118,7 @@ class NestedFinalizer(Finalizer):
             fs.append(finalizers[finalizer_type].from_dict(finalizer))
         return cls(finalizers=fs)
 
-    def apply(
-        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
-    ) -> Any:
+    def apply(self, queries: List[Any]) -> Any:
         return self._nested_pipeline.finalize(queries)
 
 

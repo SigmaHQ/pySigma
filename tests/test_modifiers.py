@@ -26,6 +26,7 @@ from sigma.modifiers import (
 )
 from sigma.rule import SigmaDetectionItem
 from sigma.types import (
+    CompareOperators,
     SigmaBool,
     SigmaCasedString,
     SigmaExists,
@@ -389,25 +390,25 @@ def test_all(dummy_detection_item):
 def test_lt(dummy_detection_item):
     assert SigmaLessThanModifier(dummy_detection_item, []).modify(
         SigmaNumber(123)
-    ) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.LT)
+    ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.LT)
 
 
 def test_lte(dummy_detection_item):
     assert SigmaLessThanEqualModifier(dummy_detection_item, []).modify(
         SigmaNumber(123)
-    ) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.LTE)
+    ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.LTE)
 
 
 def test_gt(dummy_detection_item):
     assert SigmaGreaterThanModifier(dummy_detection_item, []).modify(
         SigmaNumber(123)
-    ) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GT)
+    ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.GT)
 
 
 def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(
         SigmaNumber(123)
-    ) == SigmaCompareExpression(SigmaNumber(123), SigmaCompareExpression.CompareOperators.GTE)
+    ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.GTE)
 
 
 def test_fieldref(dummy_detection_item):

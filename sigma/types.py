@@ -797,15 +797,16 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         return patterns
 
 
+class CompareOperators(Enum):
+    LT = auto()  # <
+    LTE = auto()  # <=
+    GT = auto()  # >
+    GTE = auto()  # >=
+
+
 @dataclass
 class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     """Type for numeric comparison."""
-
-    class CompareOperators(Enum):
-        LT = auto()  # <
-        LTE = auto()  # <=
-        GT = auto()  # >
-        GTE = auto()  # >=
 
     number: SigmaNumber
     op: CompareOperators

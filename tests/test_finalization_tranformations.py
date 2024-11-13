@@ -1,5 +1,5 @@
 import pytest
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError
 from sigma.processing.finalization import (
     ConcatenateQueriesFinalizer,
     NestedFinalizer,
@@ -8,10 +8,18 @@ from sigma.processing.finalization import (
 from .test_processing_transformations import dummy_pipeline, sigma_rule
 
 
+def test_finalization_multiple_pipeline_set(dummy_pipeline):
+    finalizer = ConcatenateQueriesFinalizer()
+    finalizer.set_pipeline(dummy_pipeline)
+    with pytest.raises(SigmaTransformationError, match="Pipeline.*already set"):
+        finalizer.set_pipeline(dummy_pipeline)
+
+
 def test_concatenate_queries_tranformation(dummy_pipeline):
     transformation = ConcatenateQueriesFinalizer(separator="', '", prefix="('", suffix="')")
+    transformation.set_pipeline(dummy_pipeline)
     assert (
-        transformation.apply(dummy_pipeline, ['field1="value1"', 'field2="value2"'])
+        transformation.apply(['field1="value1"', 'field2="value2"'])
         == """('field1="value1"', 'field2="value2"')"""
     )
 
@@ -27,9 +35,9 @@ setting = {{ pipeline.state.setting }}
 query{{ loop.index }} = {{ query }}{% endfor %}
 """
     )
+    transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(
-            dummy_pipeline,
             [
                 "fieldA=val1",
                 "fieldB=val2",
@@ -50,9 +58,9 @@ query3 = fieldC=val3"""
 def test_template_transformation_from_file(dummy_pipeline):
     dummy_pipeline.state["setting"] = "value"
     transformation = TemplateFinalizer(template="finalize.j2", path="tests/files")
+    transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(
-            dummy_pipeline,
             [
                 "fieldA=val1",
                 "fieldB=val2",
@@ -71,12 +79,14 @@ query3 = fieldC=val3"""
 
 @pytest.fixture
 def nested_finalizer(dummy_pipeline):
-    return NestedFinalizer(
+    nested_finalizer = NestedFinalizer(
         finalizers=[
             ConcatenateQueriesFinalizer(separator="', '", prefix="('", suffix="')"),
             TemplateFinalizer("allOf({{ queries }})"),
         ]
     )
+    nested_finalizer.set_pipeline(dummy_pipeline)
+    return nested_finalizer
 
 
 def test_nested_finalizer_from_dict(nested_finalizer):
@@ -113,7 +123,6 @@ def test_nested_finalizer_no_type():
 def test_nested_finalizer_apply(nested_finalizer):
     assert (
         nested_finalizer.apply(
-            dummy_pipeline,
             [
                 "fieldA=val1",
                 "fieldB=val2",

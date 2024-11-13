@@ -15,6 +15,7 @@ from typing import (
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
 from sigma.types import (
+    CompareOperators,
     Placeholder,
     SigmaBool,
     SigmaCasedString,
@@ -328,7 +329,7 @@ class SigmaAllModifier(SigmaListModifier):
 class SigmaCompareModifier(SigmaValueModifier):
     """Base class for numeric comparison operator modifiers."""
 
-    op: ClassVar[SigmaCompareExpression.CompareOperators]
+    op: ClassVar[CompareOperators]
 
     def modify(self, val: SigmaNumber) -> SigmaCompareExpression:
         return SigmaCompareExpression(val, self.op, self.source)
@@ -337,33 +338,25 @@ class SigmaCompareModifier(SigmaValueModifier):
 class SigmaLessThanModifier(SigmaCompareModifier):
     """Numeric less than (<) matching."""
 
-    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
-        SigmaCompareExpression.CompareOperators.LT
-    )
+    op: ClassVar[CompareOperators] = CompareOperators.LT
 
 
 class SigmaLessThanEqualModifier(SigmaCompareModifier):
     """Numeric less than or equal (<=) matching."""
 
-    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
-        SigmaCompareExpression.CompareOperators.LTE
-    )
+    op: ClassVar[CompareOperators] = CompareOperators.LTE
 
 
 class SigmaGreaterThanModifier(SigmaCompareModifier):
     """Numeric greater than (>) matching."""
 
-    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
-        SigmaCompareExpression.CompareOperators.GT
-    )
+    op: ClassVar[CompareOperators] = CompareOperators.GT
 
 
 class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     """Numeric greater than or equal (>=) matching."""
 
-    op: ClassVar[SigmaCompareExpression.CompareOperators] = (
-        SigmaCompareExpression.CompareOperators.GTE
-    )
+    op: ClassVar[CompareOperators] = CompareOperators.GTE
 
 
 class SigmaFieldReferenceModifier(SigmaValueModifier):

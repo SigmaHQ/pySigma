@@ -7,7 +7,7 @@ from sigma.conversion.state import ConversionState
 from sigma.pipelines.test import dummy_test_pipeline
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
-from sigma.types import SigmaCompareExpression
+from sigma.types import CompareOperators, SigmaCompareExpression
 
 
 class TextQueryTestBackend(TextQueryBackend):
@@ -62,11 +62,11 @@ class TextQueryTestBackend(TextQueryBackend):
     cidr_expression: ClassVar[str] = "cidrmatch('{field}', \"{value}\")"
 
     compare_op_expression: ClassVar[str] = "{field}{operator}{value}"
-    compare_operators: ClassVar[Dict[SigmaCompareExpression.CompareOperators, str]] = {
-        SigmaCompareExpression.CompareOperators.LT: "<",
-        SigmaCompareExpression.CompareOperators.LTE: "<=",
-        SigmaCompareExpression.CompareOperators.GT: ">",
-        SigmaCompareExpression.CompareOperators.GTE: ">=",
+    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+        CompareOperators.LT: "<",
+        CompareOperators.LTE: "<=",
+        CompareOperators.GT: ">",
+        CompareOperators.GTE: ">=",
     }
 
     field_equals_field_expression: ClassVar[str] = "{field1}=fieldref({field2})"

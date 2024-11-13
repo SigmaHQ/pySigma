@@ -34,6 +34,7 @@ from sigma.processing.transformations.values import (
     RegexTransformation,
     ReplaceStringTransformation,
     SetValueTransformation,
+    CaseTransformation,
 )
 
 transformations: Dict[str, Transformation] = {
@@ -62,4 +63,5 @@ transformations: Dict[str, Transformation] = {
     "detection_item_failure": DetectionItemFailureTransformation,
     "set_custom_attribute": SetCustomAttributeTransformation,
     "nest": NestedProcessingTransformation,
+    "case": CaseTransformation,
 }

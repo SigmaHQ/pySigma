@@ -4,7 +4,11 @@ from sigma.collection import SigmaCollection
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaNull, SigmaNumber, SigmaString
 from sigma import processing
-from sigma.exceptions import SigmaConfigurationError, SigmaRegularExpressionError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaProcessingItemError,
+    SigmaRegularExpressionError,
+)
 import pytest
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.conditions import (
@@ -90,57 +94,55 @@ def sigma_rule():
     )
 
 
-def test_logsource_match(dummy_processing_pipeline, sigma_rule):
+def test_processing_condition_multiple_pipelines_set(dummy_processing_pipeline):
+    condition = IsSigmaRuleCondition()
+    condition.set_pipeline(dummy_processing_pipeline)
+    with pytest.raises(SigmaProcessingItemError, match="Pipeline.*was already set"):
+        condition.set_pipeline(dummy_processing_pipeline)
+
+
+def test_logsource_match(sigma_rule):
     assert LogsourceCondition(category="test_category").match(
-        dummy_processing_pipeline,
         sigma_rule,
     )
 
 
-def test_logsource_no_match(dummy_processing_pipeline, sigma_rule):
+def test_logsource_no_match(sigma_rule):
     assert not LogsourceCondition(category="test_category", product="other_product").match(
-        dummy_processing_pipeline,
         sigma_rule,
     )
 
 
-def test_logsource_match_correlation_rule_cat(dummy_processing_pipeline, sigma_correlated_rules):
+def test_logsource_match_correlation_rule_cat(sigma_correlated_rules):
     sigma_correlated_rules.resolve_rule_references()
     assert LogsourceCondition(category="test_category").match(
-        dummy_processing_pipeline,
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
-def test_logsource_match_correlation_rule_prod(dummy_processing_pipeline, sigma_correlated_rules):
+def test_logsource_match_correlation_rule_prod(sigma_correlated_rules):
     sigma_correlated_rules.resolve_rule_references()
     assert LogsourceCondition(product="test_product").match(
-        dummy_processing_pipeline,
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
-def test_logsource_no_match_correlation_rule_both(
-    dummy_processing_pipeline, sigma_correlated_rules
-):
+def test_logsource_no_match_correlation_rule_both(sigma_correlated_rules):
     sigma_correlated_rules.resolve_rule_references()
     assert not LogsourceCondition(category="test_category", product="test_product").match(
-        dummy_processing_pipeline,
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
-def test_logsource_no_match_correlation_rule(dummy_processing_pipeline, sigma_correlated_rules):
+def test_logsource_no_match_correlation_rule(sigma_correlated_rules):
     sigma_correlated_rules.resolve_rule_references()
     assert not LogsourceCondition(service="test_service").match(
-        dummy_processing_pipeline,
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
-def test_logsource_no_rule_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
+def test_logsource_no_rule_correlation_rule(sigma_correlation_rule):
     assert not LogsourceCondition(category="test_category", product="other_product").match(
-        dummy_processing_pipeline,
         sigma_correlation_rule,
     )
 
@@ -148,19 +150,15 @@ def test_logsource_no_rule_correlation_rule(dummy_processing_pipeline, sigma_cor
 from tests.test_processing_pipeline import processing_item
 
 
-def test_rule_processing_item_applied(
-    dummy_processing_pipeline, processing_item, sigma_rule: SigmaRule
-):
+def test_rule_processing_item_applied(processing_item, sigma_rule: SigmaRule):
     sigma_rule.add_applied_processing_item(processing_item)
     assert RuleProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         sigma_rule,
     )
 
 
-def test_rule_processing_item_not_applied(dummy_processing_pipeline, sigma_rule: SigmaRule):
+def test_rule_processing_item_not_applied(sigma_rule: SigmaRule):
     assert not RuleProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         sigma_rule,
     )
 
@@ -168,280 +166,217 @@ def test_rule_processing_item_not_applied(dummy_processing_pipeline, sigma_rule:
 def test_rule_state_match(dummy_processing_pipeline, sigma_rule):
     dummy_processing_pipeline.state["key"] = "value"
     dummy_processing_pipeline.state["number"] = 123
-    assert RuleProcessingStateCondition("key", "value").match(dummy_processing_pipeline, sigma_rule)
-    assert RuleProcessingStateCondition("key", "other_value", "ne").match(
-        dummy_processing_pipeline, sigma_rule
-    )
-    assert RuleProcessingStateCondition("number", 123, "gte").match(
-        dummy_processing_pipeline, sigma_rule
-    )
-    assert RuleProcessingStateCondition("number", 123, "lte").match(
-        dummy_processing_pipeline, sigma_rule
-    )
-    assert RuleProcessingStateCondition("number", 122, "gt").match(
-        dummy_processing_pipeline, sigma_rule
-    )
-    assert RuleProcessingStateCondition("number", 124, "lt").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+
+    condition = RuleProcessingStateCondition("key", "value")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
+
+    condition = RuleProcessingStateCondition("key", "other_value", "ne")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
+
+    condition = RuleProcessingStateCondition("number", 123, "gte")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
+
+    condition = RuleProcessingStateCondition("number", 123, "lte")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
+
+    condition = RuleProcessingStateCondition("number", 122, "gt")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
+
+    condition = RuleProcessingStateCondition("number", 124, "lt")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(sigma_rule)
 
 
-def test_rule_state_nomatch(dummy_processing_pipeline, sigma_rule):
+def test_rule_state_nomatch(sigma_rule, dummy_processing_pipeline):
     dummy_processing_pipeline.state["key"] = "value"
-    assert not RuleProcessingStateCondition("key", "other_value").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+    condition = RuleProcessingStateCondition("key", "other_value")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert not condition.match(sigma_rule)
 
 
-def test_rule_processing_item_applied_correlation_rule(
-    dummy_processing_pipeline, processing_item, sigma_correlation_rule
-):
+def test_rule_processing_item_applied_correlation_rule(processing_item, sigma_correlation_rule):
     assert not RuleProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         sigma_correlation_rule,
     )
     sigma_correlation_rule.add_applied_processing_item(processing_item)
     assert RuleProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         sigma_correlation_rule,
     )
 
 
-def test_rule_contains_detection_item_match(sigma_rule, dummy_processing_pipeline):
-    assert RuleContainsDetectionItemCondition(field="fieldA", value="value").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_contains_detection_item_match(sigma_rule):
+    assert RuleContainsDetectionItemCondition(field="fieldA", value="value").match(sigma_rule)
 
 
-def test_rule_contains_detection_item_nomatch_field(sigma_rule, dummy_processing_pipeline):
-    assert not RuleContainsDetectionItemCondition(field="fieldB", value="value").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_contains_detection_item_nomatch_field(sigma_rule):
+    assert not RuleContainsDetectionItemCondition(field="fieldB", value="value").match(sigma_rule)
 
 
-def test_rule_contains_detection_item_nomatch_value(sigma_rule, dummy_processing_pipeline):
-    assert not RuleContainsDetectionItemCondition(field="fieldA", value="valuex").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_contains_detection_item_nomatch_value(sigma_rule):
+    assert not RuleContainsDetectionItemCondition(field="fieldA", value="valuex").match(sigma_rule)
 
 
-def test_rule_contains_detection_item_correlation_rule(
-    sigma_correlation_rule, dummy_processing_pipeline
-):
+def test_rule_contains_detection_item_correlation_rule(sigma_correlation_rule):
     assert not RuleContainsDetectionItemCondition(field="fieldA", value="value").match(
-        dummy_processing_pipeline, sigma_correlation_rule
+        sigma_correlation_rule
     )
 
 
-def test_rule_contains_field_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleContainsFieldCondition("fieldA").match(dummy_processing_pipeline, sigma_rule)
+def test_rule_contains_field_match(sigma_rule):
+    assert RuleContainsFieldCondition("fieldA").match(sigma_rule)
 
 
-def test_rule_contains_field_nomatch(dummy_processing_pipeline, sigma_rule):
-    assert not RuleContainsFieldCondition("non_existing").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_contains_field_nomatch(sigma_rule):
+    assert not RuleContainsFieldCondition("non_existing").match(sigma_rule)
 
 
-def test_rule_contains_field_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
-    assert not RuleContainsFieldCondition("fieldA").match(
-        dummy_processing_pipeline, sigma_correlation_rule
-    )
+def test_rule_contains_field_correlation_rule(sigma_correlation_rule):
+    assert not RuleContainsFieldCondition("fieldA").match(sigma_correlation_rule)
 
 
-def test_is_sigma_rule_with_rule(dummy_processing_pipeline, sigma_rule):
-    assert IsSigmaRuleCondition().match(dummy_processing_pipeline, sigma_rule)
+def test_is_sigma_rule_with_rule(sigma_rule):
+    assert IsSigmaRuleCondition().match(sigma_rule)
 
 
-def test_is_sigma_rule_with_correlation_rule(dummy_processing_pipeline, sigma_correlation_rule):
-    assert not IsSigmaRuleCondition().match(dummy_processing_pipeline, sigma_correlation_rule)
+def test_is_sigma_rule_with_correlation_rule(sigma_correlation_rule):
+    assert not IsSigmaRuleCondition().match(sigma_correlation_rule)
 
 
-def test_is_sigma_correlation_rule_with_correlation_rule(
-    dummy_processing_pipeline, sigma_correlation_rule
-):
-    assert IsSigmaCorrelationRuleCondition().match(
-        dummy_processing_pipeline, sigma_correlation_rule
-    )
+def test_is_sigma_correlation_rule_with_correlation_rule(sigma_correlation_rule):
+    assert IsSigmaCorrelationRuleCondition().match(sigma_correlation_rule)
 
 
-def test_is_sigma_correlation_rule_with_rule(dummy_processing_pipeline, sigma_rule):
-    assert not IsSigmaCorrelationRuleCondition().match(dummy_processing_pipeline, sigma_rule)
+def test_is_sigma_correlation_rule_with_rule(sigma_rule):
+    assert not IsSigmaCorrelationRuleCondition().match(sigma_rule)
 
 
-def test_rule_attribute_condition_str_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("taxonomy", "test").match(dummy_processing_pipeline, sigma_rule)
+def test_rule_attribute_condition_str_match(sigma_rule):
+    assert RuleAttributeCondition("taxonomy", "test").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_str_op(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_str_op(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid operation.*for string"):
-        RuleAttributeCondition("taxonomy", "test", "gte").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("taxonomy", "test", "gte").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_op(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_op(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid operation"):
         RuleAttributeCondition("custom", "123.4", "invalid")
 
 
-def test_rule_attribute_condition_uuid_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("id", "809718e3-f7f5-46f1-931e-d036f0ffb0af").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_attribute_condition_uuid_match(sigma_rule):
+    assert RuleAttributeCondition("id", "809718e3-f7f5-46f1-931e-d036f0ffb0af").match(sigma_rule)
 
 
-def test_rule_attribute_condition_custom_field_numeric_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("custom", "123.4", "lte").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_attribute_condition_custom_field_numeric_match(sigma_rule):
+    assert RuleAttributeCondition("custom", "123.4", "lte").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_numeric_value(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_numeric_value(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid number"):
-        RuleAttributeCondition("custom", "something", "lte").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("custom", "something", "lte").match(sigma_rule)
 
 
-def test_rule_attribute_condition_date_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("date", "2022-02-23", "lt").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_attribute_condition_date_match(sigma_rule):
+    assert RuleAttributeCondition("date", "2022-02-23", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_date(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_date(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid date"):
-        RuleAttributeCondition("date", "2022-02-23T00:00:00", "lt").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("date", "2022-02-23T00:00:00", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_sigmalevel_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("level", "high", "lt").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_attribute_condition_sigmalevel_match(sigma_rule):
+    assert RuleAttributeCondition("level", "high", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_sigmalevel(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_sigmalevel(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid Sigma severity level"):
-        RuleAttributeCondition("level", "invalid", "lt").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("level", "invalid", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_sigmastatus_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleAttributeCondition("status", "stable", "lt").match(
-        dummy_processing_pipeline, sigma_rule
-    )
+def test_rule_attribute_condition_sigmastatus_match(sigma_rule):
+    assert RuleAttributeCondition("status", "stable", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_sigmastatus(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_sigmastatus(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Invalid Sigma status"):
-        RuleAttributeCondition("status", "invalid", "lt").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("status", "invalid", "lt").match(sigma_rule)
 
 
-def test_rule_attribute_condition_invalid_rule_field_type(dummy_processing_pipeline, sigma_rule):
+def test_rule_attribute_condition_invalid_rule_field_type(sigma_rule):
     with pytest.raises(SigmaConfigurationError, match="Unsupported type"):
-        RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(
-            dummy_processing_pipeline, sigma_rule
-        )
+        RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(sigma_rule)
 
 
-def test_rule_tag_condition_match(dummy_processing_pipeline, sigma_rule):
-    assert RuleTagCondition("test.tag").match(dummy_processing_pipeline, sigma_rule)
+def test_rule_tag_condition_match(sigma_rule):
+    assert RuleTagCondition("test.tag").match(sigma_rule)
 
 
-def test_rule_tag_condition_nomatch(dummy_processing_pipeline, sigma_rule):
-    assert not RuleTagCondition("test.notag").match(dummy_processing_pipeline, sigma_rule)
+def test_rule_tag_condition_nomatch(sigma_rule):
+    assert not RuleTagCondition("test.notag").match(sigma_rule)
 
 
-def test_include_field_condition_match(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["field", "otherfield"]).match_field_name(
-        dummy_processing_pipeline, "field"
-    )
+def test_include_field_condition_match():
+    assert IncludeFieldCondition(["field", "otherfield"]).match_field_name("field")
 
 
-def test_include_field_condition_match_nofield(dummy_processing_pipeline, detection_item_nofield):
-    assert not IncludeFieldCondition(["field", "otherfield"]).match_field_name(
-        dummy_processing_pipeline, None
-    )
+def test_include_field_condition_match_nofield():
+    assert not IncludeFieldCondition(["field", "otherfield"]).match_field_name(None)
 
 
-def test_include_field_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert not IncludeFieldCondition(["testfield", "otherfield"]).match_field_name(
-        dummy_processing_pipeline, "field"
-    )
+def test_include_field_condition_nomatch():
+    assert not IncludeFieldCondition(["testfield", "otherfield"]).match_field_name("field")
 
 
-def test_include_field_condition_re_match(dummy_processing_pipeline, detection_item):
-    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
-        dummy_processing_pipeline, "field"
-    )
+def test_include_field_condition_re_match():
+    assert IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name("field")
 
 
-def test_include_field_condition_re_match_nofield(
-    dummy_processing_pipeline, detection_item_nofield
-):
-    assert not IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
-        dummy_processing_pipeline, None
-    )
+def test_include_field_condition_re_match_nofield():
+    assert not IncludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(None)
 
 
-def test_include_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
-    assert not IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(
-        dummy_processing_pipeline, "field"
-    )
+def test_include_field_condition_re_nomatch():
+    assert not IncludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name("field")
 
 
-def test_include_field_condition_wrong_type(dummy_processing_pipeline, detection_item):
+def test_include_field_condition_wrong_type():
     with pytest.raises(SigmaConfigurationError, match="Invalid.*type"):
         IncludeFieldCondition(["field", "otherfield"], "invalid")
 
 
-def test_exclude_field_condition_match(dummy_processing_pipeline, detection_item):
-    assert (
-        ExcludeFieldCondition(["field", "otherfield"]).match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == False
-    )
+def test_exclude_field_condition_match():
+    assert ExcludeFieldCondition(["field", "otherfield"]).match_field_name("field") == False
 
 
-def test_exclude_field_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert (
-        ExcludeFieldCondition(["testfield", "otherfield"]).match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == True
-    )
+def test_exclude_field_condition_nomatch():
+    assert ExcludeFieldCondition(["testfield", "otherfield"]).match_field_name("field") == True
 
 
-def test_exclude_field_condition_re_match(dummy_processing_pipeline, detection_item):
-    assert (
-        ExcludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == False
-    )
+def test_exclude_field_condition_re_match():
+    assert ExcludeFieldCondition(["o[0-9]+", "f.*"], "re").match_field_name("field") == False
 
 
-def test_exclude_field_condition_re_nomatch(dummy_processing_pipeline, detection_item):
-    assert (
-        ExcludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name(
-            dummy_processing_pipeline, "field"
-        )
-        == True
-    )
+def test_exclude_field_condition_re_nomatch():
+    assert ExcludeFieldCondition(["o[0-9]+", "x.*"], "re").match_field_name("field") == True
 
 
 def test_field_state_condition_match(dummy_processing_pipeline):
     dummy_processing_pipeline.state["field"] = "value"
-    assert FieldNameProcessingStateCondition("field", "value").match_field_name(
-        dummy_processing_pipeline, "field"
-    )
+    condition = FieldNameProcessingStateCondition("field", "value")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match_field_name("field")
+
+
+def test_processing_state_condition_base_no_pipeline():
+    with pytest.raises(SigmaProcessingItemError, match="No processing pipeline"):
+        FieldNameProcessingStateCondition("field", "value").match_field_name("field")
 
 
 @pytest.fixture
@@ -449,42 +384,31 @@ def multivalued_detection_item():
     return SigmaDetectionItem("field", [], [SigmaString("value"), SigmaNumber(123)])
 
 
-def test_match_string_condition_any(
-    dummy_processing_pipeline, multivalued_detection_item: SigmaDetectionItem
-):
+def test_match_string_condition_any(multivalued_detection_item: SigmaDetectionItem):
     assert (
-        MatchStringCondition(pattern="^val.*", cond="any").match(
-            dummy_processing_pipeline, multivalued_detection_item
-        )
-        == True
+        MatchStringCondition(pattern="^val.*", cond="any").match(multivalued_detection_item) == True
     )
 
 
-def test_match_string_condition_all(
-    dummy_processing_pipeline, multivalued_detection_item: SigmaDetectionItem
-):
+def test_match_string_condition_all(multivalued_detection_item: SigmaDetectionItem):
     assert (
-        MatchStringCondition(pattern="^val.*", cond="all").match(
-            dummy_processing_pipeline, multivalued_detection_item
-        )
+        MatchStringCondition(pattern="^val.*", cond="all").match(multivalued_detection_item)
         == False
     )
 
 
-def test_match_string_condition_all_sametype(dummy_processing_pipeline):
+def test_match_string_condition_all_sametype():
     assert (
         MatchStringCondition(pattern="^val.*", cond="all").match(
-            dummy_processing_pipeline,
             SigmaDetectionItem("field", [], [SigmaString("val1"), SigmaString("val2")]),
         )
         == True
     )
 
 
-def test_match_string_condition_all_negated(dummy_processing_pipeline):
+def test_match_string_condition_all_negated():
     assert (
         MatchStringCondition(pattern="^val.*", cond="all", negate=True).match(
-            dummy_processing_pipeline,
             SigmaDetectionItem("field", [], [SigmaString("val1"), SigmaString("val2")]),
         )
         == False
@@ -501,30 +425,30 @@ def test_match_string_condition_error_mode():
         MatchStringCondition(pattern="*", cond="any")
 
 
-def test_contains_wildcard_condition_match(dummy_processing_pipeline):
+def test_contains_wildcard_condition_match():
     assert ContainsWildcardCondition(cond="any").match(
-        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("*")])
+        SigmaDetectionItem("field", [], [SigmaString("*")])
     )
 
 
-def test_contains_wildcard_condition_nomatch(dummy_processing_pipeline):
+def test_contains_wildcard_condition_nomatch():
     assert not ContainsWildcardCondition(cond="any").match(
-        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaString("value")])
+        SigmaDetectionItem("field", [], [SigmaString("value")])
     )
 
 
-def test_contains_wildcard_condition_nostring(dummy_processing_pipeline):
+def test_contains_wildcard_condition_nostring():
     assert not ContainsWildcardCondition(cond="any").match(
-        dummy_processing_pipeline, SigmaDetectionItem("field", [], [SigmaNumber(123)])
+        SigmaDetectionItem("field", [], [SigmaNumber(123)])
     )
 
 
-def test_isnull_condition_match(dummy_processing_pipeline, detection_item_null_value):
-    assert IsNullCondition(cond="all").match(dummy_processing_pipeline, detection_item_null_value)
+def test_isnull_condition_match(detection_item_null_value):
+    assert IsNullCondition(cond="all").match(detection_item_null_value)
 
 
-def test_isnull_condition_nomatch(dummy_processing_pipeline, detection_item):
-    assert not IsNullCondition(cond="all").match(dummy_processing_pipeline, detection_item)
+def test_isnull_condition_nomatch(detection_item):
+    assert not IsNullCondition(cond="all").match(detection_item)
 
 
 def test_value_processing_invalid_cond():
@@ -533,20 +457,16 @@ def test_value_processing_invalid_cond():
 
 
 def test_detection_item_processing_item_applied(
-    dummy_processing_pipeline, processing_item, detection_item: SigmaDetectionItem
+    processing_item, detection_item: SigmaDetectionItem
 ):
     detection_item.add_applied_processing_item(processing_item)
     assert DetectionItemProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         detection_item,
     )
 
 
-def test_detection_item_processing_item_not_applied(
-    dummy_processing_pipeline, processing_item, detection_item: SigmaDetectionItem
-):
+def test_detection_item_processing_item_not_applied(detection_item: SigmaDetectionItem):
     assert not DetectionItemProcessingItemAppliedCondition(processing_item_id="test").match(
-        dummy_processing_pipeline,
         detection_item,
     )
 
@@ -559,22 +479,22 @@ def pipeline_field_tracking():
 
 
 def test_field_name_processing_item_applied(pipeline_field_tracking):
-    assert FieldNameProcessingItemAppliedCondition(
-        processing_item_id="processing_item"
-    ).match_field_name(pipeline_field_tracking, "fieldA")
+    condition = FieldNameProcessingItemAppliedCondition(processing_item_id="processing_item")
+    condition.set_pipeline(pipeline_field_tracking)
+    assert condition.match_field_name("fieldA")
 
 
 def test_field_name_processing_item_not_applied(pipeline_field_tracking):
-    assert not FieldNameProcessingItemAppliedCondition(
-        processing_item_id="processing_item"
-    ).match_field_name(pipeline_field_tracking, "fieldC")
+    condition = FieldNameProcessingItemAppliedCondition(processing_item_id="processing_item")
+    condition.set_pipeline(pipeline_field_tracking)
+    assert not condition.match_field_name("fieldC")
 
 
-def test_detection_item_state_match(dummy_processing_pipeline, detection_item):
+def test_detection_item_state_match(detection_item, dummy_processing_pipeline):
     dummy_processing_pipeline.state["field"] = "value"
-    assert DetectionItemProcessingStateCondition("field", "value").match(
-        dummy_processing_pipeline, detection_item
-    )
+    condition = DetectionItemProcessingStateCondition("field", "value")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert condition.match(detection_item)
 
 
 def test_condition_identifiers_completeness():

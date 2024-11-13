@@ -38,6 +38,7 @@ from sigma.conditions import (
     ConditionType,
 )
 from sigma.types import (
+    CompareOperators,
     SigmaBool,
     SigmaCasedString,
     SigmaExists,
@@ -883,7 +884,7 @@ class TextQueryBackend(Backend):
     compare_op_expression: ClassVar[Optional[str]] = (
         None  # Compare operation query as format string with placeholders {field}, {operator} and {value}
     )
-    compare_operators: ClassVar[Optional[Dict[SigmaCompareExpression.CompareOperators, str]]] = (
+    compare_operators: ClassVar[Optional[Dict[CompareOperators, str]]] = (
         None  # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
     )
 

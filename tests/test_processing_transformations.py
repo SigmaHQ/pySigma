@@ -1,47 +1,24 @@
-from dataclasses import dataclass
-from copy import deepcopy
 import inspect
-from sigma.conditions import ConditionOR, SigmaCondition
+from copy import deepcopy
+from dataclasses import dataclass
+
 import pytest
+
+import sigma.processing.transformations as transformations_module
+from sigma.conditions import ConditionOR, SigmaCondition
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
     SigmaCorrelationFieldAliases,
     SigmaCorrelationRule,
     SigmaRuleReference,
 )
-from sigma.processing.transformations import (
-    AddFieldTransformation,
-    ConvertTypeTransformation,
-    NestedProcessingTransformation,
-    RemoveFieldTransformation,
-    SetCustomAttributeTransformation,
-    SetFieldTransformation,
-    SetValueTransformation,
-    transformations,
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaRegularExpressionError,
+    SigmaTransformationError,
+    SigmaValueError,
 )
-import sigma.processing.transformations as transformations_module
-from sigma.processing.transformations import (
-    AddConditionTransformation,
-    RegexTransformation,
-    ChangeLogsourceTransformation,
-    ConditionTransformation,
-    DetectionItemFailureTransformation,
-    DropDetectionItemTransformation,
-    MapStringTransformation,
-    RuleFailureTransformation,
-    FieldMappingTransformation,
-    FieldPrefixMappingTransformation,
-    AddFieldnameSuffixTransformation,
-    AddFieldnamePrefixTransformation,
-    SetStateTransformation,
-    Transformation,
-    WildcardPlaceholderTransformation,
-    ValueListPlaceholderTransformation,
-    QueryExpressionPlaceholderTransformation,
-    ReplaceStringTransformation,
-    HashesFieldsDetectionItemTransformation,
-)
-from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.modifiers import SigmaExpandModifier
 from sigma.processing.conditions import (
     FieldNameProcessingItemAppliedCondition,
     IncludeFieldCondition,
@@ -49,7 +26,37 @@ from sigma.processing.conditions import (
     RuleProcessingItemAppliedCondition,
     rule_conditions,
 )
-from sigma.rule import SigmaLogSource, SigmaRule, SigmaDetection, SigmaDetectionItem
+from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.transformations import (
+    AddConditionTransformation,
+    AddFieldnamePrefixTransformation,
+    AddFieldnameSuffixTransformation,
+    AddFieldTransformation,
+    ChangeLogsourceTransformation,
+    ConvertTypeTransformation,
+    DetectionItemFailureTransformation,
+    DropDetectionItemTransformation,
+    FieldMappingTransformation,
+    FieldPrefixMappingTransformation,
+    HashesFieldsDetectionItemTransformation,
+    MapStringTransformation,
+    NestedProcessingTransformation,
+    QueryExpressionPlaceholderTransformation,
+    RegexTransformation,
+    RemoveFieldTransformation,
+    ReplaceStringTransformation,
+    RuleFailureTransformation,
+    SetCustomAttributeTransformation,
+    SetFieldTransformation,
+    SetStateTransformation,
+    SetValueTransformation,
+    Transformation,
+    ValueListPlaceholderTransformation,
+    WildcardPlaceholderTransformation,
+    transformations,
+)
+from sigma.processing.transformations.base import ConditionTransformation
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
 from sigma.types import (
     Placeholder,
     SigmaBool,
@@ -60,13 +67,6 @@ from sigma.types import (
     SigmaRegularExpressionFlag,
     SigmaString,
     SpecialChars,
-)
-from sigma.modifiers import SigmaExpandModifier
-from sigma.exceptions import (
-    SigmaConfigurationError,
-    SigmaRegularExpressionError,
-    SigmaTransformationError,
-    SigmaValueError,
 )
 from tests.test_processing_pipeline import (
     RuleConditionFalse,
@@ -216,6 +216,13 @@ def sigma_rule_placeholders_only():
     )
 
 
+def test_transformaion_multiple_pipelines_set(dummy_pipeline):
+    transformation = DropDetectionItemTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+    with pytest.raises(SigmaTransformationError, match="Pipeline.*was already set"):
+        transformation.set_pipeline(dummy_pipeline)
+
+
 def test_field_mapping_from_dict():
     mapping = {
         "single": "single_mapping",
@@ -250,7 +257,8 @@ def field_mapping_transformation_sigma_rule(
             identifier="test",
         )
     )
-    field_mapping_transformation.apply(dummy_pipeline, sigma_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_rule)
     return (field_mapping_transformation, sigma_rule)
 
 
@@ -286,7 +294,8 @@ def test_field_mapping(field_mapping_transformation_sigma_rule):
 def test_field_mapping_correlation_rule(
     dummy_pipeline, sigma_correlation_rule, field_mapping_transformation
 ):
-    field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["testalias", "field2", "fieldC", "fieldD"]
     assert sigma_correlation_rule.aliases.aliases["testalias"] == SigmaCorrelationFieldAlias(
         alias="testalias",
@@ -302,7 +311,8 @@ def test_field_mapping_correlation_rule_no_condition_fieldref(
     monkeypatch, dummy_pipeline, sigma_correlation_rule, field_mapping_transformation
 ):
     monkeypatch.setattr(sigma_correlation_rule.condition, "fieldref", None)
-    field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["testalias", "field2", "fieldC", "fieldD"]
     assert sigma_correlation_rule.aliases.aliases["testalias"] == SigmaCorrelationFieldAlias(
         alias="testalias",
@@ -318,7 +328,8 @@ def test_field_mapping_correlation_rule_no_condition(
     monkeypatch, dummy_pipeline, sigma_correlation_rule, field_mapping_transformation
 ):
     monkeypatch.setattr(sigma_correlation_rule, "condition", None)
-    field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["testalias", "field2", "fieldC", "fieldD"]
     assert sigma_correlation_rule.aliases.aliases["testalias"] == SigmaCorrelationFieldAlias(
         alias="testalias",
@@ -335,7 +346,8 @@ def test_field_mapping_correlation_rule_no_groupby(
 ):
     monkeypatch.setattr(sigma_correlation_rule, "group_by", None)
     monkeypatch.setattr(sigma_correlation_rule, "aliases", SigmaCorrelationFieldAliases())
-    field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by is None
     assert sigma_correlation_rule.aliases == SigmaCorrelationFieldAliases()
     assert sigma_correlation_rule.condition.fieldref == "fieldA"
@@ -345,7 +357,8 @@ def test_field_mapping_correlation_rule_no_alias(
     monkeypatch, dummy_pipeline, sigma_correlation_rule, field_mapping_transformation
 ):
     monkeypatch.setattr(sigma_correlation_rule, "aliases", SigmaCorrelationFieldAliases())
-    field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["something_different", "field2", "fieldC", "fieldD"]
     assert sigma_correlation_rule.aliases == SigmaCorrelationFieldAliases()
     assert sigma_correlation_rule.condition.fieldref == "fieldA"
@@ -360,7 +373,8 @@ def test_field_mapping_correlation_rule_multiple_alias_mappings(
         "field3",
     )
     with pytest.raises(SigmaConfigurationError, match="rule alias mapping.*multiple field names"):
-        field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+        field_mapping_transformation.set_pipeline(dummy_pipeline)
+        field_mapping_transformation.apply(sigma_correlation_rule)
 
 
 def test_field_mapping_correlation_rule_multiple_condition_mappings(
@@ -368,7 +382,8 @@ def test_field_mapping_correlation_rule_multiple_condition_mappings(
 ):
     monkeypatch.setattr(sigma_correlation_rule.condition, "fieldref", "field3")
     with pytest.raises(SigmaConfigurationError, match="rule condition field.*multiple field names"):
-        field_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+        field_mapping_transformation.set_pipeline(dummy_pipeline)
+        field_mapping_transformation.apply(sigma_correlation_rule)
 
 
 def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
@@ -441,7 +456,8 @@ def test_field_prefix_mapping(dummy_pipeline, field_prefix_mapping_transformatio
             ],
         }
     )
-    field_prefix_mapping_transformation.apply(dummy_pipeline, sigma_rule)
+    field_prefix_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_prefix_mapping_transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -509,7 +525,8 @@ def test_field_prefix_mapping_correlation_rule(
             },
         }
     )
-    field_prefix_mapping_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    field_prefix_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_prefix_mapping_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == [
         "testalias",
         "mapped1.field",
@@ -533,7 +550,8 @@ def test_drop_detection_item_transformation(sigma_rule: SigmaRule, dummy_pipelin
         transformation,
         field_name_conditions=[IncludeFieldCondition(fields=["field2"])],
     )
-    processing_item.apply(dummy_pipeline, sigma_rule)
+    processing_item.set_pipeline(dummy_pipeline)
+    processing_item.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -580,7 +598,8 @@ def test_drop_detection_item_transformation(sigma_rule: SigmaRule, dummy_pipelin
         transformation,
         field_name_conditions=[IncludeFieldCondition(fields=["field2"])],
     )
-    processing_item.apply(dummy_pipeline, sigma_rule)
+    processing_item.set_pipeline(dummy_pipeline)
+    processing_item.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -598,7 +617,8 @@ def test_drop_detection_item_transformation_correlation_rule(
 ):
     transformation = DropDetectionItemTransformation()
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -608,7 +628,8 @@ def test_drop_detection_item_transformation_all(sigma_rule: SigmaRule, dummy_pip
         transformation,
         field_name_conditions=[IncludeFieldCondition(fields=["field1", "field2", "field3"])],
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"].detection_items[0].detection_items == []
 
 
@@ -622,7 +643,8 @@ def add_fieldname_suffix_transformation():
 
 
 def test_add_fieldname_suffix(dummy_pipeline, sigma_rule, add_fieldname_suffix_transformation):
-    add_fieldname_suffix_transformation.apply(dummy_pipeline, sigma_rule)
+    add_fieldname_suffix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_suffix_transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -646,7 +668,8 @@ def test_add_fieldname_suffix(dummy_pipeline, sigma_rule, add_fieldname_suffix_t
 def test_add_fieldname_suffix_keyword(
     dummy_pipeline, keyword_sigma_rule, add_fieldname_suffix_transformation
 ):
-    add_fieldname_suffix_transformation.apply(dummy_pipeline, keyword_sigma_rule)
+    add_fieldname_suffix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_suffix_transformation.apply(keyword_sigma_rule)
     assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetectionItem(
@@ -670,7 +693,8 @@ def test_add_fieldname_suffix_tracking(
         field_name_conditions=[IncludeFieldCondition("field1")],
         identifier="test",
     )
-    processing_item.apply(dummy_pipeline, sigma_rule)
+    processing_item.set_pipeline(dummy_pipeline)
+    processing_item.apply(sigma_rule)
     detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
     assert detection_items == [
         SigmaDetectionItem("field1.test", [], [SigmaString("value1")]),
@@ -689,7 +713,8 @@ def test_add_fieldname_suffix_tracking(
 def test_add_fieldname_suffix_transformation_correlation_rule(
     sigma_correlation_rule, dummy_pipeline, add_fieldname_suffix_transformation
 ):
-    add_fieldname_suffix_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    add_fieldname_suffix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_suffix_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["testalias", "field2.test", "field3.test"]
     assert sigma_correlation_rule.aliases.aliases["testalias"] == SigmaCorrelationFieldAlias(
         alias="testalias",
@@ -711,7 +736,8 @@ def add_fieldname_prefix_transformation():
 
 
 def test_add_fieldname_prefix(dummy_pipeline, sigma_rule, add_fieldname_prefix_transformation):
-    add_fieldname_prefix_transformation.apply(dummy_pipeline, sigma_rule)
+    add_fieldname_prefix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_prefix_transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -735,7 +761,8 @@ def test_add_fieldname_prefix(dummy_pipeline, sigma_rule, add_fieldname_prefix_t
 def test_add_fieldname_prefix_keyword(
     dummy_pipeline, keyword_sigma_rule, add_fieldname_prefix_transformation
 ):
-    add_fieldname_prefix_transformation.apply(dummy_pipeline, keyword_sigma_rule)
+    add_fieldname_prefix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_prefix_transformation.apply(keyword_sigma_rule)
     assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetectionItem(
@@ -759,7 +786,8 @@ def test_add_fieldname_prefix_tracking(
         field_name_conditions=[IncludeFieldCondition("field1")],
         identifier="test",
     )
-    processing_item.apply(dummy_pipeline, sigma_rule)
+    processing_item.set_pipeline(dummy_pipeline)
+    processing_item.apply(sigma_rule)
     detection_items = sigma_rule.detection.detections["test"].detection_items[0].detection_items
     assert detection_items == [
         SigmaDetectionItem("test.field1", [], [SigmaString("value1")]),
@@ -778,7 +806,8 @@ def test_add_fieldname_prefix_tracking(
 def test_add_fieldname_prefix_correlation_rule(
     sigma_correlation_rule, dummy_pipeline, add_fieldname_prefix_transformation
 ):
-    add_fieldname_prefix_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    add_fieldname_prefix_transformation.set_pipeline(dummy_pipeline)
+    add_fieldname_prefix_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule.group_by == ["testalias", "test.field2", "test.field3"]
     assert sigma_correlation_rule.aliases.aliases["testalias"] == SigmaCorrelationFieldAlias(
         alias="testalias",
@@ -825,7 +854,8 @@ def test_fields_list_mapping_with_detection_item_condition(sigma_rule: SigmaRule
 
 def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders: SigmaRule):
     transformation = WildcardPlaceholderTransformation()
-    transformation.apply(dummy_pipeline, sigma_rule_placeholders)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule_placeholders)
     assert sigma_rule_placeholders.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -850,7 +880,8 @@ def test_wildcard_placeholders(dummy_pipeline, sigma_rule_placeholders: SigmaRul
 def test_wildcard_placeholders_correlation_rule(sigma_correlation_rule, dummy_pipeline):
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     transformation = WildcardPlaceholderTransformation()
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -867,7 +898,8 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders:
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule_placeholders)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule_placeholders)
     detection_items = (
         sigma_rule_placeholders.detection.detections["test"].detection_items[0].detection_items
     )
@@ -900,7 +932,8 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule_placeholders)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule_placeholders)
     detection_items = (
         sigma_rule_placeholders.detection.detections["test"].detection_items[0].detection_items
     )
@@ -927,7 +960,8 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
 
 def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = WildcardPlaceholderTransformation()
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -944,7 +978,8 @@ def test_wildcard_placeholders_without_placeholders(dummy_pipeline, sigma_rule: 
 def test_valuelist_placeholders(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
     pipeline = ProcessingPipeline(vars={"var1": ["val1", 123], "var2": "val3*"})
-    transformation.apply(pipeline, sigma_rule_placeholders_simple)
+    transformation.set_pipeline(pipeline)
+    transformation.apply(sigma_rule_placeholders_simple)
     assert sigma_rule_placeholders_simple.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -966,22 +1001,25 @@ def test_valuelist_placeholders(sigma_rule_placeholders_simple: SigmaRule):
 def test_valuelist_placeholders_correlation_rule(sigma_correlation_rule, dummy_pipeline):
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     transformation = ValueListPlaceholderTransformation()
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
 def test_valuelist_placeholders_missing(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
     pipeline = ProcessingPipeline([], vars={"var1": "val1"})
+    transformation.set_pipeline(pipeline)
     with pytest.raises(SigmaValueError, match="doesn't exist"):
-        transformation.apply(pipeline, sigma_rule_placeholders_simple)
+        transformation.apply(sigma_rule_placeholders_simple)
 
 
 def test_valuelist_placeholders_wrong_type(sigma_rule_placeholders_simple: SigmaRule):
     transformation = ValueListPlaceholderTransformation()
     pipeline = ProcessingPipeline(vars={"var1": None})
+    transformation.set_pipeline(pipeline)
     with pytest.raises(SigmaValueError, match="not a string or number"):
-        transformation.apply(pipeline, sigma_rule_placeholders_simple)
+        transformation.apply(sigma_rule_placeholders_simple)
 
 
 def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only: SigmaRule):
@@ -989,7 +1027,8 @@ def test_queryexpr_placeholders(dummy_pipeline, sigma_rule_placeholders_only: Si
     transformation = QueryExpressionPlaceholderTransformation(
         expression=expr, mapping={"var2": "placeholder2"}
     )
-    transformation.apply(dummy_pipeline, sigma_rule_placeholders_only)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule_placeholders_only)
     assert sigma_rule_placeholders_only.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1023,7 +1062,8 @@ def test_queryexpr_placeholders_correlation_rule(sigma_correlation_rule, dummy_p
     transformation = QueryExpressionPlaceholderTransformation(
         expression="{field} lookup {id}", mapping={"var2": "placeholder2"}
     )
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -1031,7 +1071,8 @@ def test_queryexpr_placeholders_without_placeholders(dummy_pipeline, sigma_rule:
     transformation = QueryExpressionPlaceholderTransformation(
         expression="{field} lookup {id}",
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1050,7 +1091,8 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
         expression="{field} lookup {id}",
     )
     with pytest.raises(SigmaValueError, match="only allows placeholder-only strings"):
-        transformation.apply(dummy_pipeline, sigma_rule_placeholders)
+        transformation.set_pipeline(dummy_pipeline)
+        transformation.apply(sigma_rule_placeholders)
 
 
 ### ConditionTransformation ###
@@ -1073,7 +1115,8 @@ def test_conditiontransformation_tracking_change(dummy_pipeline, sigma_rule: Sig
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.parsed_condition[0].was_processed_by(
         "test"
     ) and sigma_rule.was_processed_by("test")
@@ -1087,7 +1130,8 @@ def test_conditiontransformation_tracking_nochange(dummy_pipeline, sigma_rule: S
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert not sigma_rule.detection.parsed_condition[0].was_processed_by(
         "test"
     ) and sigma_rule.was_processed_by("test")
@@ -1110,7 +1154,8 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert (
         sigma_rule.detection.parsed_condition[0].condition
         == "additional and (test)"  # condition expression was added
@@ -1139,7 +1184,8 @@ def test_addconditiontransformation_correlation_rule(sigma_correlation_rule, dum
         },
         "additional",
     )
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -1159,7 +1205,8 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert (
         sigma_rule.detection.parsed_condition[0].condition
         == "additional and (test)"  # condition expression was added
@@ -1202,7 +1249,8 @@ def test_addconditiontransformation_negated(dummy_pipeline, sigma_rule: SigmaRul
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert (
         sigma_rule.detection.parsed_condition[0].condition
         == "not additional and (test)"  # negated condition expression was added
@@ -1215,7 +1263,8 @@ def test_changelogsource(dummy_pipeline, sigma_rule: SigmaRule):
         ChangeLogsourceTransformation("test_category", "test_product", "test_service"),
         identifier="test",
     )
-    processing_item.apply(dummy_pipeline, sigma_rule)
+    processing_item.set_pipeline(dummy_pipeline)
+    processing_item.apply(sigma_rule)
 
     assert sigma_rule.logsource == SigmaLogSource(
         "test_category", "test_product", "test_service"
@@ -1225,13 +1274,15 @@ def test_changelogsource(dummy_pipeline, sigma_rule: SigmaRule):
 def test_changelogsource_correlation_rule(sigma_correlation_rule, dummy_pipeline):
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     transformation = ChangeLogsourceTransformation("test_category", "test_product", "test_service")
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
 def test_add_fields_transformation_single(dummy_pipeline, sigma_rule):
     transformation = AddFieldTransformation("added_field")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field1",
@@ -1244,7 +1295,8 @@ def test_add_fields_transformation_single(dummy_pipeline, sigma_rule):
 
 def test_add_fields_transformation_multiple(dummy_pipeline, sigma_rule):
     transformation = AddFieldTransformation(["added_field1", "added_field2"])
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field1",
@@ -1258,7 +1310,8 @@ def test_add_fields_transformation_multiple(dummy_pipeline, sigma_rule):
 
 def test_remove_fields_transformation_single(dummy_pipeline, sigma_rule):
     transformation = RemoveFieldTransformation("field1")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field2",
@@ -1269,7 +1322,8 @@ def test_remove_fields_transformation_single(dummy_pipeline, sigma_rule):
 
 def test_remove_fields_transformation_multiple(dummy_pipeline, sigma_rule):
     transformation = RemoveFieldTransformation(["field1", "field3"])
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field2",
@@ -1279,7 +1333,8 @@ def test_remove_fields_transformation_multiple(dummy_pipeline, sigma_rule):
 
 def test_remove_fields_transformation_single_nonexistent(dummy_pipeline, sigma_rule):
     transformation = RemoveFieldTransformation("nonexistent_field")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field1",
@@ -1293,7 +1348,8 @@ def test_remove_fields_transformation_multiple_nonexistent(dummy_pipeline, sigma
     transformation = RemoveFieldTransformation(
         ["nonexistent_field1", "field1", "nonexistent_field2"]
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == [
         "otherfield1",
         "field2",
@@ -1304,13 +1360,15 @@ def test_remove_fields_transformation_multiple_nonexistent(dummy_pipeline, sigma
 
 def test_set_fields_transformation(dummy_pipeline, sigma_rule):
     transformation = SetFieldTransformation(["field1", "field2", "field3"])
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.fields == ["field1", "field2", "field3"]
 
 
 def test_replace_string_simple(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = ReplaceStringTransformation("value", "test")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1341,7 +1399,8 @@ def test_replace_string_specials(dummy_pipeline):
         }
     )
     transformation = ReplaceStringTransformation("^.*\\\\", "/")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1371,7 +1430,8 @@ def test_replace_string_placeholder(dummy_pipeline):
     assert s_before == SigmaString("foo%var%bar").insert_placeholders()
 
     transformation = ReplaceStringTransformation("bar", "test")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
     assert s == SigmaString("foo%var%test").insert_placeholders()
 
@@ -1393,7 +1453,8 @@ def test_replace_string_no_placeholder(dummy_pipeline):
     assert s_before == SigmaString("foo%var%bar")
 
     transformation = ReplaceStringTransformation("bar", "test")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
     assert s == SigmaString("foo%var%test")
 
@@ -1415,7 +1476,8 @@ def test_replace_string_skip_specials(dummy_pipeline):
         }
     )
     transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True)
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1445,7 +1507,8 @@ def test_replace_string_skip_specials_with_interpret_specials(dummy_pipeline):
         }
     )
     transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True, True)
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1476,7 +1539,8 @@ def test_replace_string_backslashes(dummy_pipeline):
         }
     )
     transformation = ReplaceStringTransformation("value", "test")
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1498,7 +1562,8 @@ def test_replace_string_invalid():
 def test_replace_string_correlation_rule(sigma_correlation_rule, dummy_pipeline):
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
     transformation = ReplaceStringTransformation("value", "test")
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -1513,7 +1578,8 @@ def map_string_transformation():
 
 
 def test_map_string_transformation(dummy_pipeline, sigma_rule, map_string_transformation):
-    map_string_transformation.apply(dummy_pipeline, sigma_rule)
+    map_string_transformation.set_pipeline(dummy_pipeline)
+    map_string_transformation.apply(sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
@@ -1533,7 +1599,8 @@ def test_map_string_transformation_correlation_rule(
     dummy_pipeline, sigma_correlation_rule, map_string_transformation
 ):
     orig_correlation_rule = deepcopy(sigma_correlation_rule)
-    map_string_transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    map_string_transformation.set_pipeline(dummy_pipeline)
+    map_string_transformation.apply(sigma_correlation_rule)
     assert sigma_correlation_rule == orig_correlation_rule
 
 
@@ -1679,7 +1746,8 @@ def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert dummy_pipeline.state == {"testkey": "testvalue"}
     assert sigma_rule.was_processed_by("test")
 
@@ -1692,7 +1760,8 @@ def test_set_state_correlation_rule(sigma_correlation_rule, dummy_pipeline):
             identifier="test",
         )
     )
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert dummy_pipeline.state == {"testkey": "testvalue"}
     assert sigma_correlation_rule.was_processed_by("test")
 
@@ -1700,26 +1769,30 @@ def test_set_state_correlation_rule(sigma_correlation_rule, dummy_pipeline):
 def test_rule_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = RuleFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
-        transformation.apply(dummy_pipeline, sigma_rule)
+        transformation.set_pipeline(dummy_pipeline)
+        transformation.apply(sigma_rule)
 
 
 def test_rule_failure_transformation_correlation_rule(dummy_pipeline, sigma_correlation_rule):
     transformation = RuleFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
-        transformation.apply(dummy_pipeline, sigma_correlation_rule)
+        transformation.set_pipeline(dummy_pipeline)
+        transformation.apply(sigma_correlation_rule)
 
 
 def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
     transformation = DetectionItemFailureTransformation("Test")
     with pytest.raises(SigmaTransformationError, match="^Test$"):
-        transformation.apply(dummy_pipeline, sigma_rule)
+        transformation.set_pipeline(dummy_pipeline)
+        transformation.apply(sigma_rule)
 
 
 def test_set_custom_attribute(dummy_pipeline, sigma_rule):
     transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
     transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
 
-    transformation.apply(dummy_pipeline, sigma_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
     assert "custom_key" in sigma_rule.custom_attributes
     assert sigma_rule.custom_attributes["custom_key"] == "custom_value"
     assert sigma_rule.was_processed_by("test")
@@ -1729,7 +1802,8 @@ def test_set_custom_attribute_correlation_rule(dummy_pipeline, sigma_correlation
     transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
     transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
 
-    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)
     assert "custom_key" in sigma_correlation_rule.custom_attributes
     assert sigma_correlation_rule.custom_attributes["custom_key"] == "custom_value"
     assert sigma_correlation_rule.was_processed_by("test")
@@ -1811,7 +1885,8 @@ def test_nested_pipeline_transformation_from_yaml(nested_pipeline_transformation
 def test_nested_pipeline_transformation_from_dict_apply(
     dummy_pipeline, sigma_rule, nested_pipeline_transformation
 ):
-    nested_pipeline_transformation.apply(dummy_pipeline, sigma_rule)
+    nested_pipeline_transformation.set_pipeline(dummy_pipeline)
+    nested_pipeline_transformation.apply(sigma_rule)
     assert sigma_rule.title == "TestTest"
     assert sigma_rule.was_processed_by("test")
 

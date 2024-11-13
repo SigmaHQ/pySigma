@@ -145,6 +145,12 @@ class SigmaPipelineParsingError(SigmaError):
     pass
 
 
+class SigmaProcessingItemError(SigmaError):
+    """Error in definition or state of processing item."""
+
+    pass
+
+
 class SigmaPlaceholderError(SigmaValueError):
     """Attempted to convert an unhandled Placeholder into a query"""
 

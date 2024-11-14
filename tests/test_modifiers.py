@@ -430,14 +430,14 @@ def test_fieldref_startswith(dummy_detection_item):
         SigmaStartswithModifier(dummy_detection_item, [SigmaFieldReferenceModifier]).modify(
             fieldref
         )
-    ) == SigmaFieldReference("field", SpecialChars.WILDCARD_MULTI, None)
+    ) == SigmaFieldReference("field", None, SpecialChars.WILDCARD_MULTI)
 
 
 def test_fieldref_endswith(dummy_detection_item):
     fieldref = SigmaFieldReferenceModifier(dummy_detection_item, []).modify(SigmaString("field"))
     assert (
         SigmaEndswithModifier(dummy_detection_item, [SigmaFieldReferenceModifier]).modify(fieldref)
-    ) == SigmaFieldReference("field", None, SpecialChars.WILDCARD_MULTI)
+    ) == SigmaFieldReference("field", SpecialChars.WILDCARD_MULTI, None)
 
 
 def test_fieldref_wildcard(dummy_detection_item):

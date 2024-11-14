@@ -151,7 +151,7 @@ class SigmaStartswithModifier(SigmaValueModifier):
                 val.regexp = val.regexp + ".*"
             val.compile()
         elif isinstance(val, SigmaFieldReference):
-            val.wildcard_start = SpecialChars.WILDCARD_MULTI
+            val.wildcard_end = SpecialChars.WILDCARD_MULTI
         return val
 
 
@@ -169,7 +169,7 @@ class SigmaEndswithModifier(SigmaValueModifier):
                 val.regexp = ".*" + val.regexp
             val.compile()
         elif isinstance(val, SigmaFieldReference):
-            val.wildcard_end = SpecialChars.WILDCARD_MULTI
+            val.wildcard_start = SpecialChars.WILDCARD_MULTI
         return val
 
 

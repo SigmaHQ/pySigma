@@ -2042,6 +2042,19 @@ def test_case_transformation_upper(dummy_pipeline):
     assert detection_item.value[0] == SigmaString("ABC")
 
 
+def test_case_transformation_special(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC*zer?.123\\")])
+    transformation = CaseTransformation(method="upper")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0].s == (
+        "ABC",
+        SpecialChars.WILDCARD_MULTI,
+        "ZER",
+        SpecialChars.WILDCARD_SINGLE,
+        ".123\\",
+    )
+
+
 def test_case_transformation_error():
     with pytest.raises(
         SigmaConfigurationError, match="Invalid method 'SnakeCase' for CaseTransformation."

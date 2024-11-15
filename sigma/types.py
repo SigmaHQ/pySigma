@@ -587,14 +587,14 @@ class SigmaString(SigmaType):
         if self.original:
             return SigmaString(self.original.upper())
         else:
-            original= self.to_plain()
-            return SigmaString(original.upper())    
+            original = self.to_plain()
+            return SigmaString(original.upper())
 
     def lower(self) -> "SigmaString":
         if self.original:
             return SigmaString(self.original.lower())
         else:
-            original= self.to_plain()
+            original = self.to_plain()
             return SigmaString(original.lower())
 
 

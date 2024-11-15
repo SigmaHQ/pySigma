@@ -488,6 +488,24 @@ class ProcessingPipeline:
     @classmethod
     def from_dict(cls, d: dict) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
+
+        custom_keys = [
+            k
+            for k in d.keys()
+            if k
+            not in (
+                "vars",
+                "transformations",
+                "postprocessing",
+                "finalizers",
+                "priority",
+                "name",
+                "allowed_backends",
+            )
+        ]
+        if custom_keys:
+            raise SigmaConfigurationError(f"Unkown keys {custom_keys}")
+
         vars = d.get("vars", dict())  # default: no variables
 
         items = d.get("transformations", list())  # default: no transformation

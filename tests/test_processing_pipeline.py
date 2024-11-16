@@ -5,6 +5,7 @@ from sigma.processing.pipeline import (
     ProcessingPipeline,
     ProcessingItem,
     QueryPostprocessingItem,
+    SigmaPipelineParsingError,
 )
 from sigma.processing.transformations import transformations
 from sigma.processing.conditions import (
@@ -603,6 +604,35 @@ def test_processingpipeline_fromyaml(
             allowed_backends={"test-a", "test-b"},
         )
     )
+
+
+def test_processingpipeline_fromyaml_invalid(
+    processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
+):
+    with pytest.raises(
+        SigmaPipelineParsingError, match="Error in parsing of a Sigma processing pipeline"
+    ):
+        ProcessingPipeline.from_yaml(
+            """
+                {not a yaml
+            """
+        )
+
+
+def test_processingpipeline_fromyaml_unknown(
+    processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
+):
+    with pytest.raises(SigmaConfigurationError, match="Unkown keys \['transformation'\]"):
+        ProcessingPipeline.from_yaml(
+            """
+        name: unknown
+        priority: 10
+        transformation:
+        - id: test
+          type: test
+          method: test
+            """
+        )
 
 
 def test_processingpipeline_fromdict_error(processing_item_dict_with_error):

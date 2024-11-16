@@ -118,8 +118,8 @@ class SigmaContainsModifier(SigmaValueModifier):
     """Puts wildcards around a string to match it somewhere inside another string instead of as a whole."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression]
-    ) -> Union[SigmaString, SigmaRegularExpression]:
+        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
+    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
@@ -131,6 +131,9 @@ class SigmaContainsModifier(SigmaValueModifier):
             if val.regexp[-2:] != ".*" and val.regexp[-1] != "$":
                 val.regexp = val.regexp + ".*"
             val.compile()
+        elif isinstance(val, SigmaFieldReference):
+            val.wildcard_start = SpecialChars.WILDCARD_MULTI
+            val.wildcard_end = SpecialChars.WILDCARD_MULTI
         return val
 
 
@@ -138,8 +141,8 @@ class SigmaStartswithModifier(SigmaValueModifier):
     """Puts a wildcard at the end of a string to match arbitrary values after the given prefix."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression]
-    ) -> Union[SigmaString, SigmaRegularExpression]:
+        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
+    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
         if isinstance(val, SigmaString):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
@@ -147,6 +150,8 @@ class SigmaStartswithModifier(SigmaValueModifier):
             if val.regexp[-2:] != ".*" and val.regexp[-1] != "$":
                 val.regexp = val.regexp + ".*"
             val.compile()
+        elif isinstance(val, SigmaFieldReference):
+            val.wildcard_end = SpecialChars.WILDCARD_MULTI
         return val
 
 
@@ -154,8 +159,8 @@ class SigmaEndswithModifier(SigmaValueModifier):
     """Puts a wildcard before a string to match arbitrary values before it."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression]
-    ) -> Union[SigmaString, SigmaRegularExpression]:
+        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
+    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
@@ -163,6 +168,8 @@ class SigmaEndswithModifier(SigmaValueModifier):
             if val.regexp[:2] != ".*" and val.regexp[0] != "^":
                 val.regexp = ".*" + val.regexp
             val.compile()
+        elif isinstance(val, SigmaFieldReference):
+            val.wildcard_start = SpecialChars.WILDCARD_MULTI
         return val
 
 

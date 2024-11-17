@@ -1600,6 +1600,27 @@ def test_convert_compare_fields(test_backend):
     )
 
 
+def test_convert_compare_fields_unsupported(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "field_equals_field_expression", None)
+    with pytest.raises(NotImplementedError):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref: "field B"
+                        field A|fieldref: fieldB
+                    condition: sel
+            """
+            )
+        )
+
+
 def test_convert_compare_fields_noquote(test_backend: TextQueryTestBackend):
     test_backend.field_equals_field_expression = "`{field1}`=`{field2}`"
     test_backend.field_equals_field_escaping_quoting = (False, False)
@@ -1666,6 +1687,129 @@ def test_convert_compare_fields_differentiation_prefix(test_backend):
         )
         == ["field=fieldref('test.prefix') and 'test.prefix'=fieldref(field)"]
     )
+
+
+def test_convert_compare_fields_startswith(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|fieldref|startswith: fieldB
+                condition: sel
+        """
+            )
+        )
+        == ["mappedA=fieldref_startswith(mappedB)"]
+    )
+
+
+def test_convert_compare_fields_startswith_unsupported(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "field_equals_field_startswith_expression", None)
+    with pytest.raises(NotImplementedError):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|startswith: fieldB
+                    condition: sel
+            """
+            )
+        )
+
+
+def test_convert_compare_fields_endswith(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|fieldref|endswith: fieldB
+                condition: sel
+        """
+            )
+        )
+        == ["mappedA=fieldref_endswith(mappedB)"]
+    )
+
+
+def test_convert_compare_fields_endswith_unsupported(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "field_equals_field_endswith_expression", None)
+    with pytest.raises(NotImplementedError):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|endswith: fieldB
+                    condition: sel
+            """
+            )
+        )
+
+
+def test_convert_compare_fields_contains(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|fieldref|contains: fieldB
+                condition: sel
+        """
+            )
+        )
+        == ["mappedA=fieldref_contains(mappedB)"]
+    )
+
+
+def test_convert_compare_fields_contains_unsupported(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "field_equals_field_contains_expression", None)
+    with pytest.raises(NotImplementedError):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA|fieldref|contains: fieldB
+                    condition: sel
+            """
+            )
+        )
 
 
 def test_convert_compare_fields_wrong_type(test_backend):

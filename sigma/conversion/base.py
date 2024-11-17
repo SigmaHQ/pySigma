@@ -889,9 +889,12 @@ class TextQueryBackend(Backend):
     )
 
     # Expression for comparing two event fields
-    field_equals_field_expression: ClassVar[Optional[str]] = (
-        None  # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
-    )
+    # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
+    field_equals_field_expression: ClassVar[Optional[str]] = None
+    field_equals_field_startswith_expression: ClassVar[Optional[str]] = None
+    field_equals_field_endswith_expression: ClassVar[Optional[str]] = None
+    field_equals_field_contains_expression: ClassVar[Optional[str]] = None
+
     field_equals_field_escaping_quoting: Tuple[bool, bool] = (
         True,
         True,
@@ -1650,16 +1653,47 @@ class TextQueryBackend(Backend):
         )
 
     def convert_condition_field_eq_field(
-        self, cond: SigmaFieldReference, state: ConversionState
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of comparision of two fields."""
         field1, field2 = self.convert_condition_field_eq_field_escape_and_quote(
             cond.field, cond.value.field
         )
-        return self.field_equals_field_expression.format(
-            field1=field1,
-            field2=field2,
-        )
+        value = cond.value
+        if value.starts_with and value.ends_with:
+            if self.field_equals_field_contains_expression is None:
+                raise NotImplementedError(
+                    "Field reference contains expression is not supported by backend."
+                )
+            return self.field_equals_field_contains_expression.format(
+                field1=field1,
+                field2=field2,
+            )
+        elif value.starts_with:
+            if self.field_equals_field_startswith_expression is None:
+                raise NotImplementedError(
+                    "Field reference startswith expression is not supported by backend."
+                )
+            return self.field_equals_field_startswith_expression.format(
+                field1=field1,
+                field2=field2,
+            )
+        elif value.ends_with:
+            if self.field_equals_field_endswith_expression is None:
+                raise NotImplementedError(
+                    "Field reference endswith expression is not supported by backend."
+                )
+            return self.field_equals_field_endswith_expression.format(
+                field1=field1,
+                field2=field2,
+            )
+        else:
+            if self.field_equals_field_expression is None:
+                raise NotImplementedError("Field reference expression is not supported by backend.")
+            return self.field_equals_field_expression.format(
+                field1=field1,
+                field2=field2,
+            )
 
     def convert_condition_field_eq_val_null(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState

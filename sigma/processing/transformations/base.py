@@ -207,7 +207,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             ):
                 new_values.extend(
                     (
-                        SigmaFieldReference(mapped_field)
+                        SigmaFieldReference(mapped_field, value.starts_with, value.ends_with)
                         for mapped_field in self._apply_field_name(value.field)
                     )
                 )

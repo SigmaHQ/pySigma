@@ -70,6 +70,11 @@ class TextQueryTestBackend(TextQueryBackend):
     }
 
     field_equals_field_expression: ClassVar[str] = "{field1}=fieldref({field2})"
+    field_equals_field_startswith_expression: ClassVar[str] = (
+        "{field1}=fieldref_startswith({field2})"
+    )
+    field_equals_field_endswith_expression: ClassVar[str] = "{field1}=fieldref_endswith({field2})"
+    field_equals_field_contains_expression: ClassVar[str] = "{field1}=fieldref_contains({field2})"
 
     field_null_expression: ClassVar[str] = "{field} is null"
 

@@ -584,18 +584,10 @@ class SigmaString(SigmaType):
         )
 
     def upper(self) -> "SigmaString":
-        if self.original:
-            return SigmaString(self.original.upper())
-        else:
-            original = self.to_plain()
-            return SigmaString(original.upper())
+        return self.map_parts(str.upper, lambda x: isinstance(x, str))
 
     def lower(self) -> "SigmaString":
-        if self.original:
-            return SigmaString(self.original.lower())
-        else:
-            original = self.to_plain()
-            return SigmaString(original.lower())
+        return self.map_parts(str.lower, lambda x: isinstance(x, str))
 
 
 class SigmaCasedString(SigmaString):

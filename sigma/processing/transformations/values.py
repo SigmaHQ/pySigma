@@ -369,3 +369,24 @@ class ConvertTypeTransformation(ValueTransformation):
                 return SigmaNumber(str(val))
             except SigmaValueError:
                 raise SigmaValueError(f"Value '{val}' can't be converted to number for {str(self)}")
+
+
+@dataclass
+class CaseTransformation(StringValueTransformation):
+    """
+    Transform a string value to a lower or upper case.
+    """
+
+    method: Literal["lower", "upper"] = "lower"
+
+    def __post_init__(self):
+        if self.method not in self.__annotations__["method"].__args__:
+            raise SigmaConfigurationError(f"Invalid method '{self.method}' for CaseTransformation.")
+        return super().__post_init__()
+
+    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+
+        if self.method == "lower":
+            return val.lower()
+        else:
+            return val.upper()

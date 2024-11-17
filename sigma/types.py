@@ -583,6 +583,12 @@ class SigmaString(SigmaType):
             )
         )
 
+    def upper(self) -> "SigmaString":
+        return self.map_parts(str.upper, lambda x: isinstance(x, str))
+
+    def lower(self) -> "SigmaString":
+        return self.map_parts(str.lower, lambda x: isinstance(x, str))
+
 
 class SigmaCasedString(SigmaString):
     """Case-sensitive string matching."""

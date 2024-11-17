@@ -32,6 +32,7 @@ from sigma.processing.transformations import (
     AddFieldnamePrefixTransformation,
     AddFieldnameSuffixTransformation,
     AddFieldTransformation,
+    CaseTransformation,
     ChangeLogsourceTransformation,
     ConvertTypeTransformation,
     DetectionItemFailureTransformation,
@@ -2025,3 +2026,37 @@ def test_hashes_transformation_pipe_separator(hashes_transformation):
     assert result.detection_items[0].value == [
         SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
     ]
+
+
+def test_case_transformation_lower(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC")])
+    transformation = CaseTransformation(method="lower")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc")
+
+
+def test_case_transformation_upper(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC")])
+    transformation = CaseTransformation(method="upper")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("ABC")
+
+
+def test_case_transformation_special(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC*zer?.123\\")])
+    transformation = CaseTransformation(method="upper")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0].s == (
+        "ABC",
+        SpecialChars.WILDCARD_MULTI,
+        "ZER",
+        SpecialChars.WILDCARD_SINGLE,
+        ".123\\",
+    )
+
+
+def test_case_transformation_error():
+    with pytest.raises(
+        SigmaConfigurationError, match="Invalid method 'SnakeCase' for CaseTransformation."
+    ):
+        transformation = CaseTransformation(method="SnakeCase")

@@ -11,29 +11,16 @@ from sigma.exceptions import (
 )
 import pytest
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.conditions import *
 from sigma.processing.conditions import (
-    ContainsWildcardCondition,
-    DetectionItemProcessingCondition,
-    DetectionItemProcessingItemAppliedCondition,
-    DetectionItemProcessingStateCondition,
-    FieldNameProcessingCondition,
-    FieldNameProcessingItemAppliedCondition,
-    FieldNameProcessingStateCondition,
-    IsNullCondition,
-    IsSigmaCorrelationRuleCondition,
-    IsSigmaRuleCondition,
-    LogsourceCondition,
-    IncludeFieldCondition,
-    ExcludeFieldCondition,
-    MatchStringCondition,
     ProcessingCondition,
-    RuleContainsDetectionItemCondition,
-    RuleContainsFieldCondition,
+    DetectionItemProcessingCondition,
+    FieldNameProcessingCondition,
     RuleProcessingCondition,
-    RuleProcessingItemAppliedCondition,
-    RuleAttributeCondition,
-    RuleProcessingStateCondition,
-    RuleTagCondition,
+    __all__ as conditions_all,
+    rule_conditions,
+    detection_item_conditions,
+    field_name_conditions,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -527,6 +514,17 @@ def test_condition_identifiers_completeness():
             raise AssertionError(
                 f"Class {name} is not a rule, detection item or field name condition"
             )
+
+
+def test_condition_export_completeness():
+    assert set(conditions_all).issubset(
+        {
+            condition_class.__name__
+            for condition_class in list(rule_conditions.values())
+            + list(detection_item_conditions.values())
+            + list(field_name_conditions.values())
+        }
+    )
 
 
 @pytest.fixture

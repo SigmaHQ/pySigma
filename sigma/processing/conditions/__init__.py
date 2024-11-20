@@ -4,7 +4,7 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Dict
+from typing import Dict, Type
 
 from sigma.processing.conditions.fields import ExcludeFieldCondition, IncludeFieldCondition
 from sigma.processing.conditions.rule import (
@@ -31,7 +31,7 @@ from sigma.processing.conditions.values import (
 )
 
 
-rule_conditions: Dict[str, RuleProcessingCondition] = {
+rule_conditions: Dict[str, Type[RuleProcessingCondition]] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "contains_field": RuleContainsFieldCondition,
@@ -42,16 +42,41 @@ rule_conditions: Dict[str, RuleProcessingCondition] = {
     "rule_attribute": RuleAttributeCondition,
     "tag": RuleTagCondition,
 }
-detection_item_conditions: Dict[str, DetectionItemProcessingCondition] = {
+detection_item_conditions: Dict[str, Type[DetectionItemProcessingCondition]] = {
     "match_string": MatchStringCondition,
     "contains_wildcard": ContainsWildcardCondition,
     "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
     "processing_state": DetectionItemProcessingStateCondition,
 }
-field_name_conditions: Dict[str, DetectionItemProcessingCondition] = {
+field_name_conditions: Dict[str, Type[FieldNameProcessingCondition]] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,
     "processing_item_applied": FieldNameProcessingItemAppliedCondition,
     "processing_state": FieldNameProcessingStateCondition,
 }
+
+__all__ = [
+    "ProcessingCondition",
+    "DetectionItemProcessingCondition",
+    "FieldNameProcessingCondition",
+    "RuleProcessingCondition",
+    "LogsourceCondition",
+    "RuleContainsDetectionItemCondition",
+    "RuleContainsFieldCondition",
+    "RuleProcessingItemAppliedCondition",
+    "RuleProcessingStateCondition",
+    "IsSigmaRuleCondition",
+    "IsSigmaCorrelationRuleCondition",
+    "RuleAttributeCondition",
+    "RuleTagCondition",
+    "MatchStringCondition",
+    "ContainsWildcardCondition",
+    "IsNullCondition",
+    "DetectionItemProcessingItemAppliedCondition",
+    "DetectionItemProcessingStateCondition",
+    "IncludeFieldCondition",
+    "ExcludeFieldCondition",
+    "FieldNameProcessingItemAppliedCondition",
+    "FieldNameProcessingStateCondition",
+]

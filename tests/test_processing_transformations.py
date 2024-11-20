@@ -27,34 +27,11 @@ from sigma.processing.conditions import (
     rule_conditions,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.transformations import *
 from sigma.processing.transformations import (
-    AddConditionTransformation,
-    AddFieldnamePrefixTransformation,
-    AddFieldnameSuffixTransformation,
-    AddFieldTransformation,
-    CaseTransformation,
-    ChangeLogsourceTransformation,
-    ConvertTypeTransformation,
-    DetectionItemFailureTransformation,
-    DropDetectionItemTransformation,
-    FieldMappingTransformation,
-    FieldPrefixMappingTransformation,
-    HashesFieldsDetectionItemTransformation,
-    MapStringTransformation,
-    NestedProcessingTransformation,
-    QueryExpressionPlaceholderTransformation,
-    RegexTransformation,
-    RemoveFieldTransformation,
-    ReplaceStringTransformation,
-    RuleFailureTransformation,
-    SetCustomAttributeTransformation,
-    SetFieldTransformation,
-    SetStateTransformation,
-    SetValueTransformation,
     Transformation,
-    ValueListPlaceholderTransformation,
-    WildcardPlaceholderTransformation,
     transformations,
+    __all__ as transformations_all,
 )
 from sigma.processing.transformations.base import ConditionTransformation
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
@@ -1905,6 +1882,12 @@ def test_transformation_identifier_completeness():
 
     for cls in inspect.getmembers(transformations_module, class_filter):
         assert cls[1] in classes_with_identifiers
+
+
+def test_transformation_export_completeness():
+    assert {transformation.__name__ for transformation in transformations.values()}.issubset(
+        transformations_all
+    )
 
 
 @pytest.fixture

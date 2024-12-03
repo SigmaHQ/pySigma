@@ -374,10 +374,10 @@ class ConvertTypeTransformation(ValueTransformation):
 @dataclass
 class CaseTransformation(StringValueTransformation):
     """
-    Transform a string value to a lower or upper case.
+    Transform a string value to a lower or upper or snake case.
     """
 
-    method: Literal["lower", "upper"] = "lower"
+    method: Literal["lower", "upper", "snake_case"] = "lower"
 
     def __post_init__(self):
         if self.method not in self.__annotations__["method"].__args__:
@@ -386,7 +386,9 @@ class CaseTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
 
-        if self.method == "lower":
+        if self.method == "snake_case":
+            return val.snake_case()
+        elif self.method == "lower":
             return val.lower()
         else:
             return val.upper()

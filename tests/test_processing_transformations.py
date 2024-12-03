@@ -2055,6 +2055,27 @@ def test_case_transformation_special(dummy_pipeline):
     )
 
 
+def test_case_transformation_snake_case_from_camel_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("abcDef")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
+
+
+def test_case_transformation_snake_case_from_pascal_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbcDef")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
+
+
+def test_case_transformation_snake_case_from_snake_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("abc_def")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
+
+
 def test_case_transformation_error():
     with pytest.raises(
         SigmaConfigurationError, match="Invalid method 'SnakeCase' for CaseTransformation."

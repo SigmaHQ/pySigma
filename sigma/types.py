@@ -590,7 +590,9 @@ class SigmaString(SigmaType):
         return self.map_parts(str.lower, lambda x: isinstance(x, str))
 
     def snake_case(self) -> "SigmaString":
-        return self.map_parts(lambda x: re.sub(r'(?<!^)(?=[A-Z])', '_', x).lower(), lambda x: isinstance(x, str))
+        return self.map_parts(
+            lambda x: re.sub(r"(?<!^)(?=[A-Z])", "_", x).lower(), lambda x: isinstance(x, str)
+        )
 
 
 class SigmaCasedString(SigmaString):

@@ -648,6 +648,12 @@ class SigmaBool(SigmaType):
     def __bool__(self):
         return self.boolean
 
+    def __eq__(self, other: Union["SigmaBool", bool]) -> bool:
+        if isinstance(other, bool):
+            return self.boolean == other
+        else:
+            return self.boolean == other.boolean
+
 
 class SigmaRegularExpressionFlag(Enum):
     IGNORECASE = auto()

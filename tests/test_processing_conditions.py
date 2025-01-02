@@ -2,7 +2,8 @@ import inspect
 from typing import cast
 from sigma.collection import SigmaCollection
 from sigma.correlations import SigmaCorrelationRule
-from sigma.types import SigmaNull, SigmaNumber, SigmaString
+from sigma.processing.conditions.values import MatchValueCondition
+from sigma.types import SigmaBool, SigmaNull, SigmaNumber, SigmaString
 from sigma import processing
 from sigma.exceptions import (
     SigmaConfigurationError,
@@ -420,9 +421,45 @@ def test_match_string_condition_error_mode():
         MatchStringCondition(pattern="x", cond="test")
 
 
-def test_match_string_condition_error_mode():
+def test_match_string_condition_error_pattern():
     with pytest.raises(SigmaRegularExpressionError, match="is invalid"):
         MatchStringCondition(pattern="*", cond="any")
+
+
+def test_match_value_condition_str():
+    assert MatchValueCondition(value="test", cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaString("test")])
+    )
+
+
+def test_match_value_condition_str_nomatch():
+    assert not MatchValueCondition(value="test", cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaString("other")])
+    )
+
+
+def test_match_value_condition_number():
+    assert MatchValueCondition(value=123, cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaNumber(123)])
+    )
+
+
+def test_match_value_condition_number_nomatch():
+    assert not MatchValueCondition(value=123, cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaNumber(124)])
+    )
+
+
+def test_match_value_condition_bool():
+    assert MatchValueCondition(value=True, cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaBool(True)])
+    )
+
+
+def test_match_value_condition_bool_nomatch():
+    assert not MatchValueCondition(value=True, cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaBool(False)])
+    )
 
 
 def test_contains_wildcard_condition_match():

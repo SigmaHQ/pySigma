@@ -51,7 +51,10 @@ class MatchValueCondition(ValueProcessingCondition):
     value: Union[str, int, float, bool]
 
     def match_value(self, value: SigmaType) -> bool:
-        return value == self.value
+        try:
+            return value == self.value
+        except NotImplementedError:
+            return False
 
 
 class ContainsWildcardCondition(ValueProcessingCondition):

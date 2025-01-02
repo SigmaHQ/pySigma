@@ -462,6 +462,12 @@ def test_match_value_condition_bool_nomatch():
     )
 
 
+def test_match_value_condition_incompatible_type():
+    assert not MatchValueCondition(value=123, cond="any").match(
+        SigmaDetectionItem("field", [], [SigmaString("123")])
+    )
+
+
 def test_contains_wildcard_condition_match():
     assert ContainsWildcardCondition(cond="any").match(
         SigmaDetectionItem("field", [], [SigmaString("*")])

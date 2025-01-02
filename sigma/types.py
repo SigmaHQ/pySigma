@@ -626,10 +626,14 @@ class SigmaNumber(SigmaType):
         return str(self.number)
 
     def __eq__(self, other: Union["SigmaNumber", int]) -> bool:
-        if isinstance(other, int):
+        if isinstance(other, (int, float)):
             return self.number == other
-        else:
+        elif isinstance(other, self.__class__):
             return self.number == other.number
+        else:
+            raise NotImplementedError(
+                "SigmaNumber can only be compared with a number or another SigmaNumber"
+            )
 
 
 @dataclass
@@ -651,8 +655,12 @@ class SigmaBool(SigmaType):
     def __eq__(self, other: Union["SigmaBool", bool]) -> bool:
         if isinstance(other, bool):
             return self.boolean == other
-        else:
+        elif isinstance(other, self.__class__):
             return self.boolean == other.boolean
+        else:
+            raise NotImplementedError(
+                "SigmaBool can only be compared with a boolean or another SigmaBool"
+            )
 
 
 class SigmaRegularExpressionFlag(Enum):

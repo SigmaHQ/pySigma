@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from typing import Union
 
 import sigma
 from sigma.processing.conditions.base import (
@@ -39,6 +40,18 @@ class MatchStringCondition(ValueProcessingCondition):
             return not result
         else:
             return result
+
+
+@dataclass
+class MatchValueCondition(ValueProcessingCondition):
+    """
+    Exact match of a value with an arbitrary Sigma type.
+    """
+
+    value: Union[str, int, float, bool]
+
+    def match_value(self, value: SigmaType) -> bool:
+        return value == self.value
 
 
 class ContainsWildcardCondition(ValueProcessingCondition):

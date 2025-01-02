@@ -739,6 +739,10 @@ def test_cidr_to_plain():
         SigmaCIDRExpression("192.168.1.0/24").to_plain()
 
 
+def test_cidr_to_str():
+    assert str(SigmaCIDRExpression("192.168.1.0/24")) == "192.168.1.0/24"
+
+
 def test_cidr_invalid():
     with pytest.raises(SigmaTypeError, match="Invalid CIDR expression"):
         SigmaCIDRExpression("1/132")

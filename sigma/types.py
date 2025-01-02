@@ -756,6 +756,9 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         except ValueError as e:
             raise SigmaTypeError("Invalid CIDR expression: " + str(e), source=self.source)
 
+    def __str__(self):
+        return self.cidr
+
     def expand(
         self,
         wildcard: str = "*",

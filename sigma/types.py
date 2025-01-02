@@ -822,6 +822,7 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     number: SigmaNumber
     op: CompareOperators
     source: Optional[SigmaRuleLocation] = None
+    CompareOperators: ClassVar["CompareOperators"] = CompareOperators
 
     def __post_init__(self):
         if not isinstance(self.number, SigmaNumber):

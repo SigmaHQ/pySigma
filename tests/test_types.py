@@ -530,8 +530,21 @@ def test_number_equal():
     assert SigmaNumber(123) == SigmaNumber(123)
 
 
+def test_number_not_equal():
+    assert SigmaNumber(123) != SigmaNumber(456)
+
+
 def test_number_equal_plain():
     assert SigmaNumber(123) == 123
+
+
+def test_number_not_equal_plain():
+    assert SigmaNumber(123) != 456
+
+
+def test_number_equal_wrong_type():
+    with pytest.raises(NotImplementedError, match="SigmaNumber can only be compared"):
+        SigmaNumber(123) == "123"
 
 
 def test_number_invalid():
@@ -628,6 +641,27 @@ def test_bool_to_plain():
 def test_bool_invalid():
     with pytest.raises(SigmaTypeError, match="must be a boolean"):
         SigmaBool(123)
+
+
+def test_bool_equal():
+    assert SigmaBool(True) == SigmaBool(True)
+
+
+def test_bool_not_equal():
+    assert SigmaBool(True) != SigmaBool(False)
+
+
+def test_bool_equal_plain():
+    assert SigmaBool(True) == True
+
+
+def test_bool_not_equal_plain():
+    assert SigmaBool(True) != False
+
+
+def test_bool_equal_wrong_type():
+    with pytest.raises(NotImplementedError, match="SigmaBool can only be compared"):
+        SigmaBool(True) == "True"
 
 
 def test_null_to_plain():

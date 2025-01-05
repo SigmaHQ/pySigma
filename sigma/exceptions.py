@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional
 
 import sigma
 
@@ -13,11 +13,11 @@ class SigmaRuleLocation:
     line: Optional[int] = None
     char: Optional[int] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if isinstance(self.path, str):
             self.path = Path(self.path)
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = str(self.path.resolve())
         if self.line is not None:
             s += ":" + str(self.line)
@@ -29,15 +29,13 @@ class SigmaRuleLocation:
 class SigmaError(ValueError):
     """Generic Sigma error and super-class of all Sigma exceptions"""
 
-    def __init__(self, *args, **kwargs):
-        try:
-            self.source = kwargs["source"]
-            del kwargs["source"]
-        except KeyError:
-            self.source = None
+    def __init__(
+        self, *args: Any, source: Optional[SigmaRuleLocation] = None, **kwargs: Dict[str, Any]
+    ) -> None:
+        self.source = source
         super().__init__(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.source is not None:
             return super().__str__() + " in " + str(self.source)
         else:
@@ -47,7 +45,9 @@ class SigmaError(ValueError):
         try:
             return (
                 type(self) is type(other)
+                and hasattr(other, "source")
                 and self.source == other.source
+                and hasattr(other, "args")
                 and self.args == other.args
             )
         except AttributeError:
@@ -87,11 +87,17 @@ class SigmaConfigurationError(SigmaError):
 class SigmaConversionError(SigmaError):
     """Rule conversion failed."""
 
-    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
+    def __init__(
+        self,
+        rule: "sigma.rule.SigmaRuleBase",
+        source: Optional[SigmaRuleLocation] = None,
+        *args: Any,
+        **kwargs: Dict[str, Any],
+    ) -> None:
         self.rule = rule
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return super().__str__() + " in rule " + str(self.rule)
 
 
@@ -116,12 +122,19 @@ class SigmaModifierError(SigmaError):
 class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
     """One or multiple processing pipelines doesn't matches the given backend."""
 
-    def __init__(self, spec: str, backend: str, *args, **kwargs):
+    def __init__(
+        self,
+        spec: str,
+        backend: str,
+        source: Optional[SigmaRuleLocation] = None,
+        *args: List[Any],
+        **kwargs: Dict[str, Any],
+    ):
         self.wrong_pipeline = spec
         self.backend = backend
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"Processing pipelines not allowed for backend '{self.backend}': {self.wrong_pipeline}"
         )
@@ -131,11 +144,17 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
     """An attempt to resolve a processing pipeline from a specifier failed because it was not
     found."""
 
-    def __init__(self, spec: str, *args, **kwargs):
+    def __init__(
+        self,
+        spec: str,
+        source: Optional[SigmaRuleLocation] = None,
+        *args: List[Any],
+        **kwargs: Dict[str, Any],
+    ):
         self.spec = spec
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Processing pipeline '{self.spec}' not found"
 
 
@@ -280,6 +299,12 @@ class SigmaIdentifierError(SigmaError):
     pass
 
 
+class SigmaTaxonomyError(SigmaError):
+    """Error in Sigma rule identifier"""
+
+    pass
+
+
 class SigmaLevelError(SigmaError):
     """Error in Sigma rule level"""
 
@@ -346,5 +371,5 @@ class ExceptionOnUsage:
 
     exception: Exception
 
-    def __getattribute__(self, item):
+    def __getattribute__(self, item: str) -> Any:
         raise object.__getattribute__(self, "exception")

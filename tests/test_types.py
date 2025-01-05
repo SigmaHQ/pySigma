@@ -39,83 +39,83 @@ def empty_sigma_string():
 
 
 def test_strings_empty():
-    assert SigmaString().s == tuple()
+    assert SigmaString().s == []
 
 
 def test_strings_plain():
-    assert SigmaString("plain").s == ("plain",)
+    assert SigmaString("plain").s == ["plain"]
 
 
 def test_strings_merge():
     s = SigmaString()
-    s.s = (SpecialChars.WILDCARD_MULTI, "te", "st", SpecialChars.WILDCARD_MULTI)
-    assert s._merge_strs().s == (
+    s.s = [SpecialChars.WILDCARD_MULTI, "te", "st", SpecialChars.WILDCARD_MULTI]
+    assert s._merge_strs().s == [
         SpecialChars.WILDCARD_MULTI,
         "test",
         SpecialChars.WILDCARD_MULTI,
-    )
+    ]
 
 
 def test_strings_merge_end():
     s = SigmaString()
-    s.s = (
+    s.s = [
         SpecialChars.WILDCARD_MULTI,
         "test",
         SpecialChars.WILDCARD_MULTI,
         "te",
         "st",
         "test",
-    )
-    assert s._merge_strs().s == (
+    ]
+    assert s._merge_strs().s == [
         SpecialChars.WILDCARD_MULTI,
         "test",
         SpecialChars.WILDCARD_MULTI,
         "testtest",
-    )
+    ]
 
 
 def test_strings_merge_start():
     s = SigmaString()
-    s.s = (
+    s.s = [
         "te",
         "st",
         "test",
         SpecialChars.WILDCARD_MULTI,
         "test",
         SpecialChars.WILDCARD_MULTI,
-    )
-    assert s._merge_strs().s == (
+    ]
+    assert s._merge_strs().s == [
         "testtest",
         SpecialChars.WILDCARD_MULTI,
         "test",
         SpecialChars.WILDCARD_MULTI,
-    )
+    ]
 
 
 def test_strings_wildcards():
-    assert SigmaString("wild*cards?contained").s == (
+    assert SigmaString("wild*cards?contained").s == [
         "wild",
         SpecialChars.WILDCARD_MULTI,
         "cards",
         SpecialChars.WILDCARD_SINGLE,
         "contained",
-    )
+    ]
 
 
 def test_strings_escaping():
-    assert SigmaString("escaped\\*\\?\\\\*?").s == (
+    assert SigmaString("escaped\\*\\?\\\\*?").s == [
         "escaped*?\\",
         SpecialChars.WILDCARD_MULTI,
         SpecialChars.WILDCARD_SINGLE,
-    )
+    ]
 
 
 def test_strings_escaping_nonspecial():
-    assert SigmaString("escaped\\nonspecial").s == ("escaped\\nonspecial",)
+    assert SigmaString("escaped\\nonspecial").s == ["escaped\\nonspecial"]
 
 
 def test_strings_escaping_end():
-    assert SigmaString("finalescape\\").s == ("finalescape\\",)
+    assert SigmaString("finalescape\\").s == ["finalescape\\"]
 
 
 def test_strings_from_str():
@@ -123,15 +123,15 @@ def test_strings_from_str():
 
 
 def test_string_placeholders_single():
-    assert SigmaString("test1%var%test2").insert_placeholders().s == (
+    assert SigmaString("test1%var%test2").insert_placeholders().s == [
         "test1",
         Placeholder("var"),
         "test2",
-    )
+    ]
 
 
 def test_string_placeholders_multi():
-    assert SigmaString("%start%te*st1%middle%te?st2%end%").insert_placeholders().s == (
+    assert SigmaString("%start%te*st1%middle%te?st2%end%").insert_placeholders().s == [
         Placeholder("start"),
         "te",
         SpecialChars.WILDCARD_MULTI,
@@ -141,13 +141,13 @@ def test_string_placeholders_multi():
         SpecialChars.WILDCARD_SINGLE,
         "st2",
         Placeholder("end"),
-    )
+    ]
 
 
 def test_string_replace_with_placeholder():
     assert SigmaString("testx1xfoox1xtest*x2x*bar*x3x").replace_with_placeholder(
         re.compile("x\\dx"), "test"
-    ).s == (
+    ).s == [
         "test",
         Placeholder("test"),
         "foo",
@@ -159,7 +159,7 @@ def test_string_replace_with_placeholder():
         "bar",
         SpecialChars.WILDCARD_MULTI,
         Placeholder("test"),
-    )
+    ]
 
 
 def test_string_placeholders_replace():
@@ -177,11 +177,11 @@ def test_string_placeholders_replace():
 
 
 def test_string_placeholders_escape():
-    assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == (
+    assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == [
         "%test1%test2%",
         Placeholder("var"),
         "%test3%",
-    )
+    ]
 
 
 def test_string_contains_placeholders():
@@ -324,13 +324,13 @@ def test_strings_to_string():
 def test_strings_with_plain_wildcards_to_string():
     plain_s = r"value\*with\?plain*wild?cards"
     s = SigmaString(plain_s)
-    assert s.s == (
+    assert s.s == [
         "value*with?plain",
         SpecialChars.WILDCARD_MULTI,
         "wild",
         SpecialChars.WILDCARD_SINGLE,
         "cards",
-    )
+    ]
     assert str(s) == plain_s
     assert SigmaString(str(s)) == s
 
@@ -384,20 +384,20 @@ def test_strings_convert_placeholder():
 
 def test_strings_convert_invalid_part():
     s = SigmaString("test")
-    s.s = ("test", 1)
+    s.s = ["test", 1]
     with pytest.raises(SigmaValueError, match="part of type 'int'"):
         s.convert()
 
 
 def test_strings_to_regex():
     s = SigmaString("Test*Special?(Plain)/[\\*\\?]")
-    assert s.s == (
+    assert s.s == [
         "Test",
         SpecialChars.WILDCARD_MULTI,
         "Special",
         SpecialChars.WILDCARD_SINGLE,
         "(Plain)/[*?]",
-    )
+    ]
     r = s.to_regex()
     assert r.regexp == "Test.*Special.\\(Plain\\)/\\[\\*\\?\\]"
 
@@ -489,17 +489,17 @@ def test_string_iter_parts(sigma_string):
 
 
 def test_string_map_parts(sigma_string):
-    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str)).s == (
+    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str)).s == [
         SpecialChars.WILDCARD_MULTI,
         "TEST",
         SpecialChars.WILDCARD_MULTI,
         "STR*ING",
         SpecialChars.WILDCARD_MULTI,
-    )
+    ]
 
 
 def test_string_map_parts_interpret_special(sigma_string):
-    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str), True).s == (
+    assert sigma_string.map_parts(lambda x: x.upper(), lambda x: isinstance(x, str), True).s == [
         SpecialChars.WILDCARD_MULTI,
         "TEST",
         SpecialChars.WILDCARD_MULTI,
@@ -507,7 +507,7 @@ def test_string_map_parts_interpret_special(sigma_string):
         SpecialChars.WILDCARD_MULTI,
         "ING",
         SpecialChars.WILDCARD_MULTI,
-    )
+    ]
 
 
 def test_cased_string(sigma_string):
@@ -660,6 +660,11 @@ def test_conversion_bool():
 
 def test_conversion_none():
     assert sigma_type(None) == SigmaNull()
+
+
+def test_conversion_unsupported():
+    with pytest.raises(SigmaTypeError, match="Unsupported type"):
+        sigma_type(object())
 
 
 def test_query_expression():

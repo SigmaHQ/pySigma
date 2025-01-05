@@ -6,7 +6,7 @@ from sigma.modifiers import (
     SigmaStartswithModifier,
 )
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, SpecialChars
+from sigma.types import SigmaString, SigmaType, SpecialChars
 from sigma.validators.base import (
     SigmaDetectionItemValidator,
     SigmaStringValueValidator,
@@ -25,7 +25,7 @@ class DoubleWildcardIssue(SigmaValidationIssue):
 class DoubleWildcardValidator(SigmaStringValueValidator):
     """Check strings for consecutive multi-character wildcards."""
 
-    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
         prev_wildcard = False
         for c in value.s:
             if c == SpecialChars.WILDCARD_MULTI:

@@ -885,10 +885,10 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders:
         detection_items[0].value[0] == SigmaString("value*test")
         and detection_items[0].was_processed_by("test") == True
         and detection_items[1].value[0].s
-        == ("value", Placeholder("var2"), "test", Placeholder("var3"))
+        == ["value", Placeholder("var2"), "test", Placeholder("var3")]
         and detection_items[1].was_processed_by("test") == False
         and detection_items[2].value[0].s
-        == (
+        == [
             "value",
             SpecialChars.WILDCARD_MULTI,
             "test",
@@ -896,7 +896,7 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders:
             "test",
             Placeholder("var3"),
             "test",
-        )
+        ]
         and detection_items[2].was_processed_by("test") == True
         and sigma_rule_placeholders.was_processed_by("test")
     )
@@ -919,10 +919,10 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
         detection_items[0].value[0] == SigmaString("value*test")
         and detection_items[0].was_processed_by("test") == True
         and detection_items[1].value[0].s
-        == ("value", Placeholder("var2"), "test", Placeholder("var3"))
+        == ["value", Placeholder("var2"), "test", Placeholder("var3")]
         and detection_items[1].was_processed_by("test") == False
         and detection_items[2].value[0].s
-        == (
+        == [
             "value",
             SpecialChars.WILDCARD_MULTI,
             "test",
@@ -930,7 +930,7 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
             "test",
             Placeholder("var3"),
             "test",
-        )
+        ]
         and detection_items[2].was_processed_by("test") == True
         and sigma_rule_placeholders.was_processed_by("test")
     )
@@ -2029,13 +2029,13 @@ def test_case_transformation_special(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC*zer?.123\\")])
     transformation = CaseTransformation(method="upper")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0].s == (
+    assert detection_item.value[0].s == [
         "ABC",
         SpecialChars.WILDCARD_MULTI,
         "ZER",
         SpecialChars.WILDCARD_SINGLE,
         ".123\\",
-    )
+    ]
 
 
 def test_case_transformation_error():

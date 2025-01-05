@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import Callable, Dict, Iterable, List, Optional, Union, IO
+from typing import Callable, Dict, Iterable, List, Optional, Union, IO, cast
 from uuid import UUID
 
 import yaml
@@ -15,13 +15,16 @@ from sigma.exceptions import (
 )
 from sigma.rule import SigmaRule, SigmaRuleBase
 from sigma.filters import SigmaFilter
+from typing import TypeVar, Union
+
+NestedDict = Dict[str, Union[str, int, float, bool, None, "NestedDict"]]
 
 
 @dataclass
 class SigmaCollection:
     """Collection of Sigma rules"""
 
-    rules: List[SigmaRuleBase]
+    rules: List[Union[SigmaRule, SigmaCorrelationRule]]
     errors: List[SigmaError] = field(default_factory=list)
     ids_to_rules: Dict[UUID, SigmaRuleBase] = field(
         init=False, repr=False, hash=False, compare=False
@@ -30,7 +33,7 @@ class SigmaCollection:
         init=False, repr=False, hash=False, compare=False
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Map rule identifiers to rules and resolve rule references in correlation rules.
         """
@@ -42,7 +45,7 @@ class SigmaCollection:
             if rule.name is not None:
                 self.names_to_rules[rule.name] = rule
 
-    def resolve_rule_references(self):
+    def resolve_rule_references(self) -> None:
         """
         Resolve rule references in correlation rules to the actual rule objects and sort the rules
         by reference order (rules that are referenced by other rules come first).
@@ -55,12 +58,21 @@ class SigmaCollection:
                 rule.resolve_rule_references(self)
 
         # Extract all filters from the rules
-        filters: List[SigmaFilter] = [rule for rule in self.rules if isinstance(rule, SigmaFilter)]
+        filters: List[SigmaFilter] = [
+            cast(SigmaFilter, rule) for rule in self.rules if isinstance(rule, SigmaFilter)
+        ]
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
 
         # Apply filters on each rule and replace the rule with the filtered rule
         self.rules = (
-            [reduce(lambda r, f: f.apply_on_rule(r), filters, rule) for rule in self.rules]
+            [
+                reduce(
+                    lambda r, f: f.apply_on_rule(r) if isinstance(r, SigmaRule) else r,
+                    filters,
+                    rule,
+                )
+                for rule in self.rules
+            ]
             if filters
             else self.rules
         )
@@ -71,7 +83,7 @@ class SigmaCollection:
     @classmethod
     def from_dicts(
         cls,
-        rules: List[dict],
+        rules: List[NestedDict],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaCollection":
@@ -84,7 +96,7 @@ class SigmaCollection:
         errors = []
         parsed_rules = list()
         prev_rule = None
-        global_rule = dict()
+        global_rule: NestedDict = dict()
 
         for i, rule in zip(range(1, len(rules) + 1), rules):
             if isinstance(

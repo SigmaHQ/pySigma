@@ -148,7 +148,7 @@ class Backend(ABC):
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
-        **backend_options: Dict,
+        **backend_options: Dict[str, Any],
     ):
         self.processing_pipeline = processing_pipeline
         self.errors = list()
@@ -846,7 +846,7 @@ class TextQueryBackend(Backend):
     re_escape_char: ClassVar[Optional[str]] = (
         None  # Character used for escaping in regular expressions
     )
-    re_escape: ClassVar[Tuple[str]] = ()  # List of strings that are escaped
+    re_escape: ClassVar[List[str]] = []  # List of strings that are escaped
     re_escape_escape_char: bool = True  # If True, the escape character is also escaped
     re_flag_prefix: bool = (
         True  # If True, the flags are prepended as (?x) group at the beginning of the regular expression, e.g. (?i). If this is not supported by the target, it should be set to False.

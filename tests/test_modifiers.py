@@ -477,11 +477,11 @@ def test_compare_string(dummy_detection_item):
 
 
 def test_expand(dummy_detection_item):
-    assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == (
+    assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == [
         "test",
         Placeholder("var"),
         "test",
-    )
+    ]
 
 
 def test_cidr(dummy_detection_item):

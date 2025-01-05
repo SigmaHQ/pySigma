@@ -30,6 +30,7 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaCompareExpression,
     SigmaCIDRExpression,
+    SigmaStringPartType,
 )
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
@@ -216,7 +217,7 @@ class SigmaWideModifier(SigmaValueModifier):
     """Encode string as wide string (UTF-16LE)."""
 
     def modify(self, val: SigmaString) -> SigmaString:
-        r = list()
+        r: List[SigmaStringPartType] = list()
         for item in val.s:
             if isinstance(
                 item, str
@@ -232,7 +233,7 @@ class SigmaWideModifier(SigmaValueModifier):
                 r.append(item)
 
         s = SigmaString()
-        s.s = tuple(r)
+        s.s = r
         return s
 
 

@@ -1,5 +1,5 @@
 import re
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
@@ -9,6 +9,7 @@ from typing import (
     Dict,
     Pattern,
     Set,
+    Type,
     Union,
     List,
     Tuple,
@@ -17,6 +18,7 @@ from typing import (
     Iterable,
     Callable,
     Iterator,
+    cast,
 )
 
 from sigma.exceptions import (
@@ -56,7 +58,11 @@ special_char_mapping = {v: k for k, v in char_mapping.items()}
 class SigmaType(ABC):
     """Base class for Sigma value types"""
 
-    def to_plain(self):
+    @abstractmethod
+    def __init__(self, dummy: Any) -> None:
+        pass
+
+    def to_plain(self) -> Any:
         """
         Return plain Python value (str, int etc.) from SigmaType instance for usage in conversion of
         Sigma rules back to dicts. Uses the first annotated member as return value.
@@ -67,7 +73,7 @@ class SigmaType(ABC):
 class NoPlainConversionMixin:
     """Mixin for declaring a SigmaType as non-convertible into a plain representation."""
 
-    def to_plain(self):
+    def to_plain(self) -> None:
         raise SigmaValueError(
             f"Sigma type '{ self.__class__.__name__ }' can't be converted into a plain representation."
         )
@@ -81,7 +87,7 @@ class SigmaNull(SigmaType):
     def __init__(self, dummy: Optional[Any] = None):
         pass
 
-    def __eq__(self, other: "SigmaNull") -> bool:
+    def __eq__(self, other: Any) -> bool:
         return isinstance(other, self.__class__)
 
 
@@ -91,8 +97,11 @@ class SigmaExists(SigmaType):
 
     exists: bool
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.exists
+
+
+SigmaStringPartType = Union[str, SpecialChars, Placeholder]
 
 
 class SigmaString(SigmaType):
@@ -101,8 +110,8 @@ class SigmaString(SigmaType):
     """
 
     original: str  # the original string, untouched
-    s: Tuple[
-        Union[str, SpecialChars, Placeholder]
+    s: List[
+        SigmaStringPartType
     ]  # the string is represented as sequence of strings and characters with special meaning
 
     def __init__(self, s: Optional[str] = None):
@@ -118,7 +127,7 @@ class SigmaString(SigmaType):
 
         self.original = s
 
-        r = list()
+        r: List[Union[str, SpecialChars, Placeholder]] = list()
         acc = ""  # string accumulation until special character appears
         escaped = False  # escape mode flag: characters in this mode are always accumulated
         for c in s:
@@ -146,12 +155,12 @@ class SigmaString(SigmaType):
             acc += escape_char
         if acc != "":  # append accumulated remainder
             r.append(acc)
-        self.s = tuple(r)
+        self.s = r
 
     @classmethod
     def from_str(cls, s: str) -> "SigmaString":
         sigma_string = SigmaString()
-        sigma_string.s = (s,)
+        sigma_string.s = [s]
         sigma_string.original = s
         return sigma_string
 
@@ -192,7 +201,7 @@ class SigmaString(SigmaType):
             raise IndexError("SigmaString index out of range")
 
         i = 0  # Pointer to SigmaString element
-        result = []  # Result: indexed string part
+        result: List[Union[str, SpecialChars, Placeholder]] = []  # Result: indexed string part
 
         # Find start. The variables start and end now contain the remaining characters until the
         # indexed part begins/ends relative to the current element.
@@ -204,7 +213,7 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return SigmaString(e[start:end])
+                        return SigmaString(e[start : cast(int, end)])
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -223,7 +232,7 @@ class SigmaString(SigmaType):
             if isinstance(e, str):  # Current SigmaString part is string
                 e_len = len(e)
                 if end < e_len:  # end lies within this string part
-                    result.append(e[:end])
+                    result.append(e[: cast(int, end)])
                 else:
                     result.append(e)
                 end -= e_len
@@ -237,7 +246,7 @@ class SigmaString(SigmaType):
             return SigmaString("")
         else:  # Return calculated result
             s = SigmaString()
-            s.s = tuple(result)
+            s.s = result
             return s
 
     def insert_placeholders(self) -> "SigmaString":
@@ -245,7 +254,7 @@ class SigmaString(SigmaType):
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
         """
-        res = []
+        res: List[Union[str, SpecialChars, Placeholder]] = []
         for part in self.s:  # iterate over all parts and...
             if isinstance(part, str):  # ...search in strings...
                 lastpos = 0
@@ -266,11 +275,11 @@ class SigmaString(SigmaType):
                     )  # append everything from end of last placeholder until end of string (if not empty) to result string
             else:  # special characters are passed to the result
                 res.append(part)
-        self.s = tuple(res)  # finally replace the string with the result
+        self.s = res  # finally replace the string with the result
 
         return self
 
-    def replace_with_placeholder(self, regex: Pattern, placeholder_name: str) -> "SigmaString":
+    def replace_with_placeholder(self, regex: Pattern[str], placeholder_name: str) -> "SigmaString":
         """
         Replace all occurrences of string part matching regular expression with placeholder.
 
@@ -281,7 +290,7 @@ class SigmaString(SigmaType):
         :return: Returns a string with the replacement placeholders.
         :rtype: SigmaString
         """
-        result = []
+        result: List[Union[str, SpecialChars, Placeholder]] = []
         for e in self.s:
             if isinstance(e, str):
                 matched = False
@@ -303,14 +312,14 @@ class SigmaString(SigmaType):
             else:
                 result.append(e)
 
-        s = self.__class__()
-        s.s = tuple(result)
-        return s
+        sigma_string = self.__class__()
+        sigma_string.s = result
+        return sigma_string
 
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
         src = list(reversed(self.s))
-        res = []
+        res: List[SigmaStringPartType] = []
         while src:
             item = src.pop()
             try:
@@ -323,7 +332,7 @@ class SigmaString(SigmaType):
             except IndexError:  # first element
                 res.append(item)
 
-        self.s = tuple(res)
+        self.s = res
         return self
 
     def __add__(self, other: Union["SigmaString", str, SpecialChars, Placeholder]) -> "SigmaString":
@@ -331,7 +340,7 @@ class SigmaString(SigmaType):
         if isinstance(other, self.__class__):
             s.s = self.s + other.s
         elif isinstance(other, (str, SpecialChars, Placeholder)):
-            s.s = self.s + (other,)
+            s.s = self.s + [other]
         else:
             return NotImplemented
         return s._merge_strs()
@@ -339,12 +348,12 @@ class SigmaString(SigmaType):
     def __radd__(self, other: Union[str, SpecialChars, Placeholder]) -> "SigmaString":
         if isinstance(other, (str, SpecialChars, Placeholder)):
             s = self.__class__()
-            s.s = (other,) + self.s
+            s.s = [other] + self.s
             return s._merge_strs()
         else:
             return NotImplemented
 
-    def __eq__(self, other: Union["SigmaString", str]) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, str):
             return self == self.__class__(other)
         elif isinstance(other, self.__class__):
@@ -379,9 +388,9 @@ class SigmaString(SigmaType):
     def __repr__(self) -> str:
         return str(f"SigmaString({self.s})")
 
-    def to_plain_regex(self):
+    def to_plain_regex(self) -> str:
         """Return plain string representation of SigmaString with reduced escaping."""
-        return self._stringify(True)
+        return self.to_plain(regex=True)
 
     def __bytes__(self) -> bytes:
         return str(self).encode()
@@ -398,7 +407,7 @@ class SigmaString(SigmaType):
             )
         )
 
-    def startswith(self, val: Union[str, SpecialChars]) -> bool:
+    def startswith(self, val: SigmaStringPartType) -> bool:
         """Check if string starts with a given string or special character."""
         if len(self.s) == 0:
             return False
@@ -406,11 +415,11 @@ class SigmaString(SigmaType):
         if not isinstance(val, type(c)):  # can't match if types differ
             return False
         elif isinstance(c, str):  # pass startswith invocation to string objects
-            return c.startswith(val)
+            return c.startswith(cast(str, val))
         else:  # direct comparison of SpecialChars
             return c == val
 
-    def endswith(self, val: Union[str, SpecialChars]) -> bool:
+    def endswith(self, val: SigmaStringPartType) -> bool:
         """Check if string ends with a given string or special character."""
         if len(self.s) == 0:
             return False
@@ -418,7 +427,7 @@ class SigmaString(SigmaType):
         if not isinstance(val, type(c)):  # can't match if types differ
             return False
         elif isinstance(c, str):  # pass endswith invocation to string objects
-            return c.endswith(val)
+            return c.endswith(cast(str, val))
         else:  # direct comparison of SpecialChars
             return c == val
 
@@ -478,14 +487,15 @@ class SigmaString(SigmaType):
                 return [
                     prefix + replacement + result_suffix
                     for replacement in callback(
-                        placeholder
+                        cast(Placeholder, placeholder)
                     )  # iterate over all callback result values
                     for result_suffix in suffix.replace_placeholders(
                         callback
                     )  # iterate over all result values of calling this method with the SigmaString remainder
                 ]
+        return [self]
 
-    def __iter__(self) -> Iterable[Union[str, SpecialChars]]:
+    def __iter__(self) -> Iterable[SigmaStringPartType]:
         for item in self.s:
             if isinstance(item, str):  # yield single characters of string parts
                 for char in item:
@@ -493,14 +503,14 @@ class SigmaString(SigmaType):
             else:
                 yield item
 
-    def iter_parts(self) -> Iterable[Union[str, SpecialChars]]:
+    def iter_parts(self) -> Iterable[SigmaStringPartType]:
         for item in self.s:
             yield item
 
     def map_parts(
         self,
-        func: Callable[[Union[str, SpecialChars]], Optional[Union[str, SpecialChars]]],
-        filter_func: Callable[[Union[str, SpecialChars]], bool] = lambda x: True,
+        func: Callable[[SigmaStringPartType], Optional[SigmaStringPartType]],
+        filter_func: Callable[[SigmaStringPartType], bool] = lambda x: True,
         interpret_special: bool = False,
     ) -> "SigmaString":
         s = self.__class__()
@@ -510,13 +520,19 @@ class SigmaString(SigmaType):
                 result = func(item)
                 if result is not None:
                     if interpret_special:
-                        parts.extend(SigmaString(result).s)
+                        if isinstance(result, str):
+                            parts.extend(SigmaString(result).s)
+                        else:
+                            parts.append(result)
                     else:
                         parts.append(result)
             else:
                 parts.append(item)
-        s.s = tuple(parts)
+        s.s = parts
         return s
+
+    def map_str_parts(self, func: Callable[[str], Optional[str]]) -> "SigmaString":
+        return self.map_parts(func, lambda x: isinstance(x, str))  # type: ignore
 
     def convert(
         self,
@@ -540,7 +556,7 @@ class SigmaString(SigmaType):
         s = ""
         escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
 
-        for c in self:
+        for c in iter(self):
             if isinstance(c, str):  # c is plain character
                 if c in filter_chars:  # Skip filtered characters
                     continue
@@ -584,10 +600,10 @@ class SigmaString(SigmaType):
         )
 
     def upper(self) -> "SigmaString":
-        return self.map_parts(str.upper, lambda x: isinstance(x, str))
+        return self.map_str_parts(str.upper)
 
     def lower(self) -> "SigmaString":
-        return self.map_parts(str.lower, lambda x: isinstance(x, str))
+        return self.map_str_parts(str.lower)
 
 
 class SigmaCasedString(SigmaString):
@@ -606,7 +622,7 @@ class SigmaNumber(SigmaType):
 
     number: Union[int, float]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         try:  # Only use float number if it can't be represented as int.
             i = int(self.number)
             f = float(self.number)
@@ -617,14 +633,16 @@ class SigmaNumber(SigmaType):
         except ValueError as e:
             raise SigmaValueError("Invalid number") from e
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.number)
 
-    def __eq__(self, other: Union["SigmaNumber", int]) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, int):
             return self.number == other
+        elif isinstance(other, SigmaNumber):
+            return bool(self.number == other.number)
         else:
-            return self.number == other.number
+            return NotImplemented
 
 
 @dataclass
@@ -633,14 +651,14 @@ class SigmaBool(SigmaType):
 
     boolean: bool
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.boolean, bool):
             raise SigmaTypeError("SigmaBool must be a boolean")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return str(self.boolean)
 
-    def __bool__(self):
+    def __bool__(self) -> bool:
         return self.boolean
 
 
@@ -667,13 +685,13 @@ class SigmaRegularExpression(SigmaType):
         SigmaRegularExpressionFlag.DOTALL: "s",
     }
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.compile()
 
-    def add_flag(self, flag: SigmaRegularExpressionFlag):
+    def add_flag(self, flag: SigmaRegularExpressionFlag) -> None:
         self.flags.add(flag)
 
-    def compile(self):
+    def compile(self) -> None:
         """Verify if regular expression is valid by compiling it"""
         try:
             flags = 0
@@ -687,7 +705,7 @@ class SigmaRegularExpression(SigmaType):
 
     def escape(
         self,
-        escaped: Tuple[str] = (),
+        escaped: Tuple[str] = cast(Tuple[str], ()),
         escape_char: str = "\\",
         escape_escape_char: bool = True,
         flag_prefix: bool = True,
@@ -709,8 +727,9 @@ class SigmaRegularExpression(SigmaType):
             if r != ""
             else []
         )
-        ranges = zip([None, *pos], [*pos, None])  # string chunk ranges with escapes in between
-        ranges = list(ranges)
+        ranges = list(
+            zip([None, *pos], [*pos, None])
+        )  # string chunk ranges with escapes in between
 
         if flag_prefix and self.flags:
             prefix = (
@@ -730,7 +749,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
     source: Optional[SigmaRuleLocation] = None
     network: Union[IPv4Network, IPv6Network] = field(init=False, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Verify if cidr is valid by re"""
         try:
             self.network = ip_network(self.cidr)
@@ -782,11 +801,11 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             prefix_diff = (
                 4 - prefix_rem4
             ) % 4  # We want the next 4 bit boundary to expand into smaller subnets, therefore the other side of the remainder is used.
-            for subnet in self.network.subnets(
+            for subnet_v6 in self.network.subnets(
                 prefix_diff
             ):  # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
-                first_addr = str(subnet.network_address)
-                last_addr = str(subnet.broadcast_address)
+                first_addr = str(subnet_v6.network_address)
+                last_addr = str(subnet_v6.broadcast_address)
                 wildcard_required = False  # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
                 for i in range(
                     len(first_addr)
@@ -796,10 +815,10 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                         break  # location found
                 if wildcard_required:
                     patterns.append(
-                        str(subnet)[:i] + wildcard
+                        str(subnet_v6)[:i] + wildcard
                     )  # Generate pattern by cutting of at first difference
                 else:  # The /128 case - no differences
-                    patterns.append(str(subnet))  # Return the single address
+                    patterns.append(str(subnet_v6))  # Return the single address
         return patterns
 
 
@@ -818,7 +837,7 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     op: CompareOperators
     source: Optional[SigmaRuleLocation] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.number, SigmaNumber):
             raise SigmaTypeError("Compare operator expects number", source=self.source)
 
@@ -846,13 +865,13 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
     expr: str
     id: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not isinstance(self.expr, str):
             raise SigmaTypeError("SigmaQueryExpression expression must be a string")
         if not isinstance(self.id, str):
             raise SigmaTypeError("SigmaQueryExpression placeholder identifier must be a string")
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.expr
 
     def has_field_placeholder(self) -> bool:
@@ -883,7 +902,7 @@ class SigmaExpansion(NoPlainConversionMixin, SigmaType):
     values: List[SigmaType]
 
 
-type_map = {
+type_map: Dict[type, Type[SigmaType]] = {
     bool: SigmaBool,
     int: SigmaNumber,
     float: SigmaNumber,
@@ -892,8 +911,9 @@ type_map = {
 }
 
 
-def sigma_type(v: Optional[Union[int, float, str]]):
+def sigma_type(v: Optional[Union[int, float, str]]) -> SigmaType:
     """Return Sigma type from Python value"""
     for t, st in type_map.items():
         if isinstance(v, t):
             return st(v)
+    raise SigmaTypeError(f"Unsupported type: {type(v)}")

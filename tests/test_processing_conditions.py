@@ -517,7 +517,7 @@ def test_condition_identifiers_completeness():
 
 
 def test_condition_export_completeness():
-    assert set(conditions_all).issubset(
+    assert set(conditions_all).issuperset(
         {
             condition_class.__name__
             for condition_class in list(rule_conditions.values())

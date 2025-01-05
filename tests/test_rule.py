@@ -55,13 +55,13 @@ def test_sigmalevel_comparation():
 
 
 def test_sigmalevel_comparation_invalid():
-    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel .*"):
-        assert SigmaLevel.HIGH == "HIGH"
-        assert SigmaLevel.HIGH >= "LOW"
-        assert SigmaLevel.HIGH > "LOW"
-        assert SigmaLevel.HIGH != "LOW"
-        assert SigmaLevel.LOW <= "HIGH"
-        assert SigmaLevel.LOW < "HIGH"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel"):
+        SigmaLevel.HIGH == "HIGH"
+        SigmaLevel.HIGH >= "LOW"
+        SigmaLevel.HIGH > "LOW"
+        SigmaLevel.HIGH != "LOW"
+        SigmaLevel.LOW <= "HIGH"
+        SigmaLevel.LOW < "HIGH"
 
 
 def test_sigmastatus_str():
@@ -78,7 +78,7 @@ def test_sigmastatus_comparation():
 
 
 def test_sigmastatus_comparation_invalid():
-    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus .*"):
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus"):
         assert SigmaStatus.STABLE == "STABLE"
         assert SigmaStatus.STABLE >= "EXPERIMENTAL"
         assert SigmaStatus.STABLE > "EXPERIMENTAL"

@@ -14,7 +14,7 @@ class SigmaLogSource:
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensures that log source is not empty."""
         if self.category is None and self.product is None and self.service is None:
             raise sigma_exceptions.SigmaLogsourceError(
@@ -39,7 +39,7 @@ class SigmaLogSource:
 
     @classmethod
     def from_dict(
-        cls, logsource: dict, source: Optional[SigmaRuleLocation] = None
+        cls, logsource: Dict[str, str], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaLogSource":
         """Returns SigmaLogSource object from dict with fields."""
         custom_attributes = {

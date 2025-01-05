@@ -1,22 +1,24 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List, Type
 from uuid import UUID
 from datetime import date, datetime
+import datetime as dt
 import yaml
 import re
 import sigma
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaError, SigmaRuleLocation
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
+from sigma.conversion.state import ConversionState
 
 
 class SigmaYAMLLoader(yaml.SafeLoader):
     """Custom YAML loader implementing additional functionality for Sigma."""
 
-    def construct_mapping(self, node, deep=...):
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Dict[Any, Any]:
         keys = set()
         for k, v in node.value:
-            key = self.construct_object(k, deep=deep)
+            key = self.construct_object(k, deep=deep)  # type: ignore
             if key in keys:
                 raise yaml.error.YAMLError("Duplicate key '{k}'")
             else:
@@ -38,8 +40,8 @@ class SigmaRuleBase:
     references: List[str] = field(default_factory=list)
     tags: List["sigma.rule.attributes.SigmaRuleTag"] = field(default_factory=list)
     author: Optional[str] = None
-    date: Optional["datetime.date"] = None
-    modified: Optional["datetime.date"] = None
+    date: Optional["dt.date"] = None
+    modified: Optional["dt.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional["sigma.rule.attributes.SigmaLevel"] = None
@@ -55,12 +57,12 @@ class SigmaRuleBase:
     _conversion_result: Optional[List[Any]] = field(
         init=False, default=None, repr=False, compare=False
     )
-    _conversion_states: Optional[List["sigma.conversion.state.ConversionState"]] = field(
+    _conversion_states: Optional[List["ConversionState"]] = field(
         init=False, default=None, repr=False, compare=False
     )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
                 self.__setattr__(field, [])
@@ -75,10 +77,10 @@ class SigmaRuleBase:
     @classmethod
     def from_dict(
         cls,
-        rule: dict,
+        rule: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> Tuple[dict, List[Exception]]:
+    ) -> Tuple[Dict[str, Any], List[SigmaError]]:
         """
         Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
         class instantiation of an object derived from the SigmaRuleBase class and the errors list.
@@ -90,7 +92,7 @@ class SigmaRuleBase:
         """
         errors = []
 
-        def get_rule_as_date(name: str, exception_class) -> Optional[date]:
+        def get_rule_as_date(name: str, exception_class: Type[SigmaError]) -> Optional[date]:
             """
             Accepted string based date formats are in range 1000-01-01 .. 3999-12-31:
               * XXXX-XX-XX                                 -- fully corresponds to yaml date format
@@ -99,21 +101,21 @@ class SigmaRuleBase:
                 2024-01-1, 24-1-24, 24/1/1, ...
             """
             nonlocal errors, rule, source
-            result = rule.get(name)
+            value = rule.get(name)
             if (
-                result is not None
-                and not isinstance(result, date)
-                and not isinstance(result, datetime)
+                value is not None
+                and not isinstance(value, date)
+                and not isinstance(value, datetime)
             ):
                 error = True
                 try:
-                    result = str(result)  # forcifully convert whatever the type is into string
+                    value = str(value)  # forcifully convert whatever the type is into string
                     accepted_regexps = (
                         "([1-3][0-9][0-9][0-9])-([01][0-9])-([0-3][0-9])",  # 1000-01-01 .. 3999-12-31
                         "([1-3][0-9][0-9][0-9])/([01]?[0-9])/([0-3]?[0-9])",  # 1000/1/1, 1000/01/01 .. 3999/12/31
                     )
                     for date_regexp in accepted_regexps:
-                        matcher = re.fullmatch(date_regexp, result)
+                        matcher = re.fullmatch(date_regexp, value)
                         if matcher:
                             result = date(int(matcher[1]), int(matcher[2]), int(matcher[3]))
                             error = False
@@ -123,10 +125,13 @@ class SigmaRuleBase:
                 if error:
                     errors.append(
                         exception_class(
-                            f"Rule {name} '{ result }' is invalid, use yyyy-mm-dd", source=source
+                            f"Rule {name} '{ value }' is invalid, use yyyy-mm-dd", source=source
                         )
                     )
-            return result
+                    return None
+                return result
+            else:
+                return value
 
         # Rule identifier may be empty or must be valid UUID
         rule_id = rule.get("id")
@@ -358,12 +363,14 @@ class SigmaRuleBase:
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRuleBase":
+    def from_yaml(
+        cls, rule: str, collect_errors: bool = False
+    ) -> Tuple[Dict[str, Any], List[SigmaError]]:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert rule object into dict."""
         d = {
             "title": self.title,

@@ -372,7 +372,7 @@ class SigmaRuleBase:
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert rule object into dict."""
-        d = {
+        d: Dict[str, Any] = {
             "title": self.title,
         }
         # Convert to string where possible
@@ -398,7 +398,7 @@ class SigmaRuleBase:
 
         return d
 
-    def add_backreference(self, rule: "SigmaRuleBase"):
+    def add_backreference(self, rule: "SigmaRuleBase") -> None:
         """Add backreference to another rule."""
         self._backreferences.append(rule)
 
@@ -406,7 +406,7 @@ class SigmaRuleBase:
         """Check if rule is referenced by another rule."""
         return rule in self._backreferences
 
-    def set_conversion_result(self, result: List[Any]):
+    def set_conversion_result(self, result: List[Any]) -> None:
         """Set conversion result."""
         self._conversion_result = result
 
@@ -415,11 +415,12 @@ class SigmaRuleBase:
         if self._conversion_result is None:
             raise sigma_exceptions.SigmaConversionError(
                 self,
+                None,
                 "Conversion result not available",
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]):
+    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
@@ -428,11 +429,12 @@ class SigmaRuleBase:
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(
                 self,
+                None,
                 "Conversion state not available",
             )
         return self._conversion_states
 
-    def disable_output(self):
+    def disable_output(self) -> None:
         """Disable output of rule."""
         self._output = False
 

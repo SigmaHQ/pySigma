@@ -45,6 +45,7 @@ class TimestampPart(Enum):
     MONTH = auto()
     YEAR = auto()
 
+
 @dataclass
 class Placeholder:
     """

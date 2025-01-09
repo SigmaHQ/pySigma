@@ -28,7 +28,9 @@ from sigma.types import (
     SpecialChars,
     SigmaRegularExpression,
     SigmaCompareExpression,
-    SigmaCIDRExpression, SigmaTimestampPart, TimestampPart,
+    SigmaCIDRExpression,
+    SigmaTimestampPart,
+    TimestampPart,
 )
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError

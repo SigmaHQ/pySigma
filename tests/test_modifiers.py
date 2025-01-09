@@ -23,6 +23,12 @@ from sigma.modifiers import (
     SigmaGreaterThanEqualModifier,
     SigmaExpandModifier,
     SigmaWindowsDashModifier,
+    SigmaTimestampMinuteModifier,
+    SigmaTimestampHourModifier,
+    SigmaTimestampDayModifier,
+    SigmaTimestampWeekModifier,
+    SigmaTimestampMonthModifier,
+    SigmaTimestampYearModifier,
 )
 from sigma.rule import SigmaDetectionItem
 from sigma.types import (
@@ -38,6 +44,8 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaCompareExpression,
     SigmaCIDRExpression,
+    TimestampPart,
+    SigmaTimestampPart,
 )
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
@@ -477,3 +485,39 @@ def test_cidr_invalid(dummy_detection_item):
         SigmaCIDRModifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).modify(
             SigmaString("192.168.1.1/24")
         )
+
+
+def test_timestamp_minute_modifier(dummy_detection_item):
+    assert SigmaTimestampMinuteModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.MINUTE, 123)
+
+
+def test_timestamp_hour_modifier(dummy_detection_item):
+    assert SigmaTimestampHourModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.HOUR, 123)
+
+
+def test_timestamp_day_modifier(dummy_detection_item):
+    assert SigmaTimestampDayModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.DAY, 123)
+
+
+def test_timestamp_week_modifier(dummy_detection_item):
+    assert SigmaTimestampWeekModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.WEEK, 123)
+
+
+def test_timestamp_month_modifier(dummy_detection_item):
+    assert SigmaTimestampMonthModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.MONTH, 123)
+
+
+def test_timestamp_year_modifier(dummy_detection_item):
+    assert SigmaTimestampYearModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaTimestampPart(TimestampPart.YEAR, 123)

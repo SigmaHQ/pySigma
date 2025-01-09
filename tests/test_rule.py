@@ -18,7 +18,9 @@ from sigma.types import (
     SigmaString,
     SigmaNumber,
     SigmaNull,
-    SigmaRegularExpression, SigmaTimestampPart, TimestampPart,
+    SigmaRegularExpression,
+    SigmaTimestampPart,
+    TimestampPart,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,
@@ -1615,7 +1617,8 @@ def test_sigmarule_bad_scope():
 
 
 def test_sigmarule_timestamp_modifiers():
-    rule = SigmaRule.from_dict({
+    rule = SigmaRule.from_dict(
+        {
             "title": "Test",
             "logsource": {
                 "category": "process_creation",
@@ -1631,9 +1634,11 @@ def test_sigmarule_timestamp_modifiers():
                     "timestamp|year": 6,
                 },
                 "condition": "selection",
-            }
-    }, source=sigma_exceptions.SigmaRuleLocation("test.yml"),)
-    detection_items = rule.detection['selection'].detection_items
+            },
+        },
+        source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+    )
+    detection_items = rule.detection["selection"].detection_items
     assert detection_items[0].value[0] == SigmaTimestampPart(TimestampPart.MINUTE, 1)
     assert detection_items[1].value[0] == SigmaTimestampPart(TimestampPart.HOUR, 2)
     assert detection_items[2].value[0] == SigmaTimestampPart(TimestampPart.DAY, 3)

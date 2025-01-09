@@ -52,7 +52,9 @@ from sigma.types import (
     SigmaNull,
     SigmaQueryExpression,
     SigmaCIDRExpression,
-    SpecialChars, SigmaTimestampPart, TimestampPart,
+    SpecialChars,
+    SigmaTimestampPart,
+    TimestampPart,
 )
 from sigma.conversion.state import ConversionState
 
@@ -1560,14 +1562,23 @@ class TextQueryBackend(Backend):
             )
 
     def convert_condition_field_eq_val_timestamp_part(
-            self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Any:
         """Conversion of field = timestamp part value expressions"""
         try:
             if isinstance(cond.value, SigmaTimestampPart):
-                return self.field_timestamp_part_expression.format(field=self.escape_and_quote_field(cond.field), timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part])  + self.eq_token + str(cond.value)
+                return (
+                    self.field_timestamp_part_expression.format(
+                        field=self.escape_and_quote_field(cond.field),
+                        timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part],
+                    )
+                    + self.eq_token
+                    + str(cond.value)
+                )
             else:
-                raise ValueError(f"Wrong type for cond.value. Expected SigmaTimestampPart, got {type(cond.value)}")
+                raise ValueError(
+                    f"Wrong type for cond.value. Expected SigmaTimestampPart, got {type(cond.value)}"
+                )
         except TypeError as e:  # pragma: no cover
             raise NotImplementedError(
                 f"Field equals numeric value expressions are not supported by the backend: {e}"
@@ -1776,7 +1787,14 @@ class TextQueryBackend(Backend):
         self, cond: ConditionValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of timestamp part numbers."""
-        return self.field_timestamp_part_expression.format(field=self.escape_and_quote_field(cond.field), timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part])  + self.eq_token + str(cond.value)
+        return (
+            self.field_timestamp_part_expression.format(
+                field=self.escape_and_quote_field(cond.field),
+                timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part],
+            )
+            + self.eq_token
+            + str(cond.value)
+        )
 
     def convert_condition_val_re(
         self, cond: ConditionValueExpression, state: ConversionState

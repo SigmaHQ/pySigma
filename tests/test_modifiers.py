@@ -22,8 +22,13 @@ from sigma.modifiers import (
     SigmaGreaterThanModifier,
     SigmaGreaterThanEqualModifier,
     SigmaExpandModifier,
-    SigmaWindowsDashModifier, SigmaTimestampMinuteModifier, SigmaTimestampHourModifier, SigmaTimestampDayModifier,
-    SigmaTimestampWeekModifier, SigmaTimestampMonthModifier, SigmaTimestampYearModifier,
+    SigmaWindowsDashModifier,
+    SigmaTimestampMinuteModifier,
+    SigmaTimestampHourModifier,
+    SigmaTimestampDayModifier,
+    SigmaTimestampWeekModifier,
+    SigmaTimestampMonthModifier,
+    SigmaTimestampYearModifier,
 )
 from sigma.rule import SigmaDetectionItem
 from sigma.types import (
@@ -40,7 +45,9 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaCompareExpression,
     SigmaCIDRExpression,
-    SpecialChars, TimestampPart, SigmaTimestampPart,
+    SpecialChars,
+    TimestampPart,
+    SigmaTimestampPart,
 )
 from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError

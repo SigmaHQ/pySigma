@@ -493,6 +493,26 @@ def test_field_prefix_mapping(dummy_pipeline, field_prefix_mapping_transformatio
     }
 
 
+def test_field_prefix_mapping_keyword_detection(
+    dummy_pipeline, keyword_sigma_rule, field_prefix_mapping_transformation
+):
+    field_prefix_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_prefix_mapping_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                None,
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
 def test_field_prefix_mapping_correlation_rule(
     dummy_pipeline, sigma_correlation_rule, field_prefix_mapping_transformation
 ):

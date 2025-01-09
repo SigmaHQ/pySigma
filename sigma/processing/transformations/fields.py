@@ -57,7 +57,7 @@ class FieldPrefixMappingTransformation(FieldMappingTransformation):
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         if field is None:
             return None
-        
+
         for src, dest in self.mapping.items():
             if field.startswith(src):  # found matching prefix
                 if isinstance(dest, str):

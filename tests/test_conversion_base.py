@@ -18,7 +18,7 @@ from sigma.processing.transformations import (
 from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
 import pytest
 
-from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag
+from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag, TimestampPart
 
 
 @pytest.fixture
@@ -3121,4 +3121,46 @@ def test_convert_not_or_group(test_backend, monkeypatch):
             )
         )
         == ['(mappedA!="value1" or mappedB!="value2")']
+    )
+
+
+def test_convert_timestamp_part_modifiers(test_backend, monkeypatch):
+    """Test the |minute, |day, etc modifiers"""
+    monkeypatch.setattr(test_backend, "field_timestamp_part_expression", 'strftime({field}, "{timestamp_part}")')
+    monkeypatch.setattr(test_backend, "timestamp_part_mapping", {
+        TimestampPart.MINUTE: '%M',
+        TimestampPart.HOUR: '%H',
+        TimestampPart.DAY: '%d',
+        TimestampPart.WEEK: '%V',
+        TimestampPart.MONTH: '%m',
+        TimestampPart.YEAR: '%Y',
+    })
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    timestamp|minute: 1
+                    timestamp|hour: 2
+                    timestamp|day: 3
+                    timestamp|week: 4
+                    timestamp|month: 5
+                    timestamp|year: 6
+                    timestamp|minute|gt: 7
+                    timestamp|hour|gte: 8
+                    timestamp|day|lt: 9
+                    timestamp|week|lte: 10
+                    timestamp|month|gt: 11
+                    timestamp|year|gte: 12
+                condition: sel
+        """
+            )
+        )
+        == ['strftime(timestamp, "%M")=1 and strftime(timestamp, "%H")=2 and strftime(timestamp, "%d")=3 and strftime(timestamp, "%V")=4 and strftime(timestamp, "%m")=5 and strftime(timestamp, "%Y")=6 and timestamp>7 and timestamp>=8 and timestamp<9 and timestamp<=10 and timestamp>11 and timestamp>=12']
     )

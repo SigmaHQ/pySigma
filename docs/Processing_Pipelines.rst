@@ -99,17 +99,24 @@ Transformation items are defined as a map as follows:
   be used in future conditions.
 * `type`: the type of the transformation as specified in the identifier to class mappings below: :ref:`transformations`
 * Arbitrary transformation parameters are specified at the samle level.
-* `rule_conditions`, `detection_item_conditions`, `field_name_conditions`: conditions of the type corresponding to the name.
+* `rule_conditions`, `detection_item_conditions`, `field_name_conditions`: conditions of the type
+  corresponding to the name. This can be a list of unnamed conditions that are logically linked with
+  the same operator specified in `*_cond_op` or named conditions that are referenced in the
+  `*_cond_expr` attribute. 
 
 Conditions are specified as follows:
 
 * `type`: defines the condition type. It must be one of the identifiers that are defined in
   :ref:`conditions`
 * `rule_cond_op`, `detection_item_cond_op`, `field_name_cond_op`: boolean operator for the condition
-  result. Must be one of `or` or `and`. Defaults to `and`.
+  result. Must be one of `or` or `and`. Defaults to `and`. Alternatively,
+* `rule_cond_expr`, `detection_item_cond_expr`, `field_name_cond_expr`: specify a boolean expression
+  that references to named condition items.
 * `rule_cond_not`, `detection_item_cond_not`, `field_name_cond_not`: if set to *True*, the condition
   result is negated.
 * Arbitrary conditions parameters are specified on the same level.
+
+Specification of an operator and expression is mutually exclusive. 
 
 Example:
 
@@ -149,12 +156,17 @@ There are three types of conditions:
   `ProcessingPipeline`. These can only be applied in the rule pre-processing stage and are evaluated
   only for transformations that operate on field names. 
 
-In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are two further
+Conditions can be specified unnamed as list that are logically linked with the operator specified in
+`*_condition_linking` attributes or named as dict that are referenced in the `*_condition_expression`.
+
+In addition to the `*_conditions` attributes of `ProcessingPipeline` objects, there are further
 attributes that control the condition matching behavior:
 
 * `rule_condition_linking`, `detection_item_condition_linking` and `field_name_condition_linking`:
   one of `any` or `all` functions. Controls if one or all of the conditions from the list must match
   to result in an overall match.
+* `rule_condition_expression`, `detection_item_condition_expression` and
+  `field_name_condition_expression`: a boolean expression that references to named condition items.
 * `rule_condition_negation`, `detection_item_condition_negation` and
   `field_name_condition_negation`: if set to *True*, the condition result is negated.
 
@@ -253,9 +265,10 @@ definitions are available:
    "Identifier", "Class"
    "field_name_mapping", "FieldMappingTransformation"
    "field_name_prefix_mapping", "FieldPrefixMappingTransformation"
+   "field_name_transform", "FieldFunctionTransformation"
+   "drop_detection_item", "DropDetectionItemTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
-   "drop_detection_item", "DropDetectionItemTransformation"
    "wildcard_placeholders", "WildcardPlaceholderTransformation"
    "value_placeholders", "ValueListPlaceholderTransformation"
    "query_expression_placeholders", "QueryExpressionPlaceholderTransformation"
@@ -266,12 +279,14 @@ definitions are available:
    "set_field", "SetFieldTransformation"
    "replace_string", "ReplaceStringTransformation"
    "map_string", "MapStringTransformation"
+   "set_state", "SetStateTransformation"
    "regex", "RegexTransformation"
    "set_value", "SetValueTransformation"
-   "convert_type", "ConvertTypeTransformation
-   "set_state", "SetStateTransformation"
+   "convert_type", "ConvertTypeTransformation"
    "rule_failure", "RuleFailureTransformation"
    "detection_item_failure", "DetectionItemFailureTransformation"
+   "set_custom_attribute", "SetCustomAttributeTransformation"
+   "nest", "NestedProcessingTransformation"
 
 .. autoclass:: sigma.processing.transformations.FieldMappingTransformation
 
@@ -292,9 +307,10 @@ and `cmdline`. For the latter, OR-conditions will be generated to match the valu
 This is useful if different data models are used in the same system.
 
 .. autoclass:: sigma.processing.transformations.FieldPrefixMappingTransformation
+.. autoclass:: sigma.processing.transformations.FieldFunctionTransformation
+.. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnameSuffixTransformation
 .. autoclass:: sigma.processing.transformations.AddFieldnamePrefixTransformation
-.. autoclass:: sigma.processing.transformations.DropDetectionItemTransformation
 .. autoclass:: sigma.processing.transformations.WildcardPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.ValueListPlaceholderTransformation
 .. autoclass:: sigma.processing.transformations.QueryExpressionPlaceholderTransformation
@@ -318,6 +334,31 @@ YAML example:
         - mapped2A
         - mapped2B
 
+.. autoclass:: sigma.processing.transformations.SetStateTransformation
+.. autoclass:: sigma.processing.transformations.RegexTransformation
+.. autoclass:: sigma.processing.transformations.SetValueTransformation
+.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
+.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
+.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
+.. autoclass:: sigma.processing.transformations.SetCustomAttributeTransformation
+.. autoclass:: sigma.processing.transformations.NestedProcessingTransformation
+
+YAML example:
+
+.. code-block:: yaml
+
+  transformations:
+    type: nest
+    items:
+      - type: field_name_mapping
+        mapping:
+          EventID: EventCode
+          CommandLine:
+            - command_line
+            - cmdline
+      - type: set_state
+        state: processed
+
 .. autoclass:: sigma.processing.transformations.RegexTransformation
 .. autoclass:: sigma.processing.transformations.SetValueTransformation
 .. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
@@ -339,12 +380,14 @@ Query Post-Processing Transformations
    "template", "QueryTemplateTransformation"
    "json", "EmbedQueryInJSONTransformation"
    "replace", "ReplaceQueryTransformation"
+   "nest", "NestedQueryPostprocessingTransformation"
 
 .. autoclass:: sigma.processing.postprocessing.EmbedQueryTransformation
 .. autoclass:: sigma.processing.postprocessing.QuerySimpleTemplateTransformation
 .. autoclass:: sigma.processing.postprocessing.QueryTemplateTransformation
 .. autoclass:: sigma.processing.postprocessing.EmbedQueryInJSONTransformation
 .. autoclass:: sigma.processing.postprocessing.ReplaceQueryTransformation
+.. autoclass:: sigma.processing.postprocessing.NestedQueryPostprocessingTransformation
 
 Output Finalization Transformations
 ====================================
@@ -359,11 +402,13 @@ Output Finalization Transformations
    "template", "TemplateFinalizer"
    "json", "JSONFinalizer"
    "yaml", "YAMLFinalizer"
+   "nested", "NestedFinalizer"
 
 .. autoclass:: sigma.processing.finalization.ConcatenateQueriesFinalizer
 .. autoclass:: sigma.processing.finalization.TemplateFinalizer
 .. autoclass:: sigma.processing.finalization.JSONFinalizer
 .. autoclass:: sigma.processing.finalization.YAMLFinalizer
+.. autoclass:: sigma.processing.finalization.NestedFinalizer
 
 Base Classes
 ============

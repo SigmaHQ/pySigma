@@ -20,7 +20,6 @@ from typing import (
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.condition_expressions import ConditionExpression, parse_condition_expression
 from sigma.processing.finalization import Finalizer, finalizers
-from sigma.processing.postprocessing import QueryPostprocessingTransformation
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations import transformations, Transformation

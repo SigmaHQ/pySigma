@@ -1,10 +1,7 @@
 from dataclasses import dataclass
 from copy import deepcopy
 import inspect
-from re import template
-import re
 from sigma.conditions import ConditionOR, SigmaCondition
-from _pytest.fixtures import fixture
 import pytest
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -15,7 +12,9 @@ from sigma.correlations import (
 from sigma.processing.transformations import (
     AddFieldTransformation,
     ConvertTypeTransformation,
+    NestedProcessingTransformation,
     RemoveFieldTransformation,
+    SetCustomAttributeTransformation,
     SetFieldTransformation,
     SetValueTransformation,
     transformations,
@@ -40,10 +39,10 @@ from sigma.processing.transformations import (
     ValueListPlaceholderTransformation,
     QueryExpressionPlaceholderTransformation,
     ReplaceStringTransformation,
+    HashesFieldsDetectionItemTransformation,
 )
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.conditions import (
-    DetectionItemProcessingItemAppliedCondition,
     FieldNameProcessingItemAppliedCondition,
     IncludeFieldCondition,
     RuleContainsDetectionItemCondition,
@@ -67,6 +66,12 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,
     SigmaValueError,
+)
+from tests.test_processing_pipeline import (
+    RuleConditionFalse,
+    RuleConditionTrue,
+    TransformationAppend,
+    inject_test_classes,
 )
 
 
@@ -389,7 +394,7 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
         "fieldD": True,
     }
     assert sigma_rule.was_processed_by("test")
-    assert transformation.pipeline.field_mappings == {
+    assert transformation._pipeline.field_mappings == {
         "field1": {"fieldA"},
         "field3": {"fieldC", "fieldD"},
     }
@@ -462,7 +467,7 @@ def test_field_prefix_mapping(dummy_pipeline, field_prefix_mapping_transformatio
         "otherfield2",
     ]
     assert sigma_rule.was_processed_by("test")
-    assert field_prefix_mapping_transformation.pipeline.field_mappings == {
+    assert field_prefix_mapping_transformation._pipeline.field_mappings == {
         "test1.field": {"mapped1.field"},
         "test2.field": {
             "mapped2a.field",
@@ -678,7 +683,7 @@ def test_add_fieldname_suffix_tracking(
         False,
     ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"field1.test"}}
+    assert processing_item.transformation._pipeline.field_mappings == {"field1": {"field1.test"}}
 
 
 def test_add_fieldname_suffix_transformation_correlation_rule(
@@ -767,7 +772,7 @@ def test_add_fieldname_prefix_tracking(
         False,
     ]
     assert sigma_rule.was_processed_by("test")
-    assert processing_item.transformation.pipeline.field_mappings == {"field1": {"test.field1"}}
+    assert processing_item.transformation._pipeline.field_mappings == {"field1": {"test.field1"}}
 
 
 def test_add_fieldname_prefix_correlation_rule(
@@ -1319,7 +1324,7 @@ def test_replace_string_simple(dummy_pipeline, sigma_rule: SigmaRule):
     )
 
 
-def test_replace_string_wildcard(dummy_pipeline):
+def test_replace_string_specials(dummy_pipeline):
     sigma_rule = SigmaRule.from_dict(
         {
             "title": "Test",
@@ -1335,14 +1340,150 @@ def test_replace_string_wildcard(dummy_pipeline):
             },
         }
     )
-    transformation = ReplaceStringTransformation("^.*\\\\(.*)$", "\\1")
+    transformation = ReplaceStringTransformation("^.*\\\\", "/")
     transformation.apply(dummy_pipeline, sigma_rule)
     assert sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field1", [], [SigmaString("value")]),
+                    SigmaDetectionItem("field1", [], [SigmaString("/value")]),
                     SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_placeholder(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field|expand": "foo%var%bar",
+                },
+                "condition": "test",
+            },
+        }
+    )
+    s_before = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s_before == SigmaString("foo%var%bar").insert_placeholders()
+
+    transformation = ReplaceStringTransformation("bar", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s == SigmaString("foo%var%test").insert_placeholders()
+
+
+def test_replace_string_no_placeholder(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field": "foo%var%bar",
+                },
+                "condition": "test",
+            },
+        }
+    )
+    s_before = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s_before == SigmaString("foo%var%bar")
+
+    transformation = ReplaceStringTransformation("bar", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s == SigmaString("foo%var%test")
+
+
+def test_replace_string_skip_specials(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "*\\value",
+                        "field2": 123,
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True)
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("*/\\?/value")]),
+                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_skip_specials_with_interpret_specials(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "*\\value",
+                        "field2": 123,
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("^.*\\\\", "/?/", True, True)
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("*/?/value")]),
+                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                ]
+            )
+        ]
+    )
+
+
+def test_replace_string_backslashes(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": r"backslash\\value",
+                        "field2": r"backslash\\\\value",
+                        "field3": r"plainwildcard\*value",
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("value", "test")
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString(r"backslash\\test")]),
+                    SigmaDetectionItem("field2", [], [SigmaString(r"backslash\\\\test")]),
+                    SigmaDetectionItem("field3", [], [SigmaString(r"plainwildcard\*test")]),
                 ]
             )
         ]
@@ -1400,7 +1541,7 @@ def test_regex_transformation_plain_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\.st.*va.ue")
+    assert detection_item.value[0] == SigmaRegularExpression("\\\\te\\.st.*va.ue")
 
 
 def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
@@ -1408,7 +1549,7 @@ def test_regex_transformation_case_insensitive_bracket_method(dummy_pipeline):
     transformation = RegexTransformation(method="ignore_case_brackets")
     transformation.apply_detection_item(detection_item)
     assert detection_item.value[0] == SigmaRegularExpression(
-        "\\\\[tT][eE]\.[sS][tT].*[vV][aA][lL].[uU][eE]"
+        "\\\\[tT][eE]\\.[sS][tT].*[vV][aA][lL].[uU][eE]"
     )
 
 
@@ -1567,6 +1708,78 @@ def test_detection_item_failure_transformation(dummy_pipeline, sigma_rule):
         transformation.apply(dummy_pipeline, sigma_rule)
 
 
+def test_set_custom_attribute(dummy_pipeline, sigma_rule):
+    transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
+    transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
+
+    transformation.apply(dummy_pipeline, sigma_rule)
+    assert "custom_key" in sigma_rule.custom_attributes
+    assert sigma_rule.custom_attributes["custom_key"] == "custom_value"
+    assert sigma_rule.was_processed_by("test")
+
+
+def test_set_custom_attribute_correlation_rule(dummy_pipeline, sigma_correlation_rule):
+    transformation = SetCustomAttributeTransformation("custom_key", "custom_value")
+    transformation.set_processing_item(ProcessingItem(transformation, identifier="test"))
+
+    transformation.apply(dummy_pipeline, sigma_correlation_rule)
+    assert "custom_key" in sigma_correlation_rule.custom_attributes
+    assert sigma_correlation_rule.custom_attributes["custom_key"] == "custom_value"
+    assert sigma_correlation_rule.was_processed_by("test")
+
+
+@pytest.fixture
+def nested_pipeline_transformation():
+    return NestedProcessingTransformation(
+        items=[
+            ProcessingItem(
+                transformation=TransformationAppend(s="Test"),
+                rule_condition_linking=any,
+                rule_conditions=[
+                    RuleConditionTrue(dummy="test-true"),
+                    RuleConditionFalse(dummy="test-false"),
+                ],
+                identifier="test",
+            )
+        ],
+    )
+
+
+def test_nested_pipeline_transformation_from_dict(nested_pipeline_transformation):
+    assert (
+        NestedProcessingTransformation.from_dict(
+            {
+                "items": [
+                    {
+                        "id": "test",
+                        "rule_conditions": [
+                            {"type": "true", "dummy": "test-true"},
+                            {"type": "false", "dummy": "test-false"},
+                        ],
+                        "rule_cond_op": "or",
+                        "type": "append",
+                        "s": "Test",
+                    }
+                ],
+            }
+        )
+        == nested_pipeline_transformation
+    )
+
+
+def test_nested_pipeline_transformation_from_dict_apply(
+    dummy_pipeline, sigma_rule, nested_pipeline_transformation
+):
+    nested_pipeline_transformation.apply(dummy_pipeline, sigma_rule)
+    assert sigma_rule.title == "TestTest"
+    assert sigma_rule.was_processed_by("test")
+
+
+def test_nested_pipeline_transformation_no_items():
+    with pytest.raises(SigmaConfigurationError, match="requires an 'items' key"):
+        NestedProcessingTransformation.from_dict({"test": "fails"})
+
+
 def test_transformation_identifier_completeness():
     classes_with_identifiers = transformations.values()
 
@@ -1575,3 +1788,124 @@ def test_transformation_identifier_completeness():
 
     for cls in inspect.getmembers(transformations_module, class_filter):
         assert cls[1] in classes_with_identifiers
+
+
+@pytest.fixture
+def hashes_transformation():
+    return HashesFieldsDetectionItemTransformation(
+        valid_hash_algos=["MD5", "SHA1", "SHA256", "SHA512"],
+        field_prefix="File",
+        drop_algo_prefix=False,
+    )
+
+
+def test_hashes_transformation_single_hash(hashes_transformation):
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 1
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+
+
+def test_hashes_transformation_multiple_hashes(hashes_transformation):
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
+            SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"),
+        ],
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+    assert result.detection_items[1].field == "FileMD5"
+    assert result.detection_items[1].value == [SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7")]
+    assert result.item_linking == ConditionOR
+
+
+def test_hashes_transformation_drop_algo_prefix():
+    transformation = HashesFieldsDetectionItemTransformation(
+        valid_hash_algos=["MD5", "SHA1", "SHA256", "SHA512"],
+        field_prefix="File",
+        drop_algo_prefix=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 1
+    assert result.detection_items[0].field == "File"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+
+
+def test_hashes_transformation_invalid_hash(hashes_transformation):
+    detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
+    with pytest.raises(Exception, match="No valid hash algo found"):
+        hashes_transformation.apply_detection_item(detection_item)
+
+
+def test_hashes_transformation_mixed_valid_invalid(hashes_transformation):
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("SHA1=5F1CBC3D99558307BC1250D084FA968521482025"),
+            SigmaString("INVALID=123456"),
+            SigmaString("MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"),
+        ],
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+    assert result.detection_items[1].field == "FileMD5"
+    assert result.detection_items[1].value == [SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7")]
+
+
+def test_hashes_transformation_auto_detect_hash_type(hashes_transformation):
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("5F1CBC3D99558307BC1250D084FA968521482025"),  # SHA1
+            SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7"),  # MD5
+            SigmaString("A" * 64),  # SHA256
+            SigmaString("B" * 128),  # SHA512
+        ],
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 4
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[1].field == "FileMD5"
+    assert result.detection_items[2].field == "FileSHA256"
+    assert result.detection_items[3].field == "FileSHA512"
+
+
+def test_hashes_transformation_pipe_separator(hashes_transformation):
+    detection_item = SigmaDetectionItem(
+        "Hashes", [], [SigmaString("SHA1|5F1CBC3D99558307BC1250D084FA968521482025")]
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 1
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]

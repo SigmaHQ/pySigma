@@ -1,3 +1,4 @@
+import dataclasses
 from uuid import UUID
 import pytest
 from sigma.exceptions import SigmaConfigurationError
@@ -20,6 +21,13 @@ from .test_correlations import correlation_rule
 @pytest.fixture
 def validators():
     return InstalledSigmaPlugins.autodiscover().validators
+
+
+@pytest.mark.parametrize("validator", InstalledSigmaPlugins.autodiscover().validators.values())
+def test_parametrized_validators_are_frozen(validator):
+    assert not dataclasses.is_dataclass(validator) or (
+        dataclasses.is_dataclass(validator) and validator.__dataclass_params__.frozen
+    )
 
 
 def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with_id_collision):

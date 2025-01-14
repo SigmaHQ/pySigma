@@ -6,7 +6,7 @@ from sigma.conversion.state import ConversionState
 from sigma.processing.conditions import IncludeFieldCondition
 from sigma.processing.finalization import ConcatenateQueriesFinalizer
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem, QueryPostprocessingItem
-from sigma.processing.postprocessing import EmbedQueryTransformation
+from sigma.processing.postprocessing import EmbedQueryTransformation, QueryTemplateTransformation
 from sigma.processing.transformations import (
     AddFieldnamePrefixTransformation,
     AddFieldnameSuffixTransformation,
@@ -78,6 +78,38 @@ def test_backend_pipeline_with_postprocessing():
         )
         == ['[ mappedA="valueA" and fieldB="valueB" and fieldC="valueC" ]']
     )
+
+
+def test_backend_options_passing_to_pipeline():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            postprocessing_items=[
+                QueryPostprocessingItem(
+                    QueryTemplateTransformation(
+                        "query='{{query}}', state={{pipeline.vars.backend_test}}"
+                    )
+                )
+            ]
+        ),
+        test="testvalue",
+    )
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field: value
+                condition: sel
+            """
+        )
+    )
+    assert test_backend.last_processing_pipeline.vars["backend_test"] == "testvalue"
+    assert result == ["query='field=\"value\"', state=testvalue"]
 
 
 def test_backend_and_custom_pipeline(test_backend):
@@ -328,6 +360,72 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
     )
 
 
+def test_convert_value_str_startswith_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "startswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|startswith: "va*lue"
+                    field A|startswith: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA startswith "va*lue" and \'field A\' startswith "va*lue"']
+    )
+
+
+def test_convert_value_str_startswith_cased_further_wildcard(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|startswith|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field casematch "va*lue*"']
+    )
+
+
+def test_convert_value_str_startswith_cased_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "case_sensitive_startswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|startswith|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field startswith_cased "va*lue"']
+    )
+
+
 def test_convert_value_str_startswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "startswith_expression", None)
     assert (
@@ -416,6 +514,72 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
     )
 
 
+def test_convert_value_str_endswith_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "endswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|endswith: "va*lue"
+                    field A|endswith: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA endswith "va*lue" and \'field A\' endswith "va*lue"']
+    )
+
+
+def test_convert_value_str_endswith_cased_further_wildcard(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|endswith|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field casematch "*va*lue"']
+    )
+
+
+def test_convert_value_str_endswith_cased_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "case_sensitive_endswith_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|endswith|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field endswith_cased "va*lue"']
+    )
+
+
 def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "endswith_expression", None)
     assert (
@@ -500,6 +664,117 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
             )
         )
         == ['mappedA match "*va*lue*"']
+    )
+
+
+def test_convert_value_str_contains_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "contains_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA contains "va*lue"']
+    )
+
+
+def test_convert_value_str_contains_cased_further_wildcard(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|contains|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field casematch "*va*lue*"']
+    )
+
+
+def test_convert_value_str_contains_cased_further_wildcard_allowed(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "case_sensitive_contains_expression_allow_special", True)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    "field|contains|cased": "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['field contains_cased "va*lue"']
+    )
+
+
+def test_convert_value_str_wildcard_to_regex(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "wildcard_match_expression", '{field} match "{regex}"')
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA match ".*va.*lue.*"']
+    )
+
+
+def test_convert_value_str_wildcard_to_regex_cased(test_backend, monkeypatch):
+    monkeypatch.setattr(
+        test_backend, "case_sensitive_match_expression", '{field} casematch "{regex}"'
+    )
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldA|contains|cased: "va*lue"
+                condition: sel
+        """
+            )
+        )
+        == ['mappedA casematch ".*va.*lue.*"']
     )
 
 
@@ -1827,6 +2102,29 @@ def test_convert_unbound_values(test_backend):
             )
         )
         == ['_="value1" or _="value2" or _=123']
+    )
+
+
+def test_convert_unbound_values_regex(test_backend, monkeypatch):
+    monkeypatch.setattr(test_backend, "unbound_value_str_expression", '_=~"{regex}"')
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    - value*1
+                    - value?2
+                condition: sel
+        """
+            )
+        )
+        == ['_=~"value.*1" or _=~"value.2"']
     )
 
 

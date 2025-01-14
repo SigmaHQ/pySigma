@@ -4,6 +4,8 @@ import json
 import re
 from typing import Any, Dict, List, Optional, Union
 import sigma
+from sigma.exceptions import SigmaConfigurationError
+import sigma.processing.postprocessing
 from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
@@ -32,7 +34,7 @@ class QueryPostprocessingTransformation(Transformation):
         :return: Transformed query.
         :rtype: Any
         """
-        super().apply(pipeline, rule)  # tracking of applied rules and assigning self.pipeline
+        super().apply(pipeline, rule)  # tracking of applied rules
 
 
 @dataclass
@@ -55,7 +57,9 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
 
 @dataclass
 class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
-    """Replace query with template that can refer to the following placeholders:
+    """
+    Replace query with template that can refer to the following placeholders:
+
     * query: the postprocessed query.
     * rule: the Sigma rule including all its attributes like `rule.title`.
     * pipeline: the Sigma processing pipeline where this transformation is applied including all
@@ -143,10 +147,50 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
         return self.re.sub(self.replacement, query)
 
 
+@dataclass
+class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation):
+    """Applies a list of query postprocessing transformations to the query in a nested manner."""
+
+    items: List["sigma.processing.pipeline.QueryPostprocessingItem"]
+    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
+        init=False, compare=False, default=None
+    )
+
+    def __post_init__(self):
+        from sigma.processing.pipeline import (
+            ProcessingPipeline,
+        )  # TODO: move to top-level after restructuring code
+
+        self._nested_pipeline = ProcessingPipeline(postprocessing_items=self.items)
+
+    @classmethod
+    def from_dict(cls, d: Dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
+        try:
+            return NestedQueryPostprocessingTransformation(
+                items=[
+                    sigma.processing.pipeline.QueryPostprocessingItem.from_dict(item)
+                    for item in d["items"]
+                ]
+            )
+        except KeyError:
+            raise SigmaConfigurationError(
+                "Nested post-processing transformation requires an 'items' key."
+            )
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", rule: SigmaRule, query: Any
+    ) -> Any:
+        super().apply(pipeline, rule, query)
+        query = self._nested_pipeline.postprocess_query(rule, query)
+        pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
+        return query
+
+
 query_postprocessing_transformations = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
     "template": QueryTemplateTransformation,
     "json": EmbedQueryInJSONTransformation,
     "replace": ReplaceQueryTransformation,
+    "nest": NestedQueryPostprocessingTransformation,
 }

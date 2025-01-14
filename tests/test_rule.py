@@ -147,9 +147,38 @@ def test_sigmalogsource_fromdict_no_service():
     assert logsource == SigmaLogSource("category-id", "product-id", None)
 
 
+def test_sigmalogsource_fromdict_definition():
+    logsource = SigmaLogSource.from_dict(
+        {"category": "category-id", "product": "product-id", "definition": "use it"}
+    )
+    assert logsource == SigmaLogSource("category-id", "product-id", None, "use it")
+
+
+def test_sigmalogsource_fromdict_category_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": 1234, "product": "product-id"})
+
+
+def test_sigmalogsource_fromdict_product_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": "category-id", "product": {"a": "b"}})
+
+
+def test_sigmalogsource_fromdict_service_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict({"category": "category-id", "service": ["1", "2", "3"]})
+
+
 def test_sigmalogsource_empty():
     with pytest.raises(sigma_exceptions.SigmaLogsourceError, match="can't be empty.*test.yml"):
         SigmaLogSource(None, None, None, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
+
+
+def test_sigmalogsource_fromdict_definition_not_str():
+    with pytest.raises(sigma_exceptions.SigmaLogsourceError):
+        SigmaLogSource.from_dict(
+            {"category": "category-id", "definition": ["sysmon", "edr", "siem"]}
+        )
 
 
 def test_sigmalogsource_str():
@@ -346,6 +375,13 @@ def test_sigmadetectionitem_key_value_single_regexp_to_plain():
     """Key-value detection with one value."""
     assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp").to_plain() == {
         "key|re": "reg.*exp"
+    }
+
+
+def test_sigmadetectionitem_key_value_single_regexp_trailing_backslashes_to_plain():
+    """Key-value detection with one value."""
+    assert SigmaDetectionItem.from_mapping("key|re", "reg.*exp\\\\").to_plain() == {
+        "key|re": "reg.*exp\\\\"
     }
 
 
@@ -819,14 +855,14 @@ def test_sigmarule_bad_description():
 
 def test_sigmarule_bad_level():
     with pytest.raises(
-        sigma_exceptions.SigmaLevelError, match="no valid Sigma rule level.*test.yml"
+        sigma_exceptions.SigmaLevelError, match="not a valid Sigma rule level.*test.yml"
     ):
         SigmaRule.from_dict({"level": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml"))
 
 
 def test_sigmarule_bad_status():
     with pytest.raises(
-        sigma_exceptions.SigmaStatusError, match="no valid Sigma rule status.*test.yml"
+        sigma_exceptions.SigmaStatusError, match="not a valid Sigma rule status.*test.yml"
     ):
         SigmaRule.from_dict(
             {"status": "bad"}, source=sigma_exceptions.SigmaRuleLocation("test.yml")
@@ -1098,7 +1134,7 @@ def test_sigmarule_fromyaml(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows
@@ -1139,7 +1175,7 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         - attack.execution
         - attack.t1059
     author: Thomas Patzke
-    date: 2020/07/12
+    date: 2020-07-12
     logsource:
         category: process_creation
         product: windows
@@ -1490,3 +1526,25 @@ def test_sigma_rule_conversion_result_no_result(sigma_rule):
 def test_sigma_rule_disable_output(sigma_rule):
     sigma_rule.disable_output()
     assert sigma_rule._output == False
+
+
+def test_sigmarule_bad_license():
+    with pytest.raises(
+        sigma_exceptions.SigmaLicenseError,
+        match="Sigma rule license must be a string.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "license": 1234},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_bad_scope():
+    with pytest.raises(
+        sigma_exceptions.SigmaScopeError,
+        match="Sigma rule scope must be a list.*test.yml",
+    ):
+        SigmaRule.from_dict(
+            {"title": "test", "scope": "windows AD"},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )

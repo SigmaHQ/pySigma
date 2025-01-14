@@ -160,7 +160,8 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
 @dataclass
 class LogsourceCondition(RuleProcessingCondition):
     """
-    Matches log source on rule. Not specified log source fields are ignored.
+    Matches log source on rule. Not specified log source fields are ignored. For Correlation rules,
+    the condition returns true if any of the associated rules have the required log source fields.
     """
 
     category: Optional[str] = field(default=None)
@@ -178,18 +179,17 @@ class LogsourceCondition(RuleProcessingCondition):
         if isinstance(rule, SigmaRule):
             return rule.logsource in self.logsource
         elif isinstance(rule, SigmaCorrelationRule):
+            # Will only return true if the rules have been resolved in advance
+            for ref in rule.rules:
+                if hasattr(ref, "rule") and isinstance(ref.rule, (SigmaRule, SigmaCorrelationRule)):
+                    if self.match(pipeline, ref.rule):
+                        return True
             return False
 
 
 @dataclass
-class RuleContainsDetectionItemCondition(RuleProcessingCondition):
-    """Returns True if rule contains a detection item that matches the given field name and value."""
-
-    field: Optional[str]
-    value: Union[str, int, float, bool]
-
-    def __post_init__(self):
-        self.sigma_value = sigma_type(self.value)
+class RuleDetectionItemCondition(RuleProcessingCondition, ABC):
+    """Base class for rule conditions that search for a detection item with certain properties."""
 
     def match(
         self,
@@ -203,6 +203,41 @@ class RuleContainsDetectionItemCondition(RuleProcessingCondition):
             return False
         elif isinstance(rule, SigmaCorrelationRule):
             return False
+
+    @abstractmethod
+    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+        pass
+
+
+@dataclass
+class RuleContainsFieldCondition(RuleDetectionItemCondition):
+    """Returns True if rule contains a field that matches the given field name."""
+
+    field: Optional[str]
+
+    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+        if isinstance(detection, SigmaDetection):
+            for detection_item in detection.detection_items:
+                if self.find_detection_item(detection_item):
+                    return True
+        elif isinstance(detection, SigmaDetectionItem):
+            if detection.field is not None and detection.field == self.field:
+                return True
+        else:
+            raise TypeError("Parameter of type SigmaDetection or SigmaDetectionItem expected.")
+
+        return False
+
+
+@dataclass
+class RuleContainsDetectionItemCondition(RuleDetectionItemCondition):
+    """Returns True if rule contains a detection item that matches the given field name and value."""
+
+    field: Optional[str]
+    value: Union[str, int, float, bool]
+
+    def __post_init__(self):
+        self.sigma_value = sigma_type(self.value)
 
     def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
         if isinstance(detection, SigmaDetection):
@@ -625,6 +660,7 @@ class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
 rule_conditions: Dict[str, RuleProcessingCondition] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
+    "contains_field": RuleContainsFieldCondition,
     "processing_item_applied": RuleProcessingItemAppliedCondition,
     "processing_state": RuleProcessingStateCondition,
     "is_sigma_rule": IsSigmaRuleCondition,

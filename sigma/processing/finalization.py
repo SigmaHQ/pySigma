@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 import json
 from typing import Any, Dict, List, Literal, Optional
 
@@ -91,9 +91,45 @@ class TemplateFinalizer(Finalizer, TemplateBase):
         return self.j2template.render(queries=queries, pipeline=pipeline)
 
 
+@dataclass
+class NestedFinalizer(Finalizer):
+    """Apply a list of finalizers to the queries in a nested fashion."""
+
+    finalizers: List[Finalizer]
+    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
+        init=False, compare=False, default=None
+    )
+
+    def __post_init__(self):
+        from sigma.processing.pipeline import (
+            ProcessingPipeline,
+        )  # TODO: move to top after restructuring code.
+
+        self._nested_pipeline = ProcessingPipeline(finalizers=self.finalizers)
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "NestedFinalizer":
+        if not "finalizers" in d:
+            raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
+        fs = []
+        for finalizer in d["finalizers"]:
+            try:
+                finalizer_type = finalizer.pop("type")
+            except KeyError:
+                raise SigmaConfigurationError("Finalizer type not specified for: " + str(finalizer))
+            fs.append(finalizers[finalizer_type].from_dict(finalizer))
+        return cls(finalizers=fs)
+
+    def apply(
+        self, pipeline: "sigma.processing.pipeline.ProcessingPipeline", queries: List[Any]
+    ) -> Any:
+        return self._nested_pipeline.finalize(queries)
+
+
 finalizers: Dict[str, Finalizer] = {
     "concat": ConcatenateQueriesFinalizer,
     "json": JSONFinalizer,
     "yaml": YAMLFinalizer,
     "template": TemplateFinalizer,
+    "nested": NestedFinalizer,
 }

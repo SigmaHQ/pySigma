@@ -8,23 +8,24 @@ from sigma.types import SigmaString
 
 from sigma.validators.core.tags import (
     ATTACKTagValidator,
+    D3FENDTagValidator,
     DuplicateTagIssue,
     DuplicateTagValidator,
     InvalidATTACKTagIssue,
+    InvalidD3FENDagIssue,
     InvalidTLPTagIssue,
     TLPTagValidator,
     TLPv1TagValidator,
     TLPv2TagValidator,
-    CVETagValidator,
-    InvalidCVETagIssue,
-    DetectionTagValidator,
-    InvalidDetectionTagIssue,
     CARTagValidator,
-    InvalidCARTagIssue,
+    CVETagValidator,
+    DetectionTagValidator,
     STPTagValidator,
-    InvalidSTPTagIssue,
+    InvalidPatternTagIssue,
     NamespaceTagValidator,
     InvalidNamespaceTagIssue,
+    TagFormatValidator,
+    InvalidTagFormatIssue,
 )
 
 
@@ -69,6 +70,50 @@ def test_validator_valid_attack_tags():
         - attack.g0001
         - attack.s0001
         - attack.s0005
+    """
+    )
+    assert validator.validate(rule) == []
+
+
+def test_validator_invalid_d3fend_tags():
+    validator = D3FENDTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - d3fend.test1
+        - d3fend.test2
+    """
+    )
+    assert validator.validate(rule) == [
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test1")),
+        InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test2")),
+    ]
+
+
+def test_validator_valid_d3fend_tags():
+    validator = D3FENDTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - d3fend.isolate
+        - d3fend.d3-mfa
+        - attack.d3f-AccessControlConfiguration
     """
     )
     assert validator.validate(rule) == []
@@ -140,29 +185,29 @@ def test_validator_duplicate_tags():
             CVETagValidator,
             ["cve.2023-11-04", "cve.2023-007"],
             ["cve.2023-11-04"],
-            InvalidCVETagIssue,
+            InvalidPatternTagIssue,
         ),
-        (CVETagValidator, ["cve.2023-007", "cve.2022-963"], [], InvalidCVETagIssue),
+        (CVETagValidator, ["cve.2023-007", "cve.2022-963"], [], InvalidPatternTagIssue),
         (
             DetectionTagValidator,
             ["detection.new-threats", "cve.2023-007"],
             ["detection.new-threats"],
-            InvalidDetectionTagIssue,
+            InvalidPatternTagIssue,
         ),
         (
             DetectionTagValidator,
             ["detection.emerging-threats", "cve.2022-963"],
             [],
-            InvalidDetectionTagIssue,
+            InvalidPatternTagIssue,
         ),
         (
             CARTagValidator,
             ["car.2016-04-005", "car.2023-011-11"],
             ["car.2023-011-11"],
-            InvalidCARTagIssue,
+            InvalidPatternTagIssue,
         ),
-        (CARTagValidator, ["car.2016-04-005", "car.2023-11-011"], [], InvalidCARTagIssue),
-        (STPTagValidator, ["stp.5k", "stp.1"], [], InvalidSTPTagIssue),
+        (CARTagValidator, ["car.2016-04-005", "car.2023-11-011"], [], InvalidPatternTagIssue),
+        (STPTagValidator, ["stp.5k", "stp.1"], [], InvalidPatternTagIssue),
         (
             STPTagValidator,
             [
@@ -170,7 +215,7 @@ def test_validator_duplicate_tags():
                 "stp.1A",
             ],
             ["stp.1A"],
-            InvalidSTPTagIssue,
+            InvalidPatternTagIssue,
         ),
         (
             NamespaceTagValidator,
@@ -190,6 +235,18 @@ def test_validator_duplicate_tags():
             ],
             [],
             InvalidNamespaceTagIssue,
+        ),
+        (
+            TagFormatValidator,
+            ["custom.my tag", "custom.my2tag"],
+            ["custom.my tag"],
+            InvalidTagFormatIssue,
+        ),
+        (
+            TagFormatValidator,
+            ["custom.my_tag", "custom.my-tag"],
+            [],
+            InvalidTagFormatIssue,
         ),
     ],
 )

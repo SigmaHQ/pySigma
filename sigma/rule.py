@@ -9,6 +9,7 @@ import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, SigmaNumber, sigma_type
 from sigma.modifiers import (
     SigmaModifier,
+    SigmaRegularExpressionModifier,
     modifier_mapping,
     reverse_modifier_mapping,
     SigmaValueModifier,
@@ -131,10 +132,11 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
 
 
 class SigmaRelatedType(EnumLowercaseStringMixin, Enum):
+    CORRELATION = auto()
+    DERIVED = auto()
+    MERGED = auto()
     OBSOLETE = auto()
     RENAMED = auto()
-    MERGED = auto()
-    DERIVED = auto()
     SIMILAR = auto()
 
 
@@ -216,6 +218,7 @@ class SigmaLogSource:
     category: Optional[str] = field(default=None)
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
+    definition: Optional[str] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
 
@@ -224,6 +227,22 @@ class SigmaLogSource:
         if self.category is None and self.product is None and self.service is None:
             raise sigma_exceptions.SigmaLogsourceError(
                 "Sigma log source can't be empty", source=self.source
+            )
+        if self.category and not isinstance(self.category, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source category must be string", source=self.source
+            )
+        if self.product and not isinstance(self.product, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source product must be string", source=self.source
+            )
+        if self.service and not isinstance(self.service, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source service must be string", source=self.source
+            )
+        if self.definition and not isinstance(self.definition, str):
+            raise sigma_exceptions.SigmaLogsourceError(
+                "Sigma log source definition must be string", source=self.source
             )
 
     @classmethod
@@ -234,10 +253,12 @@ class SigmaLogSource:
         custom_attributes = {
             k: v for k, v in logsource.items() if k not in set(cls.__dataclass_fields__.keys())
         }
+
         return cls(
             logsource.get("category"),
             logsource.get("product"),
             logsource.get("service"),
+            logsource.get("definition"),
             source,
             custom_attributes if len(custom_attributes) > 0 else None,
         )
@@ -369,7 +390,14 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             val = [None]
 
         # Map Python types to Sigma typing classes
-        val = [sigma_type(v) for v in val]
+        val = [
+            (
+                SigmaString.from_str(v)
+                if SigmaRegularExpressionModifier in modifiers
+                else sigma_type(v)
+            )
+            for v in val
+        ]
 
         return cls(field, modifiers, val, source=source)
 
@@ -408,9 +436,22 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             )
 
         if len(self.original_value) > 1:
-            value = [value.to_plain() for value in self.original_value]
+            value = [
+                (
+                    value.to_plain(True)
+                    if isinstance(value, SigmaString)
+                    and SigmaRegularExpressionModifier in self.modifiers
+                    else value.to_plain()
+                )
+                for value in self.original_value
+            ]
         else:
-            value = self.original_value[0].to_plain()
+            value = (
+                self.original_value[0].to_plain(True)
+                if isinstance(self.original_value[0], SigmaString)
+                and SigmaRegularExpressionModifier in self.modifiers
+                else self.original_value[0].to_plain()
+            )
 
         if (
             self.is_keyword() and len(self.modifiers) == 0
@@ -476,7 +517,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
 @dataclass
 class SigmaDetection(ParentChainMixin):
     """
-    A detection is a set of atomic event defitionions represented by SigmaDetectionItem instances. SigmaDetectionItems
+    A detection is a set of atomic event definitions represented by SigmaDetectionItem instances. SigmaDetectionItems
     of a SigmaDetection are OR-linked.
 
     A detection can be defined by:
@@ -556,10 +597,10 @@ class SigmaDetection(ParentChainMixin):
         }
 
         if len(detection_items) == 0:  # pragma: no cover
-            return None  # This case is catched by the post init check, so it shouldn't happen.
+            return None  # This case is caught by the post init check, so it shouldn't happen.
         if len(detection_items) == 1:  # Only one detection item? Return it as result.
             return detection_items[0]
-        else:  # More than one detection iten, it depends now on the types
+        else:  # More than one detection item, it depends now on the types
             if dict in detection_items_types and len(detection_items_types) > 1:
                 # Merging dicts with other types isn't possibly, at least not in a simple way.
                 # This case can appear in a programmatically instantiated detection, but can't be
@@ -583,7 +624,7 @@ class SigmaDetection(ParentChainMixin):
                     for k, v in detection_item_converted.items():
                         if k not in merged:  # key doesn't exists in merged dict: just add
                             merged[k] = v
-                        else:  # key collision, now the things get complicated...
+                        else:  # key collision, now things get complicated...
                             if "|all" in k:  # key contains 'all' modifier
                                 if not isinstance(
                                     merged[k], list
@@ -597,7 +638,7 @@ class SigmaDetection(ParentChainMixin):
                             else:  # key collision without all modifier: trying to merge both keys into one and-linked key
                                 ev = merged[k]  # already existing value
 
-                                # Value normalization: extract value from signle-valued lists
+                                # Value normalization: extract value from single-valued lists
                                 if isinstance(ev, list) and len(ev) == 1:
                                     ev = ev[0]
                                 if isinstance(v, list) and len(v) == 1:
@@ -751,6 +792,7 @@ class SigmaRuleBase:
     related: Optional[SigmaRelated] = None
     status: Optional[SigmaStatus] = None
     description: Optional[str] = None
+    license: Optional[str] = None
     references: List[str] = field(default_factory=list)
     tags: List[SigmaRuleTag] = field(default_factory=list)
     author: Optional[str] = None
@@ -759,6 +801,7 @@ class SigmaRuleBase:
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
     level: Optional[SigmaLevel] = None
+    scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
@@ -870,21 +913,21 @@ class SigmaRuleBase:
                     errors.append(e)
 
         # Rule level validation
-        level = rule.get("level")
-        if level is not None:
+        rule_level = rule.get("level")
+        if rule_level is not None:
             try:
-                level = SigmaLevel[level.upper()]
+                rule_level = SigmaLevel[rule_level.upper()]
             except KeyError:
                 errors.append(
                     sigma_exceptions.SigmaLevelError(
-                        f"'{ level }' is no valid Sigma rule level", source=source
+                        f"'{ rule_level }' is not a valid Sigma rule level", source=source
                     )
                 )
 
         # Rule status validation
-        status = rule.get("status")
-        if status is not None:
-            if not isinstance(status, str):
+        rule_status = rule.get("status")
+        if rule_status is not None:
+            if not isinstance(rule_status, str):
                 errors.append(
                     sigma_exceptions.SigmaStatusError(
                         "Sigma rule status cannot be a list", source=source
@@ -892,11 +935,11 @@ class SigmaRuleBase:
                 )
             else:
                 try:
-                    status = SigmaStatus[status.upper()]
+                    rule_status = SigmaStatus[rule_status.upper()]
                 except KeyError:
                     errors.append(
                         sigma_exceptions.SigmaStatusError(
-                            f"'{ status }' is no valid Sigma rule status", source=source
+                            f"'{ rule_status }' is not a valid Sigma rule status", source=source
                         )
                     )
 
@@ -905,34 +948,28 @@ class SigmaRuleBase:
         if rule_date is not None:
             if not isinstance(rule_date, date) and not isinstance(rule_date, datetime):
                 try:
-                    rule_date = date(*(int(i) for i in rule_date.split("/")))
+                    rule_date = date(*(int(i) for i in rule_date.split("-")))
                 except ValueError:
-                    try:
-                        rule_date = date(*(int(i) for i in rule_date.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaDateError(
-                                f"Rule date '{ rule_date }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
+                    errors.append(
+                        sigma_exceptions.SigmaDateError(
+                            f"Rule date '{ rule_date }' is invalid, must be yyyy-mm-dd",
+                            source=source,
                         )
+                    )
 
         # parse rule modified if existing
         rule_modified = rule.get("modified")
         if rule_modified is not None:
             if not isinstance(rule_modified, date) and not isinstance(rule_modified, datetime):
                 try:
-                    rule_modified = date(*(int(i) for i in rule_modified.split("/")))
+                    rule_modified = date(*(int(i) for i in rule_modified.split("-")))
                 except ValueError:
-                    try:
-                        rule_modified = date(*(int(i) for i in rule_modified.split("-")))
-                    except ValueError:
-                        errors.append(
-                            sigma_exceptions.SigmaModifiedError(
-                                f"Rule modified '{ rule_modified }' is invalid, must be yyyy/mm/dd or yyyy-mm-dd",
-                                source=source,
-                            )
+                    errors.append(
+                        sigma_exceptions.SigmaModifiedError(
+                            f"Rule modified '{ rule_modified }' is invalid, must be yyyy-mm-dd",
+                            source=source,
                         )
+                    )
 
         # Rule fields validation
         rule_fields = rule.get("fields")
@@ -1008,6 +1045,25 @@ class SigmaRuleBase:
                 )
             )
 
+        # Rule scope validation
+        rule_scope = rule.get("scope")
+        if rule_scope is not None and not isinstance(rule_scope, list):
+            errors.append(
+                sigma_exceptions.SigmaScopeError(
+                    "Sigma rule scope must be a list",
+                    source=source,
+                )
+            )
+        # Rule license validation
+        rule_license = rule.get("license")
+        if rule_license is not None and not isinstance(rule_license, str):
+            errors.append(
+                sigma_exceptions.SigmaLicenseError(
+                    "Sigma rule license must be a string",
+                    source=source,
+                )
+            )
+
         if not collect_errors and errors:
             raise errors[0]
 
@@ -1018,8 +1074,8 @@ class SigmaRuleBase:
                 "name": rule_name,
                 "taxonomy": rule_taxonomy,
                 "related": rule_related,
-                "level": level,
-                "status": status,
+                "level": rule_level,
+                "status": rule_status,
                 "description": rule_description,
                 "references": rule_references,
                 "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
@@ -1028,6 +1084,8 @@ class SigmaRuleBase:
                 "modified": rule_modified,
                 "fields": rule_fields,
                 "falsepositives": rule_falsepositives,
+                "scope": rule_scope,
+                "license": rule_license,
                 "source": source,
                 "custom_attributes": {
                     k: v

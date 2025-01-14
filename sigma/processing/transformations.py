@@ -1,14 +1,17 @@
 from abc import ABC, abstractmethod
+from collections import defaultdict
 from functools import partial
 from sigma.conditions import ConditionOR, SigmaCondition
 from typing import (
     Any,
+    ClassVar,
     Iterable,
     List,
     Dict,
     Literal,
     Optional,
     Set,
+    Tuple,
     Union,
     Pattern,
     Iterator,
@@ -71,7 +74,7 @@ class Transformation(ABC):
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> None:
         """Apply transformation on Sigma rule."""
-        self.pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
+        self._pipeline: "sigma.processing.pipeline.ProcessingPipeline" = (
             pipeline  # make pipeline accessible from all further options in class property
         )
         self.processing_item_applied(rule)
@@ -120,7 +123,7 @@ class DetectionItemTransformation(Transformation):
             else:
                 if (
                     self.processing_item is None
-                    or self.processing_item.match_detection_item(self.pipeline, detection_item)
+                    or self.processing_item.match_detection_item(self._pipeline, detection_item)
                 ) and (r := self.apply_detection_item(detection_item)) is not None:
                     if isinstance(r, SigmaDetectionItem):
                         r.disable_conversion_to_plain()
@@ -218,12 +221,12 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         match = False
         for value in detection_item.value:
             if self.processing_item is not None and self.processing_item.match_field_in_value(
-                self.pipeline, value
+                self._pipeline, value
             ):
                 new_values.extend(
                     (
                         SigmaFieldReference(mapped_field)
-                        for mapped_field in self._apply_field_name(self.pipeline, value.field)
+                        for mapped_field in self._apply_field_name(self._pipeline, value.field)
                     )
                 )
                 match = True
@@ -299,6 +302,153 @@ class ValueTransformation(DetectionItemTransformation):
         """
 
 
+@dataclass
+class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
+    """
+    Transforms the 'Hashes' field in Sigma rules by creating separate detection items for each hash type.
+
+    This transformation replaces the generic 'Hashes' field with specific fields for each hash algorithm,
+    optionally prefixing the field names. It supports various hash formats and can auto-detect hash types
+    based on their length.
+
+    Attributes:
+        valid_hash_algos (List[str]): List of supported hash algorithms.
+        field_prefix (str): Prefix to add to the new field names.
+        drop_algo_prefix (bool): If True, omits the algorithm name from the new field name.
+        hash_lengths (Dict[int, str]): Mapping of hash lengths to their corresponding algorithms.
+
+    Example:
+        Input:
+            Hashes:
+                - 'SHA1=5F1CBC3D99558307BC1250D084FA968521482025'
+                - 'MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7'
+        Output:
+            FileSHA1: '5F1CBC3D99558307BC1250D084FA968521482025'
+            FileMD5: '987B65CD9B9F4E9A1AFD8F8B48CF64A7'
+    """
+
+    valid_hash_algos: List[str]
+    field_prefix: str = ""
+    drop_algo_prefix: bool = False
+    hash_lengths: ClassVar[Dict[int, str]] = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
+
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
+        """
+        Applies the transformation to a single detection item.
+
+        Args:
+            detection_item (SigmaDetectionItem): The detection item to transform.
+
+        Returns:
+            Optional[Union[SigmaDetection, SigmaDetectionItem]]: A new SigmaDetection object containing
+            the transformed detection items, or None if no valid hashes were found.
+
+        Raises:
+            Exception: If no valid hash algorithms were found in the detection item.
+        """
+        algo_dict = self._parse_hash_values(detection_item.value)
+
+        if not algo_dict:
+            raise Exception(
+                f"No valid hash algo found in Hashes field. Please use one of the following: {', '.join(self.valid_hash_algos)}"
+            )
+
+        return self._create_new_detection_items(algo_dict)
+
+    def _parse_hash_values(
+        self, values: Union[SigmaString, List[SigmaString]]
+    ) -> Dict[str, List[str]]:
+        """
+        Parses the hash values from the detection item.
+
+        Args:
+            values (Union[SigmaString, List[SigmaString]]): The hash values to parse.
+
+        Returns:
+            Dict[str, List[str]]: A dictionary mapping field names to lists of hash values.
+        """
+        algo_dict = defaultdict(list)
+        if not isinstance(values, list):
+            values = [values]
+
+        for value in values:
+            hash_algo, hash_value = self._extract_hash_algo_and_value(value.to_plain())
+            if hash_algo:
+                field_name = self._get_field_name(hash_algo)
+                algo_dict[field_name].append(hash_value)
+
+        return algo_dict
+
+    def _extract_hash_algo_and_value(self, value: str) -> Tuple[str, str]:
+        """
+        Extracts the hash algorithm and value from a string.
+
+        Args:
+            value (str): The string containing the hash algorithm and value.
+
+        Returns:
+            Tuple[str, str]: A tuple containing the hash algorithm and value.
+        """
+        parts = value.split("|") if "|" in value else value.split("=")
+        if len(parts) == 2:
+            hash_algo, hash_value = parts
+            hash_algo = hash_algo.lstrip("*").upper()
+        else:
+            hash_value = parts[0]
+            hash_algo = self._determine_hash_algo_by_length(hash_value)
+
+        return (hash_algo, hash_value) if hash_algo in self.valid_hash_algos else ("", hash_value)
+
+    def _determine_hash_algo_by_length(self, hash_value: str) -> str:
+        """
+        Determines the hash algorithm based on the length of the hash value.
+
+        Args:
+            hash_value (str): The hash value to analyze.
+
+        Returns:
+            str: The determined hash algorithm, or an empty string if not recognized.
+        """
+        return self.hash_lengths.get(len(hash_value), "")
+
+    def _get_field_name(self, hash_algo: str) -> str:
+        """
+        Generates the field name for a given hash algorithm.
+
+        Args:
+            hash_algo (str): The hash algorithm.
+
+        Returns:
+            str: The generated field name.
+        """
+        return f"{self.field_prefix}{'' if self.drop_algo_prefix else hash_algo}"
+
+    def _create_new_detection_items(self, algo_dict: Dict[str, List[str]]) -> SigmaDetection:
+        """
+        Creates new detection items based on the parsed hash values.
+
+        Args:
+            algo_dict (Dict[str, List[str]]): A dictionary mapping field names to lists of hash values.
+
+        Returns:
+            SigmaDetection: A new SigmaDetection object containing the created detection items.
+        """
+        return SigmaDetection(
+            detection_items=[
+                SigmaDetectionItem(
+                    field=k if k != "keyword" else None,
+                    modifiers=[],
+                    value=[SigmaString(x) for x in v],
+                )
+                for k, v in algo_dict.items()
+                if k
+            ],
+            item_linking=ConditionOR,
+        )
+
+
 class StringValueTransformation(ValueTransformation):
     """
     Base class for transformations that operate on SigmaString values.
@@ -361,8 +511,8 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         field = detection_item.field
         mapping = self.get_mapping(field)
-        if mapping is not None and self.processing_item.match_field_name(self.pipeline, field):
-            self.pipeline.field_mappings.add_mapping(field, mapping)
+        if mapping is not None and self.processing_item.match_field_name(self._pipeline, field):
+            self._pipeline.field_mappings.add_mapping(field, mapping)
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)
@@ -413,8 +563,8 @@ class FieldFunctionTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         f = detection_item.field
         mapping = self._transform_name(f)
-        if self.processing_item.match_field_name(self.pipeline, f):
-            self.pipeline.field_mappings.add_mapping(f, mapping)
+        if self.processing_item.match_field_name(self._pipeline, f):
+            self._pipeline.field_mappings.add_mapping(f, mapping)
             detection_item.field = mapping
             self.processing_item_applied(detection_item)
 
@@ -463,10 +613,10 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         if type(orig_field := detection_item.field) is str and (
             self.processing_item is None
-            or self.processing_item.match_field_name(self.pipeline, orig_field)
+            or self.processing_item.match_field_name(self._pipeline, orig_field)
         ):
             detection_item.field += self.suffix
-            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
@@ -485,10 +635,10 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
         super().apply_detection_item(detection_item)
         if type(orig_field := detection_item.field) is str and (
             self.processing_item is None
-            or self.processing_item.match_field_name(self.pipeline, orig_field)
+            or self.processing_item.match_field_name(self._pipeline, orig_field)
         ):
             detection_item.field = self.prefix + detection_item.field
-            self.pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
         self.processing_item_applied(detection_item)
 
     def apply_field_name(self, field: str) -> List[str]:
@@ -581,7 +731,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
 
     def placeholder_replacements(self, p: Placeholder) -> List[str]:
         try:
-            values = self.pipeline.vars[p.name]
+            values = self._pipeline.vars[p.name]
         except KeyError:
             raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
 
@@ -762,13 +912,20 @@ class SetFieldTransformation(Transformation):
 class ReplaceStringTransformation(StringValueTransformation):
     """
     Replace string part matched by regular expresssion with replacement string that can reference
-    capture groups. It operates on the plain string representation of the SigmaString value.
+    capture groups. Normally, the replacement operates on the plain string representation of the
+    SigmaString. This allows also to include special characters and placeholders in the replacement.
+    By enabling the skip_special parameter, the replacement is only applied to the plain string
+    parts of a SigmaString and special characters and placeholders are left untouched. The
+    interpret_special option determines for skip_special if special characters and placeholders are
+    interpreted in the replacement result or not.
 
-    This is basically an interface to re.sub() and can use all features available there.
+    The replacement is implemented with re.sub() and can use all features available there.
     """
 
     regex: str
     replacement: str
+    skip_special: bool = False
+    interpret_special: bool = False
 
     def __post_init__(self):
         super().__post_init__()
@@ -781,7 +938,20 @@ class ReplaceStringTransformation(StringValueTransformation):
 
     def apply_string_value(self, field: str, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
-            return SigmaString(self.re.sub(self.replacement, str(val)))
+            if self.skip_special:
+                return val.map_parts(
+                    lambda s: self.re.sub(self.replacement, s),
+                    lambda p: isinstance(p, str),
+                    self.interpret_special,
+                )
+            else:
+                sigma_string_plain = str(val)
+                replaced = self.re.sub(self.replacement, sigma_string_plain)
+                postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
+                if val.contains_placeholder():  # Preserve placeholders
+                    return SigmaString(postprocessed_backslashes).insert_placeholders()
+                else:
+                    return SigmaString(postprocessed_backslashes)
 
 
 @dataclass
@@ -964,11 +1134,75 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
         raise SigmaTransformationError(self.message)
 
 
+@dataclass
+class SetCustomAttributeTransformation(Transformation):
+    """
+    Sets an arbitrary custom attribute on a rule, that can be used by a backend during processing.
+    """
+
+    attribute: str
+    value: Any
+
+    def apply(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> None:
+        super().apply(pipeline, rule)
+        rule.custom_attributes[self.attribute] = self.value
+
+
+@dataclass
+class NestedProcessingTransformation(Transformation):
+    """Executes a nested processing pipeline as transformation. Main purpose is to apply a
+    whole set of transformations that match the given conditions of the enclosng processing item.
+    """
+
+    items: List["sigma.processing.pipeline.ProcessingItem"]
+    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
+        init=False, compare=False, repr=False
+    )
+
+    def __post_init__(self):
+        from sigma.processing.pipeline import (
+            ProcessingPipeline,
+        )  # TODO: move to top-level after restructuring code
+
+        self._nested_pipeline = ProcessingPipeline(items=self.items)
+
+    @classmethod
+    def from_dict(cls, d: Dict) -> "NestedProcessingTransformation":
+        from sigma.processing.pipeline import (
+            ProcessingItem,
+        )  # TODO: move to top-level after restructuring code
+
+        try:
+            return cls(items=[ProcessingItem.from_dict(item) for item in d["items"]])
+        except KeyError:
+            raise SigmaConfigurationError(
+                "Nested processing transformation requires an 'items' key."
+            )
+
+    def apply(
+        self,
+        pipeline: "sigma.processing.pipeline.ProcessingPipeline",
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> None:
+        super().apply(pipeline, rule)
+        self._nested_pipeline.apply(rule)
+        pipeline.applied.extend(self._nested_pipeline.applied)
+        pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
+        pipeline.field_name_applied_ids.update(self._nested_pipeline.field_name_applied_ids)
+        pipeline.field_mappings.merge(self._nested_pipeline.field_mappings)
+        pipeline.state.update(self._nested_pipeline.state)
+
+
 transformations: Dict[str, Transformation] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
     "field_name_transform": FieldFunctionTransformation,
     "drop_detection_item": DropDetectionItemTransformation,
+    "hashes_fields": HashesFieldsDetectionItemTransformation,
     "field_name_suffix": AddFieldnameSuffixTransformation,
     "field_name_prefix": AddFieldnamePrefixTransformation,
     "wildcard_placeholders": WildcardPlaceholderTransformation,
@@ -987,4 +1221,6 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
+    "set_custom_attribute": SetCustomAttributeTransformation,
+    "nest": NestedProcessingTransformation,
 }

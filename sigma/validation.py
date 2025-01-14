@@ -1,8 +1,7 @@
 from collections import defaultdict
-from typing import Callable, DefaultDict, Dict, Iterable, Iterator, List, Set, Type
+from typing import DefaultDict, Dict, Iterable, Iterator, List, Set, Type, Union
 from uuid import UUID
-from sigma.collection import SigmaCollection
-from sigma.exceptions import SigmaConfigurationError
+from sigma.exceptions import SigmaConfigurationError, SigmaValidatorConfigurationParsingError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
 import yaml
@@ -20,13 +19,17 @@ class SigmaValidator:
 
     validators: Set[SigmaRuleValidator]
     exclusions: DefaultDict[UUID, Set[Type[SigmaRuleValidator]]]
+    config: Dict[str, Dict[str, Union[str, int, float, bool]]]
 
     def __init__(
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
         exclusions: Dict[UUID, Set[SigmaRuleValidator]] = dict(),
+        config: Dict[str, Dict[str, Union[str, int, float, bool, tuple]]] = dict(),
     ):
-        self.validators = {validator() for validator in validators}
+        self.validators = {
+            validator(**config.get(validator.__name__, {})) for validator in validators
+        }
         self.exclusions = defaultdict(set, exclusions)
 
     @classmethod
@@ -39,6 +42,8 @@ class SigmaValidator:
           represents all known validators.
         * exclusion: a map between rule ids and lists of validator names or a single validator name
           to define validation exclusions.
+        * config: a map between validator names and configuration dicts that are passed as
+          keyword arguments to the validator constructor.
 
         :param d: Definition of the SigmaValidator.
         :type d: Dict
@@ -84,13 +89,32 @@ class SigmaValidator:
         except KeyError as e:
             raise SigmaConfigurationError(f"Unknown validator '{ e.args[0] }'")
 
-        return cls(validator_classes, exclusions)
+        # Build configuration dict
+        configuration = dict()
+        for validator_name, params in d.get("config", {}).items():
+            if validator_name not in validators:
+                raise SigmaConfigurationError(f"Unknown validator '{ validator_name }'")
+            if not isinstance(params, dict):
+                raise SigmaConfigurationError(
+                    f"Configuration for validator '{ validator_name }' is not a dict."
+                )
+            for k, v in params.items():
+                if isinstance(v, list):
+                    params[k] = tuple(v)
+            configuration[validators[validator_name].__name__] = params
+
+        return cls(validator_classes, exclusions, configuration)
 
     @classmethod
     def from_yaml(
         cls, validator_config: str, validators: Dict[str, SigmaRuleValidator]
     ) -> "SigmaValidator":
-        return cls.from_dict(yaml.safe_load(validator_config), validators)
+        try:
+            return cls.from_dict(yaml.safe_load(validator_config), validators)
+        except yaml.parser.ParserError as e:
+            raise SigmaValidatorConfigurationParsingError(
+                f"Error in parsing of a Sigma validation configuration file: {str(e)}"
+            ) from e
 
     def validate_rule(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         """

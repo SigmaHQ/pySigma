@@ -107,6 +107,19 @@ applied to the rule. Example:
 This exclusion defines that the *wildcards_instead_of_modifiers* validator check is disabled for the
 rule with the identifier *5013332f-8a70-4e04-bcc1-06a98a2cca2e*.
 
+Configuration
+-------------
+
+Validator checks that accept parameters can be configured with a dictionary that is passed as the
+*config* parameter. This dictionary maps validator identifiers to dictionaries of parameter-value
+pairs that are passed as keyword arguments to the validator constructor. Example:
+
+.. code-block:: yaml
+
+    config:
+        description_length:
+            min_length: 100
+
 Validator Checks
 ****************
 
@@ -147,6 +160,17 @@ desired rule part and takes care of the proper iteration of these parts. These c
   detection items of a Sigma rule.
 * :py:class:`sigma.validators.base.SigmaTagValueValidator` for checking all tags appearing beloe the
   *tags* attribute of a Sigma rule.
+
+Parametrization of Checks
+=========================
+
+If required, checks can be parametrized by passing parameters as keyword arguments to the validator
+check constructor. for this purpose, the validator check class must be a *frozen dataclass*. This
+can be achieved by decorating the class with `@dataclass(frozen=True)` from the *dataclasses*
+module.
+
+The parameters can then be specified as dataclass members. The `SigmaValidator` instance will pass
+the parameters to the validator check constructor as keyword arguments.
 
 Base Classes
 ============

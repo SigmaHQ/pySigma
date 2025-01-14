@@ -114,56 +114,8 @@ class DuplicateReferencesValidator(SigmaRuleValidator):
 
 
 @dataclass
-class StatusExistenceIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has no status"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class StatusExistenceValidator(SigmaRuleValidator):
-    """Checks if rule has a status."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.status is None:
-            return [StatusExistenceIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
-class StatusUnsupportedIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has UNSUPPORTED status"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class StatusUnsupportedValidator(SigmaRuleValidator):
-    """Checks if rule has a status UNSUPPORTED."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.status and rule.status.name == "UNSUPPORTED":
-            return [StatusUnsupportedIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
-class DateExistenceIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has no date"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class DateExistenceValidator(SigmaRuleValidator):
-    """Checks if rule has a data."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.date is None:
-            return [DateExistenceIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
 class DuplicateFilenameIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule filemane used by multiple rules"
+    description: ClassVar[str] = "Rule filename used by multiple rules"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     filename: str
 
@@ -193,20 +145,24 @@ class DuplicateFilenameValidator(SigmaRuleValidator):
 
 
 @dataclass
-class FilenameLenghIssue(SigmaValidationIssue):
+class FilenameLengthIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Rule filename is too short or long"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
     filename: str
 
 
-class FilenameLenghValidator(SigmaRuleValidator):
-    """Check rule filename lengh"""
+@dataclass(frozen=True)
+class FilenameLengthValidator(SigmaRuleValidator):
+    """Check rule filename length"""
+
+    min_size: int = 10
+    max_size: int = 90
 
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if rule.source is not None:
             filename = rule.source.path.name
-            if len(filename) < 10 or len(filename) > 90:
-                return [FilenameLenghIssue(rule, filename)]
+            if len(filename) < self.min_size or len(filename) > self.max_size:
+                return [FilenameLengthIssue(rule, filename)]
         return []
 
 
@@ -234,51 +190,3 @@ class CustomAttributesValidator(SigmaRuleValidator):
                 if k in self.known_custom_attributes:
                     return [CustomAttributesIssue(rule, k)]
         return []
-
-
-@dataclass
-class DescriptionExistenceIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has no description"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class DescriptionExistenceValidator(SigmaRuleValidator):
-    """Checks if rule has a description."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.description is None:
-            return [DescriptionExistenceIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
-class DescriptionLengthIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has a too short description"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class DescriptionLengthValidator(SigmaRuleValidator):
-    """Checks if rule has a description."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.description is not None and len(rule.description) < 16:
-            return [DescriptionLengthIssue([rule])]
-        else:
-            return []
-
-
-@dataclass
-class LevelExistenceIssue(SigmaValidationIssue):
-    description: ClassVar[str] = "Rule has no level"
-    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
-
-
-class LevelExistenceValidator(SigmaRuleValidator):
-    """Checks if rule has a level."""
-
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
-        if rule.level is None:
-            return [LevelExistenceIssue([rule])]
-        else:
-            return []

@@ -2,7 +2,6 @@ from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 import re
 
-from pyparsing import Set
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
@@ -144,10 +143,12 @@ class Backend(ABC):
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
+        **backend_options: Dict,
     ):
         self.processing_pipeline = processing_pipeline
         self.errors = list()
         self.collect_errors = collect_errors
+        self.backend_options = backend_options
 
     def convert(
         self,
@@ -184,6 +185,9 @@ class Backend(ABC):
                 + self.processing_pipeline
                 + self.output_format_processing_pipeline[output_format or self.default_format]
             )
+            self.last_processing_pipeline.vars.update(
+                {"backend_" + key: value for key, value in self.backend_options.items()}
+            )
 
             error_state = "applying processing pipeline on"
             self.last_processing_pipeline.apply(rule)  # 1. Apply transformations
@@ -200,16 +204,21 @@ class Backend(ABC):
             ]
 
             error_state = "finalizing query for"
-            finalized_queries = [  # 3. Postprocess generated query
-                self.finalize_query(
-                    rule,
-                    query,
-                    index,
-                    states[index],
-                    output_format or self.default_format,
-                )
-                for index, query in enumerate(queries)
-            ]
+            # 3. Postprocess generated query if not part of a correlation rule
+            finalized_queries = (
+                [
+                    self.finalize_query(
+                        rule,
+                        query,
+                        index,
+                        states[index],
+                        output_format or self.default_format,
+                    )
+                    for index, query in enumerate(queries)
+                ]
+                if not rule._backreferences
+                else queries
+            )
             rule.set_conversion_result(finalized_queries)
             rule.set_conversion_states(states)
             if rule._output:
@@ -552,18 +561,40 @@ class Backend(ABC):
                 f"Correlation method '{method}' is not supported by backend '{self.name}'."
             )
         self.last_processing_pipeline.apply(rule)
-        if rule.type == SigmaCorrelationType.EVENT_COUNT:
-            return self.convert_correlation_event_count_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.VALUE_COUNT:
-            return self.convert_correlation_value_count_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.TEMPORAL:
-            return self.convert_correlation_temporal_rule(rule, output_format, method)
-        elif rule.type == SigmaCorrelationType.TEMPORAL_ORDERED:
-            return self.convert_correlation_temporal_ordered_rule(rule, output_format, method)
-        else:
+        correlation_methods = {
+            SigmaCorrelationType.EVENT_COUNT: self.convert_correlation_event_count_rule,
+            SigmaCorrelationType.VALUE_COUNT: self.convert_correlation_value_count_rule,
+            SigmaCorrelationType.TEMPORAL: self.convert_correlation_temporal_rule,
+            SigmaCorrelationType.TEMPORAL_ORDERED: self.convert_correlation_temporal_ordered_rule,
+        }
+        if rule.type not in correlation_methods:
             raise NotImplementedError(
                 f"Conversion of correlation rule type {rule.type} is not implemented."
             )
+
+        # Convert the correlation rule depending on its type
+        queries = correlation_methods[rule.type](rule, output_format, method)
+
+        states = [
+            ConversionState(processing_state=dict(self.last_processing_pipeline.state))
+            for _ in queries
+        ]
+
+        # Apply the finalization step
+        finalized_queries = [
+            self.finalize_query(
+                rule,
+                query,
+                index,
+                states[index],
+                output_format or self.default_format,
+            )
+            for index, query in enumerate(queries)
+        ]
+        rule.set_conversion_result(finalized_queries)
+        rule.set_conversion_states(states)
+
+        return finalized_queries
 
     @abstractmethod
     def convert_correlation_event_count_rule(
@@ -754,6 +785,10 @@ class TextQueryBackend(Backend):
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
+    # Characters to escape in addition in regular expression representation of string (regex
+    # template variable) to default escaping characters.
+    add_escaped_re: ClassVar[str] = ""
+
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
@@ -779,10 +814,13 @@ class TextQueryBackend(Backend):
 
     # String matching operators. if none is appropriate eq_token is used.
     startswith_expression: ClassVar[Optional[str]] = None
+    startswith_expression_allow_special: ClassVar[bool] = False
     endswith_expression: ClassVar[Optional[str]] = None
+    endswith_expression_allow_special: ClassVar[bool] = False
     contains_expression: ClassVar[Optional[str]] = None
+    contains_expression_allow_special: ClassVar[bool] = False
     wildcard_match_expression: ClassVar[Optional[str]] = (
-        None  # Special expression if wildcards can't be matched with the eq_token operator
+        None  # Special expression if wildcards can't be matched with the eq_token operator.
     )
 
     # Regular expressions
@@ -806,12 +844,16 @@ class TextQueryBackend(Backend):
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
+    # {regex} contains the value expressed as regular expression.
     case_sensitive_match_expression: ClassVar[Optional[str]] = None
     # Case sensitive string matching operators similar to standard string matching. If not provided,
     # case_sensitive_match_expression is used.
     case_sensitive_startswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_startswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_endswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_endswith_expression_allow_special: ClassVar[bool] = False
     case_sensitive_contains_expression: ClassVar[Optional[str]] = None
+    case_sensitive_contains_expression_allow_special: ClassVar[bool] = False
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
@@ -863,10 +905,10 @@ class TextQueryBackend(Backend):
 
     # Value not bound to a field
     unbound_value_str_expression: ClassVar[Optional[str]] = (
-        None  # Expression for string value not bound to a field as format string with placeholder {value}
+        None  # Expression for string value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_num_expression: ClassVar[Optional[str]] = (
-        None  # Expression for number value not bound to a field as format string with placeholder {value}
+        None  # Expression for number value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
     unbound_value_re_expression: ClassVar[Optional[str]] = (
         None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
@@ -1022,8 +1064,8 @@ class TextQueryBackend(Backend):
     # * {count} is the value specified in the condition.
     # * {field} is the field specified in the condition.
     # * {referenced_rules} contains the Sigma rules that are referred by the correlation rule. This
-    #   expression is generated by the referenced_rules_expression template in combincation with the
-    #   referennced_rules_expression_joiner defined above.
+    #   expression is generated by the referenced_rules_expression template in combination with the
+    #   referenced_rules_expression_joiner defined above.
     event_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
     value_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
     temporal_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
@@ -1280,18 +1322,21 @@ class TextQueryBackend(Backend):
                 self.startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.startswith_expression
-                )  # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                )  # If all conditions are fulfilled, use 'startswith' operator instead of equal token
                 value = cond.value[:-1]
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.endswith_expression_allow_special or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.endswith_expression
                 value = cond.value[1:]
@@ -1299,7 +1344,10 @@ class TextQueryBackend(Backend):
                 self.contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.contains_expression
                 value = cond.value[1:-1]
@@ -1314,6 +1362,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
                 backend=self,
             )
         except TypeError:  # pragma: no cover
@@ -1330,18 +1379,22 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_startswith_expression
                 is not None  # 'startswith' operator is defined in backend
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
-                and not cond.value[
-                    :-1
-                ].contains_special()  # Remainder of string doesn't contains special characters
+                and (
+                    self.case_sensitive_startswith_expression_allow_special
+                    or not cond.value[:-1].contains_special()
+                )  # Remainder of string doesn't contains special characters or it's allowed
             ):
                 expr = (
                     self.case_sensitive_startswith_expression
-                )  # If all conditions are fulfilled, use 'startswith' operartor instead of equal token
+                )  # If all conditions are fulfilled, use 'startswith' operator instead of equal token
                 value = cond.value[:-1]
             elif (  # Same as above but for 'endswith' operator: string starts with wildcard and doesn't contains further special characters
                 self.case_sensitive_endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:].contains_special()
+                and (
+                    self.case_sensitive_endswith_expression_allow_special
+                    or not cond.value[1:].contains_special()
+                )
             ):
                 expr = self.case_sensitive_endswith_expression
                 value = cond.value[1:]
@@ -1349,7 +1402,10 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_contains_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and cond.value.endswith(SpecialChars.WILDCARD_MULTI)
-                and not cond.value[1:-1].contains_special()
+                and (
+                    self.case_sensitive_contains_expression_allow_special
+                    or not cond.value[1:-1].contains_special()
+                )
             ):
                 expr = self.case_sensitive_contains_expression
                 value = cond.value[1:-1]
@@ -1363,6 +1419,7 @@ class TextQueryBackend(Backend):
             return expr.format(
                 field=self.escape_and_quote_field(cond.field),
                 value=self.convert_value_str(value, state),
+                regex=self.convert_value_re(value.to_regex(self.add_escaped_re), state),
             )
         except TypeError:  # pragma: no cover
             raise NotImplementedError(
@@ -1538,7 +1595,8 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only strings."""
         return self.unbound_value_str_expression.format(
-            value=self.convert_value_str(cond.value, state)
+            value=self.convert_value_str(cond.value, state),
+            regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
     def convert_condition_val_num(

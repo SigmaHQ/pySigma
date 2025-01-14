@@ -148,6 +148,13 @@ class SigmaString(SigmaType):
             r.append(acc)
         self.s = tuple(r)
 
+    @classmethod
+    def from_str(cls, s: str) -> "SigmaString":
+        sigma_string = SigmaString()
+        sigma_string.s = (s,)
+        sigma_string.original = s
+        return sigma_string
+
     def __getitem__(self, idx: Union[int, slice]) -> "SigmaString":
         """
         Index SigmaString parts with transparent handling of special characters.
@@ -348,10 +355,17 @@ class SigmaString(SigmaType):
             )
 
     def __str__(self) -> str:
+        return self.to_plain()
+
+    def to_plain(self, regex: bool = False) -> str:
+        """Generate string representation of SigmaString with or without regex escaping."""
         rs = ""
         for s in self.s:
             if isinstance(s, str):
-                rs += s
+                if regex:
+                    rs += s
+                else:
+                    rs += s.replace("*", "\\*").replace("?", "\\?")
             elif isinstance(s, SpecialChars):
                 rs += special_char_mapping[s]
             elif isinstance(s, Placeholder):
@@ -365,9 +379,9 @@ class SigmaString(SigmaType):
     def __repr__(self) -> str:
         return str(f"SigmaString({self.s})")
 
-    def to_plain(self):
-        """Return plain string representation of SigmaString, equivalent to converting it with str()."""
-        return str(self)
+    def to_plain_regex(self):
+        """Return plain string representation of SigmaString with reduced escaping."""
+        return self._stringify(True)
 
     def __bytes__(self) -> bytes:
         return str(self).encode()
@@ -479,6 +493,31 @@ class SigmaString(SigmaType):
             else:
                 yield item
 
+    def iter_parts(self) -> Iterable[Union[str, SpecialChars]]:
+        for item in self.s:
+            yield item
+
+    def map_parts(
+        self,
+        func: Callable[[Union[str, SpecialChars]], Optional[Union[str, SpecialChars]]],
+        filter_func: Callable[[Union[str, SpecialChars]], bool] = lambda x: True,
+        interpret_special: bool = False,
+    ) -> "SigmaString":
+        s = self.__class__()
+        parts = []
+        for item in self.iter_parts():
+            if filter_func(item):
+                result = func(item)
+                if result is not None:
+                    if interpret_special:
+                        parts.extend(SigmaString(result).s)
+                    else:
+                        parts.append(result)
+            else:
+                parts.append(item)
+        s.s = tuple(parts)
+        return s
+
     def convert(
         self,
         escape_char: Optional[str] = "\\",
@@ -532,6 +571,17 @@ class SigmaString(SigmaType):
                     f"Trying to convert SigmaString containing part of type '{type(c).__name__}'"
                 )
         return s
+
+    def to_regex(self, custom_escaped: str = "") -> "SigmaRegularExpression":
+        """Convert SigmaString into a regular expression."""
+        return SigmaRegularExpression(
+            self.convert(
+                escape_char="\\",
+                wildcard_multi=".*",
+                wildcard_single=".",
+                add_escaped=".*+?^$[](){}\\|" + custom_escaped,
+            )
+        )
 
 
 class SigmaCasedString(SigmaString):
@@ -817,7 +867,7 @@ class SigmaExpansion(NoPlainConversionMixin, SigmaType):
     expanded values and is converted as follows:
 
     1. the whole expansion is handled as group which is enclosed in parentheses.
-    2. the values contained in the expansion are linked with OR, independend from the linking of the
+    2. the values contained in the expansion are linked with OR, independent from the linking of the
        context that encloses the expansion.
     """
 

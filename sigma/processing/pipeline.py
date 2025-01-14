@@ -16,7 +16,9 @@ from typing import (
     Type,
     Union,
 )
+
 from sigma.correlations import SigmaCorrelationRule
+from sigma.processing.condition_expressions import ConditionExpression, parse_condition_expression
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.rule import SigmaDetectionItem, SigmaRule
@@ -30,7 +32,12 @@ from sigma.processing.conditions import (
     field_name_conditions,
     FieldNameProcessingCondition,
 )
-from sigma.exceptions import SigmaConfigurationError, SigmaTypeError, SigmaPipelineParsingError
+from sigma.exceptions import (
+    SigmaConfigurationError,
+    SigmaPipelineConditionError,
+    SigmaTypeError,
+    SigmaPipelineParsingError,
+)
 import yaml
 
 from sigma.types import SigmaFieldReference, SigmaType
@@ -39,10 +46,130 @@ from sigma.types import SigmaFieldReference, SigmaType
 @dataclass
 class ProcessingItemBase:
     transformation: Transformation
-    rule_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    rule_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     rule_condition_negation: bool = False
-    rule_conditions: List[RuleProcessingCondition] = field(default_factory=list)
+    rule_conditions: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition]] = (
+        field(default_factory=list)
+    )
+    rule_condition_expression: Optional[ConditionExpression] = (
+        None  # Full rule condition expression mutually exclusive to linking
+    )
+
     identifier: Optional[str] = None
+
+    @classmethod
+    def _base_args_from_dict(
+        cls, d: dict, transformations: Dict[str, Type[Transformation]]
+    ) -> dict:
+        """Return class instantiation parameters for attributes contained in base class for further
+        usage in similar methods of classes inherited from this class."""
+        rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
+        rule_cond_expr_str = d.get("rule_cond_expr", None)
+        if rule_cond_expr_str is not None:
+            rule_cond_expr = parse_condition_expression(rule_cond_expr_str, rule_conds)
+        else:
+            rule_cond_expr = None
+        return {
+            "identifier": d.get("id", None),
+            "rule_conditions": rule_conds,
+            "rule_condition_expression": rule_cond_expr,
+            "rule_condition_linking": cls._parse_condition_linking(d, "rule_cond_op"),
+            "rule_condition_negation": d.get("rule_cond_not", False),
+            "transformation": cls._instantiate_transformation(d, transformations),
+        }
+
+    def _check_conditions(
+        self, expression_attr, linking_attr, conditions_attr, expected_condition_class, name
+    ):
+        """
+        This method conducts various checks of the conditions provided to the processing item:
+
+        * That the condition expressions are mutually exclusive to the linking attribute.
+        * That the conditions are provided as a list or dict.
+        * That the conditions are of the expected condition class.
+
+        In addition to the checks it sets the linking attribute to `all` if no logic value is provided.
+        """
+        expr = self.__getattribute__(expression_attr)
+        conditions = self.__getattribute__(conditions_attr)
+        # Check if logic is mutually exclusive to linking and conditions are provided as dict if
+        # condition logic expression is given.
+        if expr is not None:
+            if self.__getattribute__(linking_attr) is not None:
+                raise SigmaConfigurationError(
+                    f"{name} expression is mutually exclusive to linking."
+                )
+            if not isinstance(conditions, dict):
+                raise SigmaConfigurationError(
+                    f"{name}s must be provided as mapping from identifiers to conditions if condition expression is provided."
+                )
+        else:  # In case no expression is provided, set linking to all if not provided and simplify condition dict to list.
+            if self.__getattribute__(linking_attr) is None:
+                self.__setattr__(linking_attr, all)
+            if isinstance(conditions, dict):
+                self.__setattr__(conditions_attr, list(conditions.values()))
+
+        if not isinstance(conditions, (list, dict)):
+            raise SigmaTypeError(f"{name}s must be provided as list or dict")
+        if isinstance(conditions, dict):
+            conditions_list = conditions.values()
+        else:
+            conditions_list = conditions
+        for condition in conditions_list:
+            if not isinstance(condition, expected_condition_class):
+                raise SigmaTypeError(
+                    f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
+                )
+
+    def __post_init__(self):
+        self._check_conditions(
+            "rule_condition_expression",
+            "rule_condition_linking",
+            "rule_conditions",
+            RuleProcessingCondition,
+            "Rule condition",
+        )
+        self.transformation.set_processing_item(
+            self
+        )  # set processing item in transformation object after it is instantiated
+        self._resolve_condition_expression(
+            self.rule_condition_expression, self.rule_conditions, "Rule condition"
+        )
+
+    def _resolve_condition_expression(
+        self,
+        expr: Optional[ConditionExpression],
+        conditions: Dict[str, RuleProcessingCondition],
+        name: str,
+    ) -> None:
+        if expr is not None:
+            refids = expr.resolve(conditions)
+            if len(refids) < len(conditions):
+                raise SigmaPipelineConditionError(
+                    expr.expression,
+                    expr.location,
+                    f"{name} contains unreferenced condition items: {', '.join(set(conditions.keys()) - refids)}",
+                )
+
+    @classmethod
+    def _parse_condition(cls, condition_class_mapping, cond_def, ref):
+        try:
+            cond_type = cond_def["type"]
+        except KeyError:
+            raise SigmaConfigurationError(f"Missing condition type defined in condition { ref }")
+
+        try:
+            cond_class = condition_class_mapping[cond_type]
+        except KeyError:
+            raise SigmaConfigurationError(
+                f"Unknown condition type '{ cond_type }' in condition { ref }"
+            )
+
+        cond_params = {k: v for k, v in cond_def.items() if k != "type"}
+        try:
+            return cond_class(**cond_params)
+        except (SigmaConfigurationError, TypeError) as e:
+            raise SigmaConfigurationError(f"Error in condition { ref }: { str(e) }") from e
 
     @classmethod
     def _parse_conditions(
@@ -55,43 +182,47 @@ class ProcessingItemBase:
                 Type[FieldNameProcessingCondition],
             ],
         ],
-        cond_defs: Dict,
+        cond_defs: Dict[str, Dict],
     ) -> Union[
         List[RuleProcessingCondition],
+        Dict[str, RuleProcessingCondition],
         List[DetectionItemProcessingCondition],
+        Dict[str, DetectionItemProcessingCondition],
         List[FieldNameProcessingCondition],
+        Dict[str, FieldNameProcessingCondition],
     ]:
-        """Parse dict of conditions into list of condition object instances.
+        """Parse dict of conditions into list or dict of condition object instances.
 
         :param condition_class_mapping: Mapping between condition type identifiers and condition classes.
         :type condition_class_mapping: Dict[str, Union[Type[RuleProcessingCondition], Type[DetectionItemProcessingCondition], Type[FieldNameProcessingCondition]]]
         :param cond_defs: Definition of conditions for the pipeline.
-        :type cond_defs: Dict
-        :return: List of condition classes as defined in dict.
-        :rtype: Union[List[RuleProcessingCondition], List[DetectionItemProcessingCondition], List[FieldNameProcessingCondition]]
+        :type cond_defs: Dict[str, Dict]
+        :return: List or dict of condition classes as defined in dict.
+        :rtype: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition], List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition], List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]]
         """
-        conds = list()
-        for i, cond_def in enumerate(cond_defs):
-            try:
-                cond_type = cond_def["type"]
-            except KeyError:
-                raise SigmaConfigurationError(
-                    f"Missing condition type defined in condition { i + 1 }"
-                )
+        if isinstance(cond_defs, dict):
+            return {
+                k: self._parse_condition(condition_class_mapping, v, k)
+                for k, v in cond_defs.items()
+            }
+        elif isinstance(cond_defs, list):
+            return [
+                self._parse_condition(condition_class_mapping, cond_def, str(i + 1))
+                for i, cond_def in enumerate(cond_defs)
+            ]
+        else:
+            raise SigmaTypeError("Conditions must be provided as list or dict")
 
-            try:
-                cond_class = condition_class_mapping[cond_type]
-            except KeyError:
-                raise SigmaConfigurationError(
-                    f"Unknown condition type '{ cond_type }' in condition { i + 1 }"
-                )
-
-            cond_params = {k: v for k, v in cond_def.items() if k != "type"}
-            try:
-                conds.append(cond_class(**cond_params))
-            except (SigmaConfigurationError, TypeError) as e:
-                raise SigmaConfigurationError(f"Error in condition { i + 1 }: { str(e) }") from e
-        return conds
+    @classmethod
+    def _parse_condition_linking(
+        cls, d: dict, op_name: str
+    ) -> Optional[Callable[[Iterable[bool]], bool]]:
+        condition_linking = {
+            "or": any,
+            "and": all,
+            None: None,
+        }
+        return condition_linking.get(d.get(op_name, None))
 
     @classmethod
     def _instantiate_transformation(cls, d: dict, transformations: Dict[str, Type[Transformation]]):
@@ -101,18 +232,53 @@ class ProcessingItemBase:
             raise SigmaConfigurationError("Missing transformation type")
 
         try:
-            return transformations[transformation_class_name]
+            transformation_class = transformations[transformation_class_name]
         except KeyError:
             raise SigmaConfigurationError(
                 f"Unknown transformation type '{ transformation_class_name }'"
             )
 
+        params = {
+            k: v
+            for k, v in d.items()
+            if k
+            not in {
+                "rule_conditions",
+                "rule_cond_expr",
+                "rule_cond_op",
+                "rule_cond_not",
+                "detection_item_conditions",
+                "detection_item_cond_expr",
+                "detection_item_cond_op",
+                "detection_item_cond_not",
+                "field_name_conditions",
+                "field_name_cond_expr",
+                "field_name_cond_op",
+                "field_name_cond_not",
+                "type",
+                "id",
+            }
+        }
+        try:
+            return transformation_class(**params)
+        except (SigmaConfigurationError, TypeError) as e:
+            raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
+
+    def _match_condition_expression(
+        self, condition_type: Literal["rule", "detection_item", "field_name"]
+    ) -> bool:
+        expression = self.__getattribute__(f"{condition_type}_cond_expr")
+        conditions = self.__getattribute__(f"{condition_type}_conditions")
+
     def match_rule_conditions(
         self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
     ):
-        cond_result = self.rule_condition_linking(
-            [condition.match(pipeline, rule) for condition in self.rule_conditions]
-        )
+        if self.rule_condition_expression is not None:  # rule condition expression
+            cond_result = self.rule_condition_expression.match(rule)
+        else:  # simplified conditional linking of conditions
+            cond_result = self.rule_condition_linking(
+                [condition.match(pipeline, rule) for condition in self.rule_conditions]
+            )
         if self.rule_condition_negation:
             cond_result = not cond_result
         return not self.rule_conditions or cond_result
@@ -128,111 +294,93 @@ class ProcessingItem(ProcessingItemBase):
     converted by a backend.
     """
 
-    detection_item_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    detection_item_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = (
+        None  # any or all
+    )
     detection_item_condition_negation: bool = False
-    detection_item_conditions: List[DetectionItemProcessingCondition] = field(default_factory=list)
-    field_name_condition_linking: Callable[[Iterable[bool]], bool] = all  # any or all
+    detection_item_conditions: Union[
+        List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition]
+    ] = field(default_factory=list)
+    detection_item_condition_expression: Optional[str] = None
+    field_name_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     field_name_condition_negation: bool = False
-    field_name_conditions: List[FieldNameProcessingCondition] = field(default_factory=list)
+    field_name_conditions: Union[
+        List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]
+    ] = field(default_factory=list)
+    field_name_condition_expression: Optional[str] = None
 
     @classmethod
     def from_dict(cls, d: dict):
         """Instantiate processing item from parsed definition and variables."""
-        # Identifier
-        identifier = d.get("id", None)
+        kwargs = super()._base_args_from_dict(d, transformations)
 
-        # Parse conditions
-        rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
         detection_item_conds = cls._parse_conditions(
             detection_item_conditions, d.get("detection_item_conditions", list())
         )
+        detection_item_cond_expr_str = d.get("detection_item_cond_expr", None)
+        if detection_item_cond_expr_str is not None:
+            detection_item_cond_expr = parse_condition_expression(
+                detection_item_cond_expr_str, detection_item_conds
+            )
+        else:
+            detection_item_cond_expr = None
+
         field_name_conds = cls._parse_conditions(
             field_name_conditions, d.get("field_name_conditions", list())
         )
+        field_name_cond_expr_str = d.get("field_name_cond_expr", None)
+        if field_name_cond_expr_str is not None:
+            field_name_cond_expr = parse_condition_expression(
+                field_name_cond_expr_str, field_name_conds
+            )
+        else:
+            field_name_cond_expr = None
 
-        condition_linking = {
-            "or": any,
-            "and": all,
-        }
-        rule_condition_linking = condition_linking[
-            d.get("rule_cond_op", "and")
-        ]  # default: conditions are linked with and operator
-        detection_item_condition_linking = condition_linking[
-            d.get("detection_item_cond_op", "and")
-        ]  # same for detection item conditions
-        field_name_condition_linking = condition_linking[
-            d.get("field_name_cond_op", "and")
-        ]  # same for field name conditions
-
-        rule_condition_negation = d.get("rule_cond_not", False)
-        detection_item_condition_negation = d.get("detection_item_cond_not", False)
-        field_name_condition_negation = d.get("field_name_cond_not", False)
-
-        # Transformation
-        transformation_class = cls._instantiate_transformation(d, transformations)
-
-        params = {
-            k: v
-            for k, v in d.items()
-            if k
-            not in {
-                "rule_conditions",
-                "rule_cond_op",
-                "rule_cond_not",
-                "detection_item_conditions",
-                "detection_item_cond_op",
-                "detection_item_cond_not",
-                "field_name_conditions",
-                "field_name_cond_op",
-                "field_name_cond_not",
-                "type",
-                "id",
+        kwargs.update(
+            {
+                "detection_item_conditions": detection_item_conds,
+                "detection_item_condition_expression": detection_item_cond_expr,
+                "detection_item_condition_linking": cls._parse_condition_linking(
+                    d, "detection_item_cond_op"
+                ),
+                "detection_item_condition_negation": d.get("detection_item_cond_not", False),
+                "field_name_conditions": field_name_conds,
+                "field_name_condition_expression": field_name_cond_expr,
+                "field_name_condition_linking": cls._parse_condition_linking(
+                    d, "field_name_cond_op"
+                ),
+                "field_name_condition_negation": d.get("field_name_cond_not", False),
             }
-        }
-        try:
-            transformation = transformation_class(**params)
-        except (SigmaConfigurationError, TypeError) as e:
-            raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
-
-        return cls(
-            transformation,
-            rule_condition_linking,
-            rule_condition_negation,
-            rule_conds,
-            identifier,
-            detection_item_condition_linking,
-            detection_item_condition_negation,
-            detection_item_conds,
-            field_name_condition_linking,
-            field_name_condition_negation,
-            field_name_conds,
         )
 
+        return cls(**kwargs)
+
     def __post_init__(self):
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        if not isinstance(self.rule_conditions, list):
-            raise SigmaTypeError("Rule processing conditions must be provided as list")
-        for rule_condition in self.rule_conditions:
-            if not isinstance(rule_condition, RuleProcessingCondition):
-                raise SigmaTypeError(
-                    f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition"
-                )
-        if not isinstance(self.detection_item_conditions, list):
-            raise SigmaTypeError("Detection item processing conditions must be provided as list")
-        for detection_item_condition in self.detection_item_conditions:
-            if not isinstance(detection_item_condition, DetectionItemProcessingCondition):
-                raise SigmaTypeError(
-                    f"Detection item processing condition '{str(detection_item_condition)}' is not a DetectionItemProcessingCondition"
-                )
-        if not isinstance(self.field_name_conditions, list):
-            raise SigmaTypeError("Field name processing conditions must be provided as list")
-        for field_name_condition in self.field_name_conditions:
-            if not isinstance(field_name_condition, FieldNameProcessingCondition):
-                raise SigmaTypeError(
-                    f"Detection item processing condition '{str(field_name_condition)}' is not a FieldNameProcessingCondition"
-                )
+        super().__post_init__()
+        self._check_conditions(
+            "detection_item_condition_expression",
+            "detection_item_condition_linking",
+            "detection_item_conditions",
+            DetectionItemProcessingCondition,
+            "Detection item condition",
+        )
+        self._resolve_condition_expression(
+            self.detection_item_condition_expression,
+            self.detection_item_conditions,
+            "Detection item condition",
+        )
+        self._check_conditions(
+            "field_name_condition_expression",
+            "field_name_condition_linking",
+            "field_name_conditions",
+            FieldNameProcessingCondition,
+            "Field name condition",
+        )
+        self._resolve_condition_expression(
+            self.field_name_condition_expression,
+            self.field_name_conditions,
+            "Field name condition",
+        )
 
     def apply(
         self, pipeline: "ProcessingPipeline", rule: Union[SigmaRule, SigmaCorrelationRule]
@@ -256,12 +404,19 @@ class ProcessingItem(ProcessingItemBase):
         Evalutates detection item and field name conditions from processing item to detection item
         and returns result.
         """
-        detection_item_cond_result = self.detection_item_condition_linking(
-            [
-                condition.match(pipeline, detection_item)
-                for condition in self.detection_item_conditions
-            ]
-        )
+        if (
+            self.detection_item_condition_expression is not None
+        ):  # detection item condition expression
+            detection_item_cond_result = self.detection_item_condition_expression.match(
+                detection_item
+            )
+        else:  # simplified detection item condition
+            detection_item_cond_result = self.detection_item_condition_linking(
+                [
+                    condition.match(pipeline, detection_item)
+                    for condition in self.detection_item_conditions
+                ]
+            )
         if self.detection_item_condition_negation:
             detection_item_cond_result = not detection_item_cond_result
 
@@ -280,12 +435,15 @@ class ProcessingItem(ProcessingItemBase):
         """
         Evaluate field name conditions on field names and return result.
         """
-        field_name_cond_result = self.field_name_condition_linking(
-            [
-                condition.match_field_name(pipeline, field)
-                for condition in self.field_name_conditions
-            ]
-        )
+        if self.field_name_condition_expression is not None:  # field name condition expression
+            field_name_cond_result = self.field_name_condition_expression.match_field_name(field)
+        else:  # simplified field name condition
+            field_name_cond_result = self.field_name_condition_linking(
+                [
+                    condition.match_field_name(pipeline, field)
+                    for condition in self.field_name_conditions
+                ]
+            )
         if self.field_name_condition_negation:
             field_name_cond_result = not field_name_cond_result
 
@@ -322,50 +480,8 @@ class QueryPostprocessingItem(ProcessingItemBase):
     @classmethod
     def from_dict(cls, d: dict):
         """Instantiate processing item from parsed definition and variables."""
-        # Identifier
-        identifier = d.get("id", None)
-
-        # Parse conditions
-        condition_linking = {
-            "or": any,
-            "and": all,
-        }
-        rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
-        rule_condition_linking = condition_linking[
-            d.get("rule_cond_op", "and")
-        ]  # default: conditions are linked with and operator
-        rule_condition_negation = d.get("rule_cond_not", False)
-
-        # Transformation
-        transformation_class = cls._instantiate_transformation(
-            d, query_postprocessing_transformations
-        )
-
-        params = {
-            k: v
-            for k, v in d.items()
-            if k not in {"rule_conditions", "rule_cond_op", "rule_cond_not", "type", "id"}
-        }
-        try:
-            transformation = transformation_class(**params)
-        except (SigmaConfigurationError, TypeError) as e:
-            raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
-
-        return cls(
-            transformation, rule_condition_linking, rule_condition_negation, rule_conds, identifier
-        )
-
-    def __post_init__(self):
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        if not isinstance(self.rule_conditions, list):
-            raise SigmaTypeError("Rule processing conditions must be provided as list")
-        for rule_condition in self.rule_conditions:
-            if not isinstance(rule_condition, RuleProcessingCondition):
-                raise SigmaTypeError(
-                    f"Rule processing condition '{str(rule_condition)}' is not a RuleProcessingCondition"
-                )
+        kwargs = super()._base_args_from_dict(d, query_postprocessing_transformations)
+        return cls(**kwargs)
 
     def apply(
         self,

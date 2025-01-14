@@ -265,10 +265,10 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
 
 class SigmaFeatureNotSupportedByBackendError(SigmaError):
     """Sigma feature is not supported by the backend."""
-    
+
     pass
 
-    
+
 class SigmaDescriptionError(SigmaError):
     """Error in Sigma rule description"""
 

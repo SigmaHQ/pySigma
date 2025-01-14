@@ -3,7 +3,6 @@ from dataclasses import dataclass, field
 from typing import Callable, ClassVar, Dict, Iterable, Optional, Set, Union
 
 from pyparsing import (
-    List,
     ParseException,
     Word,
     alphanums,

@@ -1,5 +1,8 @@
 import pytest
 from dataclasses import dataclass
+import re
+from textwrap import dedent
+from sigma.processing.condition_expressions import ConditionAND, ConditionIdentifier, ConditionNOT
 from sigma.processing.finalization import ConcatenateQueriesFinalizer, JSONFinalizer
 from sigma.processing.pipeline import (
     ProcessingPipeline,
@@ -10,6 +13,8 @@ from sigma.processing.pipeline import (
 from sigma.processing.transformations import transformations
 from sigma.processing.conditions import (
     DetectionItemProcessingItemAppliedCondition,
+    FieldNameProcessingCondition,
+    field_name_conditions,
     IncludeFieldCondition,
     LogsourceCondition,
     rule_conditions,
@@ -27,7 +32,7 @@ from sigma.processing.transformations import (
     FieldFunctionTransformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
-from sigma.exceptions import SigmaConfigurationError, SigmaTypeError
+from sigma.exceptions import SigmaConfigurationError, SigmaPipelineConditionError, SigmaTypeError
 from sigma.types import SigmaString
 
 
@@ -64,6 +69,38 @@ class DetectionItemConditionFalse(DetectionItemProcessingCondition):
 
 
 @dataclass
+class FieldNameConditionTrue(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, field_name: str) -> bool:
+        return True
+
+
+@dataclass
+class FieldNameConditionFalse(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, field_name: str) -> bool:
+        return False
+
+
+@dataclass
+class FieldNameConditionTrue(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, field_name: str) -> bool:
+        return True
+
+
+@dataclass
+class FieldNameConditionFalse(FieldNameProcessingCondition):
+    dummy: str
+
+    def match_field_name(self, field_name: str) -> bool:
+        return False
+
+
+@dataclass
 class TransformationPrepend(Transformation):
     s: str
 
@@ -89,6 +126,8 @@ def inject_test_classes(monkeypatch):
     monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
     monkeypatch.setitem(detection_item_conditions, "true", DetectionItemConditionTrue)
     monkeypatch.setitem(detection_item_conditions, "false", DetectionItemConditionFalse)
+    monkeypatch.setitem(field_name_conditions, "true", FieldNameConditionTrue)
+    monkeypatch.setitem(field_name_conditions, "false", FieldNameConditionFalse)
     monkeypatch.setitem(transformations, "prepend", TransformationPrepend)
     monkeypatch.setitem(transformations, "append", TransformationAppend)
 
@@ -126,6 +165,35 @@ def processing_item_dict():
             {"type": "false", "dummy": "test-false"},
         ],
         "detection_item_cond_op": "or",
+        "field_name_conditions": [
+            {"type": "true", "dummy": "test-true"},
+            {"type": "false", "dummy": "test-false"},
+        ],
+        "field_name_cond_op": "or",
+        "type": "append",
+        "s": "Test",
+    }
+
+
+@pytest.fixture
+def processing_item_with_condition_expr_dict():
+    return {
+        "id": "test",
+        "rule_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "rule_cond_expr": "cond1 and not cond2",
+        "detection_item_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "detection_item_cond_expr": "cond1 and not cond2",
+        "field_name_conditions": {
+            "cond1": {"type": "true", "dummy": "test-true"},
+            "cond2": {"type": "false", "dummy": "test-false"},
+        },
+        "field_name_cond_expr": "cond1 and not cond2",
         "type": "append",
         "s": "Test",
     }
@@ -159,6 +227,40 @@ def processing_item():
             DetectionItemConditionTrue(dummy="test-true"),
             DetectionItemConditionFalse(dummy="test-false"),
         ],
+        field_name_condition_linking=any,
+        field_name_conditions=[
+            FieldNameConditionTrue(dummy="test-true"),
+            FieldNameConditionFalse(dummy="test-false"),
+        ],
+        identifier="test",
+    )
+
+
+@pytest.fixture
+def processing_item_with_condition_expr():
+    return ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        rule_conditions={
+            "cond1": RuleConditionTrue(dummy="test-true"),
+            "cond2": RuleConditionFalse(dummy="test-false"),
+        },
+        rule_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
         identifier="test",
     )
 
@@ -206,6 +308,80 @@ def dummy_processing_pipeline():
 
 def test_processingitem_fromdict(processing_item_dict, processing_item):
     assert ProcessingItem.from_dict(processing_item_dict) == processing_item
+
+
+def test_processingitem_fromdict_with_condition_expr(
+    processing_item_with_condition_expr_dict, processing_item_with_condition_expr, sigma_rule
+):
+    assert (
+        ProcessingItem.from_dict(processing_item_with_condition_expr_dict)
+        == processing_item_with_condition_expr
+    )
+
+
+def test_processingitem_condition_expr_unreferenced_rule_condition():
+    with pytest.raises(SigmaPipelineConditionError, match="Rule condition.*contains unreferenced"):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            rule_conditions={
+                "cond1": RuleConditionTrue(dummy="test-true"),
+                "cond2": RuleConditionFalse(dummy="test-false"),
+                "cond3": RuleConditionTrue(dummy="test-unreferenced"),
+            },
+            rule_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
+
+
+def test_processingitem_condition_expr_unreferenced_detection_item_condition():
+    with pytest.raises(
+        SigmaPipelineConditionError, match="Detection item condition.*contains unreferenced"
+    ):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            detection_item_conditions={
+                "cond1": DetectionItemConditionTrue(dummy="test-true"),
+                "cond2": DetectionItemConditionFalse(dummy="test-false"),
+                "cond3": DetectionItemConditionTrue(dummy="test-unreferenced"),
+            },
+            detection_item_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
+
+
+def test_processingitem_condition_expr_unreferenced_field_name_condition():
+    with pytest.raises(
+        SigmaPipelineConditionError, match="Field name condition.*contains unreferenced"
+    ):
+        ProcessingItem(
+            transformation=TransformationAppend(s="Test"),
+            field_name_conditions={
+                "cond1": FieldNameConditionTrue(dummy="test-true"),
+                "cond2": FieldNameConditionFalse(dummy="test-false"),
+                "cond3": FieldNameConditionTrue(dummy="test-unreferenced"),
+            },
+            field_name_condition_expression=ConditionAND(
+                0,
+                ConditionIdentifier(0, "cond1"),
+                ConditionNOT(10, ConditionIdentifier(14, "cond2")),
+            ),
+            identifier="test",
+        )
+
+
+def test_processingitem_default_linking():
+    processing_item = ProcessingItem(transformation=TransformationAppend(s="Test"))
+    assert processing_item.rule_condition_linking == all
+    assert processing_item.detection_item_condition_linking == all
+    assert processing_item.field_name_condition_linking == all
 
 
 def test_processingitem_fromdict_without_id(processing_item_dict, processing_item):
@@ -321,6 +497,16 @@ def test_processingitem_apply(processing_item, sigma_rule):
     assert applied and sigma_rule.title == "TestTest"
 
 
+def test_processingitem_apply_condition_expr(processing_item_with_condition_expr, sigma_rule):
+    applied = processing_item_with_condition_expr.apply(sigma_rule)
+    assert applied and sigma_rule.title == "TestTest"
+
+
+def test_processingitem_apply_condition_expr(processing_item_with_condition_expr, sigma_rule):
+    applied = processing_item_with_condition_expr.apply(sigma_rule)
+    assert applied and sigma_rule.title == "TestTest"
+
+
 def test_processingitem_apply_notapplied_all_with_false(sigma_rule):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
@@ -383,6 +569,30 @@ def test_processingitem_match_detection_item(detection_item):
     assert processing_item.match_detection_item(detection_item) == True
 
 
+def test_processingitem_match_detection_item_dict_detections(detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_linking=any,
+    )
+    assert processing_item.match_detection_item(detection_item) == True
+
+
+def test_processingitem_match_detection_item_dict_detections(detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionFalse(dummy="test-false"),
+        },
+        detection_item_condition_linking=any,
+    )
+    assert processing_item.match_detection_item(detection_item) == True
+
+
 def test_processingitem_match_detection_item_all_with_false(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),
@@ -429,24 +639,90 @@ def test_processingitem_match_detection_item_negated_false(detection_item):
     assert processing_item.match_detection_item(detection_item)
 
 
-def test_processingitem_rule_condition_nolist():
-    with pytest.raises(SigmaTypeError, match="Rule processing conditions"):
+def test_processingitem_match_detection_item_with_expression_false(detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        detection_item_conditions={
+            "cond1": DetectionItemConditionTrue(dummy="test-true"),
+            "cond2": DetectionItemConditionTrue(dummy="test-false"),
+        },
+        detection_item_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert not processing_item.match_detection_item(detection_item)
+
+
+def test_processingitem_match_field_name():
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions=[
+            FieldNameConditionTrue(dummy="test-true"),
+            FieldNameConditionFalse(dummy="test-false"),
+        ],
+        field_name_condition_linking=any,
+    )
+    assert processing_item.match_field_name("field") == True
+
+
+def test_processingitem_match_field_name_dict_fields():
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_linking=any,
+    )
+    assert processing_item.match_field_name("field") == True
+
+
+def test_processingitem_match_field_name_with_expression():
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert processing_item.match_field_name("field") == True
+
+
+def test_processingitem_match_field_name_with_expression_false():
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionTrue(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert not processing_item.match_field_name("field")
+
+
+def test_processingitem_rule_condition_no_list_or_dict():
+    with pytest.raises(SigmaTypeError, match="Rule conditions"):
         ProcessingItem(
             rule_conditions=LogsourceCondition(category="test"),
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_detection_item_condition_nolist():
-    with pytest.raises(SigmaTypeError, match="Detection item processing conditions"):
+def test_processingitem_detection_item_condition_no_list_or_dict():
+    with pytest.raises(SigmaTypeError, match="Detection item conditions"):
         ProcessingItem(
             detection_item_conditions=DetectionItemProcessingItemAppliedCondition("test"),
             transformation=SetStateTransformation("test", True),
         )
 
 
-def test_processingitem_field_name_condition_nolist():
-    with pytest.raises(SigmaTypeError, match="Field name processing conditions"):
+def test_processingitem_field_name_condition_no_list_or_dict():
+    with pytest.raises(SigmaTypeError, match="Field name conditions"):
         ProcessingItem(
             field_name_conditions=IncludeFieldCondition(fields=["test"]),
             transformation=SetStateTransformation("test", True),
@@ -461,6 +737,81 @@ def test_processingitem_wrong_rule_condition():
         )
 
 
+def test_processingitem_wrong_rule_condition_dict():
+    with pytest.raises(SigmaTypeError, match="RuleProcessingCondition"):
+        ProcessingItem(
+            rule_conditions={"cond": IncludeFieldCondition(fields=["testfield"])},
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_rule_condition_linking_with_expr():
+    with pytest.raises(
+        SigmaConfigurationError, match="Rule condition expression is mutually exclusive"
+    ):
+        ProcessingItem(
+            rule_condition_linking=any,
+            rule_conditions=[
+                RuleConditionTrue(dummy="test-true"),
+                RuleConditionFalse(dummy="test-false"),
+            ],
+            rule_condition_expression="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_detection_item_condition_linking_with_expr():
+    with pytest.raises(
+        SigmaConfigurationError, match="Detection item condition expression is mutually exclusive"
+    ):
+        ProcessingItem(
+            detection_item_condition_linking=any,
+            detection_item_conditions=[
+                DetectionItemConditionTrue(dummy="test-true"),
+                DetectionItemConditionFalse(dummy="test-false"),
+            ],
+            detection_item_condition_expression="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_field_name_condition_linking_with_expr():
+    with pytest.raises(SigmaConfigurationError, match="must be provided as mapping"):
+        ProcessingItem(
+            field_name_condition_linking=any,
+            field_name_conditions=[
+                FieldNameProcessingItemAppliedCondition("test"),
+                FieldNameProcessingItemAppliedCondition("test"),
+            ],
+            detection_item_condition_expression="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_rule_condition_expr_with_list():
+    with pytest.raises(SigmaConfigurationError, match="mapping from identifiers to conditions"):
+        ProcessingItem(
+            rule_conditions=[
+                RuleConditionTrue(dummy="test-true"),
+                RuleConditionFalse(dummy="test-false"),
+            ],
+            rule_condition_expression="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_detecton_item_condition_expr_with_list():
+    with pytest.raises(SigmaConfigurationError, match="mapping from identifiers to conditions"):
+        ProcessingItem(
+            detection_item_conditions=[
+                DetectionItemConditionTrue(dummy="test-true"),
+                DetectionItemConditionFalse(dummy="test-false"),
+            ],
+            detection_item_condition_expression="cond1 or cond2",
+            transformation=SetStateTransformation("test", True),
+        )
+
+
 def test_processingitem_wrong_detection_item_condition():
     with pytest.raises(SigmaTypeError, match="DetectionItemProcessingCondition"):
         ProcessingItem(
@@ -469,10 +820,26 @@ def test_processingitem_wrong_detection_item_condition():
         )
 
 
+def test_processingitem_wrong_detection_item_condition_dict():
+    with pytest.raises(SigmaTypeError, match="DetectionItemProcessingCondition"):
+        ProcessingItem(
+            detection_item_conditions={"cond": IncludeFieldCondition(fields=["testfield"])},
+            transformation=SetStateTransformation("test", True),
+        )
+
+
 def test_processingitem_wrong_field_name_condition():
     with pytest.raises(SigmaTypeError, match="FieldNameProcessingCondition"):
         ProcessingItem(
             field_name_conditions=[LogsourceCondition(category="test")],
+            transformation=SetStateTransformation("test", True),
+        )
+
+
+def test_processingitem_wrong_field_name_condition_dict():
+    with pytest.raises(SigmaTypeError, match="FieldNameProcessingCondition"):
+        ProcessingItem(
+            field_name_conditions={"cond": LogsourceCondition(category="test")},
             transformation=SetStateTransformation("test", True),
         )
 
@@ -571,6 +938,12 @@ def test_processingpipeline_fromyaml(
                   - type: "false"
                     dummy: test-false
               detection_item_cond_op: or
+              field_name_conditions:
+                  - type: "true"
+                    dummy: test-true
+                  - type: "false"
+                    dummy: test-false
+              field_name_cond_op: or
               type: append
               s: Test
         postprocessing:

@@ -30,6 +30,8 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaCompareExpression,
     SigmaCIDRExpression,
+    SigmaTimestampPart,
+    TimestampPart,
     SigmaStringPartType,
 )
 from sigma.conditions import ConditionAND
@@ -394,6 +396,60 @@ class SigmaExpandModifier(SigmaValueModifier):
         return val.insert_placeholders()
 
 
+class SigmaTimestampMinuteModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the minute number. Between 0 and 59.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.MINUTE, val.number)
+
+
+class SigmaTimestampHourModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the hour number. Between 0 and 23.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.HOUR, val.number)
+
+
+class SigmaTimestampDayModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the day of the month number. Between 1 and 31.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.DAY, val.number)
+
+
+class SigmaTimestampWeekModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the week of the year number. Between 1 and 52.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.WEEK, val.number)
+
+
+class SigmaTimestampMonthModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the month of the year number. Between 1 and 12.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.MONTH, val.number)
+
+
+class SigmaTimestampYearModifier(SigmaValueModifier):
+    """
+    Modifier that parses the field as a datetime/timestamp and transforms it to the year number.
+    """
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(TimestampPart.YEAR, val.number)
+
+
 # Mapping from modifier identifier strings to modifier classes
 modifier_mapping: Dict[str, Type[SigmaModifier]] = {
     "all": SigmaAllModifier,
@@ -402,6 +458,7 @@ modifier_mapping: Dict[str, Type[SigmaModifier]] = {
     "cased": SigmaCaseSensitiveModifier,
     "cidr": SigmaCIDRModifier,
     "contains": SigmaContainsModifier,
+    "day": SigmaTimestampDayModifier,
     "dotall": SigmaRegularExpressionDotAllFlagModifier,
     "endswith": SigmaEndswithModifier,
     "exists": SigmaExistsModifier,
@@ -409,17 +466,22 @@ modifier_mapping: Dict[str, Type[SigmaModifier]] = {
     "fieldref": SigmaFieldReferenceModifier,
     "gt": SigmaGreaterThanModifier,
     "gte": SigmaGreaterThanEqualModifier,
+    "hour": SigmaTimestampHourModifier,
     "i": SigmaRegularExpressionIgnoreCaseFlagModifier,
     "ignorecase": SigmaRegularExpressionIgnoreCaseFlagModifier,
     "lt": SigmaLessThanModifier,
     "lte": SigmaLessThanEqualModifier,
     "m": SigmaRegularExpressionMultilineFlagModifier,
+    "minute": SigmaTimestampMinuteModifier,
+    "month": SigmaTimestampMonthModifier,
     "multiline": SigmaRegularExpressionMultilineFlagModifier,
     "re": SigmaRegularExpressionModifier,
     "s": SigmaRegularExpressionDotAllFlagModifier,
     "startswith": SigmaStartswithModifier,
+    "week": SigmaTimestampWeekModifier,
     "wide": SigmaWideModifier,
     "windash": SigmaWindowsDashModifier,
+    "year": SigmaTimestampYearModifier,
 }
 
 # Mapping from modifier class to identifier

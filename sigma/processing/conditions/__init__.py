@@ -28,6 +28,7 @@ from sigma.processing.conditions.values import (
     ContainsWildcardCondition,
     IsNullCondition,
     MatchStringCondition,
+    MatchValueCondition,
 )
 
 
@@ -44,6 +45,7 @@ rule_conditions: Dict[str, Type[RuleProcessingCondition]] = {
 }
 detection_item_conditions: Dict[str, Type[DetectionItemProcessingCondition]] = {
     "match_string": MatchStringCondition,
+    "match_value": MatchValueCondition,
     "contains_wildcard": ContainsWildcardCondition,
     "is_null": IsNullCondition,
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,

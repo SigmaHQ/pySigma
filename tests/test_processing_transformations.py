@@ -470,6 +470,26 @@ def test_field_prefix_mapping(dummy_pipeline, field_prefix_mapping_transformatio
     }
 
 
+def test_field_prefix_mapping_keyword_detection(
+    dummy_pipeline, keyword_sigma_rule, field_prefix_mapping_transformation
+):
+    field_prefix_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_prefix_mapping_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                None,
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
 def test_field_prefix_mapping_correlation_rule(
     dummy_pipeline, sigma_correlation_rule, field_prefix_mapping_transformation
 ):
@@ -2036,6 +2056,27 @@ def test_case_transformation_special(dummy_pipeline):
         SpecialChars.WILDCARD_SINGLE,
         ".123\\",
     ]
+
+
+def test_case_transformation_snake_case_from_camel_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("abcDef")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
+
+
+def test_case_transformation_snake_case_from_pascal_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("AbcDef")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
+
+
+def test_case_transformation_snake_case_from_snake_case(dummy_pipeline):
+    detection_item = SigmaDetectionItem("field", [], [SigmaString("abc_def")])
+    transformation = CaseTransformation(method="snake_case")
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString("abc_def")
 
 
 def test_case_transformation_error():

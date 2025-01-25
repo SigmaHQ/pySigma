@@ -37,6 +37,17 @@ class SpecialChars(Enum):
     WILDCARD_SINGLE = auto()
 
 
+class TimestampPart(Enum):
+    """Enumeration of supported datetime parts for a SigmaTimestamp object"""
+
+    MINUTE = auto()
+    HOUR = auto()
+    DAY = auto()
+    WEEK = auto()
+    MONTH = auto()
+    YEAR = auto()
+
+
 @dataclass
 class Placeholder:
     """
@@ -605,6 +616,11 @@ class SigmaString(SigmaType):
     def lower(self) -> "SigmaString":
         return self.map_str_parts(str.lower)
 
+    def snake_case(self) -> "SigmaString":
+        return self.map_parts(
+            lambda x: re.sub(r"(?<!^)(?=[A-Z])", "_", x).lower(), lambda x: isinstance(x, str)
+        )
+
 
 class SigmaCasedString(SigmaString):
     """Case-sensitive string matching."""
@@ -637,12 +653,23 @@ class SigmaNumber(SigmaType):
         return str(self.number)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, int):
+        if isinstance(other, (int, float)):
             return self.number == other
         elif isinstance(other, SigmaNumber):
             return bool(self.number == other.number)
         else:
-            return NotImplemented
+            raise NotImplementedError(
+                "SigmaNumber can only be compared with a number or another SigmaNumber"
+            )
+
+
+class SigmaTimestampPart(SigmaNumber):
+
+    timestamp_part: TimestampPart
+
+    def __init__(self, timestamp_part: TimestampPart, number: int):
+        self.timestamp_part = timestamp_part
+        super().__init__(number)
 
 
 @dataclass
@@ -660,6 +687,16 @@ class SigmaBool(SigmaType):
 
     def __bool__(self) -> bool:
         return self.boolean
+
+    def __eq__(self, other: Union["SigmaBool", bool]) -> bool:
+        if isinstance(other, bool):
+            return self.boolean == other
+        elif isinstance(other, self.__class__):
+            return self.boolean == other.boolean
+        else:
+            raise NotImplementedError(
+                "SigmaBool can only be compared with a boolean or another SigmaBool"
+            )
 
 
 class SigmaRegularExpressionFlag(Enum):
@@ -756,6 +793,9 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         except ValueError as e:
             raise SigmaTypeError("Invalid CIDR expression: " + str(e), source=self.source)
 
+    def __str__(self):
+        return self.cidr
+
     def expand(
         self,
         wildcard: str = "*",
@@ -836,6 +876,7 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     number: SigmaNumber
     op: CompareOperators
     source: Optional[SigmaRuleLocation] = None
+    CompareOperators: ClassVar["CompareOperators"] = CompareOperators
 
     def __post_init__(self) -> None:
         if not isinstance(self.number, SigmaNumber):

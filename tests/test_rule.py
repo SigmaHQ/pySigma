@@ -19,6 +19,8 @@ from sigma.types import (
     SigmaNumber,
     SigmaNull,
     SigmaRegularExpression,
+    SigmaTimestampPart,
+    TimestampPart,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,
@@ -1612,3 +1614,34 @@ def test_sigmarule_bad_scope():
             {"title": "test", "scope": "windows AD"},
             source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         )
+
+
+def test_sigmarule_timestamp_modifiers():
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "timestamp|minute": 1,
+                    "timestamp|hour": 2,
+                    "timestamp|day": 3,
+                    "timestamp|week": 4,
+                    "timestamp|month": 5,
+                    "timestamp|year": 6,
+                },
+                "condition": "selection",
+            },
+        },
+        source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+    )
+    detection_items = rule.detection["selection"].detection_items
+    assert detection_items[0].value[0] == SigmaTimestampPart(TimestampPart.MINUTE, 1)
+    assert detection_items[1].value[0] == SigmaTimestampPart(TimestampPart.HOUR, 2)
+    assert detection_items[2].value[0] == SigmaTimestampPart(TimestampPart.DAY, 3)
+    assert detection_items[3].value[0] == SigmaTimestampPart(TimestampPart.WEEK, 4)
+    assert detection_items[4].value[0] == SigmaTimestampPart(TimestampPart.MONTH, 5)
+    assert detection_items[5].value[0] == SigmaTimestampPart(TimestampPart.YEAR, 6)

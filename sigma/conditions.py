@@ -79,7 +79,7 @@ class ConditionItem(ParentChainMixin, ABC):
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list]) -> "ConditionItem":
+    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list]) -> List["ConditionItem"]:
         """Create condition object from parse result"""
         if cls.arg_count == 1:
             if cls.token_list:

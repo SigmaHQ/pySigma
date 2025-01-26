@@ -560,13 +560,18 @@ def test_condition_identifiers_completeness():
 
 
 def test_condition_export_completeness():
-    assert set(conditions_all).issuperset(
-        {
-            condition_class.__name__
-            for condition_class in list(rule_conditions.values())
-            + list(detection_item_conditions.values())
-            + list(field_name_conditions.values())
-        }
+    condition_classes = {
+        condition_class.__name__
+        for condition_class in list(rule_conditions.values())
+        + list(detection_item_conditions.values())
+        + list(field_name_conditions.values())
+    }
+
+    conditions_all_set = set(conditions_all)
+    assert conditions_all_set.issuperset(
+        condition_classes
+    ), "Not all conditions are exported, missing: " + ", ".join(
+        condition_classes.difference(conditions_all_set)
     )
 
 

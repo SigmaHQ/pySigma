@@ -73,6 +73,7 @@ __all__ = [
     "RuleAttributeCondition",
     "RuleTagCondition",
     "MatchStringCondition",
+    "MatchValueCondition",
     "ContainsWildcardCondition",
     "IsNullCondition",
     "DetectionItemProcessingItemAppliedCondition",

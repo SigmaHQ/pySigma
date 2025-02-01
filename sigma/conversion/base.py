@@ -828,9 +828,7 @@ class TextQueryBackend(Backend):
     # is one of the flags shortcuts supported by Sigma (currently i, m and s) and refers to the
     # token stored in the class variable re_flags.
     re_expression: ClassVar[Optional[str]] = None
-    re_escape_char: ClassVar[Optional[str]] = (
-        None  # Character used for escaping in regular expressions
-    )
+    re_escape_char: ClassVar[str] = "\\"  # Character used for escaping in regular expressions
     re_escape: ClassVar[Tuple[str]] = ()  # List of strings that are escaped
     re_escape_escape_char: bool = True  # If True, the escape character is also escaped
     re_flag_prefix: bool = (

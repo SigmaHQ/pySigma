@@ -18,7 +18,7 @@ from sigma.exceptions import (
     SigmaTransformationError,
     SigmaValueError,
 )
-from sigma.modifiers import SigmaExpandModifier
+from sigma.modifiers import SigmaExpandModifier, SigmaRegularExpressionModifier
 from sigma.processing.conditions import (
     FieldNameProcessingItemAppliedCondition,
     IncludeFieldCondition,
@@ -189,6 +189,24 @@ def sigma_rule_placeholders_simple():
                 "test": [
                     {
                         "field|expand": "value%var1%test%var2%end",
+                    }
+                ],
+                "condition": "test",
+            },
+        }
+    )
+
+
+@pytest.fixture
+def sigma_rule_placeholders_simple_re():
+    return SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field|re|expand": "value%var1%test%var2%end",
                     }
                 ],
                 "condition": "test",
@@ -1008,6 +1026,29 @@ def test_valuelist_placeholders(sigma_rule_placeholders_simple: SigmaRule):
                     SigmaDetectionItem(
                         "field",
                         [SigmaExpandModifier],
+                        [
+                            SigmaString("valueval1testval3*end"),
+                            SigmaString("value123testval3*end"),
+                        ],
+                    ),
+                ]
+            )
+        ]
+    )
+
+
+def test_valuelist_placeholders_re(sigma_rule_placeholders_simple_re: SigmaRule):
+    transformation = ValueListPlaceholderTransformation()
+    pipeline = ProcessingPipeline(vars={"var1": ["val1", 123], "var2": "val3*"})
+    transformation.set_pipeline(pipeline)
+    transformation.apply(sigma_rule_placeholders_simple_re)
+    assert sigma_rule_placeholders_simple_re.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem(
+                        "field",
+                        [SigmaRegularExpressionModifier, SigmaExpandModifier],
                         [
                             SigmaString("valueval1testval3*end"),
                             SigmaString("value123testval3*end"),

@@ -128,10 +128,11 @@ class SigmaContainsModifier(SigmaValueModifier):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            if val.regexp[:2] != ".*" and val.regexp[0] != "^":
-                val.regexp = ".*" + val.regexp
-            if val.regexp[-2:] != ".*" and val.regexp[-1] != "$":
-                val.regexp = val.regexp + ".*"
+            regexp_str = val.regexp.convert()
+            if regexp_str[:2] != ".*" and regexp_str[0] != "^":
+                val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
+            if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
+                val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
             val.compile()
         elif isinstance(val, SigmaFieldReference):
             val.starts_with = True
@@ -149,8 +150,9 @@ class SigmaStartswithModifier(SigmaValueModifier):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            if val.regexp[-2:] != ".*" and val.regexp[-1] != "$":
-                val.regexp = val.regexp + ".*"
+            regexp_str = val.regexp.convert()
+            if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
+                val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
             val.compile()
         elif isinstance(val, SigmaFieldReference):
             val.starts_with = True
@@ -167,8 +169,9 @@ class SigmaEndswithModifier(SigmaValueModifier):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
         elif isinstance(val, SigmaRegularExpression):
-            if val.regexp[:2] != ".*" and val.regexp[0] != "^":
-                val.regexp = ".*" + val.regexp
+            regexp_str = val.regexp.convert()
+            if regexp_str[:2] != ".*" and regexp_str[0] != "^":
+                val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             val.compile()
         elif isinstance(val, SigmaFieldReference):
             val.ends_with = True
@@ -391,7 +394,7 @@ class SigmaExpandModifier(SigmaValueModifier):
     specific list item or lookup by the processing pipeline.
     """
 
-    def modify(self, val: SigmaString) -> SigmaString:
+    def modify(self, val: Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
         return val.insert_placeholders()
 
 

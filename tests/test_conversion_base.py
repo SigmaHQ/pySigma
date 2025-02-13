@@ -14,7 +14,7 @@ from sigma.processing.transformations import (
     FieldMappingTransformation,
     QueryExpressionPlaceholderTransformation,
     SetStateTransformation,
-    ValueListPlaceholderTransformation
+    ValueListPlaceholderTransformation,
 )
 from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
 import pytest
@@ -1323,9 +1323,10 @@ def test_convert_value_regex_value_list():
         vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
     )
     backend = TextQueryTestBackend(pipeline)
-    assert backend.convert(
-        SigmaCollection.from_yaml(
-            """
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
             title: Test
             status: test
             logsource:
@@ -1336,8 +1337,10 @@ def test_convert_value_regex_value_list():
                     field|re|expand: "%test%"
                 condition: sel
             """
+            )
         )
-    ) == ["field=/pat.*tern\\/foo\\bar/ or field=/pat.*te\\\\rn\\/foo\\bar/"]
+        == ["field=/pat.*tern\\/foo\\bar/ or field=/pat.*te\\\\rn\\/foo\\bar/"]
+    )
 
 
 def test_convert_value_cidr_wildcard_native_ipv4(test_backend):

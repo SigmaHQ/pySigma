@@ -394,7 +394,9 @@ class SigmaExpandModifier(SigmaValueModifier):
     specific list item or lookup by the processing pipeline.
     """
 
-    def modify(self, val: Union[SigmaString, SigmaRegularExpression]) -> Union[SigmaString, SigmaRegularExpression]:
+    def modify(
+        self, val: Union[SigmaString, SigmaRegularExpression]
+    ) -> Union[SigmaString, SigmaRegularExpression]:
         return val.insert_placeholders()
 
 

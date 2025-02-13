@@ -705,7 +705,11 @@ class SigmaRegularExpression(SigmaType):
         SigmaRegularExpressionFlag.DOTALL: "s",
     }
 
-    def __init__(self, regexp: Union[str, SigmaString], flags: Optional[Set[SigmaRegularExpressionFlag]] = None):
+    def __init__(
+        self,
+        regexp: Union[str, SigmaString],
+        flags: Optional[Set[SigmaRegularExpressionFlag]] = None,
+    ):
         if isinstance(regexp, str):
             regexp = SigmaString(regexp)
 
@@ -771,10 +775,12 @@ class SigmaRegularExpression(SigmaType):
             prefix = ""
 
         return prefix + escape_char.join([self.regexp.original[i:j] for i, j in ranges])
-    
-    def contains_placeholder(self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None) -> bool:
+
+    def contains_placeholder(
+        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
+    ) -> bool:
         return self.regexp.contains_placeholder(include, exclude)
-    
+
     def insert_placeholders(self) -> "SigmaRegularExpression":
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
@@ -783,16 +789,17 @@ class SigmaRegularExpression(SigmaType):
         self.regexp = self.regexp.insert_placeholders()
         return self
 
-    def replace_placeholders(self, callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]) -> List["SigmaRegularExpression"]:
+    def replace_placeholders(
+        self, callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]
+    ) -> List["SigmaRegularExpression"]:
         """
         Replace all occurrences of string part matching regular expression with placeholder.
         """
         return [
-            SigmaRegularExpression(
-                regexp=sigmastr.convert(),
-                flags=self.flags
-            ) for sigmastr in self.regexp.replace_placeholders(callback)
+            SigmaRegularExpression(regexp=sigmastr.convert(), flags=self.flags)
+            for sigmastr in self.regexp.replace_placeholders(callback)
         ]
+
 
 @dataclass
 class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):

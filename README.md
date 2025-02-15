@@ -93,6 +93,7 @@ query languages and log data models is provided by additional packages that exte
 * [pySigma-pipeline-sysmon](https://github.com/SigmaHQ/pySigma-pipeline-sysmon)
 * [pySigma-pipeline-crowdstrike](https://github.com/SigmaHQ/pySigma-pipeline-crowdstrike)
 * [pySigma-backend-netwitness](https://github.com/marcelkwaschny/pySigma-backend-netwitness)
+* [pySigma-backend-panther](https://github.com/panther-labs/pySigma-backend-panther)
 
 All packages can also be installed from PyPI if not mentioned otherwise by the Python package
 manager of your choice.

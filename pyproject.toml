@@ -1,9 +1,11 @@
-[tool.poetry]
+[project]
 name = "pySigma"
 version = "0.11.19"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
-authors = ["Thomas Patzke <thomas@patzke.org>"]
+authors = [
+  { name = "Thomas Patzke", email = "thomas@patzke.org" },
+]
 readme = "README.md"
 repository = "https://github.com/SigmaHQ/pySigma"
 classifiers = [
@@ -13,9 +15,14 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",    
+    "Programming Language :: Python :: 3.12",
     "Topic :: Security"
 ]
+
+[project.urls]
+Repository = "https://github.com/SigmaHQ/pySigma"
+
+[tool.poetry]
 packages = [
     { include = "sigma" }
 ]

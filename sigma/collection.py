@@ -94,7 +94,7 @@ class SigmaCollection:
         in the errors property individually for each Sigma rule and the whole SigmaCollection.
         """
         errors = []
-        parsed_rules = list()
+        parsed_rules: List[SigmaRuleBase] = list()
         prev_rule = None
         global_rule: NestedDict = dict()
 

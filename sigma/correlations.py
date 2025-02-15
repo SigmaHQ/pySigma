@@ -223,7 +223,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     timespan: SigmaCorrelationTimespan = field(default_factory=SigmaCorrelationTimespan)
     group_by: Optional[List[str]] = None
     aliases: SigmaCorrelationFieldAliases = field(default_factory=SigmaCorrelationFieldAliases)
-    condition: Optional[SigmaCorrelationCondition] = None
+    condition: SigmaCorrelationCondition = None
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     def __post_init__(self):

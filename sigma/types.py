@@ -742,7 +742,7 @@ class SigmaRegularExpression(SigmaType):
 
     def escape(
         self,
-        escaped: Tuple[str] = cast(Tuple[str], ()),
+        escaped: List[str] = cast(List[str], ()),
         escape_char: str = "\\",
         escape_escape_char: bool = True,
         flag_prefix: bool = True,

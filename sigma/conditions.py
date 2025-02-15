@@ -41,7 +41,7 @@ class ParentChainMixin:
         """Only return list of parent chain condition classes which are boolean operators."""
         return [item for item in self.parent_chain_classes() if item.operator]
 
-    def parent_condition_chain_contains(self, cond_class: Type["ConditionType"]):
+    def parent_condition_chain_contains(self, cond_class: Type["ConditionType"]) -> bool:
         """Determines if the class cond_class is contained in parent condition class chain."""
         return cond_class in self.parent_chain_condition_classes()
 
@@ -295,4 +295,5 @@ ConditionType = Union[
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
     ConditionValueExpression,
+    ConditionItem,
 ]

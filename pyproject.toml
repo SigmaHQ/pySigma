@@ -4,7 +4,7 @@ version = "0.11.18"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = [
-  { name = "Thomas Patzke", email = "dsun20@bloomberg.net" },
+  { name = "Thomas Patzke", email = "thomas@patzke.org" },
 ]
 readme = "README.md"
 repository = "https://github.com/SigmaHQ/pySigma"

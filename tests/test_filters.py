@@ -343,7 +343,9 @@ def test_regression_github_issue_321_brackets(
     ]
 
 
-def test_regression_github_issue_321_selection_confusion(rule_collection, test_backend, sigma_filter):
+def test_regression_github_issue_321_selection_confusion(
+    rule_collection, test_backend, sigma_filter
+):
     sigma_filter.filter = SigmaGlobalFilter.from_dict(
         {
             "rules": [

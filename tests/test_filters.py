@@ -14,6 +14,7 @@ from sigma.exceptions import (
     SigmaFilterConditionError,
     SigmaFilterError,
     SigmaFilterRuleReferenceError,
+    SigmaConditionError,
 )
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
@@ -292,15 +293,18 @@ def test_sigma_filter_with_multiple_conditions_raises_error(sigma_filter):
         SigmaFilter.from_dict(sf_copy)
 
 
-# def test_logsource_subset(sigma_filter, test_backend, rule_collection):
-#     # Remove logsource.category
-#     new_filter = sigma_filter.to_dict()
-#     new_filter["logsource"].pop("category")
-#     sigma_filter = SigmaFilter.from_dict(new_filter)
-#     rule_collection.rules += [sigma_filter]
-#
-#     rule_collection.resolve_rule_references()
-#
-#     assert test_backend.convert(rule_collection) == [
-#         '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
-#     ]
+def test_regression_github_issue_321(rule_collection, test_backend, sigma_filter):
+    sigma_filter.filter = SigmaGlobalFilter.from_dict(
+        {
+            "rules": [
+                "6f3e2987-db24-4c78-a860-b4f4095a7095",
+            ],
+            "filter": {"User|startswith": "adm_"},
+            "condition": "not filter_with_suffix",
+        }
+    )
+
+    rule_collection.rules += [sigma_filter]
+
+    with pytest.raises(SigmaConditionError):
+        test_backend.convert(rule_collection)

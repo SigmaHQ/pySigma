@@ -308,3 +308,34 @@ def test_regression_github_issue_321(rule_collection, test_backend, sigma_filter
 
     with pytest.raises(SigmaConditionError):
         test_backend.convert(rule_collection)
+
+
+@pytest.mark.parametrize(
+    "filter_condition",
+    [
+        "not filter",
+        "not (filter)",
+        "not ( filter)",
+        "not (filter )",
+        "not ( filter )",
+        "not (   filter   )",
+        "not ((filter))",
+        "not (((filter)))",
+    ],
+)
+def test_regression_github_issue_321_brackets(rule_collection, test_backend, sigma_filter, filter_condition):
+    sigma_filter.filter = SigmaGlobalFilter.from_dict(
+        {
+            "rules": [
+                "6f3e2987-db24-4c78-a860-b4f4095a7095",
+            ],
+            "filter": {"User|startswith": "adm_"},
+            "condition": filter_condition
+        }
+    )
+
+    rule_collection.rules += [sigma_filter]
+
+    assert test_backend.convert(rule_collection) == [
+        '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
+    ]

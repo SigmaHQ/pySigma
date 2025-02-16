@@ -323,14 +323,16 @@ def test_regression_github_issue_321(rule_collection, test_backend, sigma_filter
         "not (((filter)))",
     ],
 )
-def test_regression_github_issue_321_brackets(rule_collection, test_backend, sigma_filter, filter_condition):
+def test_regression_github_issue_321_brackets(
+    rule_collection, test_backend, sigma_filter, filter_condition
+):
     sigma_filter.filter = SigmaGlobalFilter.from_dict(
         {
             "rules": [
                 "6f3e2987-db24-4c78-a860-b4f4095a7095",
             ],
             "filter": {"User|startswith": "adm_"},
-            "condition": filter_condition
+            "condition": filter_condition,
         }
     )
 

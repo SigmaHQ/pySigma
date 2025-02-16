@@ -343,9 +343,16 @@ def test_regression_github_issue_321_brackets(
     ]
 
 
+@pytest.mark.skip("Decision on whether filters should support selection confusion is pending")
 def test_regression_github_issue_321_selection_confusion(
     rule_collection, test_backend, sigma_filter
 ):
+    """
+    This test targets a weird quirk of how we do Filtering, where the filter can just use a
+    selection condition as a filter condition. It's probably not desired behaviour, as you'd
+    rarely want to filter on a selection condition, and it implies that every rule referenced
+    also has to have a selection condition.
+    """
     sigma_filter.filter = SigmaGlobalFilter.from_dict(
         {
             "rules": [

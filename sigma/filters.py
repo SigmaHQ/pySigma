@@ -194,8 +194,8 @@ class SigmaFilter(SigmaRuleBase):
 
             # Replace each instance of the original condition name with the new condition name to avoid conflicts
             filter_condition = re.sub(
-                rf"(^|\s|\()+{original_cond_name}(\s|$|\))+",
-                cond_name,
+                rf"(\s|\(|^){original_cond_name}(\s|$|\))",
+                r"\1" + cond_name + r"\2",
                 filter_condition,
             )
             rule.detection.detections[cond_name] = condition

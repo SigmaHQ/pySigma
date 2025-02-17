@@ -1837,6 +1837,7 @@ class TextQueryBackend(Backend):
             template[method].format(
                 search=search,
                 typing=self.convert_correlation_typing(rule),
+                timespan=self.convert_timespan(rule.timespan, method),
                 aggregate=self.convert_correlation_aggregation_from_template(
                     rule, correlation_type, method, search
                 ),

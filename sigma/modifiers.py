@@ -128,7 +128,7 @@ class SigmaContainsModifier(SigmaValueModifier):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = val.regexp.convert()
+            regexp_str = str(val.regexp)
             if regexp_str[:2] != ".*" and regexp_str[0] != "^":
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
@@ -150,7 +150,7 @@ class SigmaStartswithModifier(SigmaValueModifier):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = val.regexp.convert()
+            regexp_str = str(val.regexp)
             if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
                 val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
             val.compile()
@@ -169,7 +169,7 @@ class SigmaEndswithModifier(SigmaValueModifier):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = val.regexp.convert()
+            regexp_str = str(val.regexp)
             if regexp_str[:2] != ".*" and regexp_str[0] != "^":
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             val.compile()

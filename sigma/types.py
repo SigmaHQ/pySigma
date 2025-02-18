@@ -734,10 +734,10 @@ class SigmaRegularExpression(SigmaType):
             flags = 0
             for flag in self.flags:
                 flags |= self.sigma_to_python_flags[flag]
-            re.compile(self.regexp.original, flags)
+            re.compile(self.escape(), flags)
         except re.error as e:
             raise SigmaRegularExpressionError(
-                f"Regular expression '{self.regexp.original}' is invalid: {str(e)}"
+                f"Regular expression '{self.escape()}' is invalid: {str(e)}"
             ) from e
 
     def escape(
@@ -757,9 +757,10 @@ class SigmaRegularExpression(SigmaType):
                 if e is not None
             ]
         )
+        regexp_str = str(self.regexp)
         pos = (
             [  # determine positions of matches in regular expression
-                m.start() for m in re.finditer(r, self.regexp.original)
+                m.start() for m in re.finditer(r, regexp_str)
             ]
             if r != ""
             else []
@@ -774,7 +775,7 @@ class SigmaRegularExpression(SigmaType):
         else:
             prefix = ""
 
-        return prefix + escape_char.join([self.regexp.original[i:j] for i, j in ranges])
+        return prefix + escape_char.join([regexp_str[i:j] for i, j in ranges])
 
     def contains_placeholder(
         self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
@@ -796,7 +797,7 @@ class SigmaRegularExpression(SigmaType):
         Replace all occurrences of string part matching regular expression with placeholder.
         """
         return [
-            SigmaRegularExpression(regexp=sigmastr.convert(), flags=self.flags)
+            SigmaRegularExpression(regexp=str(sigmastr), flags=self.flags)
             for sigmastr in self.regexp.replace_placeholders(callback)
         ]
 

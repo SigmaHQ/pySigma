@@ -1343,6 +1343,32 @@ def test_convert_value_regex_value_list():
     )
 
 
+def test_convert_value_regex_value_list_endswith():
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
+        vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
+    )
+    backend = TextQueryTestBackend(pipeline)
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|re|expand|endswith: "%test%"
+                condition: sel
+            """
+            )
+        )
+        == ["field=/.*pat.*tern\\/foo\\bar/ or field=/.*pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
+
 def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
     assert (
         test_backend.convert(

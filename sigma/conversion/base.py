@@ -1844,6 +1844,9 @@ class TextQueryBackend(Backend):
                 condition=self.convert_correlation_condition_from_template(
                     rule.condition, rule.rules, correlation_type, method
                 ),
+                groupby=self.convert_correlation_aggregation_groupby_from_template(
+                    rule.group_by, method
+                ),
             )
         ]
 

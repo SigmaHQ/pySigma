@@ -1,6 +1,6 @@
 import re
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
@@ -693,7 +693,8 @@ class SigmaRegularExpressionFlag(Enum):
 class SigmaRegularExpression(SigmaType):
     """Regular expression type"""
 
-    regexp: str
+    regexp: SigmaString = field(init=False)
+    regexp_init: InitVar[Union[SigmaString, str]]
     flags: Set[SigmaRegularExpressionFlag] = field(default_factory=set)
     sigma_to_python_flags: ClassVar[Dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
         SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
@@ -706,7 +707,14 @@ class SigmaRegularExpression(SigmaType):
         SigmaRegularExpressionFlag.DOTALL: "s",
     }
 
-    def __post_init__(self):
+    def __post_init__(
+        self,
+        regexp_init: Union[str, SigmaString],
+    ):
+        if isinstance(regexp_init, str):
+            regexp_init = SigmaString(regexp_init)
+
+        self.regexp = regexp_init
         self.compile()
 
     def add_flag(self, flag: SigmaRegularExpressionFlag):
@@ -718,10 +726,10 @@ class SigmaRegularExpression(SigmaType):
             flags = 0
             for flag in self.flags:
                 flags |= self.sigma_to_python_flags[flag]
-            re.compile(self.regexp, flags)
+            re.compile(self.escape(), flags)
         except re.error as e:
             raise SigmaRegularExpressionError(
-                f"Regular expression '{self.regexp}' is invalid: {str(e)}"
+                f"Regular expression '{self.escape()}' is invalid: {str(e)}"
             ) from e
 
     def escape(
@@ -741,9 +749,10 @@ class SigmaRegularExpression(SigmaType):
                 if e is not None
             ]
         )
+        regexp_str = str(self.regexp)
         pos = (
             [  # determine positions of matches in regular expression
-                m.start() for m in re.finditer(r, self.regexp)
+                m.start() for m in re.finditer(r, regexp_str)
             ]
             if r != ""
             else []
@@ -758,7 +767,31 @@ class SigmaRegularExpression(SigmaType):
         else:
             prefix = ""
 
-        return prefix + escape_char.join([self.regexp[i:j] for i, j in ranges])
+        return prefix + escape_char.join([regexp_str[i:j] for i, j in ranges])
+
+    def contains_placeholder(
+        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
+    ) -> bool:
+        return self.regexp.contains_placeholder(include, exclude)
+
+    def insert_placeholders(self) -> "SigmaRegularExpression":
+        """
+        Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
+        pipeline. This implements the expand modifier.
+        """
+        self.regexp = self.regexp.insert_placeholders()
+        return self
+
+    def replace_placeholders(
+        self, callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]
+    ) -> List["SigmaRegularExpression"]:
+        """
+        Replace all occurrences of string part matching regular expression with placeholder.
+        """
+        return [
+            SigmaRegularExpression(str(sigmastr), self.flags)
+            for sigmastr in self.regexp.replace_placeholders(callback)
+        ]
 
 
 @dataclass

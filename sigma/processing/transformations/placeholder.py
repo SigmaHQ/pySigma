@@ -17,6 +17,7 @@ from sigma.exceptions import (
 from sigma.types import (
     Placeholder,
     SigmaString,
+    SigmaRegularExpression,
     SpecialChars,
     SigmaQueryExpression,
 )
@@ -54,8 +55,10 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
         super().__post_init__()
 
     def apply_value(
-        self, field: str, val: SigmaString
-    ) -> Union[SigmaString, Iterable[SigmaString]]:
+        self, field: str, val: Union[SigmaString, SigmaRegularExpression]
+    ) -> Union[
+        SigmaString, Iterable[SigmaString], SigmaRegularExpression, Iterable[SigmaRegularExpression]
+    ]:
         if val.contains_placeholder(self.include, self.exclude):
             return val.replace_placeholders(self.placeholder_replacements_base)
         else:

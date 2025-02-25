@@ -492,6 +492,16 @@ def test_expand(dummy_detection_item):
     )
 
 
+def test_expand_re(dummy_detection_item):
+    assert SigmaExpandModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("test%var%test")
+    ).regexp.s == (
+        "test",
+        Placeholder("var"),
+        "test",
+    )
+
+
 def test_cidr(dummy_detection_item):
     assert SigmaCIDRModifier(dummy_detection_item, []).modify(
         SigmaString("192.168.1.0/24")

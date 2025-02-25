@@ -14,6 +14,7 @@ from sigma.processing.transformations import (
     FieldMappingTransformation,
     QueryExpressionPlaceholderTransformation,
     SetStateTransformation,
+    ValueListPlaceholderTransformation,
 )
 from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
 import pytest
@@ -1313,6 +1314,58 @@ def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
             )
         )
         == ["_=/pat.*te\\rn\\/foo\\bar/"]
+    )
+
+
+def test_convert_value_regex_value_list():
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
+        vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
+    )
+    backend = TextQueryTestBackend(pipeline)
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|re|expand: "%test%"
+                condition: sel
+            """
+            )
+        )
+        == ["field=/pat.*tern\\/foo\\bar/ or field=/pat.*te\\\\rn\\/foo\\bar/"]
+    )
+
+
+def test_convert_value_regex_value_list_endswith():
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
+        vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
+    )
+    backend = TextQueryTestBackend(pipeline)
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field|re|expand|endswith: "%test%"
+                condition: sel
+            """
+            )
+        )
+        == ["field=/.*pat.*tern\\/foo\\bar/ or field=/.*pat.*te\\\\rn\\/foo\\bar/"]
     )
 
 

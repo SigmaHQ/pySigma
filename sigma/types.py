@@ -1,6 +1,6 @@
 import re
 from abc import ABC
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, InitVar
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
@@ -689,11 +689,13 @@ class SigmaRegularExpressionFlag(Enum):
     DOTALL = auto()
 
 
+@dataclass
 class SigmaRegularExpression(SigmaType):
     """Regular expression type"""
 
-    regexp: SigmaString
-    flags: Set[SigmaRegularExpressionFlag]
+    regexp: SigmaString = field(init=False)
+    regexp_init: InitVar[Union[SigmaString, str]]
+    flags: Set[SigmaRegularExpressionFlag] = field(default_factory=set)
     sigma_to_python_flags: ClassVar[Dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
         SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
         SigmaRegularExpressionFlag.MULTILINE: re.MULTILINE,
@@ -705,25 +707,15 @@ class SigmaRegularExpression(SigmaType):
         SigmaRegularExpressionFlag.DOTALL: "s",
     }
 
-    def __init__(
+    def __post_init__(
         self,
-        regexp: Union[str, SigmaString],
-        flags: Optional[Set[SigmaRegularExpressionFlag]] = None,
+        regexp_init: Union[str, SigmaString],
     ):
-        if isinstance(regexp, str):
-            regexp = SigmaString(regexp)
+        if isinstance(regexp_init, str):
+            regexp_init = SigmaString(regexp_init)
 
-        self.regexp = regexp
-        self.flags = flags or set()
+        self.regexp = regexp_init
         self.compile()
-
-    def __eq__(self, other: "SigmaRegularExpression") -> bool:
-        if isinstance(other, self.__class__):
-            return self.regexp == other.regexp and self.flags == other.flags
-        else:
-            raise NotImplementedError(
-                "SigmaRegularExpression can only be compared with another SigmaRegularExpression"
-            )
 
     def add_flag(self, flag: SigmaRegularExpressionFlag):
         self.flags.add(flag)
@@ -797,7 +789,7 @@ class SigmaRegularExpression(SigmaType):
         Replace all occurrences of string part matching regular expression with placeholder.
         """
         return [
-            SigmaRegularExpression(regexp=str(sigmastr), flags=self.flags)
+            SigmaRegularExpression(str(sigmastr), self.flags)
             for sigmastr in self.regexp.replace_placeholders(callback)
         ]
 

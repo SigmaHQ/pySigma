@@ -11,10 +11,11 @@ from pyparsing import (
     ParseResults,
     ParseException,
 )
-from typing import ClassVar, List, Literal, Optional, Union, Type
+from typing import ClassVar, List, Literal, Optional, Union, Type, cast
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma
+import sigma.rule
 
 
 @dataclass
@@ -50,17 +51,17 @@ class ParentChainMixin:
         detections: "sigma.rule.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "ConditionItem":
+    ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
         """
         Minimal default postprocessing implementation for classes which don't bring their own postprocess method.
         Just sets the parent and source property.
         """
         self.parent = parent
         try:
-            self.source = source or self.source
+            self.source: Optional[SigmaRuleLocation] = source or self.source
         except AttributeError:
             self.source = None
-        return self
+        return cast("ConditionItem", self)
 
 
 @dataclass
@@ -71,6 +72,7 @@ class ConditionItem(ParentChainMixin, ABC):
     )
     args: List[
         Union[
+            "ConditionIdentifier",
             "ConditionItem",
             "ConditionFieldEqualsValueExpression",
             "ConditionValueExpression",
@@ -79,17 +81,19 @@ class ConditionItem(ParentChainMixin, ABC):
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list]) -> List["ConditionItem"]:
+    def from_parsed(
+        cls, s: str, l: int, t: Union[ParseResults, List["ConditionItem"]]
+    ) -> List["ConditionItem"]:
         """Create condition object from parse result"""
         if cls.arg_count == 1:
             if cls.token_list:
                 args = [t[0]]
-            else:
+            elif isinstance(t, ParseResults):
                 args = [t[0][-1]]
         elif cls.arg_count > 1:
             if cls.token_list:
                 args = t[0::2]
-            else:
+            elif isinstance(t, ParseResults):
                 args = t[0][0::2]
         else:  # pragma: no cover
             args = list()  # this case can only happen if broken classes are defined
@@ -100,7 +104,7 @@ class ConditionItem(ParentChainMixin, ABC):
         detections: "sigma.rule.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "ConditionItem":
+    ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
         """
         Postprocess condition parse tree after initial parsing. In this stage the detections
         are available, this allows to resolve references to detections into concrete conditions.
@@ -144,11 +148,12 @@ class ConditionNOT(ConditionItem):
 
 @dataclass
 class ConditionIdentifier(ConditionItem):
+    args: List[str]  # type: ignore
     arg_count: ClassVar[int] = 1
     token_list: ClassVar[bool] = True
     identifier: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.identifier = self.args[0]
 
     def postprocess(
@@ -171,12 +176,13 @@ class ConditionIdentifier(ConditionItem):
 
 @dataclass
 class ConditionSelector(ConditionItem):
+    args: List[str]  # type: ignore
     arg_count: ClassVar[int] = 2
     token_list: ClassVar[bool] = True
-    cond_class: Union[ConditionAND, ConditionOR] = field(init=False)
+    cond_class: Union[type[ConditionAND], type[ConditionOR]] = field(init=False)
     pattern: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.args[0] in ["1", "any"]:
             self.cond_class = ConditionOR
         elif self.args[0] == "all":
@@ -185,7 +191,9 @@ class ConditionSelector(ConditionItem):
             raise SigmaConditionError("Invalid quantifier in selector", source=self.source)
         self.pattern = self.args[1]
 
-    def resolve_referenced_detections(self, detections: "sigma.rule.SigmaDetections") -> List[str]:
+    def resolve_referenced_detections(
+        self, detections: "sigma.rule.SigmaDetections"
+    ) -> List[ConditionIdentifier]:
         """
         Resolve all detection identifiers referenced by the selector.
         """
@@ -205,12 +213,24 @@ class ConditionSelector(ConditionItem):
         detections: "sigma.rule.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> Union[ConditionAND, ConditionOR]:
+    ) -> Union[ConditionItem, "ConditionFieldEqualsValueExpression", "ConditionValueExpression"]:
         """Converts selector into an AND or OR condition"""
         self.parent = parent
 
         ids = self.resolve_referenced_detections(detections)
-        cond = self.cond_class(ids)
+        cond = self.cond_class(
+            cast(
+                List[
+                    Union[
+                        ConditionIdentifier,
+                        ConditionItem,
+                        ConditionFieldEqualsValueExpression,
+                        ConditionValueExpression,
+                    ]
+                ],
+                ids,
+            )
+        )
         return cond.postprocess(detections, parent, source)
 
 
@@ -254,7 +274,9 @@ class SigmaCondition(ProcessingItemTrackingMixin):
     detections: "sigma.rule.SigmaDetections"
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
-    def parse(self, postprocess: bool = True):
+    def parse(
+        self, postprocess: bool = True
+    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression]:
         """
         Parse condition and return parse tree (no postprocessing) or condition tree (postprocessed).
 
@@ -268,7 +290,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
                 "The pipe syntax in Sigma conditions has been deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax."
             )
         try:
-            parsed = condition.parseString(self.condition, parse_all=True)[0]
+            parsed = cast(ConditionItem, condition.parseString(self.condition, parse_all=True)[0])
             if postprocess:
                 return parsed.postprocess(self.detections, source=self.source)
             else:
@@ -277,7 +299,9 @@ class SigmaCondition(ProcessingItemTrackingMixin):
             raise SigmaConditionError(str(e), source=self.source)
 
     @property
-    def parsed(self):
+    def parsed(
+        self, postprocess: bool = True
+    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression]:
         """
         Parse on first access on parsed condition tree.
 

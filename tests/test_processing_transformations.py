@@ -61,6 +61,7 @@ from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, Sigma
 from sigma.types import (
     Placeholder,
     SigmaBool,
+    SigmaExpansion,
     SigmaNull,
     SigmaNumber,
     SigmaQueryExpression,
@@ -1796,6 +1797,27 @@ def test_convert_type_transformation_num_to_num():
 def test_convert_type_transformation_str_to_num_no_number():
     transformation = ConvertTypeTransformation("num")
     detection_item = SigmaDetectionItem("field", [], [SigmaString("abc")])
+    with pytest.raises(SigmaValueError, match="can't be converted to number"):
+        transformation.apply_detection_item(detection_item)
+
+
+def test_convert_type_transformation_expansion_num_to_str():
+    transformation = ConvertTypeTransformation("str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaExpansion(values=[SigmaNumber(123)])])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaExpansion(values=[SigmaString("123")])
+
+
+def test_convert_type_transformation_expansion_str_to_num():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaExpansion(values=[SigmaString("123")])])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaExpansion(values=[SigmaNumber(123)])
+
+
+def test_convert_type_transformation_expansion_str_to_num_no_number():
+    transformation = ConvertTypeTransformation("num")
+    detection_item = SigmaDetectionItem("field", [], [SigmaExpansion(values=[SigmaString("abc")])])
     with pytest.raises(SigmaValueError, match="can't be converted to number"):
         transformation.apply_detection_item(detection_item)
 

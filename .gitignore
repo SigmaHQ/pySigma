@@ -7,3 +7,4 @@ docs/_build
 coverage.xml
 .python-version
 .idea
+.venv

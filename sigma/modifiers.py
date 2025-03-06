@@ -365,7 +365,7 @@ class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
 
 
 class SigmaNotEqualModifier(SigmaCompareModifier):
-    """Numeric greater than or equal (>=) matching."""
+    """Numeric not equal (!=) matching."""
 
     op: ClassVar[CompareOperators] = CompareOperators.NEQ
 

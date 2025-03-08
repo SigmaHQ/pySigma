@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, List, Type
+from typing import Any, Dict, Optional, List
 from uuid import UUID
 from enum import Enum, auto
 import sigma.exceptions as sigma_exceptions
@@ -128,7 +128,7 @@ class SigmaRelatedItem:
         try:
             id = UUID(value["id"])
         except ValueError:
-            raise sigma_exceptions.SigmaRelatedError(f"Sigma related identifier must be an UUID")
+            raise sigma_exceptions.SigmaRelatedError("Sigma related identifier must be an UUID")
 
         try:
             type = SigmaRelatedType[value["type"].upper()]
@@ -153,9 +153,9 @@ class SigmaRelated:
 
         list_ret: List[SigmaRelatedItem] = []
         for v in val:
-            if not "id" in v.keys():
+            if "id" not in v.keys():
                 raise sigma_exceptions.SigmaRelatedError("Sigma related must have an id field")
-            elif not "type" in v.keys():
+            elif "type" not in v.keys():
                 raise sigma_exceptions.SigmaRelatedError("Sigma related must have a type field")
             else:
                 list_ret.append(SigmaRelatedItem.from_dict(v))  # should rise the SigmaRelatedError

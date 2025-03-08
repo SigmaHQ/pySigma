@@ -6,7 +6,6 @@ import re
 from sigma.correlations import (
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
-    SigmaCorrelationFieldAlias,
     SigmaCorrelationFieldAliases,
     SigmaCorrelationRule,
     SigmaCorrelationTimespan,
@@ -18,7 +17,6 @@ from sigma.correlations import (
 from sigma.exceptions import (
     ExceptionOnUsage,
     SigmaBackendError,
-    SigmaConfigurationError,
     SigmaConversionError,
     SigmaError,
     SigmaValueError,
@@ -26,7 +24,6 @@ from sigma.exceptions import (
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import (
     Iterator,
-    Never,
     Pattern,
     Union,
     ClassVar,
@@ -48,7 +45,6 @@ from sigma.conditions import (
     ConditionNOT,
     ConditionFieldEqualsValueExpression,
     ConditionValueExpression,
-    ConditionType,
 )
 from sigma.types import (
     CompareOperators,
@@ -1466,7 +1462,7 @@ class TextQueryBackend(Backend):
         def is_parent_not(
             cond: Union[
                 ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression
-            ]
+            ],
         ) -> bool:
             if cond.parent is None:
                 return False

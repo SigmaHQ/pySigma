@@ -422,6 +422,13 @@ def test_correlation_condition():
     assert cond.count == 10
 
 
+def test_correlation_neq_condition():
+    cond = SigmaCorrelationCondition.from_dict({"neq": 10})
+    assert isinstance(cond, SigmaCorrelationCondition)
+    assert cond.op == SigmaCorrelationConditionOperator.NEQ
+    assert cond.count == 10
+
+
 def test_correlation_condition_with_field():
     cond = SigmaCorrelationCondition.from_dict({"field": "test", "gte": 10})
     assert isinstance(cond, SigmaCorrelationCondition)

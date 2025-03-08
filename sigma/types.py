@@ -883,6 +883,7 @@ class CompareOperators(Enum):
     LTE = auto()  # <=
     GT = auto()  # >
     GTE = auto()  # >=
+    NEQ = auto()  # !=
 
 
 @dataclass

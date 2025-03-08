@@ -21,6 +21,7 @@ from sigma.modifiers import (
     SigmaLessThanEqualModifier,
     SigmaGreaterThanModifier,
     SigmaGreaterThanEqualModifier,
+    SigmaNotEqualModifier,
     SigmaExpandModifier,
     SigmaWindowsDashModifier,
     SigmaTimestampMinuteModifier,
@@ -417,6 +418,12 @@ def test_gte(dummy_detection_item):
     assert SigmaGreaterThanEqualModifier(dummy_detection_item, []).modify(
         SigmaNumber(123)
     ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.GTE)
+
+
+def test_nqe(dummy_detection_item):
+    assert SigmaNotEqualModifier(dummy_detection_item, []).modify(
+        SigmaNumber(123)
+    ) == SigmaCompareExpression(SigmaNumber(123), CompareOperators.NEQ)
 
 
 def test_fieldref(dummy_detection_item):

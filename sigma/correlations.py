@@ -50,6 +50,7 @@ class SigmaCorrelationConditionOperator(Enum):
     GT = auto()
     GTE = auto()
     EQ = auto()
+    NEQ = auto()
 
     @classmethod
     def operators(cls):

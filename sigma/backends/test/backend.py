@@ -67,6 +67,7 @@ class TextQueryTestBackend(TextQueryBackend):
         CompareOperators.LTE: "<=",
         CompareOperators.GT: ">",
         CompareOperators.GTE: ">=",
+        CompareOperators.NEQ: "!=",
     }
 
     field_equals_field_expression: ClassVar[str] = "{field1}=fieldref({field2})"

@@ -364,6 +364,12 @@ class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     op: ClassVar[CompareOperators] = CompareOperators.GTE
 
 
+class SigmaNotEqualModifier(SigmaCompareModifier):
+    """Numeric not equal (!=) matching."""
+
+    op: ClassVar[CompareOperators] = CompareOperators.NEQ
+
+
 class SigmaFieldReferenceModifier(SigmaValueModifier):
     """Modifiers a plain string into the field reference type."""
 

@@ -69,7 +69,6 @@ special_char_mapping = {v: k for k, v in char_mapping.items()}
 class SigmaType(ABC):
     """Base class for Sigma value types"""
 
-    @abstractmethod
     def __init__(self, dummy: Any) -> None:
         pass
 

@@ -1126,6 +1126,7 @@ class TextQueryBackend(Backend):
         SigmaCorrelationConditionOperator.GT: ">",
         SigmaCorrelationConditionOperator.GTE: ">=",
         SigmaCorrelationConditionOperator.EQ: "==",
+        SigmaCorrelationConditionOperator.NEQ: "!=",
     }
 
     def __new__(cls, *args, **kwargs):

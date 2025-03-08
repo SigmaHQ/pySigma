@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, Iterable
+from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union
 
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
@@ -72,7 +72,7 @@ class SigmaCorrelationCondition:
         ops = frozenset(SigmaCorrelationConditionOperator.operators())
         if len(d_keys.intersection(ops)) != 1:
             raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"Sigma correlation condition must have exactly one condition item", source=source
+                "Sigma correlation condition must have exactly one condition item", source=source
             )
         unknown_keys = d_keys.difference(ops).difference({"field"})
         if unknown_keys:
@@ -268,7 +268,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         else:  # no correlation type provided
             errors.append(
                 sigma_exceptions.SigmaCorrelationTypeError(
-                    f"Sigma correlation rule without type", source=source
+                    "Sigma correlation rule without type", source=source
                 )
             )
 
@@ -282,13 +282,13 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             else:
                 errors.append(
                     sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Rule reference must be plain string or list.", source=source
+                        "Rule reference must be plain string or list.", source=source
                     )
                 )
         else:
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(
-                    f"Sigma correlation rule without rule references", source=source
+                    "Sigma correlation rule without rule references", source=source
                 )
             )
 
@@ -298,7 +298,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             if not isinstance(generate, bool):
                 errors.append(
                     sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Sigma correlation generate definition must be a boolean", source=source
+                        "Sigma correlation generate definition must be a boolean", source=source
                     )
                 )
         else:
@@ -314,7 +314,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             else:
                 errors.append(
                     sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Sigma correlation group-by definition must be string or list",
+                        "Sigma correlation group-by definition must be string or list",
                         source=source,
                     )
                 )
@@ -329,7 +329,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         else:
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(
-                    f"Sigma correlation rule without timespan", source=source
+                    "Sigma correlation rule without timespan", source=source
                 )
             )
 
@@ -341,7 +341,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             else:
                 errors.append(
                     sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Sigma correlation aliases definition must be a dict", source=source
+                        "Sigma correlation aliases definition must be a dict", source=source
                     )
                 )
         else:
@@ -355,7 +355,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             else:
                 errors.append(
                     sigma_exceptions.SigmaCorrelationRuleError(
-                        f"Sigma correlation condition definition must be a dict", source=source
+                        "Sigma correlation condition definition must be a dict", source=source
                     )
                 )
         elif correlation_type not in (
@@ -364,7 +364,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         ):
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(
-                    f"Non-temporal Sigma correlation rule without condition", source=source
+                    "Non-temporal Sigma correlation rule without condition", source=source
                 )
             )
         elif correlation_type in (

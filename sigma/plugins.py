@@ -333,7 +333,7 @@ class SigmaPlugin:
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "-qqq", "show", self.package])
             return True
-        except:
+        except Exception:
             return False
 
     def has_capability(self, capability: SigmaPluginCapability) -> bool:

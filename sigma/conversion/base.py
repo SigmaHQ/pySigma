@@ -182,18 +182,17 @@ class Backend(ABC):
         processing.
         """
         rule_collection.resolve_rule_references()
-        queries = []
-        for rule in rule_collection.rules:
-            if isinstance(rule, SigmaRule):
-                for query in self.convert_rule(rule, output_format or self.default_format):
-                    queries.append(query)
-            elif isinstance(rule, SigmaCorrelationRule):
-                for query in self.convert_correlation_rule(
+        queries = [
+            query
+            for rule in rule_collection.rules
+            for query in (
+                self.convert_rule(rule, output_format or self.default_format)
+                if isinstance(rule, SigmaRule)
+                else self.convert_correlation_rule(
                     rule, output_format or self.default_format, correlation_method
-                ):
-                    queries.append(query)
-            else:
-                raise TypeError(f"Unexpected rule type: {type(rule)}")
+                )
+            )
+        ]
         return self.finalize(queries, output_format or self.default_format)
 
     def convert_rule(self, rule: SigmaRule, output_format: Optional[str] = None) -> List[Any]:

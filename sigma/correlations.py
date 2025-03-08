@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, Iterable
+
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
@@ -32,9 +33,9 @@ class SigmaRuleReference:
     """
 
     reference: str
-    rule: SigmaRule = field(init=False, repr=False, compare=False)
+    rule: Union[SigmaRule, "SigmaCorrelationRule"] = field(init=False, repr=False, compare=False)
 
-    def resolve(self, rule_collection: "sigma.collection.SigmaCollection"):
+    def resolve(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
         """
         Resolves the reference to the actual Sigma rule.
 
@@ -52,7 +53,7 @@ class SigmaCorrelationConditionOperator(Enum):
     EQ = auto()
 
     @classmethod
-    def operators(cls):
+    def operators(cls) -> Set[str]:
         return {op.name.lower() for op in cls}
 
 
@@ -65,7 +66,7 @@ class SigmaCorrelationCondition:
 
     @classmethod
     def from_dict(
-        cls, d: dict, source: Optional[SigmaRuleLocation] = None
+        cls, d: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaCorrelationCondition":
         d_keys = frozenset(d.keys())
         ops = frozenset(SigmaCorrelationConditionOperator.operators())
@@ -81,7 +82,6 @@ class SigmaCorrelationCondition:
             )
 
         # Condition operator and count
-        cond_op = None
         for (
             op
         ) in (
@@ -105,7 +105,7 @@ class SigmaCorrelationCondition:
 
         return cls(op=cond_op, count=cond_count, fieldref=cond_field, source=source)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         if not self.fieldref:
             return {self.op.name.lower(): self.count}
         return {self.op.name.lower(): self.count, "field": self.fieldref}
@@ -118,7 +118,7 @@ class SigmaCorrelationTimespan:
     count: int = field(init=False)
     unit: str = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Parses a string representing a time span and stores the equivalent number of seconds.
 
@@ -156,7 +156,7 @@ class SigmaCorrelationFieldAlias:
     alias: str
     mapping: Dict[SigmaRuleReference, str]
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
         """
         Resolves all rule references in the mapping property to actual Sigma rules.
 
@@ -171,14 +171,14 @@ class SigmaCorrelationFieldAlias:
 class SigmaCorrelationFieldAliases:
     aliases: Dict[str, SigmaCorrelationFieldAlias] = field(default_factory=dict)
 
-    def __iter__(self):
+    def __iter__(self) -> Iterator[SigmaCorrelationFieldAlias]:
         return iter(self.aliases.values())
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.aliases)
 
     @classmethod
-    def from_dict(cls, d: dict):
+    def from_dict(cls, d: Dict[str, Any]) -> "SigmaCorrelationFieldAliases":
         aliases = {}
         for alias, mapping in d.items():
             if not isinstance(mapping, dict):
@@ -196,7 +196,7 @@ class SigmaCorrelationFieldAliases:
 
         return cls(aliases=aliases)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             alias: {
                 rule_ref.reference: field_name for rule_ref, field_name in alias_def.mapping.items()
@@ -204,7 +204,7 @@ class SigmaCorrelationFieldAliases:
             for alias, alias_def in self.aliases.items()
         }
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
         """
         Resolves all rule references in the aliases property to actual Sigma rules.
 
@@ -217,16 +217,20 @@ class SigmaCorrelationFieldAliases:
 
 @dataclass
 class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
-    type: SigmaCorrelationType = None
+    type: SigmaCorrelationType = SigmaCorrelationType.EVENT_COUNT
     rules: List[SigmaRuleReference] = field(default_factory=list)
     generate: bool = field(default=False)
-    timespan: SigmaCorrelationTimespan = field(default_factory=SigmaCorrelationTimespan)
+    timespan: SigmaCorrelationTimespan = field(
+        default_factory=lambda: SigmaCorrelationTimespan("1m")
+    )
     group_by: Optional[List[str]] = None
     aliases: SigmaCorrelationFieldAliases = field(default_factory=SigmaCorrelationFieldAliases)
-    condition: SigmaCorrelationCondition = None
+    condition: SigmaCorrelationCondition = field(
+        default_factory=lambda: SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 1)
+    )
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         if (
             self.type not in {SigmaCorrelationType.TEMPORAL, SigmaCorrelationType.TEMPORAL_ORDERED}

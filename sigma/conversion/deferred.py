@@ -35,7 +35,7 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
     conversion_state: "sigma.backends.state.ConversionState"
     negated: bool = field(init=False, default=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Deferred expression automatically adds itself to conversion state."""
         self.conversion_state.add_deferred_expression(self)
 
@@ -69,7 +69,7 @@ class DeferredTextQueryExpression(DeferredQueryExpression):
     operators: ClassVar[Dict[bool, str]]
     default_field: ClassVar[Optional[str]]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         if self.field is None and self.default_field is not None:
             self.field = self.default_field

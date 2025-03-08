@@ -115,7 +115,7 @@ def test_filter_valid(sigma_filter):
 
 
 def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
-    rule_collection.rules += [sigma_filter]
+    rule_collection.apply_filters([sigma_filter])
 
     assert test_backend.convert(rule_collection) == [
         '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
@@ -125,7 +125,7 @@ def test_basic_filter_application(sigma_filter, test_backend, rule_collection):
 def test_basic_filter_application_against_correlation_rule(
     sigma_filter, test_backend, event_count_correlation_rule
 ):
-    event_count_correlation_rule.rules += [sigma_filter]
+    event_count_correlation_rule.apply_filters([sigma_filter])
 
     assert test_backend.convert(event_count_correlation_rule) == [
         'EventID=4625 and not User startswith "adm_"\n'
@@ -140,7 +140,8 @@ def test_filter_application_to_several_rules(sigma_filter, test_backend, rule_co
     rule_copy.id = uuid.UUID("257f7780-ea6c-48d4-ae8e-2b95b3740d84")
     sigma_filter.filter.rules.append(SigmaRuleReference(str(rule_copy.id)))
 
-    rule_collection.rules.extend([rule_copy, sigma_filter])
+    rule_collection.rules.append(rule_copy)
+    rule_collection.apply_filters([sigma_filter])
 
     assert (
         test_backend.convert(rule_collection)
@@ -148,19 +149,8 @@ def test_filter_application_to_several_rules(sigma_filter, test_backend, rule_co
     )
 
 
-def test_reducing_rule_collections(sigma_filter, test_backend, rule_collection):
-    rule_collection.rules += [sigma_filter]
-
-    assert len(rule_collection.rules) == 2
-
-    # Applies / Flattens all the filters onto the rules in processing
-    rule_collection.resolve_rule_references()
-
-    assert len(rule_collection.rules) == 1
-
-
 def test_filter_with_field_mapping_against_it(sigma_filter, test_backend, rule_collection):
-    rule_collection.rules += [sigma_filter]
+    rule_collection.apply_filters([sigma_filter])
 
     # Field Mapping
     test_backend.processing_pipeline.items.append(
@@ -182,7 +172,8 @@ def test_filter_sigma_collection_from_files(test_backend):
         [Path("tests/files/rule_valid"), Path("tests/files/filter_valid")]
     )
 
-    assert len(rule_collection.rules) == 2
+    assert len(rule_collection.rules) == 1
+    assert len(rule_collection.filters) == 1
 
     assert test_backend.convert(rule_collection) == [
         'EventID=1234 and not ComputerName startswith "DC-"'
@@ -198,7 +189,8 @@ def test_filter_sigma_collection_from_files_duplicated(test_backend):
         ]
     )
 
-    assert len(rule_collection.rules) == 3
+    assert len(rule_collection.rules) == 1
+    assert len(rule_collection.filters) == 2
 
     assert test_backend.convert(rule_collection) == [
         'EventID=1234 and not ComputerName startswith "DC-" and not ComputerName startswith "DC-"'
@@ -216,9 +208,9 @@ def test_filter_sigma_collection_from_ruleset(sigma_filter, test_backend):
         {**sigma_filter.to_dict(), **{"logsource": {"category": "test"}}}
     )
     sigma_filter.filter.rules.append(SigmaRuleReference("5d8fd9da-6916-45ef-8d4d-3fa9d19d1a64"))
-    rule_collection.rules += [sigma_filter]
+    rule_collection.apply_filters([sigma_filter])
 
-    assert len(rule_collection.rules) == 7
+    assert len(rule_collection.rules) == 6
 
     assert test_backend.convert(rule_collection) == [
         'mappedA="value1" and mappedB="value2" and not User startswith "adm_"\n'
@@ -240,15 +232,15 @@ def test_filter_sigma_collection_from_ruleset(sigma_filter, test_backend):
 
 def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
     # Change the rule id to something else
-    rule_collection.rules += [sigma_filter]
     rule_collection.rules[0].id = "invalid-id"
+    rule_collection.apply_filters([sigma_filter])
 
     assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
 
 
 def test_no_rules_section(sigma_filter, test_backend, rule_collection):
-    rule_collection.rules += [sigma_filter]
-    rule_collection.rules[1].filter.rules = None
+    sigma_filter.filter.rules = None
+    rule_collection.apply_filters([sigma_filter])
 
     assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
 

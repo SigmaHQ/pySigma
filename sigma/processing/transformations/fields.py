@@ -7,7 +7,6 @@ from typing import (
     Callable,
 )
 from dataclasses import dataclass, field
-import sigma
 from sigma.processing.transformations.base import (
     FieldMappingTransformationBase,
     Transformation,

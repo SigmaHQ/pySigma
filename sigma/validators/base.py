@@ -1,9 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-import re
-from typing import ClassVar, Dict, List, Optional, Set, Type
-import sigma
+from typing import ClassVar, List, Optional, Set, Type
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
@@ -39,12 +37,12 @@ class SigmaValidationIssue(ABC):
     severity: ClassVar[SigmaValidationIssueSeverity]
     rules: List[SigmaRuleBase]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensure that `self.rules` contains a list, even when a single rule was provided."""
         if isinstance(self.rules, SigmaRuleBase):
             self.rules = [self.rules]
 
-    def __str__(self):
+    def __str__(self) -> str:
         rules = ", ".join(
             [
                 str(rule.source) if rule.source is not None else str(rule.id) or rule.title
@@ -80,6 +78,7 @@ class SigmaRuleValidator(ABC):
         :rtype: List[SigmaValidationIssue]
         """
         self.rule = rule
+        return []
 
     def finalize(self) -> List[SigmaValidationIssue]:
         """

@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-import sigma
 from sigma.processing.conditions.base import FieldNameProcessingCondition
 from typing import List, Pattern, Literal, Optional
 import re

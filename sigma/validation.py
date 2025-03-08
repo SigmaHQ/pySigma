@@ -132,7 +132,7 @@ class SigmaValidator:
         issues: List[SigmaValidationIssue] = []
         exclusions = self.exclusions[rule.id]
         for validator in self.validators:
-            if not validator.__class__ in exclusions:  # Skip if validator is excluded for this rule
+            if validator.__class__ not in exclusions:  # Skip if validator is excluded for this rule
                 issues.extend(validator.validate(rule))
         return issues
 

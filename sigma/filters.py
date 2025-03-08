@@ -3,7 +3,6 @@ import re
 import string
 from dataclasses import dataclass, field
 from typing import List, Optional, Union
-from uuid import UUID
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference

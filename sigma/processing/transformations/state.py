@@ -1,6 +1,5 @@
 from typing import Any
 from dataclasses import dataclass
-import sigma
 from sigma.processing.transformations.base import Transformation
 from sigma.rule import SigmaRule
 

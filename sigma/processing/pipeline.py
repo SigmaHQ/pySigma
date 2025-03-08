@@ -238,21 +238,6 @@ class ProcessingItemBase:
                     f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
                 )
 
-    def __post_init__(self):
-        self._check_conditions(
-            "rule_condition_expression",
-            "rule_condition_linking",
-            "rule_conditions",
-            RuleProcessingCondition,
-            "Rule condition",
-        )
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        self._resolve_condition_expression(
-            self.rule_condition_expression, self.rule_conditions, "Rule condition"
-        )
-
     def _resolve_condition_expression(
         self,
         expr: Optional[ConditionExpression],
@@ -351,21 +336,6 @@ class ProcessingItemBase:
                 raise SigmaTypeError(
                     f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
                 )
-
-    def __post_init__(self):
-        self._check_conditions(
-            "rule_condition_expression",
-            "rule_condition_linking",
-            "rule_conditions",
-            RuleProcessingCondition,
-            "Rule condition",
-        )
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        self._resolve_condition_expression(
-            self.rule_condition_expression, self.rule_conditions, "Rule condition"
-        )
 
     def _resolve_condition_expression(
         self,
@@ -516,7 +486,7 @@ class ProcessingItemBase:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
-            raise SigmaProcessingItemError(f"Pipeline for processing item was already set.")
+            raise SigmaProcessingItemError("Pipeline for processing item was already set.")
 
         self.transformation.set_pipeline(pipeline)
         for rule_condition in self.rule_conditions:
@@ -905,7 +875,7 @@ class ProcessingPipeline:
         try:
             parsed_pipeline = yaml.safe_load(processing_pipeline)
         except yaml.parser.ParserError as e:
-            raise SigmaPipelineParsingError(f"Error in parsing of a Sigma processing pipeline")
+            raise SigmaPipelineParsingError("Error in parsing of a Sigma processing pipeline")
         return cls.from_dict(parsed_pipeline)
 
     def apply(

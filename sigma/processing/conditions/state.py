@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.conditions.base import (
     DetectionItemProcessingCondition,

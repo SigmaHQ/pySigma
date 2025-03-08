@@ -11,7 +11,7 @@ from pyparsing import (
     ParseResults,
     ParseException,
 )
-from typing import ClassVar, List, Literal, Optional, Union, Type, cast
+from typing import ClassVar, List, Optional, Union, Type, cast
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma

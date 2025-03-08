@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Union
 
-import sigma
 from sigma.processing.conditions.base import (
     ValueProcessingCondition,
 )

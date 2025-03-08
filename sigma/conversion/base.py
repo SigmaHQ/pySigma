@@ -26,7 +26,6 @@ from sigma.exceptions import (
 from sigma.conversion.deferred import DeferredQueryExpression
 from typing import (
     Iterator,
-    Never,
     Pattern,
     Union,
     ClassVar,

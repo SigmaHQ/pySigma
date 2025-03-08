@@ -1,6 +1,6 @@
 from collections import defaultdict
 import re
-from typing import Any, ClassVar, Dict, List, Optional, Pattern, Tuple, cast
+from typing import Any, ClassVar, Dict, List, Optional, Pattern, cast
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
@@ -8,7 +8,7 @@ from sigma.pipelines.test import dummy_test_pipeline
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.rule.rule import SigmaRule
-from sigma.types import CompareOperators, SigmaCompareExpression
+from sigma.types import CompareOperators
 
 
 class TextQueryTestBackend(TextQueryBackend):

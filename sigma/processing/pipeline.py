@@ -238,21 +238,6 @@ class ProcessingItemBase:
                     f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
                 )
 
-    def __post_init__(self):
-        self._check_conditions(
-            "rule_condition_expression",
-            "rule_condition_linking",
-            "rule_conditions",
-            RuleProcessingCondition,
-            "Rule condition",
-        )
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        self._resolve_condition_expression(
-            self.rule_condition_expression, self.rule_conditions, "Rule condition"
-        )
-
     def _resolve_condition_expression(
         self,
         expr: Optional[ConditionExpression],
@@ -351,21 +336,6 @@ class ProcessingItemBase:
                 raise SigmaTypeError(
                     f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
                 )
-
-    def __post_init__(self):
-        self._check_conditions(
-            "rule_condition_expression",
-            "rule_condition_linking",
-            "rule_conditions",
-            RuleProcessingCondition,
-            "Rule condition",
-        )
-        self.transformation.set_processing_item(
-            self
-        )  # set processing item in transformation object after it is instantiated
-        self._resolve_condition_expression(
-            self.rule_condition_expression, self.rule_conditions, "Rule condition"
-        )
 
     def _resolve_condition_expression(
         self,

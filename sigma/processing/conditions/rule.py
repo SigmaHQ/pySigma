@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from uuid import UUID
 
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.conditions.base import (
     RuleDetectionItemCondition,
@@ -91,7 +90,7 @@ class RuleContainsDetectionItemCondition(RuleDetectionItemCondition):
                 detection.field is not None
                 and detection.field == self.field
                 and self.sigma_value
-                in [v for v in detection.value if type(self.sigma_value) == type(v)]
+                in [v for v in detection.value if isinstance(self.sigma_value, type(v))]
             ):
                 return True
         else:

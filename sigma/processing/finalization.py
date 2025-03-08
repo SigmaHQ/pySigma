@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-from typing import Any, Dict, List, Literal, Optional
+from typing import Any, Dict, List, Optional
 
 import yaml
 import sigma
@@ -107,7 +107,7 @@ class NestedFinalizer(Finalizer):
 
     @classmethod
     def from_dict(cls, d: Dict) -> "NestedFinalizer":
-        if not "finalizers" in d:
+        if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
         fs = []
         for finalizer in d["finalizers"]:

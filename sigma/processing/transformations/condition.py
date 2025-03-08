@@ -1,7 +1,5 @@
-from abc import abstractmethod
 from sigma.conditions import SigmaCondition
 from typing import (
-    Any,
     List,
     Dict,
     Optional,
@@ -10,7 +8,6 @@ from typing import (
 from dataclasses import dataclass, field
 import random
 import string
-import sigma
 from sigma.processing.transformations.base import (
     ConditionTransformation,
 )

@@ -1,11 +1,8 @@
 from abc import ABC, abstractmethod
-from functools import partial
 from sigma.conditions import SigmaCondition
 from typing import (
-    Any,
     Iterable,
     List,
-    Dict,
     Optional,
     Union,
 )
@@ -58,7 +55,7 @@ class Transformation(ABC):
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
-            raise SigmaTransformationError(f"Pipeline for transformation was already set.")
+            raise SigmaTransformationError("Pipeline for transformation was already set.")
 
     def _clear_pipeline(self) -> None:
         self._pipeline = None

@@ -1,13 +1,9 @@
-from abc import abstractmethod
 from typing import (
     Any,
-    List,
-    Dict,
     Optional,
     Union,
 )
 from dataclasses import dataclass, field
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
     Transformation,

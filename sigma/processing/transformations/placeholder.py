@@ -1,6 +1,5 @@
 from abc import abstractmethod
 from typing import (
-    Any,
     Iterable,
     List,
     Dict,
@@ -150,6 +149,6 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
                     return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)
             else:  # SigmaString contains placeholder as well as other parts
                 raise SigmaValueError(
-                    f"Placeholder query expression transformation only allows placeholder-only strings."
+                    "Placeholder query expression transformation only allows placeholder-only strings."
                 )
         return None

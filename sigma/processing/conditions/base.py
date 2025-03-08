@@ -13,7 +13,6 @@ from sigma.rule import (
 from sigma.exceptions import (
     SigmaConfigurationError,
     SigmaProcessingItemError,
-    SigmaRegularExpressionError,
 )
 
 
@@ -29,7 +28,7 @@ class ProcessingCondition(ABC):
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
-            raise SigmaProcessingItemError(f"Pipeline for condition was already set.")
+            raise SigmaProcessingItemError("Pipeline for condition was already set.")
 
     def _clear_pipeline(self) -> None:
         self._pipeline = None

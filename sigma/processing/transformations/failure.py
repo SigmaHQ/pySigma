@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-import sigma
 from sigma.processing.transformations.base import (
     DetectionItemTransformation,
     Transformation,

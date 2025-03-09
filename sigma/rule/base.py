@@ -75,7 +75,7 @@ class SigmaRuleBase:
                 pass
 
     @classmethod
-    def from_dict(
+    def from_dict_common_params(
         cls,
         rule: Dict[str, Any],
         collect_errors: bool = False,

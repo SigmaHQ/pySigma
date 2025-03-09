@@ -62,7 +62,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _base_args_from_dict(
-        cls, d: dict, transformations: Dict[str, Type[Transformation]]
+        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
     ) -> dict:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -176,7 +176,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _base_args_from_dict(
-        cls, d: dict, transformations: Dict[str, Type[Transformation]]
+        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
     ) -> dict:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -275,7 +275,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _base_args_from_dict(
-        cls, d: dict, transformations: Dict[str, Type[Transformation]]
+        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
     ) -> dict:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -416,7 +416,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _parse_condition_linking(
-        cls, d: dict, op_name: str
+        cls, d: Dict[str, Any], op_name: str
     ) -> Optional[Callable[[Iterable[bool]], bool]]:
         condition_linking = {
             "or": any,
@@ -426,7 +426,9 @@ class ProcessingItemBase:
         return condition_linking.get(d.get(op_name, None))
 
     @classmethod
-    def _instantiate_transformation(cls, d: dict, transformations: Dict[str, Type[Transformation]]):
+    def _instantiate_transformation(
+        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
+    ):
         try:
             transformation_class_name = d["type"]
         except KeyError:
@@ -525,7 +527,7 @@ class ProcessingItem(ProcessingItemBase):
     field_name_condition_expression: Optional[str] = None
 
     @classmethod
-    def from_dict(cls, d: dict):
+    def from_dict(cls, d: Dict[str, Any]):
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(d, transformations)
 
@@ -698,7 +700,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
     """
 
     @classmethod
-    def from_dict(cls, d: dict):
+    def from_dict(cls, d: Dict[str, Any]):
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(d, query_postprocessing_transformations)
         return cls(**kwargs)
@@ -797,7 +799,7 @@ class ProcessingPipeline:
             finalizer._pipeline = None
 
     @classmethod
-    def from_dict(cls, d: dict) -> "ProcessingPipeline":
+    def from_dict(cls, d: Dict[str, Any]) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
 
         custom_keys = [

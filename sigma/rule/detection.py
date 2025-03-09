@@ -1,5 +1,5 @@
 from dataclasses import InitVar, dataclass, field
-from typing import Dict, Optional, Union, Sequence, List, Mapping, Type
+from typing import Dict, Optional, Union, Sequence, List, Mapping, Type, Any
 import sigma
 from sigma.types import SigmaType, SigmaNull, SigmaString, sigma_type
 from sigma.modifiers import (
@@ -458,7 +458,7 @@ class SigmaDetections:
 
     @classmethod
     def from_dict(
-        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+        cls, detections: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaDetections":
         try:
             if isinstance(detections["condition"], list):

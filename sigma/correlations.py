@@ -196,7 +196,7 @@ class SigmaCorrelationFieldAliases:
 
         return cls(aliases=aliases)
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> Dict[str, Dict[str, str]]:
         return {
             alias: {
                 rule_ref.reference: field_name for rule_ref, field_name in alias_def.mapping.items()
@@ -247,11 +247,11 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     @classmethod
     def from_dict(
         cls,
-        rule: dict,
+        rule: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaCorrelationRule":
-        kwargs, errors = super().from_dict(rule, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
         correlation_rule = rule.get("correlation", dict())
 
         # Correlation type
@@ -390,23 +390,21 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             **kwargs,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
         dc = {
             "type": self.type.name.lower(),
             "rules": [rule.reference for rule in self.rules],
             "timespan": self.timespan.spec,
             "group-by": self.group_by,
+            "aliases": self.aliases.to_dict() if self.aliases is not None else None,
+            "condition": self.condition.to_dict() if self.condition is not None else None,
         }
-        if self.aliases is not None:
-            dc["aliases"] = self.aliases.to_dict()
-        if self.condition is not None:
-            dc["condition"] = self.condition.to_dict()
         d["correlation"] = dc
 
         return d
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
+    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
         """
         Resolves all rule references in the rules property to actual Sigma rules.
 

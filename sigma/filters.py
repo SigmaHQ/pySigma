@@ -2,7 +2,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
+from typing import Any, Dict, List, Optional, Union
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
@@ -22,7 +22,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+        cls, detections: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], str):
@@ -66,7 +66,7 @@ class SigmaGlobalFilter(SigmaDetections):
             source=source,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
         d.update(
             {
@@ -84,19 +84,21 @@ class SigmaFilter(SigmaRuleBase):
     """
 
     logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
-    filter: SigmaGlobalFilter = field(default_factory=SigmaGlobalFilter)
+    filter: SigmaGlobalFilter = field(
+        default_factory=lambda: SigmaGlobalFilter({}),
+    )
 
     @classmethod
     def from_dict(
         cls,
-        sigma_filter: dict,
+        sigma_filter: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
-        kwargs, errors = super().from_dict(sigma_filter, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(sigma_filter, collect_errors, source)
 
         # parse log source
         filter_logsource = None

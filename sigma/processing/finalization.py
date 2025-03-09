@@ -19,7 +19,7 @@ class Finalizer:
     )
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Finalizer":
+    def from_dict(cls, d: Dict[str, Any]) -> "Finalizer":
         try:
             return cls(**d)
         except TypeError as e:

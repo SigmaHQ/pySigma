@@ -1,6 +1,8 @@
 from abc import ABC, abstractmethod
 from sigma.conditions import SigmaCondition
 from typing import (
+    Any,
+    Dict,
     Iterable,
     List,
     Optional,
@@ -37,7 +39,7 @@ class Transformation(ABC):
     )
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Transformation":
+    def from_dict(cls, d: Dict[str, Any]) -> "Transformation":
         try:
             return cls(**d)
         except TypeError as e:

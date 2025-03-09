@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional
+from typing import Optional, Dict, Any
 from sigma.rule.base import SigmaRuleBase
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
@@ -23,7 +23,7 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     @classmethod
     def from_dict(
         cls,
-        rule: dict,
+        rule: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaRule":
@@ -33,7 +33,7 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         if collect_errors is set to False exceptions are collected in the errors property of the resulting
         SigmaRule object. Else the first recognized error is raised as exception.
         """
-        kwargs, errors = super().from_dict(rule, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
 
         # parse log source
         logsource = None

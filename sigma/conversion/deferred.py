@@ -32,7 +32,7 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
     The method finalize_expression must implement the generation of the query expression.
     """
 
-    conversion_state: "sigma.backends.state.ConversionState"
+    conversion_state: "sigma.conversion.state.ConversionState"
     negated: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:

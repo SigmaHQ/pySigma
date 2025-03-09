@@ -284,7 +284,7 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
         self.error = error
         super().__init__(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.error} in expression '{self.expression}' at location {self.location}"
 
 

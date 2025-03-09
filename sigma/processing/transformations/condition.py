@@ -25,7 +25,7 @@ class AddConditionTransformation(ConditionTransformation):
     * $category, $product and $service: with the corresponding values of the Sigma rule log source.
     """
 
-    conditions: Dict[str, Union[str, List[str]]] = field(default_factory=dict)
+    conditions: Dict[str, Union[int, str, List[str]]] = field(default_factory=dict)
     name: Optional[str] = field(default=None, compare=False)
     template: bool = False
     negated: bool = False

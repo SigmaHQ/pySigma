@@ -8,10 +8,10 @@ from sigma.processing.transformations import (
 
 
 @Pipeline
-def dummy_test_pipeline():
+def dummy_test_pipeline() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Test pipeline",
-        allowed_backends={"text_query_test"},
+        allowed_backends=frozenset({"text_query_test"}),
         items=[
             ProcessingItem(
                 FieldMappingTransformation(
@@ -24,10 +24,10 @@ def dummy_test_pipeline():
     )
 
 
-def another_test_pipeline():
+def another_test_pipeline() -> ProcessingPipeline:
     return ProcessingPipeline(
         name="Test pipeline",
-        allowed_backends={"another"},
+        allowed_backends=frozenset({"another"}),
         items=[
             ProcessingItem(
                 transformation=AddConditionTransformation(conditions={"EventID": 1}),
@@ -40,10 +40,10 @@ def another_test_pipeline():
 
 
 class YetAnotherTestPipeline(Pipeline):
-    def apply(self):
+    def apply(self) -> ProcessingPipeline:
         return ProcessingPipeline(
             name="Yet Another Test pipeline",
-            allowed_backends={"another"},
+            allowed_backends=frozenset({"another"}),
             items=[
                 ProcessingItem(
                     transformation=AddConditionTransformation(conditions={"EventID": 1}),

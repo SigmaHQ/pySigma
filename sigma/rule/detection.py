@@ -448,7 +448,7 @@ class SigmaDetections:
     condition: List[str]
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Detections sanity checks"""
         if self.detections == dict():
             raise sigma_exceptions.SigmaDetectionError(

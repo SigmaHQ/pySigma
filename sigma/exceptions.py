@@ -278,11 +278,19 @@ class SigmaDateError(SigmaError):
 class SigmaPipelineConditionError(SigmaConfigurationError):
     """Error in Sigma pipeline condition"""
 
-    def __init__(self, expression: str, location: int, error: str, *args, **kwargs):
+    def __init__(
+        self,
+        expression: str,
+        location: int,
+        error: str,
+        *args: Any,
+        source: Optional[SigmaRuleLocation] = None,
+        **kwargs: Dict[str, Any],
+    ):
         self.expression = expression
         self.location = location
         self.error = error
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
     def __str__(self) -> str:
         return f"{self.error} in expression '{self.expression}' at location {self.location}"

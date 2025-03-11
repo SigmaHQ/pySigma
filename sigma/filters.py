@@ -85,7 +85,7 @@ class SigmaFilter(SigmaRuleBase):
 
     logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
     filter: SigmaGlobalFilter = field(
-        default_factory=lambda: SigmaGlobalFilter({}),
+        default_factory=lambda: SigmaGlobalFilter({}, []),
     )
 
     @classmethod
@@ -101,7 +101,6 @@ class SigmaFilter(SigmaRuleBase):
         kwargs, errors = super().from_dict_common_params(sigma_filter, collect_errors, source)
 
         # parse log source
-        filter_logsource = None
         try:
             filter_logsource = SigmaLogSource.from_dict(sigma_filter["logsource"], source)
         except KeyError:
@@ -120,7 +119,6 @@ class SigmaFilter(SigmaRuleBase):
             errors.append(e)
 
         # parse detections
-        filter_global_filter = None
         try:
             filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source)
         except KeyError:
@@ -148,7 +146,7 @@ class SigmaFilter(SigmaRuleBase):
             **kwargs,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert filter object into dict."""
         d = super().to_dict()
         d.update(
@@ -163,7 +161,7 @@ class SigmaFilter(SigmaRuleBase):
     def _should_apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
         from sigma.collection import SigmaCollection
 
-        if not self.filter.rules:
+        if not self.filter.rules or isinstance(rule, SigmaCorrelationRule):
             return False
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
@@ -186,7 +184,7 @@ class SigmaFilter(SigmaRuleBase):
     def apply_on_rule(
         self, rule: Union[SigmaRule, SigmaCorrelationRule]
     ) -> Union[SigmaRule, SigmaCorrelationRule]:
-        if not self._should_apply_on_rule(rule):
+        if not self._should_apply_on_rule(rule) or isinstance(rule, SigmaCorrelationRule):
             return rule
 
         filter_condition = self.filter.condition[0]
@@ -201,8 +199,8 @@ class SigmaFilter(SigmaRuleBase):
             )
             rule.detection.detections[cond_name] = condition
 
-        for i, condition in enumerate(rule.detection.condition):
-            rule.detection.condition[i] = f"({condition}) and " + f"({filter_condition})"
+        for i, condition_str in enumerate(rule.detection.condition):
+            rule.detection.condition[i] = f"({condition_str}) and " + f"({filter_condition})"
 
         # Reparse the rule to update the parsed conditions
         rule.detection.__post_init__()

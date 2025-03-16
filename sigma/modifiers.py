@@ -10,6 +10,8 @@ from typing import (
     get_origin,
     get_args,
     get_type_hints,
+    Generic,
+    TypeVar,
 )
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
@@ -37,9 +39,12 @@ from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
 
+T = TypeVar("T", bound=SigmaType)
+R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
+
 
 ### Base Classes ###
-class SigmaModifier(ABC):
+class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
     detection_item: "sigma.rule.SigmaDetectionItem"
@@ -73,7 +78,7 @@ class SigmaModifier(ABC):
         return False
 
     @abstractmethod
-    def modify(self, val: Union[SigmaType, List[SigmaType]]) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
     def apply(self, val: Union[SigmaType, List[SigmaType]]) -> List[SigmaType]:
@@ -98,24 +103,29 @@ class SigmaModifier(ABC):
                 return [r]
 
 
-class SigmaValueModifier(SigmaModifier):
+class SigmaValueModifier(SigmaModifier[T, R]):
     """Base class for all modifiers that handle each value for the modifier scope separately"""
 
     @abstractmethod
-    def modify(self, val: SigmaType) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
 
-class SigmaListModifier(SigmaModifier):
+class SigmaListModifier(SigmaModifier[List[T], R]):
     """Base class for all modifiers that handle all values for the modifier scope as a whole."""
 
     @abstractmethod
-    def modify(self, val: List[SigmaType]) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: List[T]) -> R:
         """This method should be overridden with the modifier implementation."""
 
 
 ### Modifier Implementations ###
-class SigmaContainsModifier(SigmaValueModifier):
+class SigmaContainsModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts wildcards around a string to match it somewhere inside another string instead of as a whole."""
 
     def modify(
@@ -138,7 +148,12 @@ class SigmaContainsModifier(SigmaValueModifier):
         return val
 
 
-class SigmaStartswithModifier(SigmaValueModifier):
+class SigmaStartswithModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts a wildcard at the end of a string to match arbitrary values after the given prefix."""
 
     def modify(
@@ -156,7 +171,12 @@ class SigmaStartswithModifier(SigmaValueModifier):
         return val
 
 
-class SigmaEndswithModifier(SigmaValueModifier):
+class SigmaEndswithModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts a wildcard before a string to match arbitrary values before it."""
 
     def modify(
@@ -174,7 +194,7 @@ class SigmaEndswithModifier(SigmaValueModifier):
         return val
 
 
-class SigmaBase64Modifier(SigmaValueModifier):
+class SigmaBase64Modifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as Base64 value."""
 
     def modify(self, val: SigmaString) -> SigmaString:
@@ -186,7 +206,7 @@ class SigmaBase64Modifier(SigmaValueModifier):
         return SigmaString(b64encode(bytes(val)).decode())
 
 
-class SigmaBase64OffsetModifier(SigmaValueModifier):
+class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     """
     Encode string as Base64 value with different offsets to match it at different locations in
     encoded form.
@@ -213,7 +233,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
         )
 
 
-class SigmaWideModifier(SigmaValueModifier):
+class SigmaWideModifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as wide string (UTF-16LE)."""
 
     def modify(self, val: SigmaString) -> SigmaString:
@@ -237,7 +257,7 @@ class SigmaWideModifier(SigmaValueModifier):
         return s
 
 
-class SigmaWindowsDashModifier(SigmaValueModifier):
+class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     """
     Expand parameter characters / and - that are often interchangeable in Windows into the other
     form if it appears between word boundaries. E.g. in -param-name the first dash will be expanded
@@ -262,7 +282,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
         )
 
 
-class SigmaRegularExpressionModifier(SigmaValueModifier):
+class SigmaRegularExpressionModifier(SigmaValueModifier[SigmaString, SigmaRegularExpression]):
     """Treats string value as (case-sensitive) regular expression."""
 
     def modify(self, val: SigmaString) -> SigmaRegularExpression:
@@ -274,7 +294,9 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
         return SigmaRegularExpression(val.original)
 
 
-class SigmaRegularExpressionFlagModifier(SigmaValueModifier):
+class SigmaRegularExpressionFlagModifier(
+    SigmaValueModifier[SigmaRegularExpression, SigmaRegularExpression]
+):
     """Generic base class for setting a regular expression flag including checks"""
 
     flag: ClassVar[SigmaRegularExpressionFlag]
@@ -302,12 +324,12 @@ class SigmaRegularExpressionDotAllFlagModifier(SigmaRegularExpressionFlagModifie
     flag: ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.DOTALL
 
 
-class SigmaCaseSensitiveModifier(SigmaValueModifier):
+class SigmaCaseSensitiveModifier(SigmaValueModifier[SigmaString, SigmaCasedString]):
     def modify(self, val: SigmaString) -> SigmaCasedString:
         return SigmaCasedString.from_sigma_string(val)
 
 
-class SigmaCIDRModifier(SigmaValueModifier):
+class SigmaCIDRModifier(SigmaValueModifier[SigmaString, SigmaCIDRExpression]):
     """Treat value as IP (v4 or v6) CIDR network."""
 
     def modify(self, val: SigmaString) -> SigmaCIDRExpression:
@@ -319,7 +341,7 @@ class SigmaCIDRModifier(SigmaValueModifier):
         return SigmaCIDRExpression(str(val), source=self.source)
 
 
-class SigmaAllModifier(SigmaListModifier):
+class SigmaAllModifier(SigmaListModifier[SigmaType, List[SigmaType]]):
     """Match all values of a list instead of any pf them."""
 
     def modify(self, val: List[SigmaType]) -> List[SigmaType]:
@@ -327,7 +349,7 @@ class SigmaAllModifier(SigmaListModifier):
         return val
 
 
-class SigmaCompareModifier(SigmaValueModifier):
+class SigmaCompareModifier(SigmaValueModifier[SigmaNumber, SigmaCompareExpression]):
     """Base class for numeric comparison operator modifiers."""
 
     op: ClassVar[CompareOperators]
@@ -360,7 +382,7 @@ class SigmaGreaterThanEqualModifier(SigmaCompareModifier):
     op: ClassVar[CompareOperators] = CompareOperators.GTE
 
 
-class SigmaFieldReferenceModifier(SigmaValueModifier):
+class SigmaFieldReferenceModifier(SigmaValueModifier[SigmaString, SigmaFieldReference]):
     """Modifiers a plain string into the field reference type."""
 
     def modify(self, val: SigmaString) -> SigmaFieldReference:
@@ -369,7 +391,7 @@ class SigmaFieldReferenceModifier(SigmaValueModifier):
         return SigmaFieldReference(val.to_plain())
 
 
-class SigmaExistsModifier(SigmaValueModifier):
+class SigmaExistsModifier(SigmaValueModifier[SigmaBool, SigmaExists]):
     """Modifies to check if the field name provided as value exists in the matched event."""
 
     def modify(self, val: SigmaBool) -> SigmaExists:
@@ -383,7 +405,7 @@ class SigmaExistsModifier(SigmaValueModifier):
         return SigmaExists(val.boolean)
 
 
-class SigmaExpandModifier(SigmaValueModifier):
+class SigmaExpandModifier(SigmaValueModifier[SigmaString, SigmaString]):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
     with stub objects that are later expanded to one or multiple strings or replaced with some SIEM
@@ -394,7 +416,7 @@ class SigmaExpandModifier(SigmaValueModifier):
         return val.insert_placeholders()
 
 
-class SigmaTimestampMinuteModifier(SigmaValueModifier):
+class SigmaTimestampMinuteModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the minute number. Between 0 and 59.
     """
@@ -403,7 +425,7 @@ class SigmaTimestampMinuteModifier(SigmaValueModifier):
         return SigmaTimestampPart(TimestampPart.MINUTE, val.number)
 
 
-class SigmaTimestampHourModifier(SigmaValueModifier):
+class SigmaTimestampHourModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the hour number. Between 0 and 23.
     """
@@ -412,7 +434,7 @@ class SigmaTimestampHourModifier(SigmaValueModifier):
         return SigmaTimestampPart(TimestampPart.HOUR, val.number)
 
 
-class SigmaTimestampDayModifier(SigmaValueModifier):
+class SigmaTimestampDayModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the day of the month number. Between 1 and 31.
     """
@@ -421,7 +443,7 @@ class SigmaTimestampDayModifier(SigmaValueModifier):
         return SigmaTimestampPart(TimestampPart.DAY, val.number)
 
 
-class SigmaTimestampWeekModifier(SigmaValueModifier):
+class SigmaTimestampWeekModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the week of the year number. Between 1 and 52.
     """
@@ -430,7 +452,7 @@ class SigmaTimestampWeekModifier(SigmaValueModifier):
         return SigmaTimestampPart(TimestampPart.WEEK, val.number)
 
 
-class SigmaTimestampMonthModifier(SigmaValueModifier):
+class SigmaTimestampMonthModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the month of the year number. Between 1 and 12.
     """
@@ -439,7 +461,7 @@ class SigmaTimestampMonthModifier(SigmaValueModifier):
         return SigmaTimestampPart(TimestampPart.MONTH, val.number)
 
 
-class SigmaTimestampYearModifier(SigmaValueModifier):
+class SigmaTimestampYearModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the year number.
     """

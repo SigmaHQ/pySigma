@@ -114,8 +114,8 @@ def test_typecheck_sequence(dummy_list_modifier):
     assert dummy_list_modifier.type_check([SigmaString("foobar")])
 
 
-def test_typecheck_sequence_wrong(dummy_sequence_modifier):
-    assert not dummy_sequence_modifier.type_check([SigmaNumber(123)])
+def test_typecheck_sequence_wrong(dummy_list_modifier):
+    assert not dummy_list_modifier.type_check([SigmaNumber(123)])
 
 
 def test_contains_nowildcards(dummy_detection_item):

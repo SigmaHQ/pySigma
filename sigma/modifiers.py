@@ -5,7 +5,6 @@ from typing import (
     Optional,
     Union,
     List,
-    Sequence,
     Dict,
     Type,
     get_origin,
@@ -56,7 +55,7 @@ class SigmaModifier(ABC):
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(self, val: Union[SigmaType, Sequence[SigmaType]], explicit_type=None) -> bool:
+    def type_check(self, val: Union[SigmaType, List[SigmaType]], explicit_type=None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
@@ -68,17 +67,16 @@ class SigmaModifier(ABC):
                 if isinstance(val, t):
                     return True
             return False
-        elif to is SequenceABC:  # type hint is sequence
+        elif to is list:  # type hint is sequence
             inner_type = get_args(th)[0]
             return all([self.type_check(item, explicit_type=inner_type) for item in val])
+        return False
 
     @abstractmethod
-    def modify(
-        self, val: Union[SigmaType, Sequence[SigmaType]]
-    ) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: Union[SigmaType, List[SigmaType]]) -> Union[SigmaType, List[SigmaType]]:
         """This method should be overridden with the modifier implementation."""
 
-    def apply(self, val: Union[SigmaType, Sequence[SigmaType]]) -> List[SigmaType]:
+    def apply(self, val: Union[SigmaType, List[SigmaType]]) -> List[SigmaType]:
         """
         Modifier entry point containing the default operations:
         * Type checking
@@ -112,7 +110,7 @@ class SigmaListModifier(SigmaModifier):
     """Base class for all modifiers that handle all values for the modifier scope as a whole."""
 
     @abstractmethod
-    def modify(self, val: Sequence[SigmaType]) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: List[SigmaType]) -> Union[SigmaType, List[SigmaType]]:
         """This method should be overridden with the modifier implementation."""
 
 
@@ -324,7 +322,7 @@ class SigmaCIDRModifier(SigmaValueModifier):
 class SigmaAllModifier(SigmaListModifier):
     """Match all values of a list instead of any pf them."""
 
-    def modify(self, val: Sequence[SigmaType]) -> List[SigmaType]:
+    def modify(self, val: List[SigmaType]) -> List[SigmaType]:
         self.detection_item.value_linking = ConditionAND
         return val
 

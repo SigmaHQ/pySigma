@@ -48,19 +48,19 @@ class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
     detection_item: "sigma.rule.SigmaDetectionItem"
-    applied_modifiers: List["SigmaModifier"]
+    applied_modifiers: List["SigmaModifier[T, R]"]
 
     def __init__(
         self,
         detection_item: "sigma.rule.SigmaDetectionItem",
-        applied_modifiers: List["SigmaModifier"],
+        applied_modifiers: List["SigmaModifier[T, R]"],
         source: Optional[SigmaRuleLocation] = None,
     ):
         self.detection_item = detection_item
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(self, val: Union[SigmaType, List[SigmaType]], explicit_type=None) -> bool:
+    def type_check(self, val: T, explicit_type: Optional[Type[T]] = None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
@@ -72,7 +72,7 @@ class SigmaModifier(ABC, Generic[T, R]):
                 if isinstance(val, t):
                     return True
             return False
-        elif to is list:  # type hint is sequence
+        elif to is list and isinstance(val, list):  # type hint is sequence
             inner_type = get_args(th)[0]
             return all([self.type_check(item, explicit_type=inner_type) for item in val])
         return False
@@ -81,7 +81,7 @@ class SigmaModifier(ABC, Generic[T, R]):
     def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
-    def apply(self, val: Union[SigmaType, List[SigmaType]]) -> List[SigmaType]:
+    def apply(self, val: T) -> List[T]:
         """
         Modifier entry point containing the default operations:
         * Type checking
@@ -416,62 +416,67 @@ class SigmaExpandModifier(SigmaValueModifier[SigmaString, SigmaString]):
         return val.insert_placeholders()
 
 
-class SigmaTimestampMinuteModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+    """
+    Base class for timestamp modifiers that parse the field as a datetime/timestamp and transform it to a specific part.
+    """
+
+    time_part_unit: ClassVar[TimestampPart]
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(self.time_part_unit, int(val.number))
+
+
+class SigmaTimestampMinuteModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the minute number. Between 0 and 59.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.MINUTE, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.MINUTE
 
 
-class SigmaTimestampHourModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampHourModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the hour number. Between 0 and 23.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.HOUR, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.HOUR
 
 
-class SigmaTimestampDayModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampDayModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the day of the month number. Between 1 and 31.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.DAY, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.DAY
 
 
-class SigmaTimestampWeekModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampWeekModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the week of the year number. Between 1 and 52.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.WEEK, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.WEEK
 
 
-class SigmaTimestampMonthModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampMonthModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the month of the year number. Between 1 and 12.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.MONTH, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.MONTH
 
 
-class SigmaTimestampYearModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+class SigmaTimestampYearModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the year number.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.YEAR, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.YEAR
 
 
 # Mapping from modifier identifier strings to modifier classes
-modifier_mapping: Dict[str, Type[SigmaModifier]] = {
+modifier_mapping: Dict[str, Type[SigmaModifier[T, R]]] = {
     "all": SigmaAllModifier,
     "base64": SigmaBase64Modifier,
     "base64offset": SigmaBase64OffsetModifier,

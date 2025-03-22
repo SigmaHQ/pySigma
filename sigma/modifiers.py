@@ -1,12 +1,15 @@
 from abc import ABC, abstractmethod
 import re
 from typing import (
+    Any,
     ClassVar,
+    Generator,
     Optional,
     Union,
     List,
     Dict,
     Type,
+    cast,
     get_origin,
     get_args,
     get_type_hints,
@@ -39,7 +42,7 @@ from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
 
-T = TypeVar("T", bound=SigmaType)
+T = TypeVar("T", bound=Union[SigmaType, List[SigmaType]])
 R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
 
 
@@ -89,7 +92,14 @@ class SigmaModifier(ABC, Generic[T, R]):
         * Handle values of SigmaExpansion objects separately.
         """
         if isinstance(val, SigmaExpansion):  # Handle each SigmaExpansion item separately
-            return [SigmaExpansion([va for v in val.values for va in self.apply(v)])]
+            return [
+                cast(
+                    T,
+                    SigmaExpansion(
+                        [cast(SigmaType, va) for v in val.values for va in self.apply(cast(T, v))]
+                    ),
+                )
+            ]
         else:
             if not self.type_check(val):
                 raise SigmaTypeError(
@@ -100,7 +110,7 @@ class SigmaModifier(ABC, Generic[T, R]):
             if isinstance(r, List):
                 return r
             else:
-                return [r]
+                return [cast(T, r)]
 
 
 class SigmaValueModifier(SigmaModifier[T, R]):
@@ -111,11 +121,11 @@ class SigmaValueModifier(SigmaModifier[T, R]):
         """This method should be overridden with the modifier implementation."""
 
 
-class SigmaListModifier(SigmaModifier[List[T], R]):
+class SigmaListModifier(SigmaModifier[T, R]):
     """Base class for all modifiers that handle all values for the modifier scope as a whole."""
 
     @abstractmethod
-    def modify(self, val: List[T]) -> R:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
 
@@ -269,15 +279,18 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     horizontal_bar = chr(int("2015", 16))
 
     def modify(self, val: SigmaString) -> SigmaExpansion:
-        def callback(p: Placeholder):
+        def callback(p: Placeholder) -> Generator[Union[str, Placeholder], None, None]:
             if p.name == "_windash":
                 yield from ("-", "/", self.en_dash, self.em_dash, self.horizontal_bar)
             else:
                 yield p
 
         return SigmaExpansion(
-            val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash").replace_placeholders(
-                callback
+            cast(
+                List[SigmaType],
+                val.replace_with_placeholder(
+                    re.compile("\\B[-/]\\b"), "_windash"
+                ).replace_placeholders(callback),
             )
         )
 
@@ -341,10 +354,10 @@ class SigmaCIDRModifier(SigmaValueModifier[SigmaString, SigmaCIDRExpression]):
         return SigmaCIDRExpression(str(val), source=self.source)
 
 
-class SigmaAllModifier(SigmaListModifier[SigmaType, List[SigmaType]]):
+class SigmaAllModifier(SigmaListModifier[SigmaType, SigmaType]):
     """Match all values of a list instead of any pf them."""
 
-    def modify(self, val: List[SigmaType]) -> List[SigmaType]:
+    def modify(self, val: SigmaType) -> SigmaType:
         self.detection_item.value_linking = ConditionAND
         return val
 
@@ -476,7 +489,7 @@ class SigmaTimestampYearModifier(SigmaTimestampModifier):
 
 
 # Mapping from modifier identifier strings to modifier classes
-modifier_mapping: Dict[str, Type[SigmaModifier[T, R]]] = {
+modifier_mapping: Dict[str, Type[SigmaModifier[Any, Any]]] = {
     "all": SigmaAllModifier,
     "base64": SigmaBase64Modifier,
     "base64offset": SigmaBase64OffsetModifier,

@@ -67,6 +67,8 @@ class SigmaModifier(ABC, Generic[T, R]):
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
+        if th is Any:
+            return True
         to = get_origin(th)  # get possible generic type of type hint
         if to is None:  # Plain type in annotation
             return isinstance(val, th)
@@ -354,10 +356,10 @@ class SigmaCIDRModifier(SigmaValueModifier[SigmaString, SigmaCIDRExpression]):
         return SigmaCIDRExpression(str(val), source=self.source)
 
 
-class SigmaAllModifier(SigmaListModifier[SigmaType, SigmaType]):
+class SigmaAllModifier(SigmaListModifier[Any, Any]):
     """Match all values of a list instead of any pf them."""
 
-    def modify(self, val: SigmaType) -> SigmaType:
+    def modify(self, val: Any) -> Any:
         self.detection_item.value_linking = ConditionAND
         return val
 

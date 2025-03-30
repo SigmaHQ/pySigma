@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Type
 
 import yaml
 import sigma
@@ -68,7 +68,7 @@ class YAMLFinalizer(Finalizer):
     indent: Optional[int] = None
 
     def apply(self, queries: List[Any]) -> str:
-        yaml.safe_dump(queries, indent=self.indent)
+        return yaml.safe_dump(queries, indent=self.indent)
 
 
 @dataclass
@@ -95,7 +95,7 @@ class NestedFinalizer(Finalizer):
 
     finalizers: List[Finalizer]
     _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
-        init=False, compare=False, default=None
+        init=False, compare=False
     )
 
     def __post_init__(self) -> None:
@@ -106,7 +106,7 @@ class NestedFinalizer(Finalizer):
         self._nested_pipeline = ProcessingPipeline(finalizers=self.finalizers)
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "NestedFinalizer":
+    def from_dict(cls, d: Dict[str, Any]) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
         fs = []
@@ -122,7 +122,7 @@ class NestedFinalizer(Finalizer):
         return self._nested_pipeline.finalize(queries)
 
 
-finalizers: Dict[str, Finalizer] = {
+finalizers: Dict[str, Type[Finalizer]] = {
     "concat": ConcatenateQueriesFinalizer,
     "json": JSONFinalizer,
     "yaml": YAMLFinalizer,

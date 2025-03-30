@@ -124,3 +124,36 @@ def test_pipeline_condition_expression_match_field_name(detection_item):
 def test_pipeline_condition_expression_invalid():
     with pytest.raises(SigmaPipelineConditionError, match="Error parsing"):
         parse_condition_expression("cond1 and", {})
+
+
+def test_pipeline_condition_expression_identifier_invalid_match_type():
+    conditions = {
+        "cond1": FieldNameConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression, conditions)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_identifier_invalid_detection_item_type():
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression, conditions)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match_detection_item(detection_item)
+
+
+def test_pipeline_condition_expression_identifier_invalid_field_name_type():
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression, conditions)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match_field_name("test")

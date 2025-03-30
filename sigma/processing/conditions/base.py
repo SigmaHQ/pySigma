@@ -24,7 +24,7 @@ class ProcessingCondition(ABC):
         init=False, compare=False, default=None
     )
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline"):
+    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
@@ -55,7 +55,7 @@ class FieldNameProcessingCondition(ProcessingCondition, ABC):
     """
 
     @abstractmethod
-    def match_field_name(self, field: str) -> bool:
+    def match_field_name(self, field: Optional[str]) -> bool:
         "The method match is called for each field name and must return a bool result."
 
     def match_detection_item(
@@ -130,7 +130,7 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
 
     cond: Literal["any", "all"]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.cond == "any":
             self.match_func = any
         elif self.cond == "all":

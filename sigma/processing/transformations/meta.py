@@ -22,7 +22,7 @@ class NestedProcessingTransformation(Transformation):
         init=False, compare=False, repr=False
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
             ProcessingItem,

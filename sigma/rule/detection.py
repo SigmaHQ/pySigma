@@ -50,7 +50,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     )  # Copy of original values for conversion back to data structures (and YAML/JSON)
     auto_modifiers: InitVar[bool] = True
 
-    def __post_init__(self, auto_modifiers):
+    def __post_init__(self, auto_modifiers) -> None:
         if not isinstance(self.value, list):  # value cleanup: it has to be a list!
             self.value = [self.value]
         self.value = [  # value cleanup: convert plain values into SigmaType's
@@ -262,7 +262,7 @@ class SigmaDetection(ParentChainMixin):
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     item_linking: Union[Type[ConditionAND], Type[ConditionOR]] = field(default=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Check detection validity."""
         if len(self.detection_items) == 0:
             raise sigma_exceptions.SigmaDetectionError("Detection is empty", source=self.source)

@@ -229,7 +229,7 @@ class ValueTransformation(DetectionItemTransformation):
     empty list should be returned by apply_value to drop the value from the transformed results.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         argtypes = list(
             self.apply_value.__annotations__.values()
         )  # get type annotations of apply_value method

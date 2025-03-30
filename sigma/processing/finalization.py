@@ -98,7 +98,7 @@ class NestedFinalizer(Finalizer):
         init=False, compare=False, default=None
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
         )  # TODO: move to top after restructuring code.

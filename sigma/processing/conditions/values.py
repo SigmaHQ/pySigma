@@ -20,7 +20,7 @@ class MatchStringCondition(ValueProcessingCondition):
     pattern: str
     negate: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         try:
             self.re = re.compile(self.pattern)

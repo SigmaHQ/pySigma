@@ -30,7 +30,7 @@ class AddConditionTransformation(ConditionTransformation):
     template: bool = False
     negated: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.name is None:  # generate random detection item name if none is given
             self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
 

@@ -124,7 +124,7 @@ class ProcessingItemBase:
                     f"{name} '{str(condition)}' is not a {expected_condition_class.__name__}"
                 )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self._check_conditions(
             "rule_condition_expression",
             "rule_condition_linking",
@@ -572,7 +572,7 @@ class ProcessingItem(ProcessingItemBase):
 
         return cls(**kwargs)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         self._check_conditions(
             "detection_item_condition_expression",
@@ -765,7 +765,7 @@ class ProcessingPipeline:
         init=False, compare=False, default_factory=dict
     )  # pipeline state: allows to set variables that can be used in conversion (e.g. indices, data model names etc.)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if not all((isinstance(item, ProcessingItem) for item in self.items)):
             raise TypeError(
                 "Each item in a processing pipeline must be a ProcessingItem - don't use processing classes directly!"

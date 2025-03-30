@@ -26,7 +26,7 @@ class PlaceholderIncludeExcludeMixin:
     include: Optional[List[str]] = field(default=None)
     exclude: Optional[List[str]] = field(default=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         if self.include is not None and self.exclude is not None:
             raise SigmaConfigurationError(
@@ -49,7 +49,7 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
     later transformations.
     """
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
 
     def apply_value(

@@ -42,7 +42,7 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
     prefix: Optional[str] = None
     suffix: Optional[str] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.prefix = self.prefix or ""
         self.suffix = self.suffix or ""
 
@@ -112,7 +112,7 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
         else:
             return v
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.parsed_json = json.loads(self.json_template)
 
     def apply(self, rule: SigmaRule, query: str):
@@ -127,7 +127,7 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     pattern: str
     replacement: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.re = re.compile(self.pattern)
 
     def apply(self, rule: SigmaRule, query: str):
@@ -144,7 +144,7 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
         init=False, compare=False, default=None
     )
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
         )  # TODO: move to top-level after restructuring code

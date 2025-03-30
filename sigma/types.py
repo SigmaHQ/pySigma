@@ -71,6 +71,9 @@ class SigmaType(ABC):
     def __init__(self, dummy: Any) -> None:
         pass
 
+    def __eq__(self, other: Any) -> bool:
+        return False
+
     def to_plain(self) -> Any:
         """
         Return plain Python value (str, int etc.) from SigmaType instance for usage in conversion of

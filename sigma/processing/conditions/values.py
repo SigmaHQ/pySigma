@@ -31,7 +31,7 @@ class MatchStringCondition(ValueProcessingCondition):
 
     def match_value(self, value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
-            result = self.re.match(str(value))
+            result = bool(self.re.match(str(value)))
         else:
             result = False
 

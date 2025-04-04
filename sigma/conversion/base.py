@@ -223,8 +223,6 @@ class Backend(ABC):
                     )
                     for index, query in enumerate(queries)
                 ]
-                if not rule._backreferences
-                else queries
             )
             rule.set_conversion_result(finalized_queries)
             rule.set_conversion_states(states)

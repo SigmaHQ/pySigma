@@ -465,7 +465,7 @@ def test_correlation_query_postprocessing(event_count_correlation_rule):
         )
     )
     assert test_backend.convert(event_count_correlation_rule) == [
-        """[ EventID=4625
+        """[ [ EventID=4625 ]
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, fieldB
 | where event_count >= 10 ]"""
     ]

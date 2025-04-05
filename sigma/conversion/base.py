@@ -51,6 +51,8 @@ from sigma.types import (
     SigmaQueryExpression,
     SigmaCIDRExpression,
     SpecialChars,
+    SigmaTimestampPart,
+    TimestampPart,
 )
 from sigma.conversion.state import ConversionState
 
@@ -331,6 +333,12 @@ class Backend(ABC):
         """Conversion of field = number value expressions"""
 
     @abstractmethod
+    def convert_condition_field_eq_val_timestamp_part(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Any:
+        """Conversion of field = timestamp part value expressions"""
+
+    @abstractmethod
     def convert_condition_field_eq_val_bool(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Any:
@@ -428,6 +436,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val_str_case_sensitive(cond, state)
         elif isinstance(cond.value, SigmaString):
             return self.convert_condition_field_eq_val_str(cond, state)
+        elif isinstance(cond.value, SigmaTimestampPart):
+            return self.convert_condition_field_eq_val_timestamp_part(cond, state)
         elif isinstance(cond.value, SigmaNumber):
             return self.convert_condition_field_eq_val_num(cond, state)
         elif isinstance(cond.value, SigmaBool):
@@ -467,6 +477,12 @@ class Backend(ABC):
         """Conversion of number-only conditions."""
 
     @abstractmethod
+    def convert_condition_val_timestamp_part(
+        self, cond: ConditionValueExpression, state: ConversionState
+    ) -> Any:
+        """Conversion of timestamp part-only conditions."""
+
+    @abstractmethod
     def convert_condition_val_re(
         self, cond: ConditionValueExpression, state: ConversionState
     ) -> Any:
@@ -482,6 +498,8 @@ class Backend(ABC):
         """Conversion of value-only conditions."""
         if isinstance(cond.value, SigmaString):
             return self.convert_condition_val_str(cond, state)
+        elif isinstance(cond.value, SigmaTimestampPart):
+            return self.convert_condition_val_timestamp_part(cond, state)
         elif isinstance(cond.value, SigmaNumber):
             return self.convert_condition_val_num(cond, state)
         elif isinstance(cond.value, SigmaBool):
@@ -873,6 +891,12 @@ class TextQueryBackend(Backend):
     field_equals_field_expression: ClassVar[Optional[str]] = (
         None  # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
     )
+    field_timestamp_part_expression: ClassVar[Optional[str]] = None
+    """Expression for timestamp part modifiers like |minute, |day, etc."""
+
+    timestamp_part_mapping: ClassVar[Optional[dict[TimestampPart, str]]] = None
+    """Mapping to map a TimestampPart enum value to it's string representation of the target SIEM. Example value: '%M' for minute."""
+
     field_equals_field_escaping_quoting: Tuple[bool, bool] = (
         True,
         True,
@@ -1437,6 +1461,29 @@ class TextQueryBackend(Backend):
                 "Field equals numeric value expressions are not supported by the backend."
             )
 
+    def convert_condition_field_eq_val_timestamp_part(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> Any:
+        """Conversion of field = timestamp part value expressions"""
+        try:
+            if isinstance(cond.value, SigmaTimestampPart):
+                return (
+                    self.field_timestamp_part_expression.format(
+                        field=self.escape_and_quote_field(cond.field),
+                        timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part],
+                    )
+                    + self.eq_token
+                    + str(cond.value)
+                )
+            else:
+                raise ValueError(
+                    f"Wrong type for cond.value. Expected SigmaTimestampPart, got {type(cond.value)}"
+                )
+        except TypeError as e:  # pragma: no cover
+            raise NotImplementedError(
+                f"Field equals numeric value expressions are not supported by the backend: {e}"
+            )
+
     def convert_condition_field_eq_val_bool(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
@@ -1604,6 +1651,19 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of value-only numbers."""
         return self.unbound_value_num_expression.format(value=cond.value)
+
+    def convert_condition_val_timestamp_part(
+        self, cond: ConditionValueExpression, state: ConversionState
+    ) -> Union[str, DeferredQueryExpression]:
+        """Conversion of timestamp part numbers."""
+        return (
+            self.field_timestamp_part_expression.format(
+                field=self.escape_and_quote_field(cond.field),
+                timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part],
+            )
+            + self.eq_token
+            + str(cond.value)
+        )
 
     def convert_condition_val_re(
         self, cond: ConditionValueExpression, state: ConversionState

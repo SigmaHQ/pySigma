@@ -35,6 +35,17 @@ class SpecialChars(Enum):
     WILDCARD_SINGLE = auto()
 
 
+class TimestampPart(Enum):
+    """Enumeration of supported datetime parts for a SigmaTimestamp object"""
+
+    MINUTE = auto()
+    HOUR = auto()
+    DAY = auto()
+    WEEK = auto()
+    MONTH = auto()
+    YEAR = auto()
+
+
 @dataclass
 class Placeholder:
     """
@@ -619,6 +630,15 @@ class SigmaNumber(SigmaType):
             return self.number == other
         else:
             return self.number == other.number
+
+
+class SigmaTimestampPart(SigmaNumber):
+
+    timestamp_part: TimestampPart
+
+    def __init__(self, timestamp_part: TimestampPart, number: int):
+        self.timestamp_part = timestamp_part
+        super().__init__(number)
 
 
 @dataclass

@@ -63,7 +63,7 @@ class ProcessingItemBase:
     @classmethod
     def _base_args_from_dict(
         cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
         rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
@@ -177,7 +177,7 @@ class ProcessingItemBase:
     @classmethod
     def _base_args_from_dict(
         cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
         rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
@@ -276,7 +276,7 @@ class ProcessingItemBase:
     @classmethod
     def _base_args_from_dict(
         cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
-    ) -> dict:
+    ) -> Dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
         rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))

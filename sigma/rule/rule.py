@@ -77,7 +77,7 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             **kwargs,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert rule object into dict."""
         d = super().to_dict()
         d.update(

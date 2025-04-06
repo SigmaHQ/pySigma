@@ -55,7 +55,7 @@ class SigmaLogSource:
             custom_attributes if len(custom_attributes) > 0 else None,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             field.name: str(value)
             for field in dataclasses.fields(self)

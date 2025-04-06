@@ -480,7 +480,7 @@ class SigmaDetections:
             source=source,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         detections = {
             identifier: detection.to_plain() for identifier, detection in self.detections.items()
         }

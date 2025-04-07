@@ -133,6 +133,9 @@ class Backend(ABC):
     collect_errors: bool = False
     errors: List[Tuple[SigmaRule, SigmaError]]
 
+    # query finalization: select queries to be finalized
+    finalize_correlation_subqueries = False
+
     # in-expressions
     convert_or_as_in: ClassVar[bool] = False  # Convert OR as in-expression
     convert_and_as_in: ClassVar[bool] = False  # Convert AND as in-expression
@@ -223,6 +226,8 @@ class Backend(ABC):
                     )
                     for index, query in enumerate(queries)
                 ]
+                if self.finalize_correlation_subqueries or not rule._backreferences
+                else queries
             )
             rule.set_conversion_result(finalized_queries)
             rule.set_conversion_states(states)

@@ -133,7 +133,7 @@ class Backend(ABC):
     collect_errors: bool = False
     errors: List[Tuple[SigmaRule, SigmaError]]
 
-    # query finalization: select queries to be finalized
+    # Perform finalization on all queries used in a correl
     finalize_correlation_subqueries = False
 
     # in-expressions

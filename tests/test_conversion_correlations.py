@@ -470,7 +470,8 @@ def test_correlation_query_postprocessing(event_count_correlation_rule):
 | where event_count >= 10 ]"""
     ]
 
-def test_correlation_subqueries_finalization(monkeypatch,event_count_correlation_rule):
+
+def test_correlation_subqueries_finalization(monkeypatch, event_count_correlation_rule):
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             postprocessing_items=[

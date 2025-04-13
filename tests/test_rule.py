@@ -622,6 +622,32 @@ def test_sigmadetections_fromdict_no_condition():
         )
 
 
+def test_sigmadetections_empty_condition_list():
+    with pytest.raises(
+        sigma_exceptions.SigmaConditionError, match="at least one condition.*test.yml"
+    ):
+        SigmaDetections(
+            detections={
+                "selection": SigmaDetection([SigmaDetectionItem("key", [], [SigmaString("value")])])
+            },
+            condition=[],
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmadetections_none_condition():
+    with pytest.raises(
+        sigma_exceptions.SigmaConditionError, match="at least one condition.*test.yml"
+    ):
+        SigmaDetections(
+            detections={
+                "selection": SigmaDetection([SigmaDetectionItem("key", [], [SigmaString("value")])])
+            },
+            condition=None,
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
 def test_detectionitem_all_modified_key_plain_values_postprocess():
     """
     Test if postprocessed condition result of an all-modified field-bound value list results in an

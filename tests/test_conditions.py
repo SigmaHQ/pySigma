@@ -45,7 +45,7 @@ def sigma_simple_detections():
                 ]
             ),
         },
-        list(),
+        condition=["any of them"],
     )
 
 
@@ -142,7 +142,7 @@ def sigma_detections():
                 ]
             ),
         },
-        list(),
+        condition=["any of them"],
     )
 
 
@@ -156,7 +156,7 @@ def sigma_invalid_detections():
                 ]
             ),
         },
-        list(),
+        condition=["any of them"],
     )
 
 
@@ -180,7 +180,7 @@ def sigma_underscore_detections():
                 ]
             ),
         },
-        list(),
+        condition=["any of them"],
     )
 
 

@@ -454,6 +454,10 @@ class SigmaDetections:
             raise sigma_exceptions.SigmaDetectionError(
                 "No detections defined in Sigma rule", source=self.source
             )
+        if self.condition == [] or self.condition is None:
+            raise sigma_exceptions.SigmaConditionError(
+                "Sigma rule must contain at least one condition", source=self.source
+            )
         self.parsed_condition = [SigmaCondition(cond, self, self.source) for cond in self.condition]
 
     @classmethod

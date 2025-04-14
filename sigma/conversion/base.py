@@ -1104,6 +1104,16 @@ class TextQueryBackend(Backend):
     # Groupy by expression in the case that no fields were provided in the correlation rule:
     groupby_expression_nofield: ClassVar[Optional[Dict[str, str]]] = None
 
+    # The following class variables defined the templates for the correlation fields expression, which are collecetd from 
+    # referenced rules and then appended to the correlation rule.
+    # First an expression frame is definied:
+    correlation_fields_expression: ClassVar[Optional[Dict[str, str]]] = None
+    # This expression only contains the {fields} placeholder that is replaced by the result of
+    # correlation_fields_field_expression for each group by field joined by correlation_fields_field_expression_joiner. The expression template
+    # itself can only contain a {field} placeholder for a single field name.
+    correlation_fields_field_expression: ClassVar[Optional[Dict[str, str]]] = None
+    correlation_fields_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+
     ## Correlation query condition phase
     # The final correlation query phase adds a final filter that filters the aggregated events
     # according to the given conditions. The following class variables define the templates for the
@@ -2005,13 +2015,40 @@ class TextQueryBackend(Backend):
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.rules, method),
             field=rule.condition.fieldref,
+            fields=self.convert_correlation_aggregation_fields_from_template(rule.rules, rule.group_by, method),
             timespan=self.convert_timespan(rule.timespan, method),
             groupby=self.convert_correlation_aggregation_groupby_from_template(
                 rule.group_by, method
             ),
             search=search,
         )
+    def convert_correlation_aggregation_fields_from_template(
+        self, referenced_rules: List[SigmaRuleReference], group_by: Optional[List[str]], method:str    
+    ):
+        if self.correlation_fields_expression is None:
+            return ""
+        else:
+            referenced_rules_fields = set()
+            for rl in referenced_rules:
+                for fld in rl.rule.fields:
+                    # excluding fields handled by group by
+                    if fld not in group_by:
+                        referenced_rules_fields.add(fld)
+            
+            if not len(referenced_rules_fields): # if no additional fields
+                return ""
+            return self.correlation_fields_expression[method].format(
+                fields=self.correlation_fields_field_expression_joiner[method].join(
+                    (
+                        self.correlation_fields_field_expression[method].format(
+                            field=self.escape_and_quote_field(field)
+                        )
+                        for field in referenced_rules_fields
+                    )
+                )
+            )
 
+        
     def convert_correlation_aggregation_groupby_from_template(
         self, group_by: Optional[List[str]], method: str
     ) -> str:

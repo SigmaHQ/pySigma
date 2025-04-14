@@ -2133,12 +2133,13 @@ class TextQueryBackend(Backend):
         if self.correlation_fields_expression is None:
             return ""
         else:
-            referenced_rules_fields = set()
+            referenced_rules_fields = []
             for rl in referenced_rules:
                 for fld in rl.rule.fields:
+                    
                     # excluding fields handled by group by
-                    if fld not in group_by:
-                        referenced_rules_fields.add(fld)
+                    if fld not in group_by and fld not in referenced_rules_fields:
+                        referenced_rules_fields.append(fld)
 
             if not len(referenced_rules_fields):  # if no additional fields
                 return ""

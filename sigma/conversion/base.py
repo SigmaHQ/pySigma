@@ -126,8 +126,8 @@ class Backend(ABC):
     processing_pipeline: ProcessingPipeline
     last_processing_pipeline: ProcessingPipeline
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline()
-    output_format_processing_pipeline: ClassVar[Dict[str, ProcessingPipeline]] = (
-        defaultdict(ProcessingPipeline)
+    output_format_processing_pipeline: ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(
+        ProcessingPipeline
     )
     default_format: ClassVar[str] = "default"
     collect_errors: bool = False
@@ -185,9 +185,7 @@ class Backend(ABC):
         ]
         return self.finalize(queries, output_format or self.default_format)
 
-    def convert_rule(
-        self, rule: SigmaRule, output_format: Optional[str] = None
-    ) -> List[Any]:
+    def convert_rule(self, rule: SigmaRule, output_format: Optional[str] = None) -> List[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
@@ -195,9 +193,7 @@ class Backend(ABC):
             self.last_processing_pipeline = (
                 self.backend_processing_pipeline
                 + self.processing_pipeline
-                + self.output_format_processing_pipeline[
-                    output_format or self.default_format
-                ]
+                + self.output_format_processing_pipeline[output_format or self.default_format]
             )
             self.last_processing_pipeline.vars.update(
                 {"backend_" + key: value for key, value in self.backend_options.items()}
@@ -209,9 +205,7 @@ class Backend(ABC):
             # 2. Convert conditions
             error_state = "converting"
             states = [
-                ConversionState(
-                    processing_state=dict(self.last_processing_pipeline.state)
-                )
+                ConversionState(processing_state=dict(self.last_processing_pipeline.state))
                 for _ in rule.detection.parsed_condition
             ]
             queries = [
@@ -284,9 +278,7 @@ class Backend(ABC):
         #    return False
 
         # All arguments of the given condition must reference a field
-        if not all(
-            (isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args)
-        ):
+        if not all((isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args)):
             return False
 
         # Build a set of all fields appearing in condition arguments
@@ -296,9 +288,7 @@ class Backend(ABC):
             return False
 
         # All argument values must be strings or numbers
-        if not all(
-            [isinstance(arg.value, (SigmaString, SigmaNumber)) for arg in cond.args]
-        ):
+        if not all([isinstance(arg.value, (SigmaString, SigmaNumber)) for arg in cond.args]):
             return False
 
         # Check for plain strings if wildcards are not allowed for string expressions.
@@ -421,11 +411,7 @@ class Backend(ABC):
             else:
                 return self.convert_condition_not(
                     ConditionNOT(
-                        [
-                            ConditionFieldEqualsValueExpression(
-                                cond.field, SigmaExists(True)
-                            )
-                        ],
+                        [ConditionFieldEqualsValueExpression(cond.field, SigmaExists(True))],
                         cond.source,
                     ),
                     state,
@@ -445,10 +431,7 @@ class Backend(ABC):
         all converted subconditions.
         """
         or_cond = ConditionOR(
-            [
-                ConditionFieldEqualsValueExpression(cond.field, value)
-                for value in cond.value.values
-            ],
+            [ConditionFieldEqualsValueExpression(cond.field, value) for value in cond.value.values],
             cond.source,
         )
         return self.convert_condition_or(or_cond, state)
@@ -519,9 +502,7 @@ class Backend(ABC):
     ) -> Any:
         """Conversion of query expressions without field association."""
 
-    def convert_condition_val(
-        self, cond: ConditionValueExpression, state: ConversionState
-    ) -> Any:
+    def convert_condition_val(self, cond: ConditionValueExpression, state: ConversionState) -> Any:
         """Conversion of value-only conditions."""
         if isinstance(cond.value, SigmaString):
             return self.convert_condition_val_str(cond, state)
@@ -575,8 +556,7 @@ class Backend(ABC):
             return self.convert_condition_val(cond, state)
         else:  # pragma: no cover
             raise TypeError(
-                "Unexpected data type in condition parse tree: "
-                + cond.__class__.__name__
+                "Unexpected data type in condition parse tree: " + cond.__class__.__name__
             )
 
     def convert_correlation_rule(
@@ -771,9 +751,7 @@ class TextQueryBackend(Backend):
 
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
-    precedence: ClassVar[
-        Tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]
-    ] = (
+    precedence: ClassVar[Tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]] = (
         ConditionNOT,
         ConditionAND,
         ConditionOR,
@@ -834,9 +812,7 @@ class TextQueryBackend(Backend):
     field_escape: ClassVar[Optional[str]] = (
         None  # Character to escape particular parts defined in field_escape_pattern.
     )
-    field_escape_quote: ClassVar[bool] = (
-        True  # Escape quote string defined in field_quote
-    )
+    field_escape_quote: ClassVar[bool] = True  # Escape quote string defined in field_quote
     field_escape_pattern: ClassVar[Optional[Pattern]] = (
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
@@ -847,9 +823,7 @@ class TextQueryBackend(Backend):
 
     ## Values
     ### String quoting
-    str_quote: ClassVar[str] = (
-        ""  # string quoting character (added as escaping character)
-    )
+    str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
     str_quote_pattern: ClassVar[Optional[Pattern]] = (
         None  # Quote string values that match (or don't match) this pattern
     )
@@ -858,15 +832,9 @@ class TextQueryBackend(Backend):
     escape_char: ClassVar[Optional[str]] = (
         None  # Escaping character for special characters inside string
     )
-    wildcard_multi: ClassVar[Optional[str]] = (
-        None  # Character used as multi-character wildcard
-    )
-    wildcard_single: ClassVar[Optional[str]] = (
-        None  # Character used as single-character wildcard
-    )
-    add_escaped: ClassVar[str] = (
-        ""  # Characters quoted in addition to wildcards and string quote
-    )
+    wildcard_multi: ClassVar[Optional[str]] = None  # Character used as multi-character wildcard
+    wildcard_single: ClassVar[Optional[str]] = None  # Character used as single-character wildcard
+    add_escaped: ClassVar[str] = ""  # Characters quoted in addition to wildcards and string quote
     filter_chars: ClassVar[str] = ""  # Characters filtered
     ### Booleans
     bool_values: ClassVar[Dict[bool, Optional[str]]] = (
@@ -908,9 +876,7 @@ class TextQueryBackend(Backend):
     # flag_x placeholders in re_expression template.
     # By default, i, m and s are defined. If a flag is not supported by the target query language,
     # remove it from re_flags or don't define it to ensure proper error handling in case of appearance.
-    re_flags: Dict[SigmaRegularExpressionFlag, str] = (
-        SigmaRegularExpression.sigma_to_re_flag
-    )
+    re_flags: Dict[SigmaRegularExpressionFlag, str] = SigmaRegularExpression.sigma_to_re_flag
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
@@ -1050,9 +1016,7 @@ class TextQueryBackend(Backend):
     #   Usually the expression must contain some an expression that marks the matched event type as
     #   such, e.g. by using the rule name or uuid.
     # * A joiner string that is put between each search_multi_rule_query_expression:
-    correlation_search_multi_rule_query_expression_joiner: ClassVar[Optional[str]] = (
-        None
-    )
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[Optional[str]] = None
 
     ## Correlation query typing phase (optional)
     # Event typing expression. In some query languages the initial search query only allows basic
@@ -1085,9 +1049,7 @@ class TextQueryBackend(Backend):
     # correlation_search_field_normalization_expression_joiner and the result is passed as
     # {normalization} to the correlation_search_*_rule_expression.
     correlation_search_field_normalization_expression: ClassVar[Optional[str]] = None
-    correlation_search_field_normalization_expression_joiner: ClassVar[
-        Optional[str]
-    ] = None
+    correlation_search_field_normalization_expression_joiner: ClassVar[Optional[str]] = None
 
     ## Correlation query aggregation phase
     # All of the following class variables are dictionaries of mappings from
@@ -1150,9 +1112,7 @@ class TextQueryBackend(Backend):
     # correlation_fields_field_expression for each group by field joined by correlation_fields_field_expression_joiner. The expression template
     # itself can only contain a {field} placeholder for a single field name.
     correlation_fields_field_expression: ClassVar[Optional[Dict[str, str]]] = None
-    correlation_fields_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = (
-        None
-    )
+    correlation_fields_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
 
     ## Correlation query condition phase
     # The final correlation query phase adds a final filter that filters the aggregated events
@@ -1217,13 +1177,9 @@ class TextQueryBackend(Backend):
                 self.case_sensitive_not_startswith_expression
             )
             self.endswith_expression = self.not_endswith_expression
-            self.case_sensitive_endswith_expression = (
-                self.case_sensitive_not_endswith_expression
-            )
+            self.case_sensitive_endswith_expression = self.case_sensitive_not_endswith_expression
             self.contains_expression = self.not_contains_expression
-            self.case_sensitive_contains_expression = (
-                self.case_sensitive_not_contains_expression
-            )
+            self.case_sensitive_contains_expression = self.case_sensitive_not_contains_expression
             yield
         finally:
             # Restore original expressions
@@ -1266,9 +1222,7 @@ class TextQueryBackend(Backend):
         try:
             idx_inner = self.precedence.index(inner_class)
         except ValueError:  # ConditionItem not in precedence tuple
-            idx_inner = (
-                -1
-            )  # Assume precedence of inner condition item is higher than the outer
+            idx_inner = -1  # Assume precedence of inner condition item is higher than the outer
 
         return idx_inner <= self.precedence.index(outer_class)
 
@@ -1304,8 +1258,7 @@ class TextQueryBackend(Backend):
                         )
                         for arg in cond.args
                     )
-                    if converted is not None
-                    and not isinstance(converted, DeferredQueryExpression)
+                    if converted is not None and not isinstance(converted, DeferredQueryExpression)
                 )
             )
         except TypeError:  # pragma: no cover
@@ -1319,18 +1272,12 @@ class TextQueryBackend(Backend):
             field=self.escape_and_quote_field(
                 cond.args[0].field
             ),  # The assumption that the field is the same for all argument is valid because this is checked before
-            op=(
-                self.or_in_operator
-                if isinstance(cond, ConditionOR)
-                else self.and_in_operator
-            ),
+            op=(self.or_in_operator if isinstance(cond, ConditionOR) else self.and_in_operator),
             list=self.list_separator.join(
                 [
                     (
                         self.convert_value_str(arg.value, state)
-                        if isinstance(
-                            arg.value, SigmaString
-                        )  # string escaping and qouting
+                        if isinstance(arg.value, SigmaString)  # string escaping and qouting
                         else str(arg.value)
                     )  # value is number
                     for arg in cond.args
@@ -1361,8 +1308,7 @@ class TextQueryBackend(Backend):
                         )
                         for arg in cond.args
                     )
-                    if converted is not None
-                    and not isinstance(converted, DeferredQueryExpression)
+                    if converted is not None and not isinstance(converted, DeferredQueryExpression)
                 )
             )
         except TypeError:  # pragma: no cover
@@ -1374,9 +1320,7 @@ class TextQueryBackend(Backend):
         """Conversion of NOT conditions."""
         arg = cond.args[0]
         try:
-            if (
-                arg.__class__ in self.precedence
-            ):  # group if AND or OR condition is negated
+            if arg.__class__ in self.precedence:  # group if AND or OR condition is negated
                 converted_group = self.convert_condition_group(arg, state)
                 if self.convert_not_as_not_eq:
                     return converted_group
@@ -1412,8 +1356,7 @@ class TextQueryBackend(Backend):
                 self.field_escape_pattern is not None
             ):  # Match all occurrences of field_escpae_pattern if defined and initialize match position set with result.
                 match_positions = {
-                    match.start()
-                    for match in self.field_escape_pattern.finditer(field_name)
+                    match.start() for match in self.field_escape_pattern.finditer(field_name)
                 }
             else:
                 match_positions = set()
@@ -1422,9 +1365,7 @@ class TextQueryBackend(Backend):
                 self.field_escape_quote and self.field_quote is not None
             ):  # Add positions of quote string to match position set
                 re_quote = re.compile(re.escape(self.field_quote))
-                match_positions.update(
-                    (match.start() for match in re_quote.finditer(field_name))
-                )
+                match_positions.update((match.start() for match in re_quote.finditer(field_name)))
 
             if len(match_positions) > 0:  # found matches, escape them
                 r = [0] + list(sorted(match_positions)) + [len(field_name)]
@@ -1432,14 +1373,10 @@ class TextQueryBackend(Backend):
                 for i in range(
                     len(r) - 1
                 ):  # TODO: from Python 3.10 this can be replaced with itertools.pairwise(), but for now we keep support for Python <3.10
-                    if (
-                        i == 0
-                    ):  # The first range is passed to the result without escaping
+                    if i == 0:  # The first range is passed to the result without escaping
                         escaped_field_name += field_name[r[i] : r[i + 1]]
                     else:  # Subsequent ranges are positions of matches and therefore are prepended with field_escape
-                        escaped_field_name += (
-                            self.field_escape + field_name[r[i] : r[i + 1]]
-                        )
+                        escaped_field_name += self.field_escape + field_name[r[i] : r[i + 1]]
             else:  # no matches, just pass original field name without escaping
                 escaped_field_name = field_name
         else:
@@ -1523,9 +1460,7 @@ class TextQueryBackend(Backend):
             if (  # Check conditions for usage of 'startswith' operator
                 self.startswith_expression
                 is not None  # 'startswith' operator is defined in backend
-                and cond.value.endswith(
-                    SpecialChars.WILDCARD_MULTI
-                )  # String ends with wildcard
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
                 and (
                     self.startswith_expression_allow_special
                     or not cond.value[:-1].contains_special()
@@ -1539,8 +1474,7 @@ class TextQueryBackend(Backend):
                 self.endswith_expression is not None
                 and cond.value.startswith(SpecialChars.WILDCARD_MULTI)
                 and (
-                    self.endswith_expression_allow_special
-                    or not cond.value[1:].contains_special()
+                    self.endswith_expression_allow_special or not cond.value[1:].contains_special()
                 )
             ):
                 expr = self.endswith_expression
@@ -1557,8 +1491,7 @@ class TextQueryBackend(Backend):
                 expr = self.contains_expression
                 value = cond.value[1:-1]
             elif (  # wildcard match expression: string contains wildcard
-                self.wildcard_match_expression is not None
-                and cond.value.contains_special()
+                self.wildcard_match_expression is not None and cond.value.contains_special()
             ):
                 expr = self.wildcard_match_expression
                 value = cond.value
@@ -1584,9 +1517,7 @@ class TextQueryBackend(Backend):
             if (  # Check conditions for usage of 'startswith' operator
                 self.case_sensitive_startswith_expression
                 is not None  # 'startswith' operator is defined in backend
-                and cond.value.endswith(
-                    SpecialChars.WILDCARD_MULTI
-                )  # String ends with wildcard
+                and cond.value.endswith(SpecialChars.WILDCARD_MULTI)  # String ends with wildcard
                 and (
                     self.case_sensitive_startswith_expression_allow_special
                     or not cond.value[:-1].contains_special()
@@ -1639,11 +1570,7 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of field = number value expressions"""
         try:
-            return (
-                self.escape_and_quote_field(cond.field)
-                + self.eq_token
-                + str(cond.value)
-            )
+            return self.escape_and_quote_field(cond.field) + self.eq_token + str(cond.value)
         except TypeError:  # pragma: no cover
             raise NotImplementedError(
                 "Field equals numeric value expressions are not supported by the backend."
@@ -1658,9 +1585,7 @@ class TextQueryBackend(Backend):
                 return (
                     self.field_timestamp_part_expression.format(
                         field=self.escape_and_quote_field(cond.field),
-                        timestamp_part=self.timestamp_part_mapping[
-                            cond.value.timestamp_part
-                        ],
+                        timestamp_part=self.timestamp_part_mapping[cond.value.timestamp_part],
                     )
                     + self.eq_token
                     + str(cond.value)
@@ -1755,9 +1680,7 @@ class TextQueryBackend(Backend):
             expanded = cidr.expand()
             expanded_cond = ConditionOR(
                 [
-                    ConditionFieldEqualsValueExpression(
-                        cond.field, SigmaString(network)
-                    )
+                    ConditionFieldEqualsValueExpression(cond.field, SigmaString(network))
                     for network in expanded
                 ],
                 cond.source,
@@ -1828,9 +1751,7 @@ class TextQueryBackend(Backend):
             )
         else:
             if self.field_equals_field_expression is None:
-                raise NotImplementedError(
-                    "Field reference expression is not supported by backend."
-                )
+                raise NotImplementedError("Field reference expression is not supported by backend.")
             return self.field_equals_field_expression.format(
                 field1=field1,
                 field2=field2,
@@ -1840,17 +1761,13 @@ class TextQueryBackend(Backend):
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of field is null expression value expressions"""
-        return self.field_null_expression.format(
-            field=self.escape_and_quote_field(cond.field)
-        )
+        return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
 
     def convert_condition_field_exists(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of field exists expressions"""
-        return self.field_exists_expression.format(
-            field=self.escape_and_quote_field(cond.field)
-        )
+        return self.field_exists_expression.format(field=self.escape_and_quote_field(cond.field))
 
     def convert_condition_field_not_exists(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
@@ -1872,9 +1789,7 @@ class TextQueryBackend(Backend):
         """Conversion of value-only strings."""
         return self.unbound_value_str_expression.format(
             value=self.convert_value_str(cond.value, state),
-            regex=self.convert_value_re(
-                cond.value.to_regex(self.add_escaped_re), state
-            ),
+            regex=self.convert_value_re(cond.value.to_regex(self.add_escaped_re), state),
         )
 
     def convert_condition_val_num(
@@ -1923,8 +1838,7 @@ class TextQueryBackend(Backend):
         method: str,
     ) -> str:
         template = (
-            getattr(self, f"{correlation_type}_correlation_query")
-            or self.default_correlation_query
+            getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
         )
         if template is None:
             raise NotImplementedError(
@@ -1984,9 +1898,7 @@ class TextQueryBackend(Backend):
         output_format: Optional[str] = None,
         method: Optional[str] = None,
     ) -> List[str]:
-        return self.convert_correlation_rule_from_template(
-            rule, "temporal_ordered", method
-        )
+        return self.convert_correlation_rule_from_template(rule, "temporal_ordered", method)
 
     # Implementation of the search phase of the correlation query.
     def convert_correlation_search(
@@ -1996,12 +1908,7 @@ class TextQueryBackend(Backend):
     ) -> str:
         if (  # if the correlation rule refers only a single rule and this rule results only in a single query
             len(rule.rules) == 1
-            and len(
-                queries := (
-                    rule_reference := rule.rules[0].rule
-                ).get_conversion_result()
-            )
-            == 1
+            and len(queries := (rule_reference := rule.rules[0].rule).get_conversion_result()) == 1
             and self.correlation_search_single_rule_expression is not None
         ):
             return self.correlation_search_single_rule_expression.format(
@@ -2079,9 +1986,7 @@ class TextQueryBackend(Backend):
                         self.typing_rule_query_expression.format(
                             rule=rule_reference.rule,
                             ruleid=rule_reference.rule.name or rule_reference.rule.id,
-                            query=self.convert_correlation_typing_query_postprocess(
-                                query
-                            ),
+                            query=self.convert_correlation_typing_query_postprocess(query),
                         )
                         for rule_reference in rule.rules
                         for query in rule_reference.rule.get_conversion_result()
@@ -2136,7 +2041,7 @@ class TextQueryBackend(Backend):
             referenced_rules_fields = []
             for rl in referenced_rules:
                 for fld in rl.rule.fields:
-                    
+
                     # excluding fields handled by group by
                     if fld not in group_by and fld not in referenced_rules_fields:
                         referenced_rules_fields.append(fld)
@@ -2174,9 +2079,7 @@ class TextQueryBackend(Backend):
                 )
             )
 
-    def convert_referenced_rules(
-        self, referenced_rules: List[SigmaRuleReference], method: str
-    ):
+    def convert_referenced_rules(self, referenced_rules: List[SigmaRuleReference], method: str):
         if (
             self.referenced_rules_expression is None
             or self.referenced_rules_expression_joiner is None

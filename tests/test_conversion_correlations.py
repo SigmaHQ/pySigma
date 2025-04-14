@@ -21,6 +21,10 @@ detection:
     selection:
         EventID: 4625
     condition: selection
+fields:
+    - User
+    - Computer
+    - TargetUserName
 ---
 title: Multiple failed logons for a single user (possible brute force attack)
 status: test
@@ -68,6 +72,27 @@ def test_generate_query_without_referenced_rules_expression(
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
+| where event_count >= 10"""
+    ]
+
+
+def test_event_count_correlation_single_rule_with_fields(
+    monkeypatch, test_backend, event_count_correlation_rule
+):
+    monkeypatch.setattr(test_backend, "correlation_fields_expression", {"test": " {fields}"})
+    monkeypatch.setattr(
+        test_backend, "correlation_fields_field_expression", {"test": "values({field}) as {field}"}
+    )
+    monkeypatch.setattr(test_backend, "correlation_fields_field_expression_joiner", {"test": " "})
+    monkeypatch.setattr(
+        test_backend,
+        "event_count_aggregation_expression",
+        {"test": "| aggregate window={timespan} count() as event_count{fields}{groupby}"},
+    )
+
+    assert test_backend.convert(event_count_correlation_rule) == [
+        """EventID=4625
+| aggregate window=5min count() as event_count values(User) as User values(Computer) as Computer by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 

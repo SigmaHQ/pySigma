@@ -90,33 +90,34 @@ class SigmaCollection:
             if isinstance(
                 rule, SigmaRule
             ):  # Included rules are already parsed, skip collection action processing
-                parsed_rules.append(rule)
-                rule.source = source
+                parsed_rule = rule
+                parsed_rules.append(parsed_rule)
+                parsed_rule.source = source
             else:
                 action = rule.get("action")
                 if action is None:  # no action defined
                     if "correlation" in rule:  # correlation rule - no global rule merge
-                        parsed_rules.append(
-                            SigmaCorrelationRule.from_dict(
-                                rule,
-                                collect_errors,
-                                source,
-                            )
+                        parsed_rule = SigmaCorrelationRule.from_dict(
+                            rule,
+                            collect_errors,
+                            source,
                         )
+                        parsed_rules.append(parsed_rule)
+                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
                     elif "filter" in rule:  # correlation rule - no global rule merge
-                        parsed_rules.append(
-                            SigmaFilter.from_dict(
-                                rule,
-                                collect_errors,
-                                source,
-                            )
+                        parsed_rule = SigmaFilter.from_dict(
+                            rule,
+                            collect_errors,
+                            source,
                         )
+                        parsed_rules.append(parsed_rule)
+                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
                     else:  # merge with global rule and parse as simple rule
-                        parsed_rules.append(
-                            SigmaRule.from_dict(
-                                deep_dict_update(rule, global_rule), collect_errors, source
-                            )
+                        parsed_rule = SigmaRule.from_dict(
+                            deep_dict_update(rule, global_rule), collect_errors, source
                         )
+                        parsed_rules.append(parsed_rule)
+                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
                         prev_rule = rule
                 elif action == "global":  # set global rule template
                     del rule["action"]
@@ -128,7 +129,9 @@ class SigmaCollection:
                     action == "repeat"
                 ):  # add content of current rule to previous rule and parse it
                     prev_rule = deep_dict_update(prev_rule, rule)
-                    parsed_rules.append(SigmaRule.from_dict(prev_rule, collect_errors, source))
+                    parsed_rule = SigmaRule.from_dict(prev_rule, collect_errors, source)
+                    parsed_rules.append(parsed_rule)
+                    errors.extend(parsed_rule.errors)  # Propagate errors from rule
                 else:
                     exception = SigmaCollectionError(
                         f"Unknown Sigma collection action '{ action }' in rule { i }",

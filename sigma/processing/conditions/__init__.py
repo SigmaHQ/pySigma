@@ -4,7 +4,7 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Dict, Type
+from typing import Dict, Mapping, Type
 
 from sigma.processing.conditions.fields import ExcludeFieldCondition, IncludeFieldCondition
 from sigma.processing.conditions.rule import (
@@ -32,7 +32,7 @@ from sigma.processing.conditions.values import (
 )
 
 
-rule_conditions: Dict[str, Type[RuleProcessingCondition]] = {
+rule_conditions: Mapping[str, Type[RuleProcessingCondition]] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,
     "contains_field": RuleContainsFieldCondition,
@@ -43,7 +43,7 @@ rule_conditions: Dict[str, Type[RuleProcessingCondition]] = {
     "rule_attribute": RuleAttributeCondition,
     "tag": RuleTagCondition,
 }
-detection_item_conditions: Dict[str, Type[DetectionItemProcessingCondition]] = {
+detection_item_conditions: Mapping[str, Type[DetectionItemProcessingCondition]] = {
     "match_string": MatchStringCondition,
     "match_value": MatchValueCondition,
     "contains_wildcard": ContainsWildcardCondition,
@@ -51,7 +51,7 @@ detection_item_conditions: Dict[str, Type[DetectionItemProcessingCondition]] = {
     "processing_item_applied": DetectionItemProcessingItemAppliedCondition,
     "processing_state": DetectionItemProcessingStateCondition,
 }
-field_name_conditions: Dict[str, Type[FieldNameProcessingCondition]] = {
+field_name_conditions: Mapping[str, Type[FieldNameProcessingCondition]] = {
     "include_fields": IncludeFieldCondition,
     "exclude_fields": ExcludeFieldCondition,
     "processing_item_applied": FieldNameProcessingItemAppliedCondition,

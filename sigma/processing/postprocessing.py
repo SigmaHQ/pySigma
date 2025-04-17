@@ -2,8 +2,9 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Type, Union
 import sigma
+from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
 from sigma.processing.templates import TemplateBase
@@ -20,7 +21,7 @@ class QueryPostprocessingTransformation(Transformation):
     )
 
     @abstractmethod
-    def apply(self, rule: SigmaRule, query: Any) -> Any:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
 
         :param pipeline: Processing pipeline this transformation was contained.
@@ -172,7 +173,7 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
         return query
 
 
-query_postprocessing_transformations = {
+query_postprocessing_transformations: Dict[str, Type[QueryPostprocessingTransformation]] = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
     "template": QueryTemplateTransformation,

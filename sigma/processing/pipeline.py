@@ -15,16 +15,21 @@ from typing import (
     Optional,
     Type,
     Union,
+    cast,
 )
 
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.condition_expressions import ConditionExpression, parse_condition_expression
+from sigma.processing.conditions.base import ProcessingCondition
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.processing.transformations.base import Transformation
-from sigma.processing.postprocessing import query_postprocessing_transformations
+from sigma.processing.postprocessing import (
+    QueryPostprocessingTransformation,
+    query_postprocessing_transformations,
+)
 from sigma.processing.conditions import (
     rule_conditions,
     RuleProcessingCondition,
@@ -66,10 +71,19 @@ class ProcessingItemBase:
     ) -> Dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
-        rule_conds = cls._parse_conditions(rule_conditions, d.get("rule_conditions", list()))
+        rule_conds = cls._parse_conditions(
+            cast(
+                Dict[
+                    str,
+                    Type[ProcessingCondition],
+                ],
+                rule_conditions,
+            ),
+            d.get("rule_conditions", list()),
+        )
         rule_cond_expr_str = d.get("rule_cond_expr", None)
         if rule_cond_expr_str is not None:
-            rule_cond_expr = parse_condition_expression(rule_cond_expr_str, rule_conds)
+            rule_cond_expr = parse_condition_expression(rule_cond_expr_str)
         else:
             rule_cond_expr = None
         return {
@@ -82,8 +96,13 @@ class ProcessingItemBase:
         }
 
     def _check_conditions(
-        self, expression_attr, linking_attr, conditions_attr, expected_condition_class, name
-    ):
+        self,
+        expression_attr: str,
+        linking_attr: str,
+        conditions_attr: str,
+        expected_condition_class: Type[ProcessingCondition],
+        name: str,
+    ) -> None:
         """
         This method conducts various checks of the conditions provided to the processing item:
 
@@ -99,11 +118,11 @@ class ProcessingItemBase:
         # condition logic expression is given.
         if expr is not None:
             if self.__getattribute__(linking_attr) is not None:
-                raise SigmaConfigurationError(
+                raise SigmaPipelineConditionError(
                     f"{name} expression is mutually exclusive to linking."
                 )
             if not isinstance(conditions, dict):
-                raise SigmaConfigurationError(
+                raise SigmaPipelineConditionError(
                     f"{name}s must be provided as mapping from identifiers to conditions if condition expression is provided."
                 )
         else:  # In case no expression is provided, set linking to all if not provided and simplify condition dict to list.
@@ -115,7 +134,7 @@ class ProcessingItemBase:
         if not isinstance(conditions, (list, dict)):
             raise SigmaTypeError(f"{name}s must be provided as list or dict")
         if isinstance(conditions, dict):
-            conditions_list = conditions.values()
+            conditions_list = list(conditions.values())
         else:
             conditions_list = conditions
         for condition in conditions_list:
@@ -136,26 +155,43 @@ class ProcessingItemBase:
             self
         )  # set processing item in transformation object after it is instantiated
         self._resolve_condition_expression(
-            self.rule_condition_expression, self.rule_conditions, "Rule condition"
+            self.rule_condition_expression,
+            cast(Dict[str, ProcessingCondition], self.rule_conditions),
+            "Rule condition",
         )
 
     def _resolve_condition_expression(
         self,
         expr: Optional[ConditionExpression],
-        conditions: Dict[str, RuleProcessingCondition],
+        conditions: Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
         name: str,
     ) -> None:
         if expr is not None:
-            refids = expr.resolve(conditions)
-            if len(refids) < len(conditions):
+            if isinstance(conditions, dict):
+                refids = expr.resolve(conditions)
+                if len(refids) < len(conditions):
+                    raise SigmaPipelineConditionError(
+                        f"{name} contains unreferenced condition items: {', '.join(set(conditions.keys()) - refids)}",
+                        expr.expression,
+                        expr.location,
+                    )
+            else:
                 raise SigmaPipelineConditionError(
+                    f"{name} conditions must be provided as a dict.",
                     expr.expression,
                     expr.location,
-                    f"{name} contains unreferenced condition items: {', '.join(set(conditions.keys()) - refids)}",
                 )
 
     @classmethod
-    def _parse_condition(cls, condition_class_mapping, cond_def, ref):
+    def _parse_condition(
+        cls,
+        condition_class_mapping: Mapping[
+            str,
+            Type[ProcessingCondition],
+        ],
+        cond_def: Dict[str, Any],
+        ref: str,
+    ) -> ProcessingCondition:
         try:
             cond_type = cond_def["type"]
         except KeyError:
@@ -177,22 +213,14 @@ class ProcessingItemBase:
     @classmethod
     def _parse_conditions(
         self,
-        condition_class_mapping: Dict[
+        condition_class_mapping: Mapping[
             str,
-            Union[
-                Type[RuleProcessingCondition],
-                Type[DetectionItemProcessingCondition],
-                Type[FieldNameProcessingCondition],
-            ],
+            Type[ProcessingCondition],
         ],
-        cond_defs: Dict[str, Dict],
+        cond_defs: Dict[str, Dict[str, Any]],
     ) -> Union[
-        List[RuleProcessingCondition],
-        Dict[str, RuleProcessingCondition],
-        List[DetectionItemProcessingCondition],
-        Dict[str, DetectionItemProcessingCondition],
-        List[FieldNameProcessingCondition],
-        Dict[str, FieldNameProcessingCondition],
+        List[ProcessingCondition],
+        Dict[str, ProcessingCondition],
     ]:
         """Parse dict of conditions into list or dict of condition object instances.
 
@@ -230,7 +258,7 @@ class ProcessingItemBase:
     @classmethod
     def _instantiate_transformation(
         cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
-    ):
+    ) -> Transformation:
         try:
             transformation_class_name = d["type"]
         except KeyError:
@@ -269,19 +297,20 @@ class ProcessingItemBase:
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
 
-    def _match_condition_expression(
-        self, condition_type: Literal["rule", "detection_item", "field_name"]
-    ) -> bool:
-        expression = self.__getattribute__(f"{condition_type}_cond_expr")
-        conditions = self.__getattribute__(f"{condition_type}_conditions")
-
-    def match_rule_conditions(self, rule: Union[SigmaRule, SigmaCorrelationRule]):
+    def match_rule_conditions(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
         if self.rule_condition_expression is not None:  # rule condition expression
             cond_result = self.rule_condition_expression.match(rule)
-        else:  # simplified conditional linking of conditions
+        elif self.rule_condition_linking is not None and isinstance(
+            self.rule_conditions, list
+        ):  # simplified conditional linking of conditions
             cond_result = self.rule_condition_linking(
                 [condition.match(rule) for condition in self.rule_conditions]
             )
+        else:
+            raise SigmaPipelineConditionError(
+                "No rule condition expression or linking defined for processing item."
+            )
+
         if self.rule_condition_negation:
             cond_result = not cond_result
         return not self.rule_conditions or cond_result
@@ -293,14 +322,22 @@ class ProcessingItemBase:
             raise SigmaProcessingItemError("Pipeline for processing item was already set.")
 
         self.transformation.set_pipeline(pipeline)
-        for rule_condition in self.rule_conditions:
-            rule_condition.set_pipeline(self._pipeline)
+        if isinstance(self.rule_conditions, list):
+            for rule_condition in self.rule_conditions:
+                rule_condition.set_pipeline(self._pipeline)
+        elif isinstance(self.rule_conditions, dict):
+            for rule_condition in self.rule_conditions.values():
+                rule_condition.set_pipeline(self._pipeline)
 
     def _clear_pipeline(self) -> None:
         self._pipeline = None
         self.transformation._clear_pipeline()
-        for rule_condition in self.rule_conditions:
-            rule_condition._clear_pipeline()
+        if isinstance(self.rule_conditions, list):
+            for rule_condition in self.rule_conditions:
+                rule_condition._clear_pipeline()
+        elif isinstance(self.rule_conditions, dict):
+            for rule_condition in self.rule_conditions.values():
+                rule_condition._clear_pipeline()
 
 
 @dataclass
@@ -320,27 +357,26 @@ class ProcessingItem(ProcessingItemBase):
     detection_item_conditions: Union[
         List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition]
     ] = field(default_factory=list)
-    detection_item_condition_expression: Optional[str] = None
+    detection_item_condition_expression: Optional[ConditionExpression] = None
     field_name_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     field_name_condition_negation: bool = False
     field_name_conditions: Union[
         List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]
     ] = field(default_factory=list)
-    field_name_condition_expression: Optional[str] = None
+    field_name_condition_expression: Optional[ConditionExpression] = None
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]):
+    def from_dict(cls, d: Dict[str, Any]) -> "ProcessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(d, transformations)
 
         detection_item_conds = cls._parse_conditions(
-            detection_item_conditions, d.get("detection_item_conditions", list())
+            cast(Mapping[str, Type[ProcessingCondition]], detection_item_conditions),
+            d.get("detection_item_conditions", list()),
         )
         detection_item_cond_expr_str = d.get("detection_item_cond_expr", None)
         if detection_item_cond_expr_str is not None:
-            detection_item_cond_expr = parse_condition_expression(
-                detection_item_cond_expr_str, detection_item_conds
-            )
+            detection_item_cond_expr = parse_condition_expression(detection_item_cond_expr_str)
         else:
             detection_item_cond_expr = None
 
@@ -349,9 +385,7 @@ class ProcessingItem(ProcessingItemBase):
         )
         field_name_cond_expr_str = d.get("field_name_cond_expr", None)
         if field_name_cond_expr_str is not None:
-            field_name_cond_expr = parse_condition_expression(
-                field_name_cond_expr_str, field_name_conds
-            )
+            field_name_cond_expr = parse_condition_expression(field_name_cond_expr_str)
         else:
             field_name_cond_expr = None
 
@@ -385,7 +419,10 @@ class ProcessingItem(ProcessingItemBase):
         )
         self._resolve_condition_expression(
             self.detection_item_condition_expression,
-            self.detection_item_conditions,
+            cast(
+                Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
+                self.detection_item_conditions,
+            ),
             "Detection item condition",
         )
         self._check_conditions(
@@ -397,22 +434,43 @@ class ProcessingItem(ProcessingItemBase):
         )
         self._resolve_condition_expression(
             self.field_name_condition_expression,
-            self.field_name_conditions,
+            cast(
+                Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
+                self.field_name_conditions,
+            ),
             "Field name condition",
         )
 
     def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         super().set_pipeline(pipeline)
-        for detection_item_condition in self.detection_item_conditions:
-            detection_item_condition.set_pipeline(self._pipeline)
-        for field_name_condition in self.field_name_conditions:
-            field_name_condition.set_pipeline(self._pipeline)
+        if isinstance(self.detection_item_conditions, dict):
+            detection_item_conditions = list(self.detection_item_conditions.values())
+        else:
+            detection_item_conditions = self.detection_item_conditions
+        for detection_item_condition in detection_item_conditions:
+            detection_item_condition.set_pipeline(pipeline)
+
+        if isinstance(self.field_name_conditions, dict):
+            field_name_conditions = list(self.field_name_conditions.values())
+        else:
+            field_name_conditions = self.field_name_conditions
+        for field_name_condition in field_name_conditions:
+            field_name_condition.set_pipeline(pipeline)
 
     def _clear_pipeline(self) -> None:
         super()._clear_pipeline()
-        for detection_item_condition in self.detection_item_conditions:
+        if isinstance(self.detection_item_conditions, dict):
+            detection_item_conditions = list(self.detection_item_conditions.values())
+        else:
+            detection_item_conditions = self.detection_item_conditions
+        for detection_item_condition in detection_item_conditions:
             detection_item_condition._clear_pipeline()
-        for field_name_condition in self.field_name_conditions:
+
+        if isinstance(self.field_name_conditions, dict):
+            field_name_conditions = list(self.field_name_conditions.values())
+        else:
+            field_name_conditions = self.field_name_conditions
+        for field_name_condition in field_name_conditions:
             field_name_condition._clear_pipeline()
 
     def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
@@ -439,19 +497,36 @@ class ProcessingItem(ProcessingItemBase):
             detection_item_cond_result = self.detection_item_condition_expression.match(
                 detection_item
             )
-        else:  # simplified detection item condition
+        elif self.detection_item_condition_linking is not None and isinstance(
+            self.detection_item_conditions, list
+        ):  # simplified detection item condition
             detection_item_cond_result = self.detection_item_condition_linking(
                 [condition.match(detection_item) for condition in self.detection_item_conditions]
+            )
+        else:
+            raise SigmaPipelineConditionError(
+                "No detection item condition expression or linking defined for processing item."
             )
         if self.detection_item_condition_negation:
             detection_item_cond_result = not detection_item_cond_result
 
-        field_name_cond_result = self.field_name_condition_linking(
-            [
-                condition.match_detection_item(detection_item)
-                for condition in self.field_name_conditions
-            ]
-        )
+        if self.field_name_condition_expression is not None:  # field name condition expression
+            field_name_cond_result = self.field_name_condition_expression.match_detection_item(
+                detection_item
+            )
+        elif self.field_name_condition_linking is not None and isinstance(
+            self.field_name_conditions, list
+        ):
+            field_name_cond_result = self.field_name_condition_linking(
+                [
+                    condition.match_detection_item(detection_item)
+                    for condition in self.field_name_conditions
+                ]
+            )
+        else:  # no field name condition expression or linking defined
+            raise SigmaPipelineConditionError(
+                "No field name condition expression or linking defined for processing item."
+            )
         if self.field_name_condition_negation:
             field_name_cond_result = not field_name_cond_result
 
@@ -463,9 +538,15 @@ class ProcessingItem(ProcessingItemBase):
         """
         if self.field_name_condition_expression is not None:  # field name condition expression
             field_name_cond_result = self.field_name_condition_expression.match_field_name(field)
-        else:  # simplified field name condition
+        elif self.field_name_condition_linking is not None and isinstance(
+            self.field_name_conditions, list
+        ):  # simplified field name condition
             field_name_cond_result = self.field_name_condition_linking(
                 [condition.match_field_name(field) for condition in self.field_name_conditions]
+            )
+        else:  # no field name condition expression or linking defined
+            raise SigmaPipelineConditionError(
+                "No field name condition expression or linking defined for processing item."
             )
 
         if self.field_name_condition_negation:
@@ -478,9 +559,16 @@ class ProcessingItem(ProcessingItemBase):
         Evaluate field name conditions in field reference values and return result.
         """
         if isinstance(value, SigmaFieldReference):
-            field_name_cond_result = self.field_name_condition_linking(
-                [condition.match_value(value) for condition in self.field_name_conditions]
-            )
+            if self.field_name_condition_expression is not None:  # field name condition expression
+                field_name_cond_result = self.field_name_condition_expression.match_field_name(
+                    value.field
+                )
+            elif self.field_name_condition_linking is not None and isinstance(
+                self.field_name_conditions, list
+            ):  # simplified field name condition
+                field_name_cond_result = self.field_name_condition_linking(
+                    [condition.match_value(value) for condition in self.field_name_conditions]
+                )
             if self.field_name_condition_negation:
                 field_name_cond_result = not field_name_cond_result
 
@@ -501,10 +589,14 @@ class QueryPostprocessingItem(ProcessingItemBase):
     converted by a backend.
     """
 
+    transformation: QueryPostprocessingTransformation
+
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]):
+    def from_dict(cls, d: Dict[str, Any]) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables."""
-        kwargs = super()._base_args_from_dict(d, query_postprocessing_transformations)
+        kwargs = super()._base_args_from_dict(
+            d, cast(Dict[str, Type[Transformation]], query_postprocessing_transformations)
+        )
         return cls(**kwargs)
 
     def apply(
@@ -584,7 +676,7 @@ class ProcessingPipeline:
         # Initialize contained items with just instantiated processing pipeline as context.
         self.set_pipeline()
 
-    def set_pipeline(self):
+    def set_pipeline(self) -> None:
         for processing_item in self.items:
             processing_item.set_pipeline(self)
         for postprocessing_item in self.postprocessing_items:
@@ -592,7 +684,7 @@ class ProcessingPipeline:
         for finalizer in self.finalizers:
             finalizer.set_pipeline(self)
 
-    def _clear_pipeline(self):
+    def _clear_pipeline(self) -> None:
         for processing_item in self.items:
             processing_item._clear_pipeline()
         for postprocessing_item in self.postprocessing_items:
@@ -720,7 +812,7 @@ class ProcessingPipeline:
         tracking set to all fields in dest_field.
         """
         if [src_field] != dest_field:  # Only add if source field was mapped to something different.
-            applied_identifiers: Set = self.field_name_applied_ids[src_field]
+            applied_identifiers: Set[str] = self.field_name_applied_ids[src_field]
             if processing_item_id is not None:
                 applied_identifiers.add(processing_item_id)
             del self.field_name_applied_ids[src_field]

@@ -11,6 +11,8 @@ from typing import (
 from dataclasses import dataclass, field
 import sigma
 from sigma.correlations import SigmaCorrelationRule
+import sigma.processing
+import sigma.processing.pipeline
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
     SigmaConfigurationError,
@@ -31,9 +33,13 @@ class Transformation(ABC):
     applied to the whole rule.
     """
 
-    processing_item: Optional["sigma.processing.pipeline.ProcessingItem"] = field(
-        init=False, compare=False, default=None
-    )
+    processing_item: Optional[
+        Union[
+            "sigma.processing.pipeline.ProcessingItem",
+            "sigma.processing.pipeline.QueryPostprocessingItem",
+        ]
+    ] = field(init=False, compare=False, default=None)
+
     _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
         init=False, compare=False, default=None
     )
@@ -62,7 +68,9 @@ class Transformation(ABC):
     def _clear_pipeline(self) -> None:
         self._pipeline = None
 
-    def set_processing_item(self, processing_item: "sigma.processing.pipeline.ProcessingItem"):
+    def set_processing_item(
+        self, processing_item: "sigma.processing.pipeline.ProcessingItemBase"
+    ) -> None:
         self.processing_item = processing_item
 
     def processing_item_applied(

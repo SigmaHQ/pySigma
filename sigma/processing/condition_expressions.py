@@ -33,7 +33,7 @@ class ConditionExpression(ABC):
     pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
         init=False, repr=False, default=None
     )
-    expression: Optional[str] = field(init=False, repr=False, compare=False, default=None)
+    expression: str = field(init=False, repr=False, compare=False, default="")
 
     @classmethod
     @abstractmethod
@@ -72,7 +72,7 @@ class ConditionExpression(ABC):
         """
 
     @abstractmethod
-    def match_field_name(self, field_name: str) -> bool:
+    def match_field_name(self, field_name: Optional[str]) -> bool:
         """
         Check if the condition expression matches the field name.
 
@@ -128,9 +128,9 @@ class ConditionIdentifier(ConditionExpression):
             return {self.identifier}
         except KeyError:
             raise SigmaPipelineConditionError(
-                str(self.expression),
-                self.location,
                 f"Condition identifier '{self.identifier}' not found.",
+                self.expression,
+                self.location,
             )
 
     def match(self, item: Union[SigmaRule, SigmaCorrelationRule, SigmaDetectionItem]) -> bool:
@@ -144,26 +144,26 @@ class ConditionIdentifier(ConditionExpression):
             return self._condition.match(item)
         else:
             raise SigmaPipelineConditionError(
-                str(self.expression),
-                self.location,
                 f"Condition identifier '{self.identifier}' type {type(self._condition).__name__} does not match to the item type {type(item).__name__}.",
+                self.expression,
+                self.location,
             )
 
     def match_detection_item(self, detection_item: SigmaDetectionItem) -> bool:
         if not isinstance(self._condition, FieldNameProcessingCondition):
             raise SigmaPipelineConditionError(
-                str(self.expression),
-                self.location,
                 f"Condition identifier '{self.identifier}' type {type(self._condition).__name__} does not match to the item type {type(detection_item).__name__}.",
+                self.expression,
+                self.location,
             )
         return self._condition.match_detection_item(detection_item)
 
-    def match_field_name(self, field_name: str) -> bool:
+    def match_field_name(self, field_name: Optional[str]) -> bool:
         if not isinstance(self._condition, FieldNameProcessingCondition):
             raise SigmaPipelineConditionError(
-                str(self.expression),
-                self.location,
                 f"Condition identifier '{self.identifier}' type {type(self._condition).__name__} does not match to the item type {type(field_name).__name__}.",
+                self.expression,
+                self.location,
             )
         return self._condition.match_field_name(field_name)
 
@@ -203,7 +203,7 @@ class BinaryConditionOp(ConditionExpression):
             ]
         )
 
-    def match_field_name(self, field_name: str) -> bool:
+    def match_field_name(self, field_name: Optional[str]) -> bool:
         return self.__class__._function(
             [self.left.match_field_name(field_name), self.right.match_field_name(field_name)]
         )
@@ -255,13 +255,12 @@ class ConditionNOT(ConditionExpression):
     def match_detection_item(self, detection_item: SigmaDetectionItem) -> bool:
         return not self.condition.match_detection_item(detection_item)
 
-    def match_field_name(self, field_name: str) -> bool:
+    def match_field_name(self, field_name: Optional[str]) -> bool:
         return not self.condition.match_field_name(field_name)
 
 
 def parse_condition_expression(
     condition_expression: str,
-    conditions: Dict[str, ProcessingCondition],
 ) -> ConditionExpression:
     identifier = Word(alphanums + "_-")
     identifier.setParseAction(ConditionIdentifier.from_parsed)
@@ -277,6 +276,8 @@ def parse_condition_expression(
         parsed = condition_parser.parseString(condition_expression, parse_all=True)[0]
     except ParseException as e:
         raise SigmaPipelineConditionError(
-            condition_expression, e.column, f"Error parsing condition expression: {e.msg}"
+            f"Error parsing condition expression: {e.msg}",
+            condition_expression,
+            e.column,
         )
     return cast(ConditionExpression, parsed)

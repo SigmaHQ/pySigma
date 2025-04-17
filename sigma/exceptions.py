@@ -280,20 +280,21 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
 
     def __init__(
         self,
-        expression: str,
-        location: int,
         error: str,
+        expression: Optional[str] = None,
+        location: Optional[int] = None,
         *args: Any,
         source: Optional[SigmaRuleLocation] = None,
         **kwargs: Dict[str, Any],
     ):
         self.expression = expression
         self.location = location
-        self.error = error
-        super().__init__(*args, source=source, **kwargs)
+        super().__init__(error, *args, source=source, **kwargs)
 
     def __str__(self) -> str:
-        return f"{self.error} in expression '{self.expression}' at location {self.location}"
+        location_info = f" at location {self.location}" if self.location is not None else ""
+        expression_info = f" in expression '{self.expression}'" if self.expression else ""
+        return f"{super().__str__()}{expression_info}{location_info}"
 
 
 class SigmaDescriptionError(SigmaError):

@@ -1450,3 +1450,17 @@ def test_processingpipeline_field_name_transformation_in_field_list(
         )
     )
     assert rule.fields == ["mappedA", "FIELDB"]
+
+
+def test_processingitem_match_detection_item_with_field_name_condition_expression(detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
+    )
+    assert processing_item.match_detection_item(detection_item) == True

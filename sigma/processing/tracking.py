@@ -34,7 +34,7 @@ class FieldMappingTracking(UserDict):
     the fields list is excluded from it. This might change in the future depending on use cases.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.target_fields = defaultdict(set)  # Create reverse mapping
 

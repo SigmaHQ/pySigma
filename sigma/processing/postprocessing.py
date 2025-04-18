@@ -33,7 +33,7 @@ class QueryPostprocessingTransformation(Transformation):
         :return: Transformed query.
         :rtype: Any
         """
-        super().apply(rule)  # tracking of applied rules
+        self.processing_item_applied(rule)
 
 
 @dataclass
@@ -47,9 +47,11 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
         self.prefix = self.prefix or ""
         self.suffix = self.suffix or ""
 
-    def apply(self, rule: SigmaRule, query: str) -> str:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         super().apply(rule, query)
-        return self.prefix + query + self.suffix
+        if isinstance(query, str):
+            return self.prefix + query + self.suffix
+        raise TypeError("Query must be a string for EmbedQueryTransformation.")
 
 
 @dataclass

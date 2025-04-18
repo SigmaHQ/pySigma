@@ -1,5 +1,4 @@
 from abc import ABC, abstractmethod
-from sigma.conditions import SigmaCondition
 from typing import (
     Any,
     Dict,
@@ -11,8 +10,6 @@ from typing import (
 from dataclasses import dataclass, field
 import sigma
 from sigma.correlations import SigmaCorrelationRule
-import sigma.processing
-import sigma.processing.pipeline
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
     SigmaConfigurationError,
@@ -51,14 +48,6 @@ class Transformation(ABC):
         except TypeError as e:
             raise SigmaConfigurationError("Error in instantiation of transformation: " + str(e))
 
-    @abstractmethod
-    def apply(
-        self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
-    ) -> None:
-        """Apply transformation on Sigma rule."""
-        self.processing_item_applied(rule)
-
     def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline"):
         if self._pipeline is None:
             self._pipeline = pipeline
@@ -76,7 +65,11 @@ class Transformation(ABC):
     def processing_item_applied(
         self,
         d: Union[
-            SigmaRule, SigmaDetection, SigmaDetectionItem, SigmaCondition, SigmaCorrelationRule
+            SigmaRule,
+            SigmaDetection,
+            SigmaDetectionItem,
+            "sigma.conditions.SigmaCondition",
+            SigmaCorrelationRule,
         ],
     ):
         """Mark detection item or detection as applied."""
@@ -84,7 +77,22 @@ class Transformation(ABC):
 
 
 @dataclass
-class DetectionItemTransformation(Transformation):
+class PreprocessingTransformation(Transformation, ABC):
+    """
+    Intermediate base class for preprocessing transformations.
+    """
+
+    @abstractmethod
+    def apply(
+        self,
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+    ) -> None:
+        """Apply transformation on Sigma rule."""
+        self.processing_item_applied(rule)
+
+
+@dataclass
+class DetectionItemTransformation(PreprocessingTransformation):
     """
     Iterates over all detection items of a Sigma rule and calls the apply_detection_item method
     for each of them if the detection item condition associated with the processing item evaluates
@@ -311,7 +319,7 @@ class StringValueTransformation(ValueTransformation):
 
 
 @dataclass
-class ConditionTransformation(Transformation):
+class ConditionTransformation(PreprocessingTransformation):
     """
     Iterates over all rule conditions and calls the apply_condition method for each condition. Automatically
     takes care of marking condition as applied by processing item.
@@ -331,7 +339,7 @@ class ConditionTransformation(Transformation):
                     )  # mark as processed by processing item containing this transformation
 
     @abstractmethod
-    def apply_condition(self, cond: SigmaCondition) -> None:
+    def apply_condition(self, cond: "sigma.conditions.SigmaCondition") -> None:
         """
         This method is invoked for each condition and can change it.
         """

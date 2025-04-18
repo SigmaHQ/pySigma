@@ -1,11 +1,11 @@
 from typing import Any
 from dataclasses import dataclass
-from sigma.processing.transformations.base import Transformation
+from sigma.processing.transformations.base import PreprocessingTransformation
 from sigma.rule import SigmaRule
 
 
 @dataclass
-class SetStateTransformation(Transformation):
+class SetStateTransformation(PreprocessingTransformation):
     """Set pipeline state key to value."""
 
     key: str

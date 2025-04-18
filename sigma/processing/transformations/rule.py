@@ -6,13 +6,13 @@ from typing import (
 from dataclasses import dataclass, field
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
-    Transformation,
+    PreprocessingTransformation,
 )
 from sigma.rule import SigmaLogSource, SigmaRule
 
 
 @dataclass
-class ChangeLogsourceTransformation(Transformation):
+class ChangeLogsourceTransformation(PreprocessingTransformation):
     """Replace log source as defined in transformation parameters."""
 
     category: Optional[str] = field(default=None)
@@ -26,7 +26,7 @@ class ChangeLogsourceTransformation(Transformation):
 
 
 @dataclass
-class SetCustomAttributeTransformation(Transformation):
+class SetCustomAttributeTransformation(PreprocessingTransformation):
     """
     Sets an arbitrary custom attribute on a rule, that can be used by a backend during processing.
     """

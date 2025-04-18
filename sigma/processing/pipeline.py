@@ -25,7 +25,7 @@ from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
 from sigma.rule import SigmaDetectionItem, SigmaRule
-from sigma.processing.transformations.base import Transformation
+from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
 from sigma.processing.postprocessing import (
     QueryPostprocessingTransformation,
     query_postprocessing_transformations,
@@ -349,6 +349,8 @@ class ProcessingItem(ProcessingItemBase):
     Processing items are instantiated by the processing pipeline for a whole collection that is about to be
     converted by a backend.
     """
+
+    transformation: PreprocessingTransformation
 
     detection_item_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = (
         None  # any or all

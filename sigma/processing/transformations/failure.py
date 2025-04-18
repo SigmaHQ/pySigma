@@ -1,14 +1,14 @@
 from dataclasses import dataclass
 from sigma.processing.transformations.base import (
+    PreprocessingTransformation,
     DetectionItemTransformation,
-    Transformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaTransformationError
 
 
 @dataclass
-class RuleFailureTransformation(Transformation):
+class RuleFailureTransformation(PreprocessingTransformation):
     """
     Raise a SigmaTransformationError with the provided message. This enables transformation
     pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values

@@ -26,7 +26,7 @@ from sigma.processing.conditions import (
 from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     SetStateTransformation,
-    Transformation,
+    PreprocessingTransformation,
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
     FieldFunctionTransformation,
@@ -101,7 +101,7 @@ class FieldNameConditionFalse(FieldNameProcessingCondition):
 
 
 @dataclass
-class TransformationPrepend(Transformation):
+class TransformationPrepend(PreprocessingTransformation):
     s: str
 
     def apply(self, rule: SigmaRule) -> SigmaRule:
@@ -111,7 +111,7 @@ class TransformationPrepend(Transformation):
 
 
 @dataclass
-class TransformationAppend(Transformation):
+class TransformationAppend(PreprocessingTransformation):
     s: str
 
     def apply(self, rule: SigmaRule) -> SigmaRule:

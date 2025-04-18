@@ -1898,7 +1898,12 @@ def test_transformation_identifier_completeness():
     classes_with_identifiers = transformations.values()
 
     def class_filter(c):
-        return inspect.isclass(c) and not inspect.isabstract(c) and issubclass(c, Transformation)
+        return (
+            inspect.isclass(c)
+            and not inspect.isabstract(c)
+            and issubclass(c, Transformation)
+            and not c is Transformation
+        )
 
     for cls in inspect.getmembers(transformations_module, class_filter):
         assert cls[1] in classes_with_identifiers

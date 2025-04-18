@@ -1,5 +1,5 @@
 from typing import Dict, Type
-from sigma.processing.transformations.base import Transformation
+from sigma.processing.transformations.base import Transformation, PreprocessingTransformation
 from sigma.processing.transformations.condition import AddConditionTransformation
 from sigma.processing.transformations.detection_item import DropDetectionItemTransformation
 from sigma.processing.transformations.failure import (
@@ -68,6 +68,7 @@ transformations: Dict[str, Type[Transformation]] = {
 
 __all__ = [
     "Transformation",
+    "PreprocessingTransformation",
     "FieldMappingTransformation",
     "FieldPrefixMappingTransformation",
     "FieldFunctionTransformation",

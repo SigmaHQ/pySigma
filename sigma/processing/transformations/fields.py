@@ -9,7 +9,7 @@ from typing import (
 from dataclasses import dataclass, field
 from sigma.processing.transformations.base import (
     FieldMappingTransformationBase,
-    Transformation,
+    PreprocessingTransformation,
 )
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 
@@ -134,7 +134,7 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
 
 
 @dataclass
-class AddFieldTransformation(Transformation):
+class AddFieldTransformation(PreprocessingTransformation):
     """
     Add one or multiple fields to the Sigma rule. The field is added to the fields list of the rule:
     """
@@ -150,7 +150,7 @@ class AddFieldTransformation(Transformation):
 
 
 @dataclass
-class RemoveFieldTransformation(Transformation):
+class RemoveFieldTransformation(PreprocessingTransformation):
     """
     Remove one or multiple fields from the Sigma rules field list. If a given field is not in the
     rules list, it is ignored.
@@ -174,7 +174,7 @@ class RemoveFieldTransformation(Transformation):
 
 
 @dataclass
-class SetFieldTransformation(Transformation):
+class SetFieldTransformation(PreprocessingTransformation):
     """
     Set fields to the Sigma rule. The fields are set to the fields list of the transformation.
     """

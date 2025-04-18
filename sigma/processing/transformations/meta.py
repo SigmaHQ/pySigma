@@ -6,13 +6,13 @@ from typing import (
 from dataclasses import dataclass, field
 import sigma
 from sigma.correlations import SigmaCorrelationRule
-from sigma.processing.transformations.base import Transformation
+from sigma.processing.transformations.base import PreprocessingTransformation
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaConfigurationError
 
 
 @dataclass
-class NestedProcessingTransformation(Transformation):
+class NestedProcessingTransformation(PreprocessingTransformation):
     """Executes a nested processing pipeline as transformation. Main purpose is to apply a
     whole set of transformations that match the given conditions of the enclosng processing item.
     """

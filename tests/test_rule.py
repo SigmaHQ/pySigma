@@ -881,24 +881,24 @@ def test_sigmarule_bad_status_type():
 
 
 def test_sigmarule_bad_date():
-    """ This test uses string data type as date representation in yaml """
+    """This test uses string data type as date representation in yaml"""
     bad_string_dates = (
-        "bad", 
-        " 2024-11-24", 
-        "2024-11-24 ", 
-        "2024 11-24", 
-        "24-11-24", 
+        "bad",
+        " 2024-11-24",
+        "2024-11-24 ",
+        "2024 11-24",
+        "24-11-24",
         "02-02-02",
         "4000-01-01",
         "10000-01-01",
         "2022-01/01",
-        "2022/01-01"
+        "2022/01-01",
     )
     for test_string in bad_string_dates:
         match_string = f"Rule date '{test_string}' is invalid, use yyyy-mm-dd"
         with pytest.raises(sigma_exceptions.SigmaDateError, match=match_string) as ex:
             SigmaRule.from_yaml(
-                    f"""
+                f"""
                 title: Test
                 date: '{test_string}'  # try a string
                 logsource:
@@ -908,12 +908,12 @@ def test_sigmarule_bad_date():
                         fieldA: valueA
                     condition: selection_1
                 """
-                )
+            )
             assert False, f"Did not throw SigmaDateError on date {test_string}"
 
 
 def test_sigmarule_bad_modified():
-    """ 
+    """
     This test uses yaml ability to recognize dates.
     Therefore, here 4000-01-01 will be interpreted as a correct yaml date.
     """
@@ -925,13 +925,13 @@ def test_sigmarule_bad_modified():
         "10000-01-01",
         "2022-01/01",
         "2022/01-01",
-        "2022 01/01"
+        "2022 01/01",
     )
     for test_string in bad_dates:
         match_string = f"Rule modified '{test_string}' is invalid, use yyyy-mm-dd"
         with pytest.raises(sigma_exceptions.SigmaModifiedError, match=match_string) as ex:
             SigmaRule.from_yaml(
-                    f"""
+                f"""
                 title: Test
                 modified: {test_string}  # this can be recognized as date by yaml parser
                 logsource:
@@ -941,7 +941,7 @@ def test_sigmarule_bad_modified():
                         fieldA: valueA
                     condition: selection_1
                 """
-                )
+            )
             assert False, f"Did not throw SigmaModifiedError on date {test_string}"
 
 
@@ -988,18 +988,18 @@ def test_sigmarule_date():
 
 def test_modified_date():
     validDates = {
-        "3000-12-31": date(3000, 12, 31), # can appear as a generic date in the future
+        "3000-12-31": date(3000, 12, 31),  # can appear as a generic date in the future
         "2999-04-04": date(2999, 4, 4),
         "2024-11-22": date(2024, 11, 22),
-        "1970-01-01": date(1970, 1, 1),   # can appear as a generic date in the past
-        "1900-12-31": date(1900, 12, 31), # not much useful, but correct
-        "2024/11/22": date(2024, 11, 22), # US-based sigmas have such dates
-        "2024/1/2": date(2024, 1, 2),   
-        "1970/1/1": date(1970, 1, 1)
+        "1970-01-01": date(1970, 1, 1),  # can appear as a generic date in the past
+        "1900-12-31": date(1900, 12, 31),  # not much useful, but correct
+        "2024/11/22": date(2024, 11, 22),  # US-based sigmas have such dates
+        "2024/1/2": date(2024, 1, 2),
+        "1970/1/1": date(1970, 1, 1),
     }
     for test_string, expected_date in validDates.items():
         rule = SigmaRule.from_yaml(
-                f"""
+            f"""
             title: Test
             id: cafedead-beef-0000-1111-0123456789ab
             level: medium
@@ -1013,7 +1013,7 @@ def test_modified_date():
                     fieldA: valueA
                 condition: selection_1
             """
-            )
+        )
         assert rule is not None
         assert rule.date == expected_date, f"bad 'date' for '{test_string}'"
         assert rule.modified == expected_date, f"bad 'modified' for '{test_string}'"

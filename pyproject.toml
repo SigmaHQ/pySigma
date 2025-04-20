@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "pySigma"
-version = "0.11.21"
+version = "0.11.22"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = ["Thomas Patzke <thomas@patzke.org>"]

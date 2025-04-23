@@ -126,7 +126,7 @@ class SigmaString(SigmaType):
 
         :param s: string to be parsed
         :type s: str
-        :param escape: if True, escape_char is used to escape special characters
+        :param escape: whether to enable escaping of special characters
         :type escape: bool
         """
         if s is None:

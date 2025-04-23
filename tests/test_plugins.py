@@ -171,6 +171,7 @@ def check_module(name: str) -> bool:
         return False
 
 
+@pytest.mark.online
 def test_sigma_plugin_installation():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()
     plugin = plugin_dir.get_plugin_by_uuid("4af37b53-f1ec-4567-8017-2fb9315397a1")  # Splunk backend

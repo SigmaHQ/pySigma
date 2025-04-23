@@ -363,8 +363,6 @@ YAML example:
 .. autoclass:: sigma.processing.transformations.SetValueTransformation
 .. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
 .. autoclass:: sigma.processing.transformations.SetStateTransformation
-.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
-.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
 
 Query Post-Processing Transformations
 ======================================

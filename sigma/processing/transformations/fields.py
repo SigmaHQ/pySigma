@@ -3,10 +3,12 @@ from sigma.conditions import ConditionOR
 from typing import (
     List,
     Dict,
+    Optional,
     Union,
     Callable,
 )
 from dataclasses import dataclass, field
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
     FieldMappingTransformationBase,
     PreprocessingTransformation,
@@ -23,12 +25,21 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
     def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         return self.mapping.get(field)
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         super().apply_detection_item(detection_item)
         field = detection_item.field
+        if field is None:
+            return None
         mapping = self.get_mapping(field)
-        if mapping is not None and self.processing_item.match_field_name(field):
-            self._pipeline.field_mappings.add_mapping(field, mapping)
+        if (
+            mapping is not None
+            and self.processing_item is not None
+            and self.processing_item.match_field_name(field)
+        ):
+            if self._pipeline is not None:
+                self._pipeline.field_mappings.add_mapping(field, mapping)
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)
@@ -40,8 +51,9 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
                     ],
                     item_linking=ConditionOR,
                 )
+        return None
 
-    def apply_field_name(self, field: str) -> Union[str, List[str]]:
+    def apply_field_name(self, field: str) -> List[str]:
         mapping = self.get_mapping(field) or field
         if isinstance(mapping, str):
             return [mapping]
@@ -63,6 +75,7 @@ class FieldPrefixMappingTransformation(FieldMappingTransformation):
                     return dest + field[len(src) :]
                 else:
                     return [dest_item + field[len(src) :] for dest_item in dest]
+        return None  # no matching prefix found
 
 
 @dataclass
@@ -73,21 +86,25 @@ class FieldFunctionTransformation(FieldMappingTransformationBase):
     transform_func: Callable[[str], str]
     mapping: Dict[str, str] = field(default_factory=lambda: {})
 
-    def _transform_name(self, f: str) -> str:
-        if f:
-            return self.mapping.get(f, self.transform_func(f))
-        return f
+    def _transform_name(self, field: str) -> str:
+        return self.mapping.get(field, self.transform_func(field))
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         super().apply_detection_item(detection_item)
-        f = detection_item.field
-        mapping = self._transform_name(f)
-        if self.processing_item.match_field_name(f):
-            self._pipeline.field_mappings.add_mapping(f, mapping)
+        field = detection_item.field
+        if field is None:
+            return None
+        mapping = self._transform_name(field)
+        if self.processing_item is not None and self.processing_item.match_field_name(field):
+            if self._pipeline is not None:
+                self._pipeline.field_mappings.add_mapping(field, mapping)
             detection_item.field = mapping
-            self.processing_item_applied(detection_item)
+            return detection_item
+        return None
 
-    def apply_field_name(self, f: str) -> Union[str, List[str]]:
+    def apply_field_name(self, f: str) -> List[str]:
         return [self._transform_name(f)]
 
 
@@ -99,14 +116,20 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
 
     suffix: str
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[SigmaDetectionItem]:
         super().apply_detection_item(detection_item)
-        if type(orig_field := detection_item.field) is str and (
-            self.processing_item is None or self.processing_item.match_field_name(orig_field)
+        if isinstance(detection_item.field, str) and (
+            self.processing_item is None
+            or self.processing_item.match_field_name(detection_item.field)
         ):
+            orig_field: str = detection_item.field
             detection_item.field += self.suffix
-            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
-        self.processing_item_applied(detection_item)
+            if self._pipeline is not None:
+                self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            return detection_item
+        return None
 
     def apply_field_name(self, field: str) -> List[str]:
         return [field + self.suffix]
@@ -120,14 +143,20 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
 
     prefix: str
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[SigmaDetectionItem]:
         super().apply_detection_item(detection_item)
-        if type(orig_field := detection_item.field) is str and (
-            self.processing_item is None or self.processing_item.match_field_name(orig_field)
+        if isinstance(detection_item.field, str) and (
+            self.processing_item is None
+            or self.processing_item.match_field_name(detection_item.field)
         ):
+            orig_field: str = detection_item.field
             detection_item.field = self.prefix + detection_item.field
-            self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
-        self.processing_item_applied(detection_item)
+            if self._pipeline is not None:
+                self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
+            return detection_item
+        return None
 
     def apply_field_name(self, field: str) -> List[str]:
         return [self.prefix + field]
@@ -141,7 +170,7 @@ class AddFieldTransformation(PreprocessingTransformation):
 
     field: Union[str, List[str]]
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         if isinstance(self.field, str):
             rule.fields.append(self.field)
@@ -158,7 +187,7 @@ class RemoveFieldTransformation(PreprocessingTransformation):
 
     field: Union[str, List[str]]
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         if isinstance(self.field, str):
             try:
@@ -181,6 +210,6 @@ class SetFieldTransformation(PreprocessingTransformation):
 
     fields: List[str]
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         rule.fields = self.fields

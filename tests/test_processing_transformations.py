@@ -1143,6 +1143,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
             "newfield2": 123,
             "newfield3": "$category",
             "listfield": ["value1", "value2"],
+            "numlistfield": [1, 2, 3],
         },
         "additional",
     )
@@ -1164,6 +1165,9 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
                 SigmaDetectionItem("newfield2", [], [SigmaNumber(123)]),
                 SigmaDetectionItem("newfield3", [], [SigmaString("$category")]),
                 SigmaDetectionItem("listfield", [], [SigmaString("value1"), SigmaString("value2")]),
+                SigmaDetectionItem(
+                    "numlistfield", [], [SigmaNumber(1), SigmaNumber(2), SigmaNumber(3)]
+                ),
             ]
         )
         and all(  # detection items are marked as processed by processing item
@@ -1193,6 +1197,8 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
             "newfield1": "$category",
             "newfield2": "$something",
             "listfield": ["$category", "value"],
+            "numfield": 123,
+            "numlistfield": [1, 2, 3],
         },
         "additional",
         template=True,
@@ -1214,6 +1220,10 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
                 SigmaDetectionItem("newfield1", [], [SigmaString("test")]),
                 SigmaDetectionItem("newfield2", [], [SigmaString("$something")]),
                 SigmaDetectionItem("listfield", [], [SigmaString("test"), SigmaString("value")]),
+                SigmaDetectionItem("numfield", [], [SigmaNumber(123)]),
+                SigmaDetectionItem(
+                    "numlistfield", [], [SigmaNumber(1), SigmaNumber(2), SigmaNumber(3)]
+                ),
             ]
         )
         and all(  # detection items are marked as processed by processing item

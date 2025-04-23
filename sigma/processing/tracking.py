@@ -25,7 +25,7 @@ class ProcessingItemTrackingMixin:
         return processing_item_id in self.applied_processing_items
 
 
-class FieldMappingTracking(UserDict[str, Set[str]]):
+class FieldMappingTracking(UserDict[Optional[str], Set[str]]):
     """
     Tracking class for field mappings. Tracks initial field name to finally mapped name after a
     processing pipeline was applied. Each key maps the source field to a set of target fields.
@@ -36,9 +36,11 @@ class FieldMappingTracking(UserDict[str, Set[str]]):
 
     def __init__(self, *args: List[Any], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
-        self.target_fields: defaultdict[str, Set[str]] = defaultdict(set)  # Create reverse mapping
+        self.target_fields: defaultdict[Optional[str], Set[Optional[str]]] = defaultdict(
+            set
+        )  # Create reverse mapping
 
-    def add_mapping(self, source: str, target: Union[str, List[str]]) -> None:
+    def add_mapping(self, source: Optional[str], target: Union[str, List[str]]) -> None:
         """
         This method must be invoked for each field name mapping applied in a processing pipeline to
         get a precise result of the final mapping.
@@ -50,7 +52,8 @@ class FieldMappingTracking(UserDict[str, Set[str]]):
             # Replace each occurrence of a mapping to the source with the target field.
             for source_field in self.target_fields[source]:
                 target_set = self[source_field]
-                target_set.remove(source)
+                if source is not None:
+                    target_set.remove(source)
                 target_set.update(target)
 
             # Update reverse mapping: remove source and add new target

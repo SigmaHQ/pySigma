@@ -8,6 +8,7 @@ from typing import (
 from dataclasses import dataclass, field
 import random
 import string
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
     ConditionTransformation,
 )
@@ -26,32 +27,39 @@ class AddConditionTransformation(ConditionTransformation):
     """
 
     conditions: Dict[str, Union[int, str, List[str]]] = field(default_factory=dict)
-    name: Optional[str] = field(default=None, compare=False)
+    name: str = field(
+        default_factory=lambda: "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10))),
+        compare=False,
+    )
     template: bool = False
     negated: bool = False
 
-    def __post_init__(self) -> None:
-        if self.name is None:  # generate random detection item name if none is given
-            self.name = "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
-
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         if isinstance(rule, SigmaRule):
             if self.template:
                 conditions = {
                     field: (
                         [
-                            string.Template(item).safe_substitute(
-                                category=rule.logsource.category,
-                                product=rule.logsource.product,
-                                service=rule.logsource.service,
+                            (
+                                string.Template(item).safe_substitute(
+                                    category=rule.logsource.category,
+                                    product=rule.logsource.product,
+                                    service=rule.logsource.service,
+                                )
+                                if isinstance(item, str)
+                                else item
                             )
                             for item in value
                         ]
                         if isinstance(value, list)
-                        else string.Template(value).safe_substitute(
-                            category=rule.logsource.category,
-                            product=rule.logsource.product,
-                            service=rule.logsource.service,
+                        else (
+                            string.Template(value).safe_substitute(
+                                category=rule.logsource.category,
+                                product=rule.logsource.product,
+                                service=rule.logsource.service,
+                            )
+                            if isinstance(value, str)
+                            else value
                         )
                     )
                     for field, value in self.conditions.items()

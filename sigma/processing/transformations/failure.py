@@ -1,4 +1,6 @@
 from dataclasses import dataclass
+from typing import Union
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import (
     PreprocessingTransformation,
     DetectionItemTransformation,
@@ -20,7 +22,7 @@ class RuleFailureTransformation(PreprocessingTransformation):
 
     message: str
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         raise SigmaTransformationError(self.message, source=rule.source)
 
 

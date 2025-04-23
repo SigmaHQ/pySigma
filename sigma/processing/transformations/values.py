@@ -210,7 +210,7 @@ class ReplaceStringTransformation(StringValueTransformation):
                 f"Regular expression '{self.regex}' is invalid: {str(e)}"
             ) from e
 
-    def apply_string_value(self, field: str, val: SigmaString) -> SigmaString:
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             if self.skip_special:
                 return val.map_parts(
@@ -236,7 +236,7 @@ class MapStringTransformation(StringValueTransformation):
 
     mapping: Dict[str, Union[str, List[str]]]
 
-    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
         mapped = self.mapping.get(str(val), None)
         if isinstance(mapped, str):
             return SigmaString(mapped)
@@ -269,7 +269,7 @@ class RegexTransformation(StringValueTransformation):
             )
         return super().__post_init__()
 
-    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
         regex = ""
 
         # empty string can not be convert into a simple regex
@@ -349,7 +349,7 @@ class SetValueTransformation(ValueTransformation):
 
         return super().__post_init__()
 
-    def apply_value(self, field: str, val: SigmaType) -> SigmaType:
+    def apply_value(self, field: Optional[str], val: SigmaType) -> SigmaType:
         return self.sigma_value
 
 
@@ -361,7 +361,9 @@ class ConvertTypeTransformation(ValueTransformation):
 
     target_type: Literal["str", "num"]
 
-    def apply_value(self, field: str, val: SigmaType) -> Optional[Union[SigmaString, SigmaNumber]]:
+    def apply_value(
+        self, field: Optional[str], val: SigmaType
+    ) -> Optional[Union[SigmaString, SigmaNumber]]:
         if self.target_type == "str":
             return SigmaString(str(val))
         elif self.target_type == "num":
@@ -384,7 +386,7 @@ class CaseTransformation(StringValueTransformation):
             raise SigmaConfigurationError(f"Invalid method '{self.method}' for CaseTransformation.")
         return super().__post_init__()
 
-    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
 
         if self.method == "snake_case":
             return val.snake_case()

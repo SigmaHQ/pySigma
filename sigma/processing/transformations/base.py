@@ -30,12 +30,9 @@ class Transformation(ABC):
     applied to the whole rule.
     """
 
-    processing_item: Optional[
-        Union[
-            "sigma.processing.pipeline.ProcessingItem",
-            "sigma.processing.pipeline.QueryPostprocessingItem",
-        ]
-    ] = field(init=False, compare=False, default=None)
+    processing_item: Optional["sigma.processing.pipeline.ProcessingItemBase"] = field(
+        init=False, compare=False, default=None
+    )
 
     _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
         init=False, compare=False, default=None
@@ -48,7 +45,7 @@ class Transformation(ABC):
         except TypeError as e:
             raise SigmaConfigurationError("Error in instantiation of transformation: " + str(e))
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline"):
+    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
@@ -71,9 +68,10 @@ class Transformation(ABC):
             "sigma.conditions.SigmaCondition",
             SigmaCorrelationRule,
         ],
-    ):
+    ) -> None:
         """Mark detection item or detection as applied."""
-        d.add_applied_processing_item(self.processing_item)
+        if self.processing_item is not None:
+            d.add_applied_processing_item(self.processing_item)
 
 
 @dataclass
@@ -109,13 +107,17 @@ class DetectionItemTransformation(PreprocessingTransformation):
     A detection item transformation also marks the item as unconvertible to plain data types.
     """
 
+    processing_item: Optional["sigma.processing.pipeline.ProcessingItem"] = field(
+        init=False, compare=False, default=None
+    )
+
     @abstractmethod
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
     ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply transformation on detection item."""
 
-    def apply_detection(self, detection: SigmaDetection):
+    def apply_detection(self, detection: SigmaDetection) -> None:
         for i, detection_item in enumerate(detection.detection_items):
             if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
                 self.apply_detection(detection_item)
@@ -129,7 +131,7 @@ class DetectionItemTransformation(PreprocessingTransformation):
                     detection.detection_items[i] = r
                     self.processing_item_applied(r)
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         if isinstance(rule, SigmaRule):
             for detection in rule.detection.detections.values():
@@ -157,7 +159,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         """
         if self.processing_item is None or self.processing_item.match_field_name(field):
             result = self.apply_field_name(field)
-            if self.processing_item is not None:
+            if self.processing_item is not None and self._pipeline is not None:
                 self._pipeline.track_field_processing_items(
                     field, result, self.processing_item.identifier
                 )
@@ -214,11 +216,13 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         self, detection_item: SigmaDetectionItem
     ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply field name transformations to field references in detection item values."""
-        new_values = []
+        new_values: List[SigmaType] = []
         match = False
         for value in detection_item.value:
-            if self.processing_item is not None and self.processing_item.match_field_in_value(
-                value
+            if (
+                self.processing_item is not None
+                and self.processing_item.match_field_in_value(value)
+                and isinstance(value, SigmaFieldReference)
             ):
                 new_values.extend(
                     (
@@ -232,8 +236,8 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
 
         if match:  # replace value only if something matched
             detection_item.value = new_values
-
-        return super().apply_detection_item(detection_item)
+            return detection_item
+        return None  # no replacement was made
 
 
 @dataclass
@@ -260,7 +264,9 @@ class ValueTransformation(DetectionItemTransformation):
         except IndexError:  # No type annotation found
             self.value_types = None
 
-    def apply_detection_item(self, detection_item: SigmaDetectionItem):
+    def apply_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> Optional[SigmaDetectionItem]:
         """Call apply_value for each value and integrate results into value list."""
         results = []
         modified = False
@@ -281,11 +287,12 @@ class ValueTransformation(DetectionItemTransformation):
                 results.append(value)
         if modified:
             detection_item.value = results
-            self.processing_item_applied(detection_item)
+            return detection_item
+        return None  # no replacement was made
 
     @abstractmethod
     def apply_value(
-        self, field: str, val: SigmaType
+        self, field: Optional[str], val: SigmaType
     ) -> Optional[Union[SigmaType, Iterable[SigmaType]]]:
         """
         Perform a value transformation. This method can return:
@@ -304,12 +311,13 @@ class StringValueTransformation(ValueTransformation):
     Base class for transformations that operate on SigmaString values.
     """
 
-    def apply_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+    def apply_value(self, field: Optional[str], val: SigmaType) -> Optional[SigmaString]:
         if isinstance(val, SigmaString):
             return self.apply_string_value(field, val)
+        return None
 
     @abstractmethod
-    def apply_string_value(self, field: str, val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
         """
         Perform a value transformation. This method can return:
 
@@ -325,7 +333,7 @@ class ConditionTransformation(PreprocessingTransformation):
     takes care of marking condition as applied by processing item.
     """
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         if isinstance(rule, SigmaRule):
             for i, condition in enumerate(rule.detection.parsed_condition):

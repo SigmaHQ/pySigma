@@ -53,7 +53,7 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
         super().__post_init__()
 
     def apply_value(
-        self, field: str, val: SigmaString
+        self, field: Optional[str], val: SigmaString
     ) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder(self.include, self.exclude):
             return val.replace_placeholders(self.placeholder_replacements_base)
@@ -140,7 +140,7 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
     mapping: Dict[str, str] = field(default_factory=dict)
 
     def apply_value(
-        self, field: str, val: SigmaString
+        self, field: Optional[str], val: SigmaString
     ) -> Union[SigmaString, Iterable[SigmaString]]:
         if val.contains_placeholder():
             if len(val.s) == 1:  # Sigma string must only contain placeholder, nothing else.

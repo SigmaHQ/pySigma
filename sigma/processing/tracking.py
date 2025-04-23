@@ -14,7 +14,7 @@ class ProcessingItemTrackingMixin:
     applied_processing_items: Set[str] = field(init=False, compare=False, default_factory=set)
 
     def add_applied_processing_item(
-        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItem"]
+        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItemBase"]
     ) -> None:
         """Add identifier of processing item to set of applied processing items."""
         if processing_item is not None and processing_item.identifier is not None:

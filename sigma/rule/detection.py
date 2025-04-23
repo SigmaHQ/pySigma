@@ -144,7 +144,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val, source=source)
 
-    def disable_conversion_to_plain(self):
+    def disable_conversion_to_plain(self) -> None:
         """
         Mark detection item as not convertible to plain data type. This is required in cases where
         the value and original value get out of sync, e.g. because transformation are applied and
@@ -433,7 +433,7 @@ class SigmaDetection(ParentChainMixin):
             return condition
 
     def add_applied_processing_item(
-        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItem"]
+        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItemBase"]
     ):
         """Propagate processing item to all contained detection items."""
         for detection_item in self.detection_items:

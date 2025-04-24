@@ -79,33 +79,14 @@ class FieldPrefixMappingTransformation(FieldMappingTransformation):
 
 
 @dataclass
-class FieldFunctionTransformation(FieldMappingTransformationBase):
+class FieldFunctionTransformation(FieldMappingTransformation):
     """Map a field name to another using provided transformation function.
     You can overwrite transformation by providing explicit mapping for a field."""
 
     transform_func: Callable[[str], str]
-    mapping: Dict[str, str] = field(default_factory=lambda: {})
 
-    def _transform_name(self, field: str) -> str:
+    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
         return self.mapping.get(field, self.transform_func(field))
-
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
-        super().apply_detection_item(detection_item)
-        field = detection_item.field
-        if field is None:
-            return None
-        if self.processing_item is not None and self.processing_item.match_field_name(field):
-            mapping = self._transform_name(field)
-            if self._pipeline is not None:
-                self._pipeline.field_mappings.add_mapping(field, mapping)
-            detection_item.field = mapping
-            return detection_item
-        return None
-
-    def apply_field_name(self, f: str) -> List[str]:
-        return [self._transform_name(f)]
 
 
 @dataclass

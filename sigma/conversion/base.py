@@ -2020,7 +2020,7 @@ class TextQueryBackend(Backend):
             referenced_rules=self.convert_referenced_rules(rule.rules, method),
             field=rule.condition.fieldref,
             fields=self.convert_correlation_aggregation_fields_from_template(
-                rule.rules, rule.group_by, method
+                rule.fields, rule.rules, rule.group_by, method
             ),
             timespan=self.convert_timespan(rule.timespan, method),
             groupby=self.convert_correlation_aggregation_groupby_from_template(
@@ -2031,6 +2031,7 @@ class TextQueryBackend(Backend):
 
     def convert_correlation_aggregation_fields_from_template(
         self,
+        correlation_rule_fields: List[str],
         referenced_rules: List[SigmaRuleReference],
         group_by: Optional[List[str]],
         method: str,
@@ -2038,15 +2039,18 @@ class TextQueryBackend(Backend):
         if self.correlation_fields_expression is None:
             return ""
         else:
+            all_fields = []
             referenced_rules_fields = []
+            # Include fields from referenced rules
             for rl in referenced_rules:
                 for fld in rl.rule.fields:
-
-                    # excluding fields handled by group by
-                    if fld not in group_by and fld not in referenced_rules_fields:
-                        referenced_rules_fields.append(fld)
-
-            if not len(referenced_rules_fields):  # if no additional fields
+                    referenced_rules_fields.append(fld)
+            # Include fields from the correlation rule
+            for fld in referenced_rules_fields + correlation_rule_fields:
+                # Exclude groupby fields and keep only unique fields (remove duplicates)
+                if fld not in group_by and fld not in all_fields:
+                    all_fields.append(fld)
+            if len(all_fields) == 0:  # if no fields
                 return ""
             return self.correlation_fields_expression[method].format(
                 fields=self.correlation_fields_field_expression_joiner[method].join(
@@ -2054,7 +2058,7 @@ class TextQueryBackend(Backend):
                         self.correlation_fields_field_expression[method].format(
                             field=self.escape_and_quote_field(field)
                         )
-                        for field in referenced_rules_fields
+                        for field in all_fields
                     )
                 )
             )

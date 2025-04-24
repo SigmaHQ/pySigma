@@ -21,10 +21,6 @@ detection:
     selection:
         EventID: 4625
     condition: selection
-fields:
-    - User
-    - Computer
-    - TargetUserName
 ---
 title: Multiple failed logons for a single user (possible brute force attack)
 status: test
@@ -39,6 +35,10 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
+fields:
+    - SubjectUserName
+    - TargetUserName
+    - Computer
             """
     )
 
@@ -92,7 +92,7 @@ def test_event_count_correlation_single_rule_with_fields(
 
     assert test_backend.convert(event_count_correlation_rule) == [
         """EventID=4625
-| aggregate window=5min count() as event_count values(User) as User values(Computer) as Computer by TargetUserName, TargetDomainName, mappedB
+| aggregate window=5min count() as event_count values(SubjectUserName) as SubjectUserName values(Computer) as Computer by TargetUserName, TargetDomainName, mappedB
 | where event_count >= 10"""
     ]
 
@@ -150,6 +150,9 @@ detection:
     selection:
         EventID: 4625
     condition: selection
+fields:
+    - SubjectUserName
+    - TargetUserName
 ---
 title: Successful logon
 name: successful_logon
@@ -161,6 +164,10 @@ detection:
     selection:
         EventID: 4624
     condition: selection
+fields:
+    - SubjectUserName
+    - TargetUserName
+    - LogonType
 ---
 title: Failed and successful logons for a single user
 status: test
@@ -211,6 +218,34 @@ def test_temporal_correlation_multi_rule_with_typing_expression(
         """( EventID=4625 ) or ( EventID=4624 )
 | eval event_type=case(EventID=4625, "failed_logon", EventID=4624, "successful_logon")
 
+| temporal window=5min eventtypes=failed_logon,successful_logon by TargetUserName, TargetDomainName
+
+| where eventtype_count >= 2"""
+    ]
+
+
+def test_temporal_correlation_multi_rule_with_referenced_rules_fields(
+    monkeypatch, test_backend, temporal_correlation_rule
+):
+
+    monkeypatch.setattr(test_backend, "correlation_fields_expression", {"test": " {fields}"})
+    monkeypatch.setattr(
+        test_backend, "correlation_fields_field_expression", {"test": "values({field}) as {field}"}
+    )
+    monkeypatch.setattr(test_backend, "correlation_fields_field_expression_joiner", {"test": " "})
+
+    monkeypatch.setattr(
+        test_backend,
+        "temporal_aggregation_expression",
+        {
+            "test": "| aggregate window={timespan} count() as event_count{fields}{groupby}\n| temporal window={timespan} eventtypes={referenced_rules}{groupby}"
+        },
+    )
+    assert test_backend.convert(temporal_correlation_rule) == [
+        """subsearch { EventID=4625 | set event_type="failed_logon" }
+subsearch { EventID=4624 | set event_type="successful_logon" }
+
+| aggregate window=5min count() as event_count values(SubjectUserName) as SubjectUserName values(LogonType) as LogonType by TargetUserName, TargetDomainName
 | temporal window=5min eventtypes=failed_logon,successful_logon by TargetUserName, TargetDomainName
 
 | where eventtype_count >= 2"""

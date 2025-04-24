@@ -116,7 +116,7 @@ class SigmaString(SigmaType):
         Union[str, SpecialChars, Placeholder]
     ]  # the string is represented as sequence of strings and characters with special meaning
 
-    def __init__(self, s: Optional[str] = None, escape: Optional[bool] = True):
+    def __init__(self, s: Optional[str] = None, escape: bool = True):
         """
         Initializes SigmaString instance from raw string by parsing it:
 

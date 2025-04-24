@@ -96,8 +96,8 @@ class FieldFunctionTransformation(FieldMappingTransformationBase):
         field = detection_item.field
         if field is None:
             return None
-        mapping = self._transform_name(field)
         if self.processing_item is not None and self.processing_item.match_field_name(field):
+            mapping = self._transform_name(field)
             if self._pipeline is not None:
                 self._pipeline.field_mappings.add_mapping(field, mapping)
             detection_item.field = mapping

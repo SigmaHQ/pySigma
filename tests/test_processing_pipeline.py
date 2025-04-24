@@ -1411,47 +1411,6 @@ def test_processingpipeline_invalid_concatenation_left():
         )
 
 
-@pytest.fixture(scope="module")
-def processing_pipeline_with_field_func_transform():
-    return ProcessingPipeline(
-        items=[
-            ProcessingItem(  # Field mappings
-                identifier="field_transform",
-                transformation=FieldFunctionTransformation(
-                    transform_func=lambda f: f.upper(),
-                    mapping={
-                        "fieldA": "mappedA",
-                    },
-                ),
-            ),
-        ]
-    )
-
-
-def test_processingpipeline_field_name_transformation_in_field_list(
-    processing_pipeline_with_field_func_transform,
-):
-    rule = processing_pipeline_with_field_func_transform.apply(
-        SigmaRule.from_yaml(
-            f"""
-            title: Test
-            status: test
-            logsource:
-                category: test
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                condition: sel
-            fields:
-                - fieldA
-                - fieldB
-        """
-        )
-    )
-    assert rule.fields == ["mappedA", "FIELDB"]
-
-
 def test_processingitem_match_detection_item_with_field_name_condition_expression(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),

@@ -394,6 +394,137 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
 
 
 @pytest.fixture
+def field_function_transformation():
+    return FieldFunctionTransformation(
+        transform_func=lambda field: f"transformed_{field}",
+        mapping={"field1": "mapped_field1", "field2": "mapped_field2"},
+    )
+
+
+def test_field_function_transformation(dummy_pipeline, field_function_transformation):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "value1",
+                        "field2": "value2",
+                        "field3": "value3",
+                    }
+                ],
+                "condition": "test",
+            },
+            "fields": [
+                "field1",
+                "field2",
+                "field3",
+            ],
+        }
+    )
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.set_processing_item(
+        ProcessingItem(
+            field_function_transformation,
+            identifier="test",
+        )
+    )
+    field_function_transformation.apply(sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("mapped_field1", [], [SigmaString("value1")]),
+                    SigmaDetectionItem("mapped_field2", [], [SigmaString("value2")]),
+                    SigmaDetectionItem("transformed_field3", [], [SigmaString("value3")]),
+                ]
+            )
+        ]
+    )
+    assert sigma_rule.fields == [
+        "mapped_field1",
+        "mapped_field2",
+        "transformed_field3",
+    ]
+    assert sigma_rule.was_processed_by("test")
+    assert field_function_transformation._pipeline.field_mappings == {
+        "field1": {"mapped_field1"},
+        "field2": {"mapped_field2"},
+        "field3": {"transformed_field3"},
+    }
+
+
+def test_field_function_transformation_keyword_detection(
+    dummy_pipeline, keyword_sigma_rule, field_function_transformation
+):
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                None,
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
+def test_field_function_transformation_correlation_rule(
+    dummy_pipeline, sigma_correlation_rule, field_function_transformation
+):
+    sigma_correlation_rule = SigmaCorrelationRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "correlation": {
+                "type": "value_count",
+                "rules": [
+                    "testrule_1",
+                    "testrule_2",
+                ],
+                "timespan": "5m",
+                "group-by": [
+                    "field1",
+                    "field2",
+                    "field3",
+                ],
+                "condition": {
+                    "gte": 10,
+                    "field": "field1",
+                },
+                "aliases": {
+                    "alias1": {
+                        "testrule_1": "field1",
+                        "testrule_2": "field2",
+                    },
+                },
+            },
+        }
+    )
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(sigma_correlation_rule)
+    assert sigma_correlation_rule.group_by == [
+        "mapped_field1",
+        "mapped_field2",
+        "transformed_field3",
+    ]
+    assert sigma_correlation_rule.aliases.aliases["alias1"] == SigmaCorrelationFieldAlias(
+        alias="alias1",
+        mapping={
+            SigmaRuleReference("testrule_1"): "mapped_field1",
+            SigmaRuleReference("testrule_2"): "mapped_field2",
+        },
+    )
+    assert sigma_correlation_rule.condition.fieldref == "mapped_field1"
+
+
+@pytest.fixture
 def field_prefix_mapping_transformation():
     transformation = FieldPrefixMappingTransformation(
         {

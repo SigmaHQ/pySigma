@@ -146,10 +146,12 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     """
 
     @abstractmethod
-    def apply_field_name(self, field: str) -> List[str]:
+    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
         """
-        Apply field name transformation to a field list item of a Sigma rule. It must always return
-        a list of strings that are expanded into a new field list.
+        Map a field name to one or multiple field names. The result is used in detection items, references
+        as well as in the field list of the Sigma rule. If the result is None, the field name is
+        passed through unchanged. If the result is an empty list, the field name is dropped from the
+        transformed result.
         """
 
     def _apply_field_name(self, field: str) -> List[str]:
@@ -157,8 +159,12 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         Evaluate field name conditions and perform transformation with apply_field_name() method if
         condition matches, else return original value.
         """
-        if self.processing_item is None or self.processing_item.match_field_name(field):
-            result = self.apply_field_name(field)
+        result = self.apply_field_name(field)
+        if result is not None and (
+            self.processing_item is None or self.processing_item.match_field_name(field)
+        ):
+            if isinstance(result, str):
+                result = [result]
             if self.processing_item is not None and self._pipeline is not None:
                 self._pipeline.track_field_processing_items(
                     field, result, self.processing_item.identifier

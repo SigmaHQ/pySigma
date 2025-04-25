@@ -22,9 +22,6 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
 
     mapping: Dict[str, Union[str, List[str]]]
 
-    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
-        return self.mapping.get(field)
-
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
     ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
@@ -32,7 +29,7 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
         field = detection_item.field
         if field is None:
             return None
-        mapping = self.get_mapping(field)
+        mapping = self.apply_field_name(field)
         if (
             mapping is not None
             and self.processing_item is not None
@@ -53,19 +50,15 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
                 )
         return None
 
-    def apply_field_name(self, field: str) -> List[str]:
-        mapping = self.get_mapping(field) or field
-        if isinstance(mapping, str):
-            return [mapping]
-        else:
-            return mapping
+    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
+        return self.mapping.get(field)
 
 
 @dataclass
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
 
-    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
         if field is None:
             return None
 
@@ -85,7 +78,7 @@ class FieldFunctionTransformation(FieldMappingTransformation):
 
     transform_func: Callable[[str], str]
 
-    def get_mapping(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
         return self.mapping.get(field, self.transform_func(field))
 
 

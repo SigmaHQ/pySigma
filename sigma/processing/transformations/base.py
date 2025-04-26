@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import dataclasses
 from typing import (
     Any,
     Dict,
@@ -9,6 +10,7 @@ from typing import (
 )
 from dataclasses import dataclass, field
 import sigma
+from sigma.conditions import ConditionOR
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
@@ -146,7 +148,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     """
 
     @abstractmethod
-    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
         """
         Map a field name to one or multiple field names. The result is used in detection items, references
         as well as in the field list of the Sigma rule. If the result is None, the field name is
@@ -223,7 +225,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply field name transformations to field references in detection item values."""
         new_values: List[SigmaType] = []
-        match = False
+        fieldref_match = False
         for value in detection_item.value:
             if (
                 self.processing_item is not None
@@ -236,13 +238,39 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
                         for mapped_field in self._apply_field_name(value.field)
                     )
                 )
-                match = True
+                fieldref_match = True
             else:
                 new_values.append(value)
 
-        if match:  # replace value only if something matched
+        if fieldref_match:  # replace value only if something matched
             detection_item.value = new_values
-            return detection_item
+            result: Union[SigmaDetectionItem, SigmaDetection] = detection_item
+
+        field = detection_item.field
+        mapping = self.apply_field_name(field)
+        field_match = False
+        if (
+            mapping is not None
+            and self.processing_item is not None
+            and self.processing_item.match_field_name(field)
+        ):
+            field_match = True
+            if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
+                detection_item.field = mapping
+                self.processing_item_applied(detection_item)
+                result = detection_item
+            else:
+                result = SigmaDetection(
+                    [
+                        dataclasses.replace(detection_item, field=field, auto_modifiers=False)
+                        for field in mapping
+                    ],
+                    item_linking=ConditionOR,
+                )
+        if field_match or fieldref_match:  # field name was changed or field reference was mapped
+            if self._pipeline is not None and mapping is not None:
+                self._pipeline.field_mappings.add_mapping(field, mapping)
+            return result
         return None  # no replacement was made
 
 

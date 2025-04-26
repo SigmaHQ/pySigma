@@ -9,6 +9,7 @@ from typing import (
 )
 from dataclasses import dataclass, field
 from sigma.correlations import SigmaCorrelationRule
+from sigma.exceptions import SigmaProcessingItemError
 from sigma.processing.transformations.base import (
     FieldMappingTransformationBase,
     PreprocessingTransformation,
@@ -20,37 +21,9 @@ from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
 
-    mapping: Dict[str, Union[str, List[str]]]
+    mapping: Dict[Optional[str], Union[str, List[str]]]
 
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
-        super().apply_detection_item(detection_item)
-        field = detection_item.field
-        if field is None:
-            return None
-        mapping = self.apply_field_name(field)
-        if (
-            mapping is not None
-            and self.processing_item is not None
-            and self.processing_item.match_field_name(field)
-        ):
-            if self._pipeline is not None:
-                self._pipeline.field_mappings.add_mapping(field, mapping)
-            if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
-                detection_item.field = mapping
-                self.processing_item_applied(detection_item)
-            else:
-                return SigmaDetection(
-                    [
-                        dataclasses.replace(detection_item, field=field, auto_modifiers=False)
-                        for field in mapping
-                    ],
-                    item_linking=ConditionOR,
-                )
-        return None
-
-    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
         return self.mapping.get(field)
 
 
@@ -58,11 +31,15 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
 
-    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
         if field is None:
             return None
 
         for src, dest in self.mapping.items():
+            if src is None:
+                raise SigmaProcessingItemError(
+                    "FieldPrefixMappingTransformation: None is not a valid prefix."
+                )
             if field.startswith(src):  # found matching prefix
                 if isinstance(dest, str):
                     return dest + field[len(src) :]
@@ -76,9 +53,9 @@ class FieldFunctionTransformation(FieldMappingTransformation):
     """Map a field name to another using provided transformation function.
     You can overwrite transformation by providing explicit mapping for a field."""
 
-    transform_func: Callable[[str], str]
+    transform_func: Callable[[Optional[str]], str]
 
-    def apply_field_name(self, field: str) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
         return self.mapping.get(field, self.transform_func(field))
 
 
@@ -105,7 +82,9 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
             return detection_item
         return None
 
-    def apply_field_name(self, field: str) -> List[str]:
+    def apply_field_name(self, field: Optional[str]) -> List[str]:
+        if field is None:
+            return None
         return [field + self.suffix]
 
 
@@ -132,7 +111,9 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
             return detection_item
         return None
 
-    def apply_field_name(self, field: str) -> List[str]:
+    def apply_field_name(self, field: Optional[str]) -> List[str]:
+        if field is None:
+            return None
         return [self.prefix + field]
 
 

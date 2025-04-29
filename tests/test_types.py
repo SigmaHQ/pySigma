@@ -399,13 +399,13 @@ def test_strings_to_regex():
         "(Plain)/[*?]",
     )
     r = s.to_regex()
-    assert r.regexp == "Test.*Special.\\(Plain\\)/\\[\\*\\?\\]"
+    assert str(r.regexp) == "Test.*Special.\\(Plain\\)/\\[\\*\\?\\]"
 
 
 def test_strings_to_regex_with_additional_escape_chars():
     s = SigmaString("Test*Special?(Plain)/[\\*\\?]")
     r = s.to_regex("/")
-    assert r.regexp == "Test.*Special.\\(Plain\\)\\/\\[\\*\\?\\]"
+    assert str(r.regexp) == "Test.*Special.\\(Plain\\)\\/\\[\\*\\?\\]"
 
 
 def test_string_index(sigma_string):

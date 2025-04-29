@@ -227,6 +227,27 @@ def test_convert_value_str_empty(test_backend):
     )
 
 
+def test_convert_value_str_invalid_re(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field: (value
+                condition: sel
+            """
+            )
+        )
+        == ['field="(value"']
+    )
+
+
 def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
     monkeypatch.setattr(test_backend, "str_quote_pattern", re.compile("^.*\\s"))
     monkeypatch.setattr(test_backend, "str_quote_pattern_negation", False)

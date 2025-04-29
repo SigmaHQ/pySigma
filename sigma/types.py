@@ -116,13 +116,18 @@ class SigmaString(SigmaType):
         Union[str, SpecialChars, Placeholder]
     ]  # the string is represented as sequence of strings and characters with special meaning
 
-    def __init__(self, s: Optional[str] = None):
+    def __init__(self, s: Optional[str] = None, escape: bool = True):
         """
         Initializes SigmaString instance from raw string by parsing it:
 
         * characters from char_mapping are interpreted as special characters and interrupt the plain string in the resulting sequence
         * escape_char disables special character mapping in the next character
         * if escaping character is followed by a character without special meaning the escaping character is used as plain character
+
+        :param s: string to be parsed
+        :type s: str
+        :param escape: whether to enable escaping of special characters
+        :type escape: bool
         """
         if s is None:
             s = ""
@@ -141,7 +146,9 @@ class SigmaString(SigmaType):
                 else:  # accumulate escaping and current character (this allows to use plain backslashes in values)
                     acc += escape_char + c
                 escaped = False
-            elif c == escape_char:  # escaping character? enable escaped mode for next character
+            elif (
+                c == escape_char and escape
+            ):  # escaping character? enable escaped mode for next character
                 escaped = True
             else:  # "normal" string parsing
                 if c in char_mapping:  # character is special character?
@@ -712,7 +719,7 @@ class SigmaRegularExpression(SigmaType):
         regexp_init: Union[str, SigmaString],
     ):
         if isinstance(regexp_init, str):
-            regexp_init = SigmaString(regexp_init)
+            regexp_init = SigmaString(regexp_init, escape=False)
 
         self.regexp = regexp_init
         self.compile()
@@ -726,11 +733,14 @@ class SigmaRegularExpression(SigmaType):
             flags = 0
             for flag in self.flags:
                 flags |= self.sigma_to_python_flags[flag]
-            re.compile(self.escape(), flags)
+            re.compile(str(self.regexp), flags)
         except re.error as e:
             raise SigmaRegularExpressionError(
-                f"Regular expression '{self.escape()}' is invalid: {str(e)}"
+                f"Regular expression '{str(self.regexp)}' is invalid: {str(e)}"
             ) from e
+
+    def to_plain(self) -> str:
+        return self.regexp.to_plain()
 
     def escape(
         self,

@@ -227,10 +227,8 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         new_values: List[SigmaType] = []
         fieldref_match = False
         for value in detection_item.value:
-            if (
-                self.processing_item is not None
-                and self.processing_item.match_field_in_value(value)
-                and isinstance(value, SigmaFieldReference)
+            if isinstance(value, SigmaFieldReference) and (
+                self.processing_item is None or self.processing_item.match_field_in_value(value)
             ):
                 new_values.extend(
                     (
@@ -249,10 +247,8 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         field = detection_item.field
         mapping = self.apply_field_name(field)
         field_match = False
-        if (
-            mapping is not None
-            and self.processing_item is not None
-            and self.processing_item.match_field_name(field)
+        if mapping is not None and (
+            self.processing_item is None or self.processing_item.match_field_name(field)
         ):
             field_match = True
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly

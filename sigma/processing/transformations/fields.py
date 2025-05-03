@@ -54,8 +54,11 @@ class FieldFunctionTransformation(FieldMappingTransformation):
     You can overwrite transformation by providing explicit mapping for a field."""
 
     transform_func: Callable[[Optional[str]], str]
+    apply_keyword: bool = False
 
     def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
+        if field is None and not self.apply_keyword:
+            return None
         return self.mapping.get(field, self.transform_func(field))
 
 
@@ -67,25 +70,10 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
 
     suffix: str
 
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> Optional[SigmaDetectionItem]:
-        super().apply_detection_item(detection_item)
-        if isinstance(detection_item.field, str) and (
-            self.processing_item is None
-            or self.processing_item.match_field_name(detection_item.field)
-        ):
-            orig_field: str = detection_item.field
-            detection_item.field += self.suffix
-            if self._pipeline is not None:
-                self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
-            return detection_item
-        return None
-
-    def apply_field_name(self, field: Optional[str]) -> List[str]:
+    def apply_field_name(self, field: Optional[str]) -> Optional[str]:
         if field is None:
             return None
-        return [field + self.suffix]
+        return field + self.suffix
 
 
 @dataclass
@@ -96,25 +84,10 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
 
     prefix: str
 
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> Optional[SigmaDetectionItem]:
-        super().apply_detection_item(detection_item)
-        if isinstance(detection_item.field, str) and (
-            self.processing_item is None
-            or self.processing_item.match_field_name(detection_item.field)
-        ):
-            orig_field: str = detection_item.field
-            detection_item.field = self.prefix + detection_item.field
-            if self._pipeline is not None:
-                self._pipeline.field_mappings.add_mapping(orig_field, detection_item.field)
-            return detection_item
-        return None
-
-    def apply_field_name(self, field: Optional[str]) -> List[str]:
+    def apply_field_name(self, field: Optional[str]) -> Optional[str]:
         if field is None:
             return None
-        return [self.prefix + field]
+        return self.prefix + field
 
 
 @dataclass

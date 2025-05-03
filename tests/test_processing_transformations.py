@@ -475,6 +475,27 @@ def test_field_function_transformation_keyword_detection(
     )
 
 
+def test_field_function_transformation_keyword_detection_with_none(
+    monkeypatch, dummy_pipeline, keyword_sigma_rule, field_function_transformation
+):
+    monkeypatch.setattr(field_function_transformation, "apply_keyword", True)
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                "transformed_None",
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
 def test_field_function_transformation_correlation_rule(
     dummy_pipeline, sigma_correlation_rule, field_function_transformation
 ):

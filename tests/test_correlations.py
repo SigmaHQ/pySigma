@@ -486,6 +486,76 @@ def test_correlation_resolve_rule_references_invalid_reference(correlation_rule)
         correlation_rule.resolve_rule_references(SigmaCollection([]))
 
 
+def test_correlation_valid_multidocuments_from_yaml():
+    rules = """
+title: Correlation - Multiple Failed Logins Followed by Successful Login
+id: b180ead8-d58f-40b2-ae54-c8940995b9b6
+status: experimental
+description: Detects multiple failed logins by a single user followed by a successful login of that user
+references:
+    - https://reference.com
+author: Florian Roth (Nextron Systems)
+date: 2023-06-16
+correlation:
+    type: temporal_ordered
+    rules:
+        - multiple_failed_login
+        - failed_login
+        - successful_login
+    group-by:
+        - User
+    timespan: 10m
+falsepositives:
+    - Unlikely
+level: high
+---
+title: Multiple failed logons
+id: a8418a5a-5fc4-46b5-b23b-6c73beb19d41
+description: Detects multiple failed logins within a certain amount of time
+name: multiple_failed_login
+correlation:
+    type: event_count
+    rules:
+        - event_a
+        - failed_login
+    group-by:
+        - User
+    timespan: 10m
+    condition:
+        gte: 10
+---
+title: Valid nested correlations
+name: nested_correlations
+correlation:
+    type: temporal
+    rules:
+        - event_a
+        - event_b
+        - failed_login
+    group-by:
+        - source
+        - user
+    aliases:
+        source:
+            event_a: source_ip
+            event_b: source_address
+        user:
+            event_a: username
+            event_b: user_name
+    timespan: 1h
+""".split(
+        "---"
+    )
+
+    head, *tail = list(map(SigmaCorrelationRule.from_yaml, rules))
+    result = head.flatten_rules(tail)
+
+    assert set(result) == set(["failed_login", "event_a", "event_b", "successful_login"])
+    assert result["failed_login"]["count"] == 3
+    assert result["event_a"]["count"] == 2
+    assert result["event_b"]["count"] == 1
+
+
 def test_correlation_rule_generate():
     assert (
         SigmaCorrelationRule.from_dict(

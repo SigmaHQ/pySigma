@@ -1,11 +1,25 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Dict, List, Literal, Optional
+from typing import Any, Dict, List, Literal, Optional, Union, TypedDict
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
 import sigma
+
+
+class CorrelationMap(TypedDict):
+    occurs_in: list[str]
+    count: int
+
+
+CollectedCorrelations = Union[dict[Any, Any], dict[str, CorrelationMap]]
+
+
+class RuleStatus(Enum):
+    NO_REFERENCE = 1
+    CORRELATION = 2
+    CORRELATION_MEMBER = 3
 
 
 class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
@@ -402,6 +416,62 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         d["correlation"] = dc
 
         return d
+
+    def __get_rule_status(self, rule_cmp: dict, rules_list: list) -> RuleStatus:
+        rule_status = RuleStatus.NO_REFERENCE
+
+        for rule in filter(lambda rule: isinstance(rule, SigmaCorrelationRule), rules_list):
+            rule_id = {
+                rule.id if hasattr(rule, "id") else None,
+                rule.name if hasattr(rule, "name") else "",
+            }
+
+            if isinstance(rule_cmp, dict):
+                if rule_cmp["rule"].reference in rule_id:
+                    rule_status = RuleStatus.CORRELATION
+                    break
+                if rule_cmp["rule"] in rule.rules:
+                    rule_status = RuleStatus.CORRELATION_MEMBER
+                    break
+
+        return rule_status
+
+    def __identify_rule(self, rule: SigmaRuleReference, title: str) -> dict:
+        return {"rule": rule, "occurs_in": set([title])}
+
+    def __collect_rules(
+        self, old_queue: list[dict], old_dict: CollectedCorrelations
+    ) -> CollectedCorrelations:
+        if not len(old_queue):
+            return {
+                rule: {"occurs_in": list(old_dict.get(rule)), "count": len(old_dict.get(rule))}
+                for rule in old_dict
+            }
+
+        rule_cmp, *new_queue = old_queue
+        new_dict = old_dict
+
+        if isinstance(rule_cmp, SigmaCorrelationRule):
+            new_queue.extend(
+                [self.__identify_rule(rule, rule_cmp.title) for rule in rule_cmp.rules]
+            )
+        elif self.__get_rule_status(rule_cmp, new_queue) in {
+            RuleStatus.NO_REFERENCE,
+            RuleStatus.CORRELATION_MEMBER,
+        }:
+            reference = rule_cmp["rule"].reference
+            new_dict[reference] = old_dict.get(reference, set()) | rule_cmp["occurs_in"]
+
+        return self.__collect_rules(new_queue, new_dict)
+
+    def flatten_rules(
+        self, correlation_rules: list["sigma.correlations.SigmaCorrelationRule"]
+    ) -> CollectedCorrelations:
+        """
+        Flattens all the rule references in this correlation and the supplied ones.
+        """
+        rules_with_titles = [self.__identify_rule(rule, self.title) for rule in self.rules]
+        return self.__collect_rules(rules_with_titles + correlation_rules, dict())
 
     def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection"):
         """

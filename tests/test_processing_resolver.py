@@ -40,8 +40,8 @@ def test_resolve_order(processing_pipeline_resolver: ProcessingPipelineResolver)
     assert processing_pipeline_resolver.resolve(
         ["pipeline-3", "pipeline-2", "pipeline-1"]
     ).items == [
-        ProcessingItem(AddFieldnameSuffixTransformation(".item-2")),
         ProcessingItem(AddFieldnameSuffixTransformation(".item-1")),
+        ProcessingItem(AddFieldnameSuffixTransformation(".item-2")),
         ProcessingItem(AddFieldnameSuffixTransformation(".item-3")),
     ]
 

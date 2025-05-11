@@ -81,7 +81,12 @@ class ProcessingPipelineResolver:
         compatibility check for the usage of the specified backend with the pipeline.
         """
         def resolve_path(spec):
-            return self.resolve_pipeline(spec, target)
+            pipeline = self.resolve_pipeline(spec, target)
+            return {
+                'pipeline': pipeline,
+                'priority': pipeline.priority,
+                'path': spec
+            }
 
         def resolve_spec(pipelines, spec):
             spec_path = Path(spec.rstrip("/*"))
@@ -95,11 +100,9 @@ class ProcessingPipelineResolver:
         pipelines = reduce(resolve_spec, pipeline_specs, [])
 
         return (
-            sum(
-                sorted(
-                    pipelines,
-                    key=lambda p: p.priority,
-                )
-            )
+            sum([p['pipeline'] for p in sorted(
+                pipelines,
+                key=lambda p: (p['priority'], p['path'])
+                )])
             or ProcessingPipeline()
         )

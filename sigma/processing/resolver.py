@@ -80,13 +80,10 @@ class ProcessingPipelineResolver:
         If *target* is specified this is passed in each *resolve_pipeline* call to perform a
         compatibility check for the usage of the specified backend with the pipeline.
         """
+
         def resolve_path(spec):
             pipeline = self.resolve_pipeline(spec, target)
-            return {
-                'pipeline': pipeline,
-                'priority': pipeline.priority,
-                'path': spec
-            }
+            return {"pipeline": pipeline, "priority": pipeline.priority, "path": spec}
 
         def resolve_spec(pipelines, spec):
             spec_path = Path(spec.rstrip("/*"))
@@ -100,9 +97,8 @@ class ProcessingPipelineResolver:
         pipelines = reduce(resolve_spec, pipeline_specs, [])
 
         return (
-            sum([p['pipeline'] for p in sorted(
-                pipelines,
-                key=lambda p: (p['priority'], p['path'])
-                )])
+            sum(
+                [p["pipeline"] for p in sorted(pipelines, key=lambda p: (p["priority"], p["path"]))]
+            )
             or ProcessingPipeline()
         )

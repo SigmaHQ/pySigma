@@ -1,4 +1,5 @@
 from dataclasses import dataclass, field
+from functools import reduce
 from pathlib import Path
 from sigma.exceptions import (
     SigmaPipelineNotAllowedForBackendError,
@@ -79,20 +80,25 @@ class ProcessingPipelineResolver:
         If *target* is specified this is passed in each *resolve_pipeline* call to perform a
         compatibility check for the usage of the specified backend with the pipeline.
         """
-        pipelines = []
-        for spec in pipeline_specs:
+
+        def resolve_path(spec):
+            pipeline = self.resolve_pipeline(spec, target)
+            return {"pipeline": pipeline, "priority": pipeline.priority, "path": spec}
+
+        def resolve_spec(pipelines, spec):
             spec_path = Path(spec.rstrip("/*"))
             if spec_path.is_dir():
-                for path in spec_path.glob("**/*.yml"):
-                    pipelines.append(self.resolve_pipeline(str(path), target))
+                pipelines.extend([resolve_path(str(path)) for path in spec_path.glob("**/*.yml")])
             else:
-                pipelines.append(self.resolve_pipeline(spec, target))
+                pipelines.append(resolve_path(spec))
+
+            return pipelines
+
+        pipelines = reduce(resolve_spec, pipeline_specs, [])
+
         return (
             sum(
-                sorted(
-                    pipelines,
-                    key=lambda p: p.priority,
-                )
+                [p["pipeline"] for p in sorted(pipelines, key=lambda p: (p["priority"], p["path"]))]
             )
             or ProcessingPipeline()
         )

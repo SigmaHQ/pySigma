@@ -417,3 +417,22 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
                 rule.disable_output()
 
         self.aliases.resolve_rule_references(rule_collection)
+
+    def flatten_rules(self, include_correlations: bool = True) -> List[SigmaRule]:
+        """
+        Flattens the rules in the correlation rule and returns a list of Sigma rules. If include_correlations
+        is set to False, only the Sigma rules are returned, excluding nested correlation rules.
+
+        Returns:
+            List of Sigma rules.
+        """
+        rules = []
+        for rule_ref in self.rules:
+            rule = rule_ref.rule
+            if isinstance(rule, SigmaCorrelationRule):
+                if include_correlations:
+                    rules.append(rule)
+                rules.extend(rule.flatten_rules())
+            else:
+                rules.append(rule)
+        return rules

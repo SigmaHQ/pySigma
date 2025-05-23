@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import pytest
 
 import sigma.processing.transformations as transformations_module
+from sigma.backends.test import TextQueryTestBackend
+from sigma.collection import SigmaCollection
 from sigma.conditions import ConditionOR, SigmaCondition
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -17,6 +19,7 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,
     SigmaValueError,
+    SigmaTypeError,
 )
 from sigma.modifiers import SigmaExpandModifier, SigmaRegularExpressionModifier
 from sigma.processing.conditions import (
@@ -55,6 +58,7 @@ from sigma.processing.transformations import (
     ValueListPlaceholderTransformation,
     WildcardPlaceholderTransformation,
     transformations,
+    StrictFieldMappingFailure,
 )
 from sigma.processing.transformations.base import ConditionTransformation
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule

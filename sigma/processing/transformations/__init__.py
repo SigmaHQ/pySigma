@@ -5,6 +5,7 @@ from sigma.processing.transformations.detection_item import DropDetectionItemTra
 from sigma.processing.transformations.failure import (
     DetectionItemFailureTransformation,
     RuleFailureTransformation,
+    StrictFieldMappingFailure,
 )
 from sigma.processing.transformations.fields import (
     AddFieldTransformation,
@@ -61,6 +62,7 @@ transformations: Dict[str, Transformation] = {
     "convert_type": ConvertTypeTransformation,
     "rule_failure": RuleFailureTransformation,
     "detection_item_failure": DetectionItemFailureTransformation,
+    "strict_field_mapping_failure": StrictFieldMappingFailure,
     "set_custom_attribute": SetCustomAttributeTransformation,
     "nest": NestedProcessingTransformation,
     "case": CaseTransformation,

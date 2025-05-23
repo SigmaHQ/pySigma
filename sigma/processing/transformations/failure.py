@@ -1,11 +1,13 @@
 from dataclasses import dataclass
+from typing import Set
+
 import sigma
+from sigma.exceptions import SigmaTransformationError, SigmaTypeError
 from sigma.processing.transformations.base import (
     DetectionItemTransformation,
     Transformation,
 )
-from sigma.rule import SigmaRule, SigmaDetectionItem
-from sigma.exceptions import SigmaTransformationError
+from sigma.rule import SigmaRule, SigmaDetectionItem, SigmaDetection
 
 
 @dataclass
@@ -40,3 +42,60 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 
     def apply_detection_item(self, detection_item: SigmaDetectionItem) -> None:
         raise SigmaTransformationError(self.message, source=detection_item.source)
+
+
+
+@dataclass
+class StrictFieldMappingFailure(Transformation):
+    message = (
+        "The field mapping is not strict. "
+        "Please check the field mapping in the configuration file."
+    )
+    
+    def _get_all_field_names(self, rule: SigmaRule) -> Set[str]:
+        """Extract all field names from the rule's detection items."""
+        field_names = set()
+        
+        for detection_name, detection in rule.detection.detections.items():
+            field_names.update(self._get_fields_from_detection(detection))
+        
+        return field_names
+    
+    def _get_fields_from_detection(self, detection: SigmaDetection) -> Set[str]:
+        """Recursively extract field names from a detection."""
+        field_names = set()
+        
+        for item in detection.detection_items:
+            if isinstance(item, SigmaDetectionItem):
+                if item.field is not None:
+                    field_names.add(item.field)
+            elif isinstance(item, SigmaDetection):
+                field_names.update(self._get_fields_from_detection(item))
+        
+        return field_names
+
+    def apply(self, rule: SigmaRule) -> None:
+        super().apply(rule)
+        
+        pipeline: 'sigma.processing.pipeline.ProcessingPipeline' = self._pipeline
+        field_mappings: 'sigma.processing.tracking.FieldMappingTracking' = pipeline.field_mappings
+        
+        # Get all field names used in the rule (after any transformations have been applied)
+        all_fields = self._get_all_field_names(rule)
+        
+        # Check which original fields from the rule were not explicitly mapped
+        # We need to check the target_fields reverse mapping to see which original fields
+        # are represented by the current field names
+        unmapped_fields = []
+        
+        for field in all_fields:
+            # Check if this field is in the target_fields (meaning it was mapped from an original field)
+            # or if it's in the field_mappings keys (meaning it was an original field that was mapped)
+            is_mapped = field in field_mappings or field in field_mappings.target_fields
+            if not is_mapped:
+                unmapped_fields.append(field)
+        
+        # Raise error if there are unmapped fields
+        if unmapped_fields:
+            field_name = unmapped_fields[0]  # Use the first unmapped field for the error message
+            raise SigmaTypeError(f"Field '{field_name}' is not mapped", source=rule.source)

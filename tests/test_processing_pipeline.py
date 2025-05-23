@@ -388,7 +388,7 @@ def test_processingitem_fromdict_without_id(processing_item_dict, processing_ite
     del processing_item_dict["id"]
     item1 = ProcessingItem.from_dict(processing_item_dict)
     item2 = ProcessingItem.from_dict(processing_item_dict)
-    
+
     # Should generate deterministic identifiers when no ID is provided
     assert item1.identifier is not None
     assert item2.identifier is not None

@@ -2243,6 +2243,68 @@ def test_conversion_strict_mapped_fields_does_not_throw_exception():
     )
 
 
+def test_conversion_strict_mapped_fields_on_prefixing():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(AddFieldnamePrefixTransformation("prefix_")),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['prefix_fieldOne="mapped" and prefix_fieldTwo="not-mapped"']
+    )
+
+
+def test_conversion_strict_mapped_fields_on_suffixing():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(AddFieldnameSuffixTransformation("_suffix")),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['fieldOne_suffix="mapped" and fieldTwo_suffix="not-mapped"']
+    )
+
+
 def test_conversion_strict_mapped_fields_multiple_pipelines():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(

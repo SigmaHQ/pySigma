@@ -657,7 +657,7 @@ class ProcessingPipeline:
     field_mappings: FieldMappingTracking = field(
         init=False, compare=False, default_factory=FieldMappingTracking
     )  # Mapping between initial field names and finally mapped field name.
-    state: Mapping[str, Any] = field(
+    state: Dict[str, Any] = field(
         init=False, compare=False, default_factory=dict
     )  # pipeline state: allows to set variables that can be used in conversion (e.g. indices, data model names etc.)
 

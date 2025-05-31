@@ -341,18 +341,24 @@ class StringValueTransformation(ValueTransformation):
     Base class for transformations that operate on SigmaString values.
     """
 
-    def apply_value(self, field: Optional[str], val: SigmaType) -> Optional[SigmaString]:
+    def apply_value(
+        self, field: Optional[str], val: SigmaType
+    ) -> Optional[Union[SigmaType, List[SigmaType]]]:
         if isinstance(val, SigmaString):
             return self.apply_string_value(field, val)
         return None
 
     @abstractmethod
-    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(
+        self, field: Optional[str], val: SigmaString
+    ) -> Optional[Union[SigmaType, List[SigmaType]]]:
         """
         Perform a value transformation. This method can return:
 
         * None to drop the value
-        * a single SigmaString object which replaces the original value.
+        * a single SigmaType object which replaces the original value.
+        * a list of SigmaType objects. These objects are used as replacement for the
+          original value.
         """
 
 

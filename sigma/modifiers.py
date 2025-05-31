@@ -4,6 +4,7 @@ from typing import (
     Any,
     ClassVar,
     Generator,
+    Iterator,
     Optional,
     Union,
     List,
@@ -38,7 +39,6 @@ from sigma.types import (
     TimestampPart,
     SigmaStringPartType,
 )
-from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 import sigma
 
@@ -281,7 +281,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     horizontal_bar = chr(int("2015", 16))
 
     def modify(self, val: SigmaString) -> SigmaExpansion:
-        def callback(p: Placeholder) -> Generator[Union[str, Placeholder], None, None]:
+        def callback(p: Placeholder) -> Iterator[Union[str, Placeholder]]:
             if p.name == "_windash":
                 yield from ("-", "/", self.en_dash, self.em_dash, self.horizontal_bar)
             else:
@@ -360,6 +360,8 @@ class SigmaAllModifier(SigmaListModifier[Any, Any]):
     """Match all values of a list instead of any pf them."""
 
     def modify(self, val: Any) -> Any:
+        from sigma.conditions import ConditionAND
+
         self.detection_item.value_linking = ConditionAND
         return val
 

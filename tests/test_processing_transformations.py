@@ -4,7 +4,6 @@ from dataclasses import dataclass
 
 import pytest
 
-import sigma.processing.transformations as transformations_module
 from sigma.conditions import ConditionOR, SigmaCondition
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -34,7 +33,9 @@ from sigma.processing.transformations import (
     __all__ as transformations_all,
 )
 from sigma.processing.transformations.base import ConditionTransformation
-from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
+from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
+from sigma.rule.logsource import SigmaLogSource
+from sigma.rule.rule import SigmaRule
 from sigma.types import (
     Placeholder,
     SigmaBool,
@@ -1245,6 +1246,16 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
         transformation.apply(sigma_rule_placeholders)
 
 
+def test_queryexpr_placeholders_include_and_exclude_error():
+    with pytest.raises(SigmaConfigurationError, match="exclusively"):
+        QueryExpressionPlaceholderTransformation(
+            expression="{field} lookup {id}",
+            mapping={"var1": "placeholder1"},
+            include=["included_field"],
+            exclude=["excluded_field"],
+        )
+
+
 ### ConditionTransformation ###
 @dataclass
 class DummyConditionTransformation(ConditionTransformation):
@@ -2057,6 +2068,8 @@ def test_nested_pipeline_transformation_no_items():
 
 
 def test_transformation_identifier_completeness():
+    import sigma.processing.transformations as transformations_module
+
     classes_with_identifiers = transformations.values()
 
     def class_filter(c):
@@ -2140,7 +2153,7 @@ def test_hashes_transformation_drop_algo_prefix():
 
 def test_hashes_transformation_invalid_hash(hashes_transformation):
     detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
-    with pytest.raises(Exception, match="No valid hash algo found"):
+    with pytest.raises(Exception, match="No valid hash algorithm found"):
         hashes_transformation.apply_detection_item(detection_item)
 
 
@@ -2196,6 +2209,11 @@ def test_hashes_transformation_pipe_separator(hashes_transformation):
     assert result.detection_items[0].value == [
         SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
     ]
+
+
+def test_hashes_transformation_no_string_value(hashes_transformation):
+    detection_item = SigmaDetectionItem("SomethingElse", [], [SigmaNumber(123456)])
+    assert hashes_transformation.apply_detection_item(detection_item) is None
 
 
 def test_case_transformation_lower(dummy_pipeline):

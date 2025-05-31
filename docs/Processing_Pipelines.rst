@@ -359,11 +359,6 @@ YAML example:
       - type: set_state
         state: processed
 
-.. autoclass:: sigma.processing.transformations.RegexTransformation
-.. autoclass:: sigma.processing.transformations.SetValueTransformation
-.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
-.. autoclass:: sigma.processing.transformations.SetStateTransformation
-
 Query Post-Processing Transformations
 ======================================
 

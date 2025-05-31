@@ -1,9 +1,10 @@
 from typing import (
+    Any,
     List,
     Dict,
     Union,
 )
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation
@@ -17,24 +18,26 @@ class NestedProcessingTransformation(PreprocessingTransformation):
     whole set of transformations that match the given conditions of the enclosng processing item.
     """
 
-    items: List["sigma.processing.pipeline.ProcessingItem"]
+    items: InitVar[List[Union[Dict[str, Any], "sigma.processing.pipeline.ProcessingItem"]]]
     _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
         init=False, compare=False, repr=False
     )
 
-    def __post_init__(self) -> None:
+    def __post_init__(
+        self, items: List[Union[Dict[str, Any], "sigma.processing.pipeline.ProcessingItem"]]
+    ) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
             ProcessingItem,
         )  # TODO: move to top-level after restructuring code
 
-        self.items = [
-            i if isinstance(i, ProcessingItem) else ProcessingItem.from_dict(i) for i in self.items
+        clean_items = [
+            i if isinstance(i, ProcessingItem) else ProcessingItem.from_dict(i) for i in items
         ]
-        self._nested_pipeline = ProcessingPipeline(items=self.items)
+        self._nested_pipeline = ProcessingPipeline(items=clean_items)
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "NestedProcessingTransformation":
+    def from_dict(cls, d: Dict[str, Any]) -> "NestedProcessingTransformation":
         from sigma.processing.pipeline import (
             ProcessingItem,
         )  # TODO: move to top-level after restructuring code
@@ -49,6 +52,8 @@ class NestedProcessingTransformation(PreprocessingTransformation):
     def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
         self._nested_pipeline.apply(rule)
+        if self._pipeline is None:
+            raise SigmaConfigurationError("Nested pipeline has not enclosing pipeline.")
         self._pipeline.applied.extend(self._nested_pipeline.applied)
         self._pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
         self._pipeline.field_name_applied_ids.update(self._nested_pipeline.field_name_applied_ids)

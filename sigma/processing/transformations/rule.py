@@ -19,10 +19,11 @@ class ChangeLogsourceTransformation(PreprocessingTransformation):
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
-        logsource = SigmaLogSource(self.category, self.product, self.service)
-        rule.logsource = logsource
+        if isinstance(rule, SigmaRule):
+            logsource = SigmaLogSource(self.category, self.product, self.service)
+            rule.logsource = logsource
 
 
 @dataclass

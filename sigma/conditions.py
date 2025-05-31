@@ -15,7 +15,6 @@ from typing import ClassVar, List, Optional, Union, Type, cast
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma
-import sigma.rule
 
 
 @dataclass
@@ -48,7 +47,7 @@ class ParentChainMixin:
 
     def postprocess(
         self,
-        detections: "sigma.rule.SigmaDetections",
+        detections: "sigma.rule.detection.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
@@ -101,7 +100,7 @@ class ConditionItem(ParentChainMixin, ABC):
 
     def postprocess(
         self,
-        detections: "sigma.rule.SigmaDetections",
+        detections: "sigma.rule.detection.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
@@ -158,7 +157,7 @@ class ConditionIdentifier(ConditionItem):
 
     def postprocess(
         self,
-        detections: "sigma.rule.SigmaDetections",
+        detections: "sigma.rule.detection.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
     ) -> Union[ConditionAND, ConditionOR]:
@@ -192,7 +191,7 @@ class ConditionSelector(ConditionItem):
         self.pattern = self.args[1]
 
     def resolve_referenced_detections(
-        self, detections: "sigma.rule.SigmaDetections"
+        self, detections: "sigma.rule.detection.SigmaDetections"
     ) -> List[ConditionIdentifier]:
         """
         Resolve all detection identifiers referenced by the selector.
@@ -210,7 +209,7 @@ class ConditionSelector(ConditionItem):
 
     def postprocess(
         self,
-        detections: "sigma.rule.SigmaDetections",
+        detections: "sigma.rule.detection.SigmaDetections",
         parent: Optional["ConditionItem"] = None,
         source: Optional[SigmaRuleLocation] = None,
     ) -> Union[ConditionItem, "ConditionFieldEqualsValueExpression", "ConditionValueExpression"]:
@@ -271,7 +270,7 @@ condition = infix_notation(
 @dataclass
 class SigmaCondition(ProcessingItemTrackingMixin):
     condition: str
-    detections: "sigma.rule.SigmaDetections"
+    detections: "sigma.rule.detection.SigmaDetections"
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     def parse(

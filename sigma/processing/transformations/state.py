@@ -1,5 +1,6 @@
-from typing import Any
+from typing import Any, Union
 from dataclasses import dataclass
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation
 from sigma.rule import SigmaRule
 
@@ -11,6 +12,7 @@ class SetStateTransformation(PreprocessingTransformation):
     key: str
     val: Any
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
-        self._pipeline.state[self.key] = self.val
+        if self._pipeline is not None:
+            self._pipeline.state[self.key] = self.val

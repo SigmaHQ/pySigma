@@ -1,6 +1,6 @@
 import re
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
+from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
@@ -470,7 +470,9 @@ class SigmaString(SigmaType):
 
     def replace_placeholders(
         self,
-        callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]],
+        callback: Callable[
+            [Placeholder], Iterable[Union[str, SpecialChars, Placeholder, "SigmaString"]]
+        ],
     ) -> List["SigmaString"]:
         """
         Iterate over all placeholders and call the callback for each one. The callback is called with the placeholder instance
@@ -637,12 +639,13 @@ class SigmaCasedString(SigmaString):
 class SigmaNumber(SigmaType):
     """Numeric value type"""
 
-    number: Union[int, float]
+    number: Union[int, float] = field(init=False, repr=True)
+    init_number: InitVar[Any]
 
-    def __post_init__(self) -> None:
+    def __post_init__(self, init_number: Any) -> None:
         try:  # Only use float number if it can't be represented as int.
-            i = int(self.number)
-            f = float(self.number)
+            i = int(init_number)
+            f = float(init_number)
             if i == f:
                 self.number = i
             else:

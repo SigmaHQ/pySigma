@@ -8,7 +8,7 @@ from typing import (
     Iterator,
 )
 from dataclasses import dataclass, field
-from sigma.processing.transformations.base import ValueTransformation
+from sigma.processing.transformations.base import StringValueTransformation, ValueTransformation
 from sigma.exceptions import (
     SigmaValueError,
     SigmaConfigurationError,
@@ -16,6 +16,7 @@ from sigma.exceptions import (
 from sigma.types import (
     Placeholder,
     SigmaString,
+    SigmaType,
     SpecialChars,
     SigmaQueryExpression,
 )
@@ -26,8 +27,7 @@ class PlaceholderIncludeExcludeMixin:
     include: Optional[List[str]] = field(default=None)
     exclude: Optional[List[str]] = field(default=None)
 
-    def __post_init__(self) -> None:
-        super().__post_init__()
+    def check_exclusivity(self) -> None:
         if self.include is not None and self.exclude is not None:
             raise SigmaConfigurationError(
                 "Placeholder transformation include and exclude lists can only be used exclusively!"
@@ -42,7 +42,7 @@ class PlaceholderIncludeExcludeMixin:
 
 
 @dataclass
-class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
+class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExcludeMixin):
     """
     Placeholder base transformation. The parameters include and exclude can contain variable names that
     are handled by this transformation. Unhandled placeholders are left as they are and must be handled by
@@ -50,19 +50,20 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
     """
 
     def __post_init__(self) -> None:
-        super().__post_init__()
+        self.check_exclusivity()
+        return super().__post_init__()
 
     def apply_value(
-        self, field: Optional[str], val: SigmaString
-    ) -> Union[SigmaString, Iterable[SigmaString]]:
-        if val.contains_placeholder(self.include, self.exclude):
-            return val.replace_placeholders(self.placeholder_replacements_base)
-        else:
-            return None
+        self, field: Optional[str], val: SigmaType
+    ) -> Optional[Union[SigmaString, Iterable[SigmaString]]]:
+        if isinstance(val, SigmaString):
+            if val.contains_placeholder(self.include, self.exclude):
+                return val.replace_placeholders(self.placeholder_replacements_base)
+        return None
 
     def placeholder_replacements_base(
         self, p: Placeholder
-    ) -> Iterator[Union[str, SpecialChars, Placeholder]]:
+    ) -> Iterable[Union[str, SpecialChars, Placeholder, SigmaString]]:
         """
         Base placeholder replacement callback. Calls real callback if placeholder is included or not excluded,
         else it passes the placeholder back to caller.
@@ -75,7 +76,7 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
     @abstractmethod
     def placeholder_replacements(
         self, p: Placeholder
-    ) -> Iterator[Union[str, SpecialChars, Placeholder]]:
+    ) -> Iterable[Union[str, SpecialChars, Placeholder, SigmaString]]:
         """
         Placeholder replacement callback used by SigmaString.replace_placeholders(). This must return one
         of the following object types:
@@ -84,6 +85,8 @@ class BasePlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransfo
         * SpecialChars instances for insertion of wildcards
         * Placeholder instances, it may even return the same placeholder. These must be handled by following processing
           pipeline items or the backend or the conversion will fail.
+        * SigmaString instances, these are used to replace the placeholder with a SigmaString that
+          may contain plain strings, placeholders and special characters.
         """
 
 
@@ -95,7 +98,7 @@ class WildcardPlaceholderTransformation(BasePlaceholderTransformation):
     placeholders content.
     """
 
-    def placeholder_replacements(self, p: Placeholder) -> Iterator[SpecialChars]:
+    def placeholder_replacements(self, p: Placeholder) -> Iterable[SpecialChars]:
         return [SpecialChars.WILDCARD_MULTI]
 
 
@@ -105,8 +108,10 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
     Replaces placeholders with values contained in variables defined in the configuration.
     """
 
-    def placeholder_replacements(self, p: Placeholder) -> List[str]:
+    def placeholder_replacements(self, p: Placeholder) -> Iterable[SigmaString]:
         try:
+            if self._pipeline is None:
+                raise SigmaValueError("No pipeline available for placeholder replacement.")
             values = self._pipeline.vars[p.name]
         except KeyError:
             raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
@@ -123,7 +128,9 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
 
 
 @dataclass
-class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, ValueTransformation):
+class QueryExpressionPlaceholderTransformation(
+    StringValueTransformation, PlaceholderIncludeExcludeMixin
+):
     """
     Replaces a placeholder with a plain query containing the placeholder or an identifier
     mapped from the placeholder name. The main purpose is the generation of arbitrary
@@ -139,11 +146,15 @@ class QueryExpressionPlaceholderTransformation(PlaceholderIncludeExcludeMixin, V
     expression: str = ""
     mapping: Dict[str, str] = field(default_factory=dict)
 
-    def apply_value(
-        self, field: Optional[str], val: SigmaString
-    ) -> Union[SigmaString, Iterable[SigmaString]]:
+    def __post_init__(self) -> None:
+        self.check_exclusivity()
+        return super().__post_init__()
+
+    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaType]:
         if val.contains_placeholder():
-            if len(val.s) == 1:  # Sigma string must only contain placeholder, nothing else.
+            if len(val.s) == 1 and isinstance(
+                val.s[0], Placeholder
+            ):  # Sigma string must only contain placeholder, nothing else.
                 p = val.s[0]
                 if self.is_handled_placeholder(p):
                     return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)

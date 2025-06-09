@@ -44,6 +44,9 @@ class MyMitreAttackData:
         self.techniques_tactics_mapping: Dict[str, list] = dict()
         self.intrusion_sets: Dict[str, str] = dict()
         self.software: Dict[str, str] = dict()
+        self.datasources: Dict[str, str] = dict()
+        self.mitigations: Dict[str, str] = dict()
+        self.assets: Dict[str, str] = dict()
 
     def fetch_attack_stix_json(self, url: str) -> Optional[Dict]:
         try:
@@ -71,45 +74,46 @@ class MyMitreAttackData:
                 None,
             )
 
+    def remove_json(self):
+        if self.JSON_PATH.exists():
+            self.JSON_PATH.unlink()
+
     def update_mitre_information(self) -> None:
         """Update MITRE ATT&CK information from downloaded STIX data.
 
         Processes groups, tactics, techniques and software information
         from the STIX JSON file and updates internal dictionaries.
         """
-        mitre_attack_data = MitreAttackData(str(self.JSON_PATH))
-        groups = mitre_attack_data.get_groups(remove_revoked_deprecated=True)
-        print(f"Retrieved {len(groups)} ATT&CK groups.")
-        for group in groups:
-            group_id = next(
+
+        def get_external_id(data) -> str:
+            return next(
                 (
                     x["external_id"]
-                    for x in group.get("external_references")
+                    for x in data.get("external_references")
                     if x["source_name"] == "mitre-attack"
                 ),
                 "Undef",
             )
+
+        mitre_attack_data = MitreAttackData(str(self.JSON_PATH))
+        groups = mitre_attack_data.get_groups(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(groups)} ATT&CK groups.")
+        for group in groups:
+            group_id = get_external_id(group)
             group_name = group.get("name")
             self.intrusion_sets[group_id] = group_name
 
         tactics = mitre_attack_data.get_tactics(remove_revoked_deprecated=True)
         print(f"Retrieved {len(tactics)} ATT&CK tactics.")
         for tactic in tactics:
-            tactic_id = tactic.get("external_references")[0].get("external_id")
+            tactic_id = get_external_id(tactic)
             tactic_name = tactic.get("name")
             self.tactics[tactic_id] = tactic_name.lower().replace(" ", "-")
 
         techniques = mitre_attack_data.get_techniques(remove_revoked_deprecated=True)
         print(f"Retrieved {len(techniques)} ATT&CK techniques.")
         for technique in techniques:
-            technique_id = next(
-                (
-                    x["external_id"]
-                    for x in technique.get("external_references")
-                    if x["source_name"] == "mitre-attack"
-                ),
-                "Undef",
-            )
+            technique_id = get_external_id(technique)
             technique_name = technique.get("name")
             self.techniques[technique_id] = technique_name
             killChainPhase = [x.phase_name for x in technique.get("kill_chain_phases")]
@@ -118,16 +122,26 @@ class MyMitreAttackData:
         softwares = mitre_attack_data.get_software(remove_revoked_deprecated=True)
         print(f"Retrieved {len(softwares)} ATT&CK software.")
         for software in softwares:
-            software_id = next(
-                (
-                    x["external_id"]
-                    for x in software.get("external_references")
-                    if x["source_name"] == "mitre-attack"
-                ),
-                "Undef",
-            )
+            software_id = get_external_id(software)
             software_name = software.get("name")
             self.software[software_id] = software_name
+
+        datasources = mitre_attack_data.get_datasources(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(datasources)} ATT&CK data sources.")
+        for datasource in datasources:
+            datasource_id = get_external_id(datasource)
+            datasource_name = datasource.get("name")
+            self.datasources[datasource_id] = datasource_name
+
+        mitigations = mitre_attack_data.get_mitigations(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(mitigations)} ATT&CK mitigations.")
+        for mitigation in mitigations:
+            mitigation_id = get_external_id(mitigation)
+            mitigation_name = mitigation.get("name")
+            self.mitigations[mitigation_id] = mitigation_name
+
+        assets = mitre_attack_data.get_assets(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(assets)} ICS assets.")
 
     def validate_url(self, url: str) -> bool:
         """Validate if the provided URL is well-formed."""
@@ -139,10 +153,6 @@ class MyMitreAttackData:
 
     def generate_attack_content(self) -> None:
         with self.PY_PATH.open("w", encoding="UTF-8", newline="") as fileoutput:
-            print(
-                f"Found {len(self.tactics)} tactics, {len(self.techniques)} techniques ({len(self.techniques_tactics_mapping)} mapped to tactics), {len(self.intrusion_sets)} intrusion sets and {len(self.software)} malwares.",
-                file=stderr,
-            )
             print("from typing import Dict, List", file=fileoutput)
             print(f'mitre_attack_version: str = "{self.attack_version}"', file=fileoutput)
             print(
@@ -170,10 +180,16 @@ class MyMitreAttackData:
                 + pformat(self.software, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
-
-    def remove_json(self):
-        if self.JSON_PATH.exists():
-            self.JSON_PATH.unlink()
+            print(
+                "mitre_attack_datasources: Dict[str, str] = "
+                + pformat(self.datasources, indent=4, sort_dicts=True),
+                file=fileoutput,
+            )
+            print(
+                "mitre_attack_mitigations: Dict[str, str] = "
+                + pformat(self.mitigations, indent=4, sort_dicts=True),
+                file=fileoutput,
+            )
 
 
 if __name__ == "__main__":

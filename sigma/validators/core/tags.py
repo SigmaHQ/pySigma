@@ -13,6 +13,8 @@ from sigma.data.mitre_attack import (
     mitre_attack_techniques,
     mitre_attack_intrusion_sets,
     mitre_attack_software,
+    mitre_attack_datasources,
+    mitre_attack_mitigations,
 )
 from sigma.data.mitre_d3fend import (
     mitre_d3fend_tactics,
@@ -56,6 +58,8 @@ class ATTACKTagValidator(SigmaTagValidator):
             .union({technique.lower() for technique in mitre_attack_techniques.keys()})
             .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets.keys()})
             .union({software.lower() for software in mitre_attack_software.keys()})
+            .union({datasource.lower() for datasource in mitre_attack_datasources.keys()})
+            .union({mitigation.lower() for mitigation in mitre_attack_mitigations.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:

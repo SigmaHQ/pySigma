@@ -1,12 +1,14 @@
 import json
-from sys import stderr, stdout
+from sys import stderr
 from pprint import pformat
-from typing import Optional, Dict, List, Union
+from typing import Optional, Dict
 from pathlib import Path
+from urllib.parse import urlparse
 from dataclasses import dataclass
-
 from sigma.data.mitre_attack import mitre_attack_version
 import requests
+
+from mitreattack.stix20 import MitreAttackData
 
 
 @dataclass
@@ -23,26 +25,25 @@ class MitreAttackUrls:
     )
 
 
-class MitreAttackData:
-    MITRE_ATTACK_KEY = "mitre-attack"
+class MyMitreAttackData:
+    ENTERPRISE_URL: str = MitreAttackUrls.enterprise
+    JSON_PATH: Path = Path("tools/enterprise-attack.json")
+    PY_PATH: Path = Path("sigma/data/mitre_attack.py")
     DEFAULT_TIMEOUT = 20
-    DEFAULT_MODIFIED = "2018-01-17T12:56:55.080Z"
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        self.remove_json()
 
     def __init__(self):
-        self.modified = self.DEFAULT_MODIFIED
         self.attack_version: Optional[str] = None
-        self.urls = MitreAttackUrls()
-        self.data_enterprise: Optional[Dict] = None
-        self.data_mobile: Optional[Dict] = None
-        self.data_ics: Optional[Dict] = None
-        self.check_enterprise: bool = True
-        self.check_mobile: bool = False
-        self.check_ics: bool = False
         self.tactics: Dict[str, str] = dict()
         self.techniques: Dict[str, str] = dict()
-        self.techniques_tactics_mapping = dict()
-        self.intrusion_sets = dict()
-        self.software = dict()
+        self.techniques_tactics_mapping: Dict[str, list] = dict()
+        self.intrusion_sets: Dict[str, str] = dict()
+        self.software: Dict[str, str] = dict()
 
     def fetch_attack_stix_json(self, url: str) -> Optional[Dict]:
         try:
@@ -56,79 +57,88 @@ class MitreAttackData:
             print(f"Error parsing JSON: {e}", file=stderr)
             return None
 
-    def update_data(self):
-        if self.check_enterprise:
-            self.data_enterprise = self.fetch_attack_stix_json(self.urls.enterprise)
-        if self.check_mobile:
-            self.data_mobile = self.fetch_attack_stix_json(self.urls.mobile)
-        if self.check_ics:
-            self.data_ics = self.fetch_attack_stix_json(self.urls.ics)
+    def download_json(self):
+        enterprise_json = self.fetch_attack_stix_json(self.ENTERPRISE_URL)
+        if enterprise_json:
+            with self.JSON_PATH.open("w", encoding="utf-8") as f:
+                json.dump(enterprise_json, f, indent=2)
+            self.attack_version = next(
+                (
+                    x["x_mitre_version"]
+                    for x in enterprise_json["objects"]
+                    if x["type"] == "x-mitre-collection"
+                ),
+                None,
+            )
 
-    def get_last_version(self) -> Optional[str]:
-        try:
-            response = requests.get(self.urls.info, timeout=self.DEFAULT_TIMEOUT)
-            response.raise_for_status()
-            data = response.json()
-            self.modified = data.get("modified", self.modified)
-            collections = data.get("collections", [])
-            for collection in collections:
-                versions = collection.get("versions", [])
-                for version in versions:
-                    if version.get("modified") == self.modified:
-                        self.attack_version = version.get("version", self.attack_version)
-                        return self.attack_version
-            return None
-        except Exception:
-            return None
+    def update_mitre_information(self) -> None:
+        """Update MITRE ATT&CK information from downloaded STIX data.
 
-    def extract_information(self, stix: Dict, key_name: str = MITRE_ATTACK_KEY) -> None:
-        """Extract MITRE ATT&CK information from STIX data.
-
-        Args:
-            stix: Dictionary containing STIX objects
-            key_name: Name of the kill chain (e.g. 'mitre-attack')
+        Processes groups, tactics, techniques and software information
+        from the STIX JSON file and updates internal dictionaries.
         """
+        mitre_attack_data = MitreAttackData(str(self.JSON_PATH))
+        groups = mitre_attack_data.get_groups(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(groups)} ATT&CK groups.")
+        for group in groups:
+            group_id = next(
+                (
+                    x["external_id"]
+                    for x in group.get("external_references")
+                    if x["source_name"] == "mitre-attack"
+                ),
+                "Undef",
+            )
+            group_name = group.get("name")
+            self.intrusion_sets[group_id] = group_name
 
-        def get_attack_id(refs):
-            for ref in refs:  # Iterate over all references, one contains identifier
-                src = ref.get("source_name", "")
-                if src.startswith("mitre") and src.endswith("attack"):
-                    return ref["external_id"]
+        tactics = mitre_attack_data.get_tactics(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(tactics)} ATT&CK tactics.")
+        for tactic in tactics:
+            tactic_id = tactic.get("external_references")[0].get("external_id")
+            tactic_name = tactic.get("name")
+            self.tactics[tactic_id] = tactic_name.lower().replace(" ", "-")
 
-        for obj in stix["objects"]:  # iterate over all STIX objects
-            if not (obj.get("revoked") or obj.get("x_mitre_deprecated")):  # ignore deprecated items
-                if (obj_type := obj.get("type")) is not None:
-                    if obj_type == "x-mitre-tactic":  # Tactic
-                        tactic_id = get_attack_id(obj["external_references"])
-                        if tactic_id:
-                            self.tactics[tactic_id] = obj["x_mitre_shortname"]
-                    elif obj_type == "attack-pattern":  # Technique
-                        technique_id = get_attack_id(obj["external_references"])
-                        if technique_id:
-                            self.techniques[technique_id] = obj["name"]
-                            self.techniques_tactics_mapping[technique_id] = [
-                                phase["phase_name"]
-                                for phase in obj["kill_chain_phases"]
-                                if phase["kill_chain_name"] == key_name
-                            ]
-                    elif obj_type == "intrusion-set":
-                        intrusion_set_id = get_attack_id(obj["external_references"])
-                        if intrusion_set_id:
-                            self.intrusion_sets[intrusion_set_id] = obj["name"]
-                    elif obj_type in ("malware", "tool"):
-                        software_id = get_attack_id(obj["external_references"])
-                        if software_id:
-                            self.software[software_id] = obj["name"]
-                    elif obj_type == "x-mitre-collection":
-                        self.attack_version = obj["x_mitre_version"]
+        techniques = mitre_attack_data.get_techniques(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(techniques)} ATT&CK techniques.")
+        for technique in techniques:
+            technique_id = next(
+                (
+                    x["external_id"]
+                    for x in technique.get("external_references")
+                    if x["source_name"] == "mitre-attack"
+                ),
+                "Undef",
+            )
+            technique_name = technique.get("name")
+            self.techniques[technique_id] = technique_name
+            killChainPhase = [x.phase_name for x in technique.get("kill_chain_phases")]
+            self.techniques_tactics_mapping[technique_id] = killChainPhase
 
-    def generate_attack_content(self, filename: Union[str, Path]):
-        filepath = Path(filename)
-        filepath.parent.mkdir(parents=True, exist_ok=True)
-        with filepath.open("w", encoding="UTF-8", newline="") as fileoutput:
-            if self.data_enterprise is not None:
-                self.extract_information(self.data_enterprise, "mitre-attack")
+        softwares = mitre_attack_data.get_software(remove_revoked_deprecated=True)
+        print(f"Retrieved {len(softwares)} ATT&CK software.")
+        for software in softwares:
+            software_id = next(
+                (
+                    x["external_id"]
+                    for x in software.get("external_references")
+                    if x["source_name"] == "mitre-attack"
+                ),
+                "Undef",
+            )
+            software_name = software.get("name")
+            self.software[software_id] = software_name
 
+    def validate_url(self, url: str) -> bool:
+        """Validate if the provided URL is well-formed."""
+        try:
+            result = urlparse(url)
+            return all([result.scheme, result.netloc])
+        except Exception:
+            return False
+
+    def generate_attack_content(self) -> None:
+        with self.PY_PATH.open("w", encoding="UTF-8", newline="") as fileoutput:
             print(
                 f"Found {len(self.tactics)} tactics, {len(self.techniques)} techniques ({len(self.techniques_tactics_mapping)} mapped to tactics), {len(self.intrusion_sets)} intrusion sets and {len(self.software)} malwares.",
                 file=stderr,
@@ -161,14 +171,20 @@ class MitreAttackData:
                 file=fileoutput,
             )
 
+    def remove_json(self):
+        if self.JSON_PATH.exists():
+            self.JSON_PATH.unlink()
+
 
 if __name__ == "__main__":
-    print("Generate MITRE ATT&CK(r) content for pySigma from ATT&CK STIX definition.")
-    print(f"Actual Mitre Attack version : {mitre_attack_version}")
-    attackdata = MitreAttackData()
-    attackversion = attackdata.get_last_version()
-    if attackversion and not attackversion == mitre_attack_version:
-        print(f"Update Mitre Attack data to : {attackversion}")
-        attackdata.update_data()
-        attackdata.generate_attack_content("./sigma/data/mitre_attack.py")
-        print(f"Use black before making a PR")
+    print(
+        "Generate MITRE ATT&CK(r) content for pySigma from enterprise-attack ATT&CK STIX definition."
+    )
+    print(f"Actual MITRE Attack version : {mitre_attack_version}")
+    with MyMitreAttackData() as attackdata:
+        attackdata.download_json()
+        if attackdata.attack_version and not attackdata.attack_version == mitre_attack_version:
+            print(f"Update MITRE Attack data to : {attackdata.attack_version}")
+            attackdata.update_mitre_information()
+            attackdata.generate_attack_content()
+            print(f"Use black before making a PR for pySigma")

@@ -574,7 +574,7 @@ def test_sigmadetections_to_dict_single_condition():
     ).to_dict() == {"test": {"field": "value"}, "condition": "test"}
 
 
-def test_sigmadetections_to_dict_single_condition():
+def test_sigmadetections_to_dict_double_condition():
     assert SigmaDetections(
         detections={
             "test": SigmaDetection([SigmaDetectionItem("field", [], SigmaString("value"))])

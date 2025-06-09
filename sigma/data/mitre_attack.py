@@ -1,6 +1,6 @@
 from typing import Dict, List
 
-mitre_attack_version: str = "17.0"
+mitre_attack_version: str = "17.1"
 mitre_attack_tactics: Dict[str, str] = {
     "TA0001": "initial-access",
     "TA0002": "execution",

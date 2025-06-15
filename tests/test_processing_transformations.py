@@ -2186,7 +2186,9 @@ def test_conversion_strict_mapped_fields_throws_exception():
         ),
     )
 
-    with pytest.raises(SigmaTypeError, match="Field 'fieldTwo' is not mapped"):
+    with pytest.raises(
+        SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
+    ):
         a = test_backend.convert(
             SigmaCollection.from_yaml(
                 """
@@ -2367,7 +2369,9 @@ def test_conversion_strict_mapped_fields_multiple_pipelines_error():
         ),
     )
 
-    with pytest.raises(SigmaTypeError, match="Field 'fieldTwo' is not mapped"):
+    with pytest.raises(
+        SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
+    ):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """

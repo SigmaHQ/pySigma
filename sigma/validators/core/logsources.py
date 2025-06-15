@@ -110,6 +110,8 @@ class FieldnameLogsourceIssue(SigmaValidationIssue):
 
 
 class FieldnameLogsourceValidator(SigmaRuleValidator):
+    """Identify usage of invalid field names in the log source."""
+
     def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
         if isinstance(rule, SigmaRule) and rule.logsource.custom_attributes:
             return [

@@ -39,6 +39,7 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
 from sigma.conditions import (
+    ConditionIdentifier,
     ConditionItem,
     ConditionOR,
     ConditionAND,
@@ -46,6 +47,7 @@ from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
     ConditionValueExpression,
 )
+from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
 from sigma.types import (
     CompareOperators,
     SigmaBool,
@@ -215,8 +217,9 @@ class Backend(ABC):
                 for _ in rule.detection.parsed_condition
             ]
             queries = [
-                self.convert_condition(cond.parsed, states[index])
+                result
                 for index, cond in enumerate(rule.detection.parsed_condition)
+                if (result := self.convert_condition(cond.parsed, states[index])) is not None
             ]
 
             error_state = "finalizing query for"
@@ -528,7 +531,12 @@ class Backend(ABC):
 
     def convert_condition(
         self,
-        cond: Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression],
+        cond: Union[
+            ConditionItem,
+            ConditionFieldEqualsValueExpression,
+            ConditionValueExpression,
+            None,
+        ],
         state: ConversionState,
     ) -> Any:
         """
@@ -556,6 +564,8 @@ class Backend(ABC):
             return self.convert_condition_field_eq_val(cond, state)
         elif isinstance(cond, ConditionValueExpression):
             return self.convert_condition_val(cond, state)
+        elif cond is None:
+            return None
         else:  # pragma: no cover
             raise TypeError(
                 "Unexpected data type in condition parse tree: " + cond.__class__.__name__
@@ -1195,7 +1205,9 @@ class TextQueryBackend(Backend):
     def compare_precedence(
         self,
         outer: ConditionItem,
-        inner: Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression],
+        inner: Union[
+            ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None
+        ],
     ) -> bool:
         """
         Compare precedence of outer and inner condition items. Return True if precedence of
@@ -1213,27 +1225,36 @@ class TextQueryBackend(Backend):
             inner, (ConditionFieldEqualsValueExpression, ConditionValueExpression)
         ) and isinstance(inner.value, SigmaExpansion):
             inner_class: Type[
-                Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression]
+                Union[
+                    ConditionItem,
+                    ConditionFieldEqualsValueExpression,
+                    ConditionValueExpression,
+                    None,
+                ]
             ] = ConditionOR
         else:
             inner_class = inner.__class__
 
         try:
             idx_inner = self.precedence.index(inner_class)
-        except ValueError:  # ConditionItem not in precedence tuple
+        except ValueError:  # ConditionItem not in precedence tuple or None
             idx_inner = -1  # Assume precedence of inner condition item is higher than the outer
 
         return idx_inner <= self.precedence.index(outer_class)
 
     def convert_condition_group(
         self,
-        cond: Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression],
+        cond: Union[
+            ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None
+        ],
         state: ConversionState,
     ) -> Union[str, DeferredQueryExpression]:
         """Group condition item."""
         expr = self.convert_condition(cond, state)
         if isinstance(expr, DeferredQueryExpression):
             return expr
+        if expr is None:
+            return None
         if self.group_expression is None:
             raise NotImplementedError("Group expressions are not supported by the backend")
         return self.group_expression.format(expr=expr)
@@ -1250,20 +1271,23 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.or_token + self.token_separator
 
-            return joiner.join(
-                (
-                    converted
-                    for converted in (
-                        (
-                            self.convert_condition(arg, state)
-                            if self.compare_precedence(cond, arg)
-                            else self.convert_condition_group(arg, state)
-                        )
-                        for arg in cond.args
+            args = [
+                converted
+                for converted in (
+                    (
+                        self.convert_condition(arg, state)
+                        if self.compare_precedence(cond, arg)
+                        else self.convert_condition_group(arg, state)
                     )
-                    if converted is not None and not isinstance(converted, DeferredQueryExpression)
+                    for arg in cond.args
                 )
-            )
+                if converted is not None and not isinstance(converted, DeferredQueryExpression)
+            ]
+
+            if len(args) == 0:
+                return None
+            else:
+                return joiner.join(args)
         except TypeError:  # pragma: no cover
             raise NotImplementedError("Operator 'or' not supported by the backend")
 
@@ -1316,20 +1340,23 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.and_token + self.token_separator
 
-            return joiner.join(
-                (
-                    converted
-                    for converted in (
-                        (
-                            self.convert_condition(arg, state)
-                            if self.compare_precedence(cond, arg)
-                            else self.convert_condition_group(arg, state)
-                        )
-                        for arg in cond.args
+            args = [
+                converted
+                for converted in (
+                    (
+                        self.convert_condition(arg, state)
+                        if self.compare_precedence(cond, arg)
+                        else self.convert_condition_group(arg, state)
                     )
-                    if converted is not None and not isinstance(converted, DeferredQueryExpression)
+                    for arg in cond.args
                 )
-            )
+                if converted is not None and not isinstance(converted, DeferredQueryExpression)
+            ]
+
+            if len(args) == 0:
+                return None
+            else:
+                return joiner.join(args)
         except TypeError:  # pragma: no cover
             raise NotImplementedError("Operator 'and' not supported by the backend")
 
@@ -1338,6 +1365,8 @@ class TextQueryBackend(Backend):
     ) -> Union[str, DeferredQueryExpression]:
         """Conversion of NOT conditions."""
         arg = cond.args[0]
+        if arg is None:
+            return None
         try:
             if arg.__class__ in self.precedence:  # group if AND or OR condition is negated
                 converted_group = self.convert_condition_group(arg, state)
@@ -1461,7 +1490,11 @@ class TextQueryBackend(Backend):
 
         def is_parent_not(
             cond: Union[
-                ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression
+                ConditionItem,
+                ConditionFieldEqualsValueExpression,
+                ConditionValueExpression,
+                SigmaDetection,
+                SigmaDetectionItem,
             ],
         ) -> bool:
             if cond.parent is None:
@@ -1919,7 +1952,9 @@ class TextQueryBackend(Backend):
 
     def convert_condition(
         self,
-        cond: Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression],
+        cond: Union[
+            ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None
+        ],
         state: ConversionState,
     ) -> Union[str, DeferredQueryExpression]:
         return cast(Union[str, DeferredQueryExpression], super().convert_condition(cond, state))

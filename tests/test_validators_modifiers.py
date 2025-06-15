@@ -40,7 +40,11 @@ def test_validator_all_without_contains():
     assert validator.validate(rule) == [
         AllWithoutContainsModifierIssue(
             [rule],
-            SigmaDetectionItem("field", [SigmaAllModifier], ["value1", "value2", "value3"]),
+            SigmaDetectionItem(
+                "field",
+                [SigmaAllModifier],
+                [SigmaString("value1"), SigmaString("value2"), SigmaString("value3")],
+            ),
         )
     ]
 
@@ -101,7 +105,7 @@ def test_validator_base64offset_without_contains_modifier():
     )
     assert validator.validate(rule) == [
         Base64OffsetWithoutContainsModifierIssue(
-            [rule], SigmaDetectionItem("field", [SigmaBase64OffsetModifier], ["value"])
+            [rule], SigmaDetectionItem("field", [SigmaBase64OffsetModifier], [SigmaString("value")])
         )
     ]
 
@@ -169,7 +173,7 @@ def test_validator_multiple_modifier():
                     SigmaContainsModifier,
                     SigmaContainsModifier,
                 ],
-                ["value"],
+                [SigmaString("value")],
             ),
             {SigmaBase64OffsetModifier, SigmaContainsModifier},
         )

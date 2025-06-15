@@ -12,6 +12,7 @@ from pyparsing import (
     ParseException,
 )
 from typing import ClassVar, List, Optional, Union, Type, cast
+import sigma.rule
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 import sigma
@@ -21,23 +22,53 @@ import sigma
 class ParentChainMixin:
     """Class to resolve parent chains of condition objects."""
 
-    parent: Optional["ConditionItem"] = field(
+    parent: Optional[
+        Union[
+            "ConditionItem",
+            "sigma.rule.detection.SigmaDetectionItem",
+            "sigma.rule.detection.SigmaDetection",
+        ]
+    ] = field(
         init=False, compare=False, default=None
     )  # Link to parent containing this condition
     operator: ClassVar[bool] = False  # is class a boolean operator?
 
-    def parent_chain(self) -> List["ConditionType"]:
+    def parent_chain(
+        self,
+    ) -> List[
+        Union[
+            "ConditionType",
+            "sigma.rule.detection.SigmaDetectionItem",
+            "sigma.rule.detection.SigmaDetection",
+        ]
+    ]:
         """Return complete parent chain of condition object."""
         if self.parent is None:  # root of chain, return empty list
             return []
         else:
             return [self.parent] + self.parent.parent_chain()
 
-    def parent_chain_classes(self) -> List[Type["ConditionType"]]:
+    def parent_chain_classes(
+        self,
+    ) -> List[
+        Union[
+            Type["ConditionType"],
+            Type["sigma.rule.detection.SigmaDetectionItem"],
+            Type["sigma.rule.detection.SigmaDetection"],
+        ]
+    ]:
         """Return classes of parent chain."""
         return [item.__class__ for item in self.parent_chain()]
 
-    def parent_chain_condition_classes(self) -> List[Type["ConditionType"]]:
+    def parent_chain_condition_classes(
+        self,
+    ) -> List[
+        Union[
+            Type["ConditionType"],
+            Type["sigma.rule.detection.SigmaDetectionItem"],
+            Type["sigma.rule.detection.SigmaDetection"],
+        ]
+    ]:
         """Only return list of parent chain condition classes which are boolean operators."""
         return [item for item in self.parent_chain_classes() if item.operator]
 
@@ -48,9 +79,17 @@ class ParentChainMixin:
     def postprocess(
         self,
         detections: "sigma.rule.detection.SigmaDetections",
-        parent: Optional["ConditionItem"] = None,
+        parent: Optional[
+            Union[
+                "sigma.rule.detection.SigmaDetection",
+                "sigma.rule.detection.SigmaDetectionItem",
+                "ConditionItem",
+            ]
+        ] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
+    ) -> Union[
+        "ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionValueExpression", None
+    ]:
         """
         Minimal default postprocessing implementation for classes which don't bring their own postprocess method.
         Just sets the parent and source property.
@@ -75,6 +114,7 @@ class ConditionItem(ParentChainMixin, ABC):
             "ConditionItem",
             "ConditionFieldEqualsValueExpression",
             "ConditionValueExpression",
+            None,
         ]
     ]
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
@@ -101,9 +141,17 @@ class ConditionItem(ParentChainMixin, ABC):
     def postprocess(
         self,
         detections: "sigma.rule.detection.SigmaDetections",
-        parent: Optional["ConditionItem"] = None,
+        parent: Optional[
+            Union[
+                "sigma.rule.detection.SigmaDetection",
+                "sigma.rule.detection.SigmaDetectionItem",
+                "ConditionItem",
+            ]
+        ] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression":
+    ) -> Union[
+        "ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionValueExpression", None
+    ]:
         """
         Postprocess condition parse tree after initial parsing. In this stage the detections
         are available, this allows to resolve references to detections into concrete conditions.
@@ -116,13 +164,14 @@ class ConditionItem(ParentChainMixin, ABC):
             for arg in self.args
             if arg is not None  # Need to filter None before postprocess as well
         ]
-        self.args = list(  # filter all None entries from argument list. These can be caused by empty detection items from applied transformations.
-            filter(lambda arg: arg is not None, self.args)
-        )
         if (
             self.arg_count > 1 and len(self.args) == 1
         ):  # multi-argument condition (AND, OR) has only one argument left: return the single argument
             return self.args[0]
+        elif (
+            self.arg_count > 0 and len(self.args) == 0
+        ):  # There should be an argument but none is left
+            return None
         else:
             return self
 
@@ -158,9 +207,17 @@ class ConditionIdentifier(ConditionItem):
     def postprocess(
         self,
         detections: "sigma.rule.detection.SigmaDetections",
-        parent: Optional["ConditionItem"] = None,
+        parent: Optional[
+            Union[
+                "sigma.rule.detection.SigmaDetection",
+                "sigma.rule.detection.SigmaDetectionItem",
+                "ConditionItem",
+            ]
+        ] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> Union[ConditionAND, ConditionOR]:
+    ) -> Union[
+        "ConditionItem", "ConditionFieldEqualsValueExpression", "ConditionValueExpression", None
+    ]:
         """Converts an identifier into a condition with SigmaDetectionItems at its leaf nodes."""
         self.parent = parent
         try:
@@ -170,7 +227,7 @@ class ConditionIdentifier(ConditionItem):
                 f"Detection '{ self.identifier }' not defined in detections",
                 source=source,
             )
-        return detection.postprocess(detections, self)
+        return detection.postprocess(detections, self, source)
 
 
 @dataclass
@@ -210,9 +267,17 @@ class ConditionSelector(ConditionItem):
     def postprocess(
         self,
         detections: "sigma.rule.detection.SigmaDetections",
-        parent: Optional["ConditionItem"] = None,
+        parent: Optional[
+            Union[
+                "sigma.rule.detection.SigmaDetection",
+                "sigma.rule.detection.SigmaDetectionItem",
+                "ConditionItem",
+            ]
+        ] = None,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> Union[ConditionItem, "ConditionFieldEqualsValueExpression", "ConditionValueExpression"]:
+    ) -> Union[
+        ConditionItem, "ConditionFieldEqualsValueExpression", "ConditionValueExpression", None
+    ]:
         """Converts selector into an AND or OR condition"""
         self.parent = parent
 
@@ -225,6 +290,7 @@ class ConditionSelector(ConditionItem):
                         ConditionItem,
                         ConditionFieldEqualsValueExpression,
                         ConditionValueExpression,
+                        None,
                     ]
                 ],
                 ids,
@@ -275,7 +341,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
 
     def parse(
         self, postprocess: bool = True
-    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression]:
+    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None]:
         """
         Parse condition and return parse tree (no postprocessing) or condition tree (postprocessed).
 
@@ -300,7 +366,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
     @property
     def parsed(
         self, postprocess: bool = True
-    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression]:
+    ) -> Union[ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None]:
         """
         Parse on first access on parsed condition tree.
 

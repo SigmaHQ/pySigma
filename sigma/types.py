@@ -621,7 +621,14 @@ class SigmaString(SigmaType):
 
     def snake_case(self) -> "SigmaString":
         return self.map_parts(
-            lambda x: re.sub(r"(?<!^)(?=[A-Z])", "_", x).lower(), lambda x: isinstance(x, str)
+            lambda x: re.sub(
+                r"(?<!^)(?=[A-Z])",
+                "_",
+                cast(
+                    str, x
+                ),  # str type ensured by filtering for str in next parameter of map_parts
+            ).lower(),
+            lambda x: isinstance(x, str),
         )
 
 
@@ -956,7 +963,7 @@ type_map: Dict[type, Type[SigmaType]] = {
 }
 
 
-def sigma_type(v: Optional[Union[int, float, str]]) -> SigmaType:
+def sigma_type(v: Optional[Union[int, float, str, bool]]) -> SigmaType:
     """Return Sigma type from Python value"""
     for t, st in type_map.items():
         if isinstance(v, t):

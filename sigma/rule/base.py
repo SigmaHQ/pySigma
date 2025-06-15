@@ -1,3 +1,4 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Dict, Optional, Tuple, List, Type
 from uuid import UUID
@@ -363,9 +364,15 @@ class SigmaRuleBase:
         )
 
     @classmethod
-    def from_yaml(
-        cls, rule: str, collect_errors: bool = False
-    ) -> Tuple[Dict[str, Any], List[SigmaError]]:
+    @abstractmethod
+    def from_dict(cls, rule: Dict[str, Any], collect_errors: bool = False) -> "SigmaRuleBase":
+        """Convert dict input into SigmaRule object."""
+        raise NotImplementedError(
+            "from_dict method must be implemented in the derived class of SigmaRuleBase"
+        )
+
+    @classmethod
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRuleBase":
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)

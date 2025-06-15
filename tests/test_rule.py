@@ -237,13 +237,6 @@ def test_sigmadetectionitem_keyword_single():
     )
 
 
-def test_sigmadetectionitem_value_cleanup_single():
-    """Single value cleanup."""
-    assert SigmaDetectionItem(None, [], "value") == SigmaDetectionItem(
-        None, [], [SigmaString("value")]
-    )
-
-
 def test_sigmadetectionitem_value_cleanup_multi():
     """Multiple value cleanup."""
     assert SigmaDetectionItem(None, [], ["value", 123]) == SigmaDetectionItem(
@@ -440,7 +433,9 @@ def test_sigmadetectionitem_key_value_modifiers_invalid_re():
 
 
 def test_sigmadetectionitem_fromvalue():
-    SigmaDetectionItem.from_value("test") == SigmaDetectionItem(None, [], [SigmaString("test")])
+    assert SigmaDetectionItem.from_value("test") == SigmaDetectionItem(
+        None, [], [SigmaString("test")]
+    )
 
 
 def test_sigmadetectionitem_processing_item_tracking(processing_item):
@@ -568,7 +563,7 @@ def test_sigmadetections_fromdict():
 def test_sigmadetections_to_dict_single_condition():
     assert SigmaDetections(
         detections={
-            "test": SigmaDetection([SigmaDetectionItem("field", [], SigmaString("value"))])
+            "test": SigmaDetection([SigmaDetectionItem("field", [], [SigmaString("value")])])
         },
         condition=["test"],
     ).to_dict() == {"test": {"field": "value"}, "condition": "test"}
@@ -577,7 +572,7 @@ def test_sigmadetections_to_dict_single_condition():
 def test_sigmadetections_to_dict_single_condition():
     assert SigmaDetections(
         detections={
-            "test": SigmaDetection([SigmaDetectionItem("field", [], SigmaString("value"))])
+            "test": SigmaDetection([SigmaDetectionItem("field", [], [SigmaString("value")])])
         },
         condition=["test", "all of them"],
     ).to_dict() == {"test": {"field": "value"}, "condition": ["test", "all of them"]}
@@ -673,16 +668,67 @@ def test_detectionitem_all_modified_key_special_values_postprocess():
     )
 
 
+def test_sigmadetection_from_definition_mapping():
+    """Test if SigmaDetection can be created from a definition mapping."""
+    definition_mapping = {
+        "field1": ["value1", "value2"],
+        "field2": "value3",
+        "field3|re": "regex.*pattern",
+    }
+    detection = SigmaDetection.from_definition(definition_mapping)
+    assert detection.detection_items == [
+        SigmaDetectionItem("field1", [], [SigmaString("value1"), SigmaString("value2")]),
+        SigmaDetectionItem("field2", [], [SigmaString("value3")]),
+        SigmaDetectionItem(
+            "field3",
+            [SigmaRegularExpressionModifier],
+            [SigmaRegularExpression("regex.*pattern")],
+            auto_modifiers=False,
+        ),
+    ]
+
+
+def test_sigmadetection_from_definition_plain_value():
+    detection = SigmaDetection.from_definition("keyword")
+    assert detection.detection_items == [SigmaDetectionItem(None, [], [SigmaString("keyword")])]
+
+
+def test_sigmadetection_from_definition_list_of_values():
+    detection = SigmaDetection.from_definition(["value1", "value2"])
+    assert detection.detection_items == [
+        SigmaDetectionItem(None, [], [SigmaString("value1"), SigmaString("value2")])
+    ]
+
+
+def test_sigmadetection_from_definition_list_of_dicts():
+    detection = SigmaDetection.from_definition(
+        [
+            {"field1": "value1"},
+            {"field2": "value2"},
+        ]
+    )
+    assert detection.detection_items == [
+        SigmaDetection([SigmaDetectionItem("field1", [], [SigmaString("value1")])]),
+        SigmaDetection([SigmaDetectionItem("field2", [], [SigmaString("value2")])]),
+    ]
+
+
+def test_sigmadetection_from_definition_unsupported_type():
+    """Test if an unsupported type raises an error."""
+    with pytest.raises(sigma_exceptions.SigmaDetectionError, match="Unsupported.*type"):
+        SigmaDetection.from_definition(object())
+
+
 def test_sigmadetection_processing_item_tracking(processing_item):
     """Key-value detection with one value."""
     detection = SigmaDetection(
         [
-            SigmaDetectionItem("field1", [], SigmaString("value1")),
-            SigmaDetectionItem("field2", [], SigmaString("value2")),
+            SigmaDetectionItem("field1", [], [SigmaString("value1")]),
+            SigmaDetectionItem("field2", [], [SigmaString("value2")]),
             SigmaDetection(
                 [
-                    SigmaDetectionItem("field3", [], SigmaString("value3")),
-                    SigmaDetectionItem("field4", [], SigmaString("value4")),
+                    SigmaDetectionItem("field3", [], [SigmaString("value3")]),
+                    SigmaDetectionItem("field4", [], [SigmaString("value4")]),
                 ]
             ),
         ]
@@ -707,15 +753,15 @@ def test_sigmadetection_processing_item_tracking(processing_item):
 
 def test_sigmadetection_single_to_plain():
     assert SigmaDetection(
-        detection_items=[SigmaDetectionItem("field", [], SigmaString("value"))]
+        detection_items=[SigmaDetectionItem("field", [], [SigmaString("value")])]
     ).to_plain() == {"field": "value"}
 
 
 def test_sigmadetection_multi_dict_to_plain():
     assert SigmaDetection(
         detection_items=[
-            SigmaDetectionItem("field1", [], SigmaString("value1")),
-            SigmaDetectionItem("field2", [], SigmaString("value2")),
+            SigmaDetectionItem("field1", [], [SigmaString("value1")]),
+            SigmaDetectionItem("field2", [], [SigmaString("value2")]),
         ]
     ).to_plain() == {
         "field1": "value1",
@@ -727,8 +773,8 @@ def test_sigmadetection_multi_dict_to_plain_key_collision():
     """Two field names exist in distinct detection items and have to be merged."""
     assert SigmaDetection(
         detection_items=[
-            SigmaDetectionItem("field", [], SigmaString("value1")),
-            SigmaDetectionItem("field", [], SigmaString("value2")),
+            SigmaDetectionItem("field", [], [SigmaString("value1")]),
+            SigmaDetectionItem("field", [], [SigmaString("value2")]),
         ]
     ).to_plain() == {"field|all": ["value1", "value2"]}
 
@@ -737,8 +783,8 @@ def test_sigmadetection_multi_dict_to_plain_all_key_collision():
     """Two field names exist in distinct detection items and have to be merged."""
     assert SigmaDetection(
         detection_items=[
-            SigmaDetectionItem("field|all", [], SigmaString("value1")),
-            SigmaDetectionItem("field|all", [], SigmaString("value2")),
+            SigmaDetectionItem("field|all", [], [SigmaString("value1")]),
+            SigmaDetectionItem("field|all", [], [SigmaString("value2")]),
         ]
     ).to_plain() == {"field|all": ["value1", "value2"]}
 
@@ -756,7 +802,7 @@ def test_sigmadetection_multi_dict_to_plain_all_key_collision_list_values():
 def test_sigmadetection_multi_dict_to_plain_key_collision_all():
     assert SigmaDetection(
         detection_items=[
-            SigmaDetectionItem("field", [], SigmaString("value1")),
+            SigmaDetectionItem("field", [], [SigmaString("value1")]),
             SigmaDetectionItem("field|all", [], [SigmaString("value2"), SigmaString("value3")]),
         ]
     ).to_plain() == {
@@ -803,7 +849,7 @@ def test_sigmadetection_multi_dict_to_plain_key_collision_all_2single():
 def test_sigmadetection_lists_and_plain_to_plain():
     assert SigmaDetection(
         detection_items=[
-            SigmaDetectionItem(None, [], SigmaString("value1")),
+            SigmaDetectionItem(None, [], [SigmaString("value1")]),
             SigmaDetectionItem(None, [], [SigmaString("value2"), SigmaString("value3")]),
             SigmaDetectionItem(None, [], [SigmaString("value4"), SigmaString("value5")]),
         ]
@@ -814,8 +860,8 @@ def test_sigmadetection_dict_and_keyword_to_plain():
     with pytest.raises(sigma_exceptions.SigmaValueError, match="Can't convert detection.*test.yml"):
         SigmaDetection(
             detection_items=[
-                SigmaDetectionItem("field", [], SigmaString("value")),
-                SigmaDetectionItem(None, [], SigmaString("keyword")),
+                SigmaDetectionItem("field", [], [SigmaString("value")]),
+                SigmaDetectionItem(None, [], [SigmaString("keyword")]),
             ],
             source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         ).to_plain()
@@ -1152,14 +1198,16 @@ def sigma_rule():
                         SigmaDetection(
                             [
                                 SigmaDetectionItem(
-                                    "CommandLine", [SigmaContainsModifier], ["test.exe"]
+                                    "CommandLine",
+                                    [SigmaContainsModifier],
+                                    [SigmaString("test.exe")],
                                 )
                             ]
                         ),
                         SigmaDetection(
                             [
                                 SigmaDetectionItem(
-                                    "CommandLine", [SigmaContainsModifier], ["cmd.exe"]
+                                    "CommandLine", [SigmaContainsModifier], [SigmaString("cmd.exe")]
                                 )
                             ]
                         ),
@@ -1167,7 +1215,9 @@ def sigma_rule():
                 ),
                 "selection_3": SigmaDetection(
                     [
-                        SigmaDetectionItem(None, [], ["keyword_1", "keyword_2"]),
+                        SigmaDetectionItem(
+                            None, [], [SigmaString("keyword_1"), SigmaString("keyword_2")]
+                        ),
                     ]
                 ),
             },

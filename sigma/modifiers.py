@@ -51,12 +51,12 @@ class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
     detection_item: "sigma.rule.SigmaDetectionItem"
-    applied_modifiers: List["SigmaModifier[T, R]"]
+    applied_modifiers: List[Type["SigmaModifier[T, R]"]]
 
     def __init__(
         self,
         detection_item: "sigma.rule.SigmaDetectionItem",
-        applied_modifiers: List["SigmaModifier[T, R]"],
+        applied_modifiers: List[Type["SigmaModifier[T, R]"]],
         source: Optional[SigmaRuleLocation] = None,
     ):
         self.detection_item = detection_item

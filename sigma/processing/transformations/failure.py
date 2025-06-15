@@ -96,5 +96,5 @@ class StrictFieldMappingFailure(Transformation):
 
         # Raise error if there are unmapped fields
         if unmapped_fields:
-            field_name = unmapped_fields[0]  # Use the first unmapped field for the error message
-            raise SigmaTypeError(f"Field '{field_name}' is not mapped", source=rule.source)
+            unmapped_fields_str = ", ".join(unmapped_fields)  # Create a comma-separated list of unmapped fields
+            raise SigmaTypeError(f"The following fields are not mapped: {unmapped_fields_str}", source=rule.source)

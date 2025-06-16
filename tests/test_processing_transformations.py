@@ -5,6 +5,8 @@ from dataclasses import dataclass
 import pytest
 
 import sigma.processing.transformations as transformations_module
+from sigma.backends.test import TextQueryTestBackend
+from sigma.collection import SigmaCollection
 from sigma.conditions import ConditionOR, SigmaCondition
 from sigma.correlations import (
     SigmaCorrelationFieldAlias,
@@ -17,6 +19,7 @@ from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaTransformationError,
     SigmaValueError,
+    SigmaTypeError,
 )
 from sigma.modifiers import SigmaExpandModifier, SigmaRegularExpressionModifier
 from sigma.processing.conditions import (
@@ -55,6 +58,7 @@ from sigma.processing.transformations import (
     ValueListPlaceholderTransformation,
     WildcardPlaceholderTransformation,
     transformations,
+    StrictFieldMappingFailure,
 )
 from sigma.processing.transformations.base import ConditionTransformation
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
@@ -1942,21 +1946,21 @@ def test_nested_pipeline_transformation_from_yaml(nested_pipeline_transformation
     assert (
         ProcessingPipeline.from_yaml(
             """
-        name: Test
-        priority: 100
-        transformations:
-            - type: nest
-              items:
-              - id: test
-                type: append
-                s: Test
-                rule_conditions:
-                - type: "true"
-                  dummy: test-true
-                - type: "false"
-                  dummy: test-false
-                rule_cond_op: or
-        """
+            name: Test
+            priority: 100
+            transformations:
+                - type: nest
+                  items:
+                  - id: test
+                    type: append
+                    s: Test
+                    rule_conditions:
+                    - type: "true"
+                      dummy: test-true
+                    - type: "false"
+                      dummy: test-false
+                    rule_cond_op: or
+            """
         )
         == ProcessingPipeline(
             name="Test",
@@ -2164,3 +2168,223 @@ def test_case_transformation_error():
         SigmaConfigurationError, match="Invalid method 'SnakeCase' for CaseTransformation."
     ):
         transformation = CaseTransformation(method="SnakeCase")
+
+
+def test_conversion_strict_mapped_fields_throws_exception():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedField",
+                        }
+                    )
+                ),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    with pytest.raises(
+        SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
+    ):
+        a = test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+
+
+def test_conversion_strict_mapped_fields_does_not_throw_exception():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedField",
+                            "fieldTwo": "mappedFieldB",
+                        }
+                    )
+                ),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['mappedField="mapped" and mappedFieldB="not-mapped"']
+    )
+
+
+def test_conversion_strict_mapped_fields_on_prefixing():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(AddFieldnamePrefixTransformation("prefix_")),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['prefix_fieldOne="mapped" and prefix_fieldTwo="not-mapped"']
+    )
+
+
+def test_conversion_strict_mapped_fields_on_suffixing():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(AddFieldnameSuffixTransformation("_suffix")),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['fieldOne_suffix="mapped" and fieldTwo_suffix="not-mapped"']
+    )
+
+
+def test_conversion_strict_mapped_fields_multiple_pipelines():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedField",
+                            "fieldTwo": "mappedFieldB",
+                        }
+                    )
+                ),
+            ]
+        )
+        + ProcessingPipeline(
+            [
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )
+        == ['mappedField="mapped" and mappedFieldB="not-mapped"']
+    )
+
+
+def test_conversion_strict_mapped_fields_multiple_pipelines_error():
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedField",
+                        }
+                    )
+                ),
+            ]
+        )
+        + ProcessingPipeline(
+            [
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    with pytest.raises(
+        SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
+    ):
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    fieldOne: "mapped"
+                    fieldTwo: "not-mapped"
+                condition: sel
+                """
+            )
+        )

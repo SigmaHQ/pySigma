@@ -19,6 +19,7 @@ from sigma.processing.transformations import (
 from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
 import pytest
 
+from sigma.processing.transformations.failure import StrictFieldMappingFailure
 from sigma.types import SigmaRegularExpression, SigmaRegularExpressionFlag, TimestampPart
 
 
@@ -63,18 +64,18 @@ def test_backend_pipeline_with_postprocessing():
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                    fieldC: valueC
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: valueA
+                            fieldB: valueB
+                            fieldC: valueC
+                        condition: sel
+                """
             )
         )
         == ['[ mappedA="valueA" and fieldB="valueB" and fieldC="valueC" ]']
@@ -118,18 +119,18 @@ def test_backend_and_custom_pipeline(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                    fieldC: valueC
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: valueA
+                            fieldB: valueB
+                            fieldC: valueC
+                        condition: sel
+                """
             )
         )
         == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
@@ -142,18 +143,18 @@ def test_backend_custom_format_pipeline(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                    fieldC: valueC
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: valueA
+                            fieldB: valueB
+                            fieldC: valueC
+                        condition: sel
+                """
             ),
             output_format="test",
         )
@@ -166,17 +167,17 @@ def test_convert_value_str(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                    field A: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                            field A: value
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value" and \'field A\'="value"']
@@ -188,17 +189,17 @@ def test_convert_value_str_cased(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cased: value
-                    field A|cased: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cased: value
+                            field A|cased: value
+                        condition: sel
+                """
             )
         )
         == ['mappedA casematch "value" and \'field A\' casematch "value"']
@@ -210,17 +211,17 @@ def test_convert_value_str_empty(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                    fieldB: ''
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                            fieldB: ''
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value" and mappedB=""']
@@ -232,16 +233,16 @@ def test_convert_value_str_invalid_re(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field: (value
-                condition: sel
-            """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            field: (value
+                        condition: sel
+                    """
             )
         )
         == ['field="(value"']
@@ -255,16 +256,16 @@ def test_convert_value_str_quote_pattern_match(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: test value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: test value
+                        condition: sel
+                """
             )
         )
         == ['mappedA="test value"']
@@ -278,16 +279,16 @@ def test_convert_value_str_quote_pattern_nomatch(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                        condition: sel
+                """
             )
         )
         == ["mappedA=value"]
@@ -300,16 +301,16 @@ def test_convert_value_str_quote_pattern_negated(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                        condition: sel
+                """
             )
         )
         == ["mappedA=value"]
@@ -321,17 +322,17 @@ def test_convert_value_str_startswith(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith: "value"
-                    field A|startswith: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "value"
+                            field A|startswith: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA startswith "value" and \'field A\' startswith "value"']
@@ -343,17 +344,17 @@ def test_convert_value_str_startswith_cased(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith|cased: "value"
-                    field A|startswith|cased: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith|cased: "value"
+                            field A|startswith|cased: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA startswith_cased "value" and \'field A\' startswith_cased "value"']
@@ -365,17 +366,17 @@ def test_convert_value_str_startswith_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith: "va*lue"
-                    field A|startswith: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "va*lue"
+                            field A|startswith: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "va*lue*" and \'field A\' match "va*lue*"']
@@ -388,17 +389,17 @@ def test_convert_value_str_startswith_further_wildcard_allowed(test_backend, mon
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith: "va*lue"
-                    field A|startswith: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "va*lue"
+                            field A|startswith: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA startswith "va*lue" and \'field A\' startswith "va*lue"']
@@ -410,16 +411,16 @@ def test_convert_value_str_startswith_cased_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|startswith|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|startswith|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field casematch "va*lue*"']
@@ -432,16 +433,16 @@ def test_convert_value_str_startswith_cased_further_wildcard_allowed(test_backen
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|startswith|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|startswith|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field startswith_cased "va*lue"']
@@ -454,16 +455,16 @@ def test_convert_value_str_startswith_expression_not_defined(test_backend, monke
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "value*"']
@@ -475,17 +476,17 @@ def test_convert_value_str_endswith(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|endswith: "value"
-                    field A|endswith: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|endswith: "value"
+                            field A|endswith: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA endswith "value" and \'field A\' endswith "value"']
@@ -497,17 +498,17 @@ def test_convert_value_str_endswith_cased(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|endswith|cased: "value"
-                    field A|endswith|cased: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|endswith|cased: "value"
+                            field A|endswith|cased: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA endswith_cased "value" and \'field A\' endswith_cased "value"']
@@ -519,17 +520,17 @@ def test_convert_value_str_endswith_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|endswith: "va*lue"
-                    field A|endswith: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|endswith: "va*lue"
+                            field A|endswith: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "*va*lue" and \'field A\' match "*va*lue"']
@@ -542,17 +543,17 @@ def test_convert_value_str_endswith_further_wildcard_allowed(test_backend, monke
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|endswith: "va*lue"
-                    field A|endswith: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|endswith: "va*lue"
+                            field A|endswith: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA endswith "va*lue" and \'field A\' endswith "va*lue"']
@@ -564,16 +565,16 @@ def test_convert_value_str_endswith_cased_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|endswith|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|endswith|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field casematch "*va*lue"']
@@ -586,16 +587,16 @@ def test_convert_value_str_endswith_cased_further_wildcard_allowed(test_backend,
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|endswith|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|endswith|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field endswith_cased "va*lue"']
@@ -608,16 +609,16 @@ def test_convert_value_str_endswith_expression_not_defined(test_backend, monkeyp
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|endswith: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|endswith: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "*value"']
@@ -629,17 +630,17 @@ def test_convert_value_str_contains(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "value"
-                    field A|contains: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "value"
+                            field A|contains: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA contains "value" and \'field A\' contains "value"']
@@ -651,17 +652,17 @@ def test_convert_value_str_contains_cased(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains|cased: "value"
-                    field A|contains|cased: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains|cased: "value"
+                            field A|contains|cased: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA contains_cased "value" and \'field A\' contains_cased "value"']
@@ -673,16 +674,16 @@ def test_convert_value_str_contains_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "*va*lue*"']
@@ -695,16 +696,16 @@ def test_convert_value_str_contains_further_wildcard_allowed(test_backend, monke
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA contains "va*lue"']
@@ -716,16 +717,16 @@ def test_convert_value_str_contains_cased_further_wildcard(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|contains|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|contains|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field casematch "*va*lue*"']
@@ -738,16 +739,16 @@ def test_convert_value_str_contains_cased_further_wildcard_allowed(test_backend,
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "field|contains|cased": "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "field|contains|cased": "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['field contains_cased "va*lue"']
@@ -760,16 +761,16 @@ def test_convert_value_str_wildcard_to_regex(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match ".*va.*lue.*"']
@@ -784,16 +785,16 @@ def test_convert_value_str_wildcard_to_regex_cased(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains|cased: "va*lue"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains|cased: "va*lue"
+                        condition: sel
+                """
             )
         )
         == ['mappedA casematch ".*va.*lue.*"']
@@ -806,16 +807,16 @@ def test_convert_value_str_contains_expression_not_defined(test_backend, monkeyp
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "value"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "value"
+                        condition: sel
+                """
             )
         )
         == ['mappedA match "*value*"']
@@ -828,16 +829,16 @@ def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: val*ue
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: val*ue
+                        condition: sel
+                """
             )
         )
         == ['mappedA="val*ue"']
@@ -868,17 +869,17 @@ def test_convert_value_expansion_with_all(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-        title: Testrule
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                CommandLine|windash|contains|all:
-                    - -foo
-                    - -bar
-            condition: selection
-        """
+                title: Testrule
+                logsource:
+                    category: process_creation
+                    product: windows
+                detection:
+                    selection:
+                        CommandLine|windash|contains|all:
+                            - -foo
+                            - -bar
+                    condition: selection
+                """
             )
         )
         == [
@@ -892,17 +893,17 @@ def test_convert_value_num(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: 123
-                    field A: 123
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: 123
+                            field A: 123
+                        condition: sel
+                """
             )
         )
         == ["mappedA=123 and 'field A'=123"]
@@ -914,18 +915,18 @@ def test_convert_value_bool(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: true
-                    fieldB: false
-                    field B: false
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: true
+                            fieldB: false
+                            field B: false
+                        condition: sel
+                """
             )
         )
         == ["mappedA=1 and mappedB=0 and 'field B'=0"]
@@ -937,17 +938,17 @@ def test_convert_value_null(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: null
-                    field A: null
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: null
+                            field A: null
+                        condition: sel
+                """
             )
         )
         == ["mappedA is null and 'field A' is null"]
@@ -959,17 +960,17 @@ def test_convert_field_existence(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|exists: yes
-                    field A|exists: yes
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|exists: yes
+                            field A|exists: yes
+                        condition: sel
+                """
             )
         )
         == ["exists(mappedA) and exists('field A')"]
@@ -981,17 +982,17 @@ def test_convert_field_nonexistence_explicit(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|exists: no
-                    field A|exists: no
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|exists: no
+                            field A|exists: no
+                        condition: sel
+                """
             )
         )
         == ["notexists(mappedA) and notexists('field A')"]
@@ -1005,17 +1006,17 @@ def test_convert_field_nonexistence_implicit(monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|exists: no
-                    field A|exists: no
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|exists: no
+                            field A|exists: no
+                        condition: sel
+                """
             )
         )
         == ["not exists(mappedA) and not exists('field A')"]
@@ -1035,17 +1036,17 @@ def test_convert_query_expr():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|expand: "%test%"
-                    field A|expand: "%test%"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|expand: "%test%"
+                            field A|expand: "%test%"
+                        condition: sel
+                """
             )
         )
         == ["mappedA in list(test) and 'field A' in list(test)"]
@@ -1061,16 +1062,16 @@ def test_convert_query_expr_unbound():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "|expand": "%test%"
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "|expand": "%test%"
+                        condition: sel
+                """
             )
         )
         == ["_ in list(test)"]
@@ -1082,17 +1083,17 @@ def test_convert_value_regex(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re: pat.*tern/foobar
-                    field A|re: 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re: pat.*tern/foobar
+                            field A|re: 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["mappedA=/pat.*tern\\/foo\\bar/ and 'field A'=/pat.*te\\\\rn\\/foo\\bar/"]
@@ -1104,17 +1105,17 @@ def test_convert_value_regex_flag_prefix(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re|i|m|s: pat.*tern/foobar
-                    field A|re|i|m|s: 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re|i|m|s: pat.*tern/foobar
+                            field A|re|i|m|s: 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["mappedA=/(?ims)pat.*tern\\/foo\\bar/ and 'field A'=/(?ims)pat.*te\\\\rn\\/foo\\bar/"]
@@ -1129,17 +1130,17 @@ def test_convert_value_regex_flag_explicit(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re|i|m|s: pat.*tern/foobar
-                    field A|re|i|m|s: 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re|i|m|s: pat.*tern/foobar
+                            field A|re|i|m|s: 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["mappedA=/pat.*tern\\/foo\\bar/ims and 'field A'=/pat.*te\\\\rn\\/foo\\bar/ims"]
@@ -1154,17 +1155,17 @@ def test_convert_value_regex_flag_explicit_partial_support(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re|i: pat.*tern/foobar
-                    field A|re|i: 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re|i: pat.*tern/foobar
+                            field A|re|i: 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["mappedA=/pat.*tern\\/foo\\bar/i and 'field A'=/pat.*te\\\\rn\\/foo\\bar/i"]
@@ -1199,17 +1200,17 @@ def test_convert_value_regex_not_escaped_escape(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re: pat.*tern/foobar
-                    field A|re: 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re: pat.*tern/foobar
+                            field A|re: 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["mappedA=/pat.*tern\\/foo\\bar/ and 'field A'=/pat.*te\\rn\\/foo\\bar/"]
@@ -1234,16 +1235,16 @@ def test_convert_value_regex_multi_mapping():
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldB|re: pat.*tern/foobar
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldB|re: pat.*tern/foobar
+                        condition: sel
+                """
             )
         )
         == ["mappedB1=/pat.*tern\\/foo\\bar/ or mappedB2=/pat.*tern\\/foo\\bar/"]
@@ -1255,16 +1256,16 @@ def test_convert_value_regex_unbound(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "|re": 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "|re": 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["_=/pat.*te\\\\rn\\/foo\\bar/"]
@@ -1276,16 +1277,16 @@ def test_convert_value_regex_unbound_flag_prefix(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "|re|i|m|s": 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "|re|i|m|s": 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["_=/(?ims)pat.*te\\\\rn\\/foo\\bar/"]
@@ -1300,16 +1301,16 @@ def test_convert_value_regex_unbound_flag_explicit(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "|re|i|m|s": 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "|re|i|m|s": 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["_=/pat.*te\\\\rn\\/foo\\bar/ims"]
@@ -1322,16 +1323,16 @@ def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    "|re": 'pat.*te\\rn/foobar'
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            "|re": 'pat.*te\\rn/foobar'
+                        condition: sel
+                """
             )
         )
         == ["_=/pat.*te\\rn\\/foo\\bar/"]
@@ -1348,16 +1349,16 @@ def test_convert_value_regex_value_list():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|re|expand: "%test%"
-                condition: sel
-            """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            field|re|expand: "%test%"
+                        condition: sel
+                    """
             )
         )
         == ["field=/pat.*tern\\/foo\\bar/ or field=/pat.*te\\\\rn\\/foo\\bar/"]
@@ -1374,16 +1375,16 @@ def test_convert_value_regex_value_list_endswith():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|re|expand|endswith: "%test%"
-                condition: sel
-            """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            field|re|expand|endswith: "%test%"
+                        condition: sel
+                    """
             )
         )
         == ["field=/.*pat.*tern\\/foo\\bar/ or field=/.*pat.*te\\\\rn\\/foo\\bar/"]
@@ -1395,17 +1396,17 @@ def test_convert_value_cidr_wildcard_native_ipv4(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 192.168.0.0/14
-                    field A|cidr: 192.168.0.0/14
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 192.168.0.0/14
+                            field A|cidr: 192.168.0.0/14
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', \"192.168.0.0/14\") and cidrmatch('field A', \"192.168.0.0/14\")"]
@@ -1417,17 +1418,17 @@ def test_convert_value_cidr_wildcard_native_ipv6(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 1234:5678:0:ab00::/56
-                    field A|cidr: 1234:5678:0:ab00::/56
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 1234:5678:0:ab00::/56
+                            field A|cidr: 1234:5678:0:ab00::/56
+                        condition: sel
+                """
             )
         )
         == [
@@ -1448,16 +1449,16 @@ def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv4(
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 192.168.0.0/14
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 192.168.0.0/14
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', '192.168.0.0', 14)"]
@@ -1476,16 +1477,16 @@ def test_convert_value_cidr_wildcard_native_template_network_prefixlen_ipv6(
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 1234:5678:0:ab00::/56
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 1234:5678:0:ab00::/56
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 56)"]
@@ -1504,16 +1505,16 @@ def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv4(
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 192.168.0.0/14
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 192.168.0.0/14
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', '192.168.0.0', '255.252.0.0')"]
@@ -1532,16 +1533,16 @@ def test_convert_value_cidr_wildcard_native_template_network_netmask_ipv6(
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 1234:5678:0:ab00::/56
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 1234:5678:0:ab00::/56
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', '1234:5678:0:ab00::', 'ffff:ffff:ffff:ff00::')"]
@@ -1554,17 +1555,17 @@ def test_convert_value_cidr_wildcard_expression_ipv4(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 192.168.0.0/14
-                    field A|cidr: 192.168.0.0/14
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 192.168.0.0/14
+                            field A|cidr: 192.168.0.0/14
+                        condition: sel
+                """
             )
         )
         == [
@@ -1580,17 +1581,17 @@ def test_convert_value_cidr_wildcard_expression_other(test_backend, monkeypatch)
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 192.168.0.0/15
-                    field A|cidr: 192.168.0.0/15
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 192.168.0.0/15
+                            field A|cidr: 192.168.0.0/15
+                        condition: sel
+                """
             )
         )
         == ['mappedA in ("192.168.%", "192.169.%") and \'field A\' in ("192.168.%", "192.169.%")']
@@ -1604,16 +1605,16 @@ def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: 1234:5678:0:ab00::/58
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: 1234:5678:0:ab00::/58
+                        condition: sel
+                """
             )
         )
         == [
@@ -1627,23 +1628,23 @@ def test_convert_compare(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|lt: 123
-                    field A|lt: 123
-                    fieldB|lte: 123
-                    field B|lte: 123
-                    fieldC|gt: 123
-                    field C|gt: 123
-                    fieldD|gte: 123
-                    field D|gte: 123
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|lt: 123
+                            field A|lt: 123
+                            fieldB|lte: 123
+                            field B|lte: 123
+                            fieldC|gt: 123
+                            field C|gt: 123
+                            fieldD|gte: 123
+                            field D|gte: 123
+                        condition: sel
+                """
             )
         )
         == [
@@ -1657,17 +1658,17 @@ def test_convert_compare_fields(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|fieldref: "field B"
-                    field A|fieldref: fieldB
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|fieldref: "field B"
+                            field A|fieldref: fieldB
+                        condition: sel
+                """
             )
         )
         == ["mappedA=fieldref('field B') and 'field A'=fieldref(mappedB)"]
@@ -1702,17 +1703,17 @@ def test_convert_compare_fields_noquote(test_backend: TextQueryTestBackend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|fieldref: "field B"
-                    field A|fieldref: fieldB
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|fieldref: "field B"
+                            field A|fieldref: fieldB
+                        condition: sel
+                """
             )
         )
         == ["`mappedA`=`field B` and `field A`=`mappedB`"]
@@ -1724,17 +1725,17 @@ def test_convert_compare_fields_differentiation_suffix(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|fieldref: suffix
-                    suffix|fieldref: field
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            field|fieldref: suffix
+                            suffix|fieldref: field
+                        condition: sel
+                """
             )
         )
         == ["field=fieldref('suffix.test') and 'suffix.test'=fieldref(field)"]
@@ -1746,17 +1747,17 @@ def test_convert_compare_fields_differentiation_prefix(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    field|fieldref: prefix
-                    prefix|fieldref: field
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            field|fieldref: prefix
+                            prefix|fieldref: field
+                        condition: sel
+                """
             )
         )
         == ["field=fieldref('test.prefix') and 'test.prefix'=fieldref(field)"]
@@ -1768,16 +1769,16 @@ def test_convert_compare_fields_startswith(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|fieldref|startswith: fieldB
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|fieldref|startswith: fieldB
+                        condition: sel
+                """
             )
         )
         == ["mappedA=fieldref_startswith(mappedB)"]
@@ -1809,16 +1810,16 @@ def test_convert_compare_fields_endswith(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|fieldref|endswith: fieldB
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|fieldref|endswith: fieldB
+                        condition: sel
+                """
             )
         )
         == ["mappedA=fieldref_endswith(mappedB)"]
@@ -1850,16 +1851,16 @@ def test_convert_compare_fields_contains(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|fieldref|contains: fieldB
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|fieldref|contains: fieldB
+                        condition: sel
+                """
             )
         )
         == ["mappedA=fieldref_contains(mappedB)"]
@@ -1929,23 +1930,23 @@ def test_convert_or_in_list(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - value3
-                    field A:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - value3
+                            field A:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == [
@@ -1959,19 +1960,19 @@ def test_convert_or_in_list_empty_string(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - ''
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - ''
+                        condition: sel
+                """
             )
         )
         == ['mappedA in ("value1", "value2", "")']
@@ -1983,19 +1984,19 @@ def test_convert_or_in_list_with_wildcards(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2*
-                        - val*ue3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2*
+                                - val*ue3
+                        condition: sel
+                """
             )
         )
         == ['mappedA in ("value1", "value2*", "val*ue3")']
@@ -2008,19 +2009,19 @@ def test_convert_or_in_list_with_wildcards_disabled(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - val*ue3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - val*ue3
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value1" or mappedA="value2" or mappedA match "val*ue3"']
@@ -2032,20 +2033,20 @@ def test_convert_or_in_separate(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldA: value2
-                sel3:
-                    fieldA: value3
-                condition: sel1 or sel2 or sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldA: value2
+                        sel3:
+                            fieldA: value3
+                        condition: sel1 or sel2 or sel3
+                """
             )
         )
         == ['mappedA in ("value1", "value2", "value3")']
@@ -2057,19 +2058,19 @@ def test_convert_or_in_mixed_keyword_field(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldB: value2
-                sel3: value3
-                condition: sel1 or sel2 or sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldB: value2
+                        sel3: value3
+                        condition: sel1 or sel2 or sel3
+                """
             )
         )
         == ['mappedA="value1" or mappedB="value2" or _="value3"']
@@ -2081,20 +2082,20 @@ def test_convert_or_in_mixed_fields(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldB: value2
-                sel3:
-                    fieldA: value3
-                condition: sel1 or sel2 or sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldB: value2
+                        sel3:
+                            fieldA: value3
+                        condition: sel1 or sel2 or sel3
+                """
             )
         )
         == ['mappedA="value1" or mappedB="value2" or mappedA="value3"']
@@ -2106,19 +2107,19 @@ def test_convert_or_in_unallowed_value_type(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - null
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - null
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value1" or mappedA="value2" or mappedA is null']
@@ -2130,23 +2131,23 @@ def test_convert_and_in_list(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|all:
-                        - value1
-                        - value2
-                        - value3
-                    field A|all:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|all:
+                                - value1
+                                - value2
+                                - value3
+                            field A|all:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == [
@@ -2160,16 +2161,16 @@ def test_convert_and_in_list_single_item(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|all: value1
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|all: value1
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value1"']
@@ -2182,19 +2183,19 @@ def test_convert_and_in_list_or_disabled(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|all:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|all:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == ['mappedA contains-all ("value1", "value2", "value3")']
@@ -2207,19 +2208,19 @@ def test_convert_or_in_list_and_disabled(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == ['mappedA in ("value1", "value2", "value3")']
@@ -2232,19 +2233,19 @@ def test_convert_or_in_list_disabled(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value1" or mappedA="value2" or mappedA="value3"']
@@ -2257,19 +2258,19 @@ def test_convert_and_in_list_disabled(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|all:
-                        - value1
-                        - value2
-                        - value3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|all:
+                                - value1
+                                - value2
+                                - value3
+                        condition: sel
+                """
             )
         )
         == ['mappedA="value1" and mappedA="value2" and mappedA="value3"']
@@ -2281,19 +2282,19 @@ def test_convert_or_in_list_numbers(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA:
-                        - 1
-                        - 2
-                        - 3
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA:
+                                - 1
+                                - 2
+                                - 3
+                        condition: sel
+                """
             )
         )
         == ["mappedA in (1, 2, 3)"]
@@ -2305,18 +2306,18 @@ def test_convert_unbound_values(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    - value1
-                    - value2
-                    - 123
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            - value1
+                            - value2
+                            - 123
+                        condition: sel
+                """
             )
         )
         == ['_="value1" or _="value2" or _=123']
@@ -2329,17 +2330,17 @@ def test_convert_unbound_values_regex(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    - value*1
-                    - value?2
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            - value*1
+                            - value?2
+                        condition: sel
+                """
             )
         )
         == ['_=~"value.*1" or _=~"value.2"']
@@ -2435,18 +2436,18 @@ def test_convert_errors_class_variable_issue(test_backend):
         test_backend_duplicate.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                    fieldC: valueC
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: valueA
+                            fieldB: valueB
+                            fieldC: valueC
+                        condition: sel
+                """
             )
         )
         == ['mappedA="valueA" and mappedB="valueB" and fieldC="valueC"']
@@ -2482,18 +2483,18 @@ def test_convert_and(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel3:
-                    fieldC: value3
-                condition: sel1 and sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel3:
+                            fieldC: value3
+                        condition: sel1 and sel3
+                """
             )
         )
         == ['mappedA="value1" and fieldC="value3"']
@@ -2509,18 +2510,18 @@ def test_convert_and_emptytoken():
         TextQueryTestBackendEmptyAND().convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel3:
-                    fieldC: value3
-                condition: sel1 and sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel3:
+                            fieldC: value3
+                        condition: sel1 and sel3
+                """
             )
         )
         == ['mappedA="value1" fieldC="value3"']
@@ -2536,18 +2537,18 @@ def test_convert_or_emptytoken():
         TextQueryTestBackendEmptyOR().convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel3:
-                    fieldC: value3
-                condition: sel1 or sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel3:
+                            fieldC: value3
+                        condition: sel1 or sel3
+                """
             )
         )
         == ['mappedA="value1" fieldC="value3"']
@@ -2559,18 +2560,18 @@ def test_convert_or(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel3:
-                    fieldC: value3
-                condition: sel1 or sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel3:
+                            fieldC: value3
+                        condition: sel1 or sel3
+                """
             )
         )
         == ['mappedA="value1" or fieldC="value3"']
@@ -2582,16 +2583,16 @@ def test_convert_not(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value1
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value1
+                        condition: not sel
+                """
             )
         )
         == ['not mappedA="value1"']
@@ -2603,22 +2604,22 @@ def test_convert_precedence(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldB: value2
-                sel3:
-                    fieldC: value3
-                sel4:
-                    fieldD: value4
-                condition: (sel1 or sel2) and not (sel3 and sel4)
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldB: value2
+                        sel3:
+                            fieldC: value3
+                        sel4:
+                            fieldD: value4
+                        condition: (sel1 or sel2) and not (sel3 and sel4)
+                """
             )
         )
         == ['(mappedA="value1" or mappedB="value2") and not (fieldC="value3" and fieldD="value4")']
@@ -2632,26 +2633,26 @@ def test_convert_parenthesize(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                    fieldB:
-                       - value2
-                       - value3
-                       - value4
-                sel2:
-                    fieldC:
-                       - value4
-                       - value5
-                       - value6
-                    fieldD: value7
-                condition: sel1 or not sel2
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                            fieldB:
+                               - value2
+                               - value3
+                               - value4
+                        sel2:
+                            fieldC:
+                               - value4
+                               - value5
+                               - value6
+                            fieldD: value7
+                        condition: sel1 or not sel2
+                """
             )
         )
         == [
@@ -2665,20 +2666,20 @@ def test_convert_multi_conditions(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel3:
-                    fieldC: value3
-                condition:
-                    - sel1
-                    - sel3
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel3:
+                            fieldC: value3
+                        condition:
+                            - sel1
+                            - sel3
+                """
             )
         )
         == ['mappedA="value1"', 'fieldC="value3"']
@@ -2690,18 +2691,18 @@ def test_convert_list_cidr_wildcard_none(test_backend):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr:
-                        - 192.168.0.0/14
-                        - 10.10.10.0/24
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr:
+                                - 192.168.0.0/14
+                                - 10.10.10.0/24
+                        condition: sel
+                """
             )
         )
         == ["cidrmatch('mappedA', \"192.168.0.0/14\") or cidrmatch('mappedA', \"10.10.10.0/24\")"]
@@ -2714,18 +2715,18 @@ def test_convert_list_cidr_wildcard_asterisk(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr:
-                        - 192.168.0.0/14
-                        - 10.10.10.0/24
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr:
+                                - 192.168.0.0/14
+                                - 10.10.10.0/24
+                        condition: sel
+                """
             )
         )
         == [
@@ -2779,16 +2780,16 @@ def test_convert_query_expression(monkeypatch, test_backend: TextQueryTestBacken
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                        condition: sel
+                """
             )
         )
         == ['| from state_source | where mappedA="value" | output state_output']
@@ -2813,16 +2814,16 @@ def test_convert_query_expression_defaults(
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value
+                        condition: sel
+                """
             )
         )
         == ['| from default_source | where mappedA="value" | output default_output']
@@ -2844,18 +2845,18 @@ def test_convert_dropped_detection_item_and():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    EventID: 123
-                sel2:
-                    fieldB: value
-                condition: sel1 and sel2
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            EventID: 123
+                        sel2:
+                            fieldB: value
+                        condition: sel1 and sel2
+                """
             )
         )
         == ['fieldB="value"']
@@ -2877,18 +2878,18 @@ def test_convert_dropped_detection_item_or():
         backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    EventID: 123
-                sel2:
-                    fieldB: value
-                condition: sel1 or sel2
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            EventID: 123
+                        sel2:
+                            fieldB: value
+                        condition: sel1 or sel2
+                """
             )
         )
         == ['fieldB="value"']
@@ -2983,16 +2984,16 @@ def test_multi_field_mapping_conversion():
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldB: value1
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldB: value1
+                        condition: sel
+                """
             )
         )
         == ['mappedB="value1" or mappedC="value1"']
@@ -3032,16 +3033,16 @@ def test_convert_not_as_not_eq(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA: value1
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA: value1
+                        condition: not sel
+                """
             )
         )
         == ['mappedA!="value1"']
@@ -3056,16 +3057,16 @@ def test_convert_not_startswith(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|startswith: "val"
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "val"
+                        condition: not sel
+                """
             )
         )
         == ['mappedA not_startswith "val"']
@@ -3080,16 +3081,16 @@ def test_convert_not_contains(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|contains: "val"
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "val"
+                        condition: not sel
+                """
             )
         )
         == ['mappedA not_contains "val"']
@@ -3104,16 +3105,16 @@ def test_convert_not_re(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|re: "val.*"
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|re: "val.*"
+                        condition: not sel
+                """
             )
         )
         == ["mappedA!=/val.*/"]
@@ -3128,16 +3129,16 @@ def test_convert_not_cidr(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    fieldA|cidr: "192.168.1.0/24"
-                condition: not sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|cidr: "192.168.1.0/24"
+                        condition: not sel
+                """
             )
         )
         == ["cidrnotmatch('mappedA', \"192.168.1.0/24\")"]
@@ -3153,18 +3154,18 @@ def test_convert_not_and_group(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldB: value2
-                condition: not (sel1 and sel2)
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldB: value2
+                        condition: not (sel1 and sel2)
+                """
             )
         )
         == ['(mappedA!="value1" and mappedB!="value2")']
@@ -3180,18 +3181,18 @@ def test_convert_not_or_group(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel1:
-                    fieldA: value1
-                sel2:
-                    fieldB: value2
-                condition: not (sel1 or sel2)
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel1:
+                            fieldA: value1
+                        sel2:
+                            fieldB: value2
+                        condition: not (sel1 or sel2)
+                """
             )
         )
         == ['(mappedA!="value1" or mappedB!="value2")']
@@ -3219,27 +3220,27 @@ def test_convert_timestamp_part_modifiers(test_backend, monkeypatch):
         test_backend.convert(
             SigmaCollection.from_yaml(
                 """
-            title: Test
-            status: test
-            logsource:
-                category: test_category
-                product: test_product
-            detection:
-                sel:
-                    timestamp|minute: 1
-                    timestamp|hour: 2
-                    timestamp|day: 3
-                    timestamp|week: 4
-                    timestamp|month: 5
-                    timestamp|year: 6
-                    timestamp|minute|gt: 7
-                    timestamp|hour|gte: 8
-                    timestamp|day|lt: 9
-                    timestamp|week|lte: 10
-                    timestamp|month|gt: 11
-                    timestamp|year|gte: 12
-                condition: sel
-        """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            timestamp|minute: 1
+                            timestamp|hour: 2
+                            timestamp|day: 3
+                            timestamp|week: 4
+                            timestamp|month: 5
+                            timestamp|year: 6
+                            timestamp|minute|gt: 7
+                            timestamp|hour|gte: 8
+                            timestamp|day|lt: 9
+                            timestamp|week|lte: 10
+                            timestamp|month|gt: 11
+                            timestamp|year|gte: 12
+                        condition: sel
+                """
             )
         )
         == [

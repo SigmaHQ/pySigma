@@ -386,8 +386,14 @@ def test_processingitem_default_linking():
 
 def test_processingitem_fromdict_without_id(processing_item_dict, processing_item):
     del processing_item_dict["id"]
-    processing_item.identifier = None
-    assert ProcessingItem.from_dict(processing_item_dict) == processing_item
+    item1 = ProcessingItem.from_dict(processing_item_dict)
+    item2 = ProcessingItem.from_dict(processing_item_dict)
+
+    # Should generate deterministic identifiers when no ID is provided
+    assert item1.identifier is not None
+    assert item2.identifier is not None
+    assert item1.identifier == item2.identifier
+    assert len(item1.identifier) == 16  # SHA256 hash truncated to 16 chars
 
 
 def test_processingitem_fromdict_missing_condition_type():

@@ -535,3 +535,17 @@ class SigmaDetections:
     def __getitem__(self, key: str) -> SigmaDetection:
         """Get detection by name"""
         return self.detections[key]
+
+
+@dataclass
+class EmptySigmaDetections(SigmaDetections):
+    """
+    Empty Sigma detection that is used as a placeholder for error handling purposes.
+    """
+
+    detections: Dict[str, SigmaDetection] = field(default_factory=dict)
+    condition: List[str] = field(default_factory=list)
+
+    def __post_init__(self) -> None:
+        # Skip all checks and initializations
+        pass

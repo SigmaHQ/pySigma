@@ -225,7 +225,7 @@ def test_sigmalogsource_not_in():
 
 
 def test_sigmalogsource_in_invalid():
-    with pytest.raises(TypeError):
+    with pytest.raises(sigma_exceptions.SigmaTypeError):
         assert 123 in SigmaLogSource("category", "product", "service")
 
 

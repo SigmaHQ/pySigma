@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import dataclasses
 from typing import Any, Dict, Optional
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaRuleLocation, SigmaTypeError
 
 
 @dataclass(frozen=True)
@@ -70,7 +70,7 @@ class SigmaLogSource:
         * The log source specifies less attributes than the other and the specified attributes are equal
         """
         if not isinstance(other, self.__class__):
-            raise TypeError(
+            raise SigmaTypeError(
                 "Containment check only allowed between log sources", source=self.source
             )
 
@@ -82,3 +82,14 @@ class SigmaLogSource:
             and (self.product is None or self.product == other.product)
             and (self.service is None or self.service == other.service)
         )
+
+
+class EmptyLogSource(SigmaLogSource):
+    """
+    Log sources can't be empty, but this class is used to represent an empty log source as dummy for error
+    handling purposes.
+    """
+
+    def __post_init__(self) -> None:
+        # Do not raise an error for empty log source
+        pass

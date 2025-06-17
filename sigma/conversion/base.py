@@ -1261,7 +1261,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_or(
         self, cond: ConditionOR, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> Union[str, DeferredQueryExpression, None]:
         """Conversion of OR conditions."""
         try:
             if (
@@ -1330,7 +1330,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_and(
         self, cond: ConditionAND, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> Union[str, DeferredQueryExpression, None]:
         """Conversion of AND conditions."""
         try:
             if (
@@ -1362,7 +1362,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_not(
         self, cond: ConditionNOT, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> Union[str, DeferredQueryExpression, None]:
         """Conversion of NOT conditions."""
         arg = cond.args[0]
         if arg is None:

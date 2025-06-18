@@ -63,11 +63,11 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     original_value: Optional[List[SigmaType]] = dataclasses.field(
         init=False, repr=False, hash=False, compare=False
     )  # Copy of original values for conversion back to data structures (and YAML/JSON)
-    auto_modifiers: InitVar[bool] = True
+    auto_modifiers: bool = dataclasses.field(default=True, compare=False, repr=False)
 
-    def __post_init__(self, auto_modifiers: bool) -> None:
+    def __post_init__(self) -> None:
         self.original_value = self.value.copy()  # Create a copy of original values
-        if auto_modifiers:
+        if self.auto_modifiers:
             self.apply_modifiers()
 
     def apply_modifiers(self) -> None:

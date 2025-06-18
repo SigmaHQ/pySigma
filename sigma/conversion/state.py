@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from typing import Any, List, Mapping
-import sigma
+import sigma.conversion.deferred
 
 
 @dataclass

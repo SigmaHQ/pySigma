@@ -699,7 +699,7 @@ class SigmaBool(SigmaType):
     def __bool__(self) -> bool:
         return self.boolean
 
-    def __eq__(self, other: Union["SigmaBool", bool]) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, bool):
             return self.boolean == other
         elif isinstance(other, self.__class__):
@@ -804,7 +804,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         except ValueError as e:
             raise SigmaTypeError("Invalid CIDR expression: " + str(e), source=self.source)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return self.cidr
 
     def expand(
@@ -887,7 +887,7 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
     number: SigmaNumber
     op: CompareOperators
     source: Optional[SigmaRuleLocation] = None
-    CompareOperators: ClassVar["CompareOperators"] = CompareOperators
+    CompareOperators: ClassVar[Type["CompareOperators"]] = CompareOperators
 
     def __post_init__(self) -> None:
         if not isinstance(self.number, SigmaNumber):

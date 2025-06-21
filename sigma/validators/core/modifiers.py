@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar, Counter, List, Set, Type
+from typing import ClassVar, Counter, List, Set, Type, Union
 from sigma.modifiers import (
     SigmaAllModifier,
     SigmaBase64Modifier,
@@ -8,6 +8,7 @@ from sigma.modifiers import (
     SigmaModifier,
 )
 from sigma.rule import SigmaDetectionItem
+from sigma.types import SigmaType
 from sigma.validators.base import (
     SigmaDetectionItemValidator,
     SigmaValidationIssue,
@@ -38,7 +39,9 @@ class ModifierAppliedMultipleIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Modifiers shouldn't be applied multiple times"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     detection_item: SigmaDetectionItem
-    modifiers: Set[Type[SigmaModifier]]
+    modifiers: Set[
+        Type[SigmaModifier[Union[SigmaType, List[SigmaType]], Union[SigmaType, List[SigmaType]]]]
+    ]
 
 
 class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
@@ -47,7 +50,7 @@ class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):
     def validate_detection_item(
         self, detection_item: SigmaDetectionItem
     ) -> List[SigmaValidationIssue]:
-        issues = []
+        issues: List[SigmaValidationIssue] = []
 
         # Check for 'all' without 'contains' modifier
         if (

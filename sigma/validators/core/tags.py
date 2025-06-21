@@ -1,6 +1,7 @@
 from collections import Counter
 from dataclasses import dataclass
-from typing import ClassVar, List, Set
+from typing import ClassVar, List, Set, Union
+from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.validators.base import (
     SigmaRuleValidator,
@@ -142,7 +143,7 @@ class DuplicateTagIssue(SigmaValidationIssue):
 class DuplicateTagValidator(SigmaRuleValidator):
     """Validate rule tag uniqueness."""
 
-    def validate(self, rule: SigmaRule) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
         tags = Counter(rule.tags)
         return [DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1]
 

@@ -10,6 +10,7 @@ from sigma.validators.core.values import NumberAsStringValidator
 from tests.test_validators import rule_with_id, rule_without_id, rules_with_id_collision
 from sigma.collection import SigmaCollection
 from sigma.validators.core.metadata import (
+    FilenameLengthValidator,
     IdentifierExistenceValidator,
     IdentifierUniquenessValidator,
     IdentifierExistenceIssue,
@@ -79,6 +80,7 @@ def test_sigmavalidator_from_dict(validators):
                     "attacktag",
                     "number_as_string",
                 ],
+                None: "identifier_existence",
             },
         },
         validators,
@@ -92,7 +94,28 @@ def test_sigmavalidator_from_dict(validators):
             ATTACKTagValidator,
             NumberAsStringValidator,
         },
+        None: {IdentifierExistenceValidator},
     }
+
+
+def test_sigmavalidator_from_dict_with_config(validators):
+    validator = SigmaValidator.from_dict(
+        {
+            "validators": [
+                "filename_length",
+            ],
+            "config": {
+                "filename_length": {
+                    "max_size": 100,
+                },
+            },
+        },
+        validators,
+    )
+    assert {FilenameLengthValidator} == {v.__class__ for v in validator.validators}
+    for validator in validator.validators:
+        if isinstance(validator, FilenameLengthValidator):
+            assert validator.max_size == 100
 
 
 def test_sigmavalidator_from_yaml(validators):
@@ -107,6 +130,7 @@ def test_sigmavalidator_from_yaml(validators):
         bf39335e-e666-4eaf-9416-47f1955b5fb3:
             - attacktag
             - number_as_string
+        null: identifier_existence
     """,
         validators,
     )
@@ -119,6 +143,7 @@ def test_sigmavalidator_from_yaml(validators):
             ATTACKTagValidator,
             NumberAsStringValidator,
         },
+        None: {IdentifierExistenceValidator},
     }
 
 

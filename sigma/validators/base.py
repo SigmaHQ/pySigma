@@ -202,11 +202,7 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
         Iterate over all values of a detection item and call validate_value() method for each of
         them.
         """
-        return [
-            issue
-            for value in detection_item.value
-            for issue in self.validate_value(value)
-        ]
+        return [issue for value in detection_item.value for issue in self.validate_value(value)]
 
     @abstractmethod
     def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:

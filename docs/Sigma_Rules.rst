@@ -22,52 +22,97 @@ Rule Object Model
 SigmaRule
 =========
 
-.. autoclass:: sigma.rule.SigmaRule
+.. autoclass:: sigma.rule.rule.SigmaRule
+   :members:
+
+SigmaRuleBase
+=============
+
+.. autoclass:: sigma.rule.base.SigmaRuleBase
+   :members:
+
+SigmaYAMLLoader
+===============
+
+.. autoclass:: sigma.rule.base.SigmaYAMLLoader
    :members:
 
 SigmaLogSource
 ==============
 
-.. autoclass:: sigma.rule.SigmaLogSource
+.. autoclass:: sigma.rule.logsource.SigmaLogSource
    :members:
 
+EmptyLogSource
+==============
+
+.. autoclass:: sigma.rule.logsource.EmptyLogSource
+   :members:
 
 SigmaDetections
 ===============
 
-.. autoclass:: sigma.rule.SigmaDetections
+.. autoclass:: sigma.rule.detection.SigmaDetections
    :members:
 
+EmptySigmaDetections
+====================
+
+.. autoclass:: sigma.rule.detection.EmptySigmaDetections
+   :members:
 
 SigmaDetection
 ==============
 
-.. autoclass:: sigma.rule.SigmaDetection
+.. autoclass:: sigma.rule.detection.SigmaDetection
    :members:
 
 SigmaDetectionItem
 ==================
 
-.. autoclass:: sigma.rule.SigmaDetectionItem
+.. autoclass:: sigma.rule.detection.SigmaDetectionItem
    :members:
 
 SigmaRuleTag
-==============
+============
 
-.. autoclass:: sigma.rule.SigmaRuleTag
+.. autoclass:: sigma.rule.attributes.SigmaRuleTag
    :members:
 
-
 SigmaLevel
-==============
+==========
 
-.. autoclass:: sigma.rule.SigmaLevel
+.. autoclass:: sigma.rule.attributes.SigmaLevel
    :members:
 
 SigmaStatus
-==============
+===========
 
-.. autoclass:: sigma.rule.SigmaStatus
+.. autoclass:: sigma.rule.attributes.SigmaStatus
+   :members:
+
+EnumLowercaseStringMixin
+========================
+
+.. autoclass:: sigma.rule.attributes.EnumLowercaseStringMixin
+   :members:
+
+SigmaRelatedType
+================
+
+.. autoclass:: sigma.rule.attributes.SigmaRelatedType
+   :members:
+
+SigmaRelatedItem
+================
+
+.. autoclass:: sigma.rule.attributes.SigmaRelatedItem
+   :members:
+
+SigmaRelated
+============
+
+.. autoclass:: sigma.rule.attributes.SigmaRelated
    :members:
 
 Sigma Data Types

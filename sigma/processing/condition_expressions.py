@@ -1,6 +1,18 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Callable, ClassVar, Dict, Iterable, List, Optional, Set, Union, cast
+from typing import (
+    Any,
+    Callable,
+    ClassVar,
+    Dict,
+    Iterable,
+    List,
+    Optional,
+    Set,
+    Union,
+    cast,
+    TYPE_CHECKING,
+)
 
 from pyparsing import (
     ParseException,
@@ -20,7 +32,9 @@ from sigma.processing.conditions.base import (
     RuleProcessingCondition,
 )
 from sigma.rule import SigmaDetectionItem, SigmaRule
-import sigma
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
 
 
 @dataclass
@@ -30,9 +44,7 @@ class ConditionExpression(ABC):
     """
 
     location: int
-    pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
-        init=False, repr=False, default=None
-    )
+    pipeline: Optional["ProcessingPipeline"] = field(init=False, repr=False, default=None)
     expression: str = field(init=False, repr=False, compare=False, default="")
 
     @classmethod
@@ -83,7 +95,7 @@ class ConditionExpression(ABC):
     def set_expression(self, expression: str) -> None:
         self.expression = expression
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         """
         Set the pipeline object for the condition expression.
 

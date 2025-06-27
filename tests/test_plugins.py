@@ -14,7 +14,6 @@ from sigma.backends.test import TextQueryTestBackend, MandatoryPipelineTestBacke
 from sigma.pipelines.test import dummy_test_pipeline
 import importlib.metadata
 from packaging.specifiers import Specifier
-import sigma
 import pytest
 
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline

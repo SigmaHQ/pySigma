@@ -1,8 +1,10 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Optional
+from typing import Any, ClassVar, Dict, Optional, TYPE_CHECKING
 from sigma.conditions import ParentChainMixin
-import sigma
+
+if TYPE_CHECKING:
+    from sigma.conversion.state import ConversionState
 
 
 @dataclass
@@ -32,7 +34,7 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
     The method finalize_expression must implement the generation of the query expression.
     """
 
-    conversion_state: "sigma.conversion.state.ConversionState"
+    conversion_state: "ConversionState"
     negated: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:

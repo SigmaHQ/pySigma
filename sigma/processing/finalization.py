@@ -1,22 +1,22 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-from typing import Any, Dict, List, Optional, Type
+from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
 
 import yaml
-import sigma
 from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError
 
 from sigma.processing.templates import TemplateBase
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
 
 
 @dataclass
 class Finalizer:
     """Conversion output transformation base class."""
 
-    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
-        init=False, compare=False, default=None
-    )
+    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Finalizer":
@@ -25,7 +25,7 @@ class Finalizer:
         except TypeError as e:
             raise SigmaConfigurationError("Error in instantiation of finalizer: " + str(e))
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
@@ -94,9 +94,7 @@ class NestedFinalizer(Finalizer):
     """Apply a list of finalizers to the queries in a nested fashion."""
 
     finalizers: List[Finalizer]
-    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
-        init=False, compare=False
-    )
+    _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False)
 
     def __post_init__(self) -> None:
         from sigma.processing.pipeline import (

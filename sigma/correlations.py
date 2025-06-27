@@ -1,12 +1,14 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union
+from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, TYPE_CHECKING
 
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
-import sigma
+
+if TYPE_CHECKING:
+    from sigma.collection import SigmaCollection
 
 
 class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
@@ -35,7 +37,7 @@ class SigmaRuleReference:
     reference: str
     rule: Union[SigmaRule, "SigmaCorrelationRule"] = field(init=False, repr=False, compare=False)
 
-    def resolve(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
+    def resolve(self, rule_collection: "SigmaCollection") -> None:
         """
         Resolves the reference to the actual Sigma rule.
 
@@ -156,7 +158,7 @@ class SigmaCorrelationFieldAlias:
     alias: str
     mapping: Dict[SigmaRuleReference, str]
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
+    def resolve_rule_references(self, rule_collection: "SigmaCollection") -> None:
         """
         Resolves all rule references in the mapping property to actual Sigma rules.
 
@@ -204,7 +206,7 @@ class SigmaCorrelationFieldAliases:
             for alias, alias_def in self.aliases.items()
         }
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
+    def resolve_rule_references(self, rule_collection: "SigmaCollection") -> None:
         """
         Resolves all rule references in the aliases property to actual Sigma rules.
 
@@ -404,7 +406,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
 
         return d
 
-    def resolve_rule_references(self, rule_collection: "sigma.collection.SigmaCollection") -> None:
+    def resolve_rule_references(self, rule_collection: "SigmaCollection") -> None:
         """
         Resolves all rule references in the rules property to actual Sigma rules.
 

@@ -1,7 +1,6 @@
 from dataclasses import InitVar, dataclass, field
 import dataclasses
-from typing import Dict, Optional, Union, Sequence, List, Mapping, Type, Any, cast
-import sigma
+from typing import Dict, Optional, Union, Sequence, List, Mapping, Type, Any, cast, TYPE_CHECKING
 from sigma.types import SigmaType, SigmaNull, SigmaString, sigma_type
 from sigma.modifiers import (
     SigmaModifier,
@@ -23,6 +22,9 @@ from sigma.conditions import (
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingItemBase
 
 # Type alias for plain detection types
 SigmaDetectionPlainList = List[Union[str, int, float, bool, None]]
@@ -470,9 +472,7 @@ class SigmaDetection(ParentChainMixin):
         else:  # Detection is empty, e.g. because DropDetectionItem transformation dropped everything.
             return None
 
-    def add_applied_processing_item(
-        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItemBase"]
-    ) -> None:
+    def add_applied_processing_item(self, processing_item: Optional["ProcessingItemBase"]) -> None:
         """Propagate processing item to all contained detection items."""
         for detection_item in self.detection_items:
             detection_item.add_applied_processing_item(processing_item)

@@ -2,8 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Dict, List, Optional, Type, Union
-import sigma
+from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
@@ -11,12 +10,15 @@ from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import QueryPostprocessingItem, ProcessingPipeline
+
 
 @dataclass
 class QueryPostprocessingTransformation(Transformation):
     """Query post processing transformation base class."""
 
-    processing_item: Optional["sigma.processing.pipeline.QueryPostprocessingItem"] = field(
+    processing_item: Optional["QueryPostprocessingItem"] = field(
         init=False, compare=False, default=None
     )
 
@@ -138,10 +140,8 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
 class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation):
     """Applies a list of query postprocessing transformations to the query in a nested manner."""
 
-    items: List["sigma.processing.pipeline.QueryPostprocessingItem"]
-    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
-        init=False, compare=False, repr=False
-    )
+    items: List["QueryPostprocessingItem"]
+    _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
         from sigma.processing.pipeline import (
@@ -152,12 +152,11 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
+        from sigma.processing.pipeline import QueryPostprocessingItem
+
         try:
             return NestedQueryPostprocessingTransformation(
-                items=[
-                    sigma.processing.pipeline.QueryPostprocessingItem.from_dict(item)
-                    for item in d["items"]
-                ]
+                items=[QueryPostprocessingItem.from_dict(item) for item in d["items"]]
             )
         except KeyError:
             raise SigmaConfigurationError(

@@ -16,6 +16,7 @@ from typing import (
     get_type_hints,
     Generic,
     TypeVar,
+    TYPE_CHECKING,
 )
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
@@ -40,7 +41,9 @@ from sigma.types import (
     SigmaStringPartType,
 )
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
-import sigma
+
+if TYPE_CHECKING:
+    from .rule import SigmaDetectionItem
 
 T = TypeVar("T", bound=Union[SigmaType, List[SigmaType]])
 R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
@@ -50,12 +53,12 @@ R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
 class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
-    detection_item: "sigma.rule.SigmaDetectionItem"
+    detection_item: "SigmaDetectionItem"
     applied_modifiers: List[Type["SigmaModifier[T, R]"]]
 
     def __init__(
         self,
-        detection_item: "sigma.rule.SigmaDetectionItem",
+        detection_item: "SigmaDetectionItem",
         applied_modifiers: List[Type["SigmaModifier[T, R]"]],
         source: Optional[SigmaRuleLocation] = None,
     ):

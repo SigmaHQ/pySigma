@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import sigma
+if TYPE_CHECKING:
+    from sigma.rule import SigmaRuleBase
 
 
 @dataclass
@@ -89,7 +90,7 @@ class SigmaConversionError(SigmaError):
 
     def __init__(
         self,
-        rule: "sigma.rule.SigmaRuleBase",
+        rule: "SigmaRuleBase",
         source: Optional[SigmaRuleLocation] = None,
         *args: Any,
         **kwargs: Dict[str, Any],
@@ -150,7 +151,7 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
         source: Optional[SigmaRuleLocation] = None,
         *args: List[Any],
         **kwargs: Dict[str, Any],
-    ):
+    ) -> None:
         self.spec = spec
         super().__init__(*args, source=source, **kwargs)
 

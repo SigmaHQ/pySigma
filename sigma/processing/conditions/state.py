@@ -6,13 +6,15 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Literal, Optional, Union
+from typing import Literal, Optional, Union, TYPE_CHECKING
 from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,
 )
 from sigma.exceptions import SigmaConfigurationError, SigmaProcessingItemError
-import sigma
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
 
 
 @dataclass
@@ -41,9 +43,7 @@ class ProcessingStateConditionBase:
     val: Union[str, int, float, bool]
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
 
-    def match_state(
-        self, processing_pipeline: "sigma.processing.pipeline.ProcessingPipeline"
-    ) -> bool:
+    def match_state(self, processing_pipeline: "ProcessingPipeline") -> bool:
         try:
             state_val = processing_pipeline.state[self.key]
         except KeyError:

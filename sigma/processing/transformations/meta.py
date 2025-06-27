@@ -3,13 +3,16 @@ from typing import (
     List,
     Dict,
     Union,
+    TYPE_CHECKING,
 )
 from dataclasses import InitVar, dataclass, field
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation
 from sigma.rule import SigmaRule
 from sigma.exceptions import SigmaConfigurationError
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 
 
 @dataclass
@@ -18,14 +21,10 @@ class NestedProcessingTransformation(PreprocessingTransformation):
     whole set of transformations that match the given conditions of the enclosng processing item.
     """
 
-    items: InitVar[List[Union[Dict[str, Any], "sigma.processing.pipeline.ProcessingItem"]]]
-    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
-        init=False, compare=False, repr=False
-    )
+    items: InitVar[List[Union[Dict[str, Any], "ProcessingItem"]]]
+    _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
-    def __post_init__(
-        self, items: List[Union[Dict[str, Any], "sigma.processing.pipeline.ProcessingItem"]]
-    ) -> None:
+    def __post_init__(self, items: List[Union[Dict[str, Any], "ProcessingItem"]]) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
             ProcessingItem,

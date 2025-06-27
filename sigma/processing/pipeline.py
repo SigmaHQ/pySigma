@@ -16,15 +16,16 @@ from typing import (
     Type,
     Union,
     cast,
+    TYPE_CHECKING,
 )
 
-from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.condition_expressions import ConditionExpression, parse_condition_expression
 from sigma.processing.conditions.base import ProcessingCondition
 from sigma.processing.finalization import Finalizer, finalizers
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
 from sigma.rule import SigmaDetectionItem, SigmaRule
+from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
 from sigma.processing.postprocessing import (
     QueryPostprocessingTransformation,

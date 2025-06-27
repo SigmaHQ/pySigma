@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, IO
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union, IO, TYPE_CHECKING
 from uuid import UUID
 
 import yaml
@@ -15,6 +15,9 @@ from sigma.exceptions import (
 )
 from sigma.rule import SigmaRule, SigmaRuleBase
 from sigma.filters import SigmaFilter
+
+if TYPE_CHECKING:
+    from sigma.filters import SigmaGlobalFilter
 
 NestedDict = Dict[str, Union[str, int, float, bool, None, "NestedDict"]]
 

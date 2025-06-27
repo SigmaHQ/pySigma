@@ -1,15 +1,7 @@
 from abc import ABC, abstractmethod
 import dataclasses
-from typing import (
-    Any,
-    Dict,
-    Iterable,
-    List,
-    Optional,
-    Union,
-)
+from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
 from dataclasses import dataclass, field
-import sigma
 from sigma.conditions import ConditionOR
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
@@ -23,6 +15,10 @@ from sigma.types import (
     SigmaFieldReference,
 )
 
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingItemBase, ProcessingItem, ProcessingPipeline
+    from sigma.conditions import SigmaCondition
+
 
 ### Base Classes ###
 @dataclass
@@ -32,13 +28,9 @@ class Transformation(ABC):
     applied to the whole rule.
     """
 
-    processing_item: Optional["sigma.processing.pipeline.ProcessingItemBase"] = field(
-        init=False, compare=False, default=None
-    )
+    processing_item: Optional["ProcessingItemBase"] = field(init=False, compare=False, default=None)
 
-    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
-        init=False, compare=False, default=None
-    )
+    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "Transformation":
@@ -47,7 +39,7 @@ class Transformation(ABC):
         except TypeError as e:
             raise SigmaConfigurationError("Error in instantiation of transformation: " + str(e))
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
@@ -56,9 +48,7 @@ class Transformation(ABC):
     def _clear_pipeline(self) -> None:
         self._pipeline = None
 
-    def set_processing_item(
-        self, processing_item: "sigma.processing.pipeline.ProcessingItemBase"
-    ) -> None:
+    def set_processing_item(self, processing_item: "ProcessingItemBase") -> None:
         self.processing_item = processing_item
 
     def processing_item_applied(
@@ -67,7 +57,7 @@ class Transformation(ABC):
             SigmaRule,
             SigmaDetection,
             SigmaDetectionItem,
-            "sigma.conditions.SigmaCondition",
+            "SigmaCondition",
             SigmaCorrelationRule,
         ],
     ) -> None:
@@ -109,9 +99,7 @@ class DetectionItemTransformation(PreprocessingTransformation):
     A detection item transformation also marks the item as unconvertible to plain data types.
     """
 
-    processing_item: Optional["sigma.processing.pipeline.ProcessingItem"] = field(
-        init=False, compare=False, default=None
-    )
+    processing_item: Optional["ProcessingItem"] = field(init=False, compare=False, default=None)
 
     @abstractmethod
     def apply_detection_item(
@@ -383,7 +371,5 @@ class ConditionTransformation(PreprocessingTransformation):
                     )  # mark as processed by processing item containing this transformation
 
     @abstractmethod
-    def apply_condition(self, cond: "sigma.conditions.SigmaCondition") -> None:
-        """
-        This method is invoked for each condition and can change it.
-        """
+    def apply_condition(self, cond: "SigmaCondition") -> None:
+        "This method is invoked for each condition and can change it."

@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
-import sigma
+from typing import Literal, Optional, Union, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaType
-from typing import Literal, Optional, Union
 from sigma.rule import (
     SigmaDetection,
     SigmaRule,
@@ -15,16 +13,17 @@ from sigma.exceptions import (
     SigmaProcessingItemError,
 )
 
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
+
 
 @dataclass
 class ProcessingCondition(ABC):
     """Anchor base class for all processing condition types."""
 
-    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
-        init=False, compare=False, default=None
-    )
+    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline") -> None:
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:

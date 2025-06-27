@@ -11,11 +11,12 @@ from pyparsing import (
     ParseResults,
     ParseException,
 )
-from typing import ClassVar, List, Optional, Union, Type, cast
-import sigma.rule
+from typing import ClassVar, List, Optional, Union, Type, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
-import sigma
+
+if TYPE_CHECKING:
+    from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
 
 
 @dataclass
@@ -25,8 +26,8 @@ class ParentChainMixin:
     parent: Optional[
         Union[
             "ConditionItem",
-            "sigma.rule.detection.SigmaDetectionItem",
-            "sigma.rule.detection.SigmaDetection",
+            "SigmaDetectionItem",
+            "SigmaDetection",
         ]
     ] = field(
         init=False, compare=False, default=None
@@ -38,8 +39,8 @@ class ParentChainMixin:
     ) -> List[
         Union[
             "ConditionType",
-            "sigma.rule.detection.SigmaDetectionItem",
-            "sigma.rule.detection.SigmaDetection",
+            "SigmaDetectionItem",
+            "SigmaDetection",
         ]
     ]:
         """Return complete parent chain of condition object."""
@@ -53,8 +54,8 @@ class ParentChainMixin:
     ) -> List[
         Union[
             Type["ConditionType"],
-            Type["sigma.rule.detection.SigmaDetectionItem"],
-            Type["sigma.rule.detection.SigmaDetection"],
+            Type["SigmaDetectionItem"],
+            Type["SigmaDetection"],
         ]
     ]:
         """Return classes of parent chain."""
@@ -65,8 +66,8 @@ class ParentChainMixin:
     ) -> List[
         Union[
             Type["ConditionType"],
-            Type["sigma.rule.detection.SigmaDetectionItem"],
-            Type["sigma.rule.detection.SigmaDetection"],
+            Type["SigmaDetectionItem"],
+            Type["SigmaDetection"],
         ]
     ]:
         """Only return list of parent chain condition classes which are boolean operators."""
@@ -78,11 +79,11 @@ class ParentChainMixin:
 
     def postprocess(
         self,
-        detections: "sigma.rule.detection.SigmaDetections",
+        detections: "SigmaDetections",
         parent: Optional[
             Union[
-                "sigma.rule.detection.SigmaDetection",
-                "sigma.rule.detection.SigmaDetectionItem",
+                "SigmaDetection",
+                "SigmaDetectionItem",
                 "ConditionItem",
             ]
         ] = None,
@@ -140,11 +141,11 @@ class ConditionItem(ParentChainMixin, ABC):
 
     def postprocess(
         self,
-        detections: "sigma.rule.detection.SigmaDetections",
+        detections: "SigmaDetections",
         parent: Optional[
             Union[
-                "sigma.rule.detection.SigmaDetection",
-                "sigma.rule.detection.SigmaDetectionItem",
+                "SigmaDetection",
+                "SigmaDetectionItem",
                 "ConditionItem",
             ]
         ] = None,
@@ -206,11 +207,11 @@ class ConditionIdentifier(ConditionItem):
 
     def postprocess(
         self,
-        detections: "sigma.rule.detection.SigmaDetections",
+        detections: "SigmaDetections",
         parent: Optional[
             Union[
-                "sigma.rule.detection.SigmaDetection",
-                "sigma.rule.detection.SigmaDetectionItem",
+                "SigmaDetection",
+                "SigmaDetectionItem",
                 "ConditionItem",
             ]
         ] = None,
@@ -248,7 +249,7 @@ class ConditionSelector(ConditionItem):
         self.pattern = self.args[1]
 
     def resolve_referenced_detections(
-        self, detections: "sigma.rule.detection.SigmaDetections"
+        self, detections: "SigmaDetections"
     ) -> List[ConditionIdentifier]:
         """
         Resolve all detection identifiers referenced by the selector.
@@ -266,11 +267,11 @@ class ConditionSelector(ConditionItem):
 
     def postprocess(
         self,
-        detections: "sigma.rule.detection.SigmaDetections",
+        detections: "SigmaDetections",
         parent: Optional[
             Union[
-                "sigma.rule.detection.SigmaDetection",
-                "sigma.rule.detection.SigmaDetectionItem",
+                "SigmaDetection",
+                "SigmaDetectionItem",
                 "ConditionItem",
             ]
         ] = None,
@@ -336,7 +337,7 @@ condition = infix_notation(
 @dataclass
 class SigmaCondition(ProcessingItemTrackingMixin):
     condition: str
-    detections: "sigma.rule.detection.SigmaDetections"
+    detections: "SigmaDetections"
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     def parse(

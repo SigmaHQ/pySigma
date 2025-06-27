@@ -1,16 +1,19 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, List, Type
+from typing import Any, Dict, Optional, Tuple, List, Type, TYPE_CHECKING
 from uuid import UUID
 from datetime import date, datetime
 import datetime as dt
 import yaml
 import re
-import sigma
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaError, SigmaRuleLocation
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
 from sigma.conversion.state import ConversionState
+
+if TYPE_CHECKING:
+    from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
+    from sigma.rule.attributes import SigmaRelated, SigmaStatus, SigmaRuleTag, SigmaLevel
 
 
 class SigmaYAMLLoader(yaml.SafeLoader):
@@ -34,18 +37,18 @@ class SigmaRuleBase:
     id: Optional[UUID] = None
     name: Optional[str] = None
     taxonomy: str = "sigma"
-    related: Optional["sigma.rule.attributes.SigmaRelated"] = None
-    status: Optional["sigma.rule.attributes.SigmaStatus"] = None
+    related: Optional["SigmaRelated"] = None
+    status: Optional["SigmaStatus"] = None
     description: Optional[str] = None
     license: Optional[str] = None
     references: List[str] = field(default_factory=list)
-    tags: List["sigma.rule.attributes.SigmaRuleTag"] = field(default_factory=list)
+    tags: List["SigmaRuleTag"] = field(default_factory=list)
     author: Optional[str] = None
     date: Optional["dt.date"] = None
     modified: Optional["dt.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
-    level: Optional["sigma.rule.attributes.SigmaLevel"] = None
+    level: Optional["SigmaLevel"] = None
     scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
@@ -427,11 +430,11 @@ class SigmaRuleBase:
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]) -> None:
+    def set_conversion_states(self, state: List["ConversionState"]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_states(self) -> List["sigma.conversion.state.ConversionState"]:
+    def get_conversion_states(self) -> List["ConversionState"]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(

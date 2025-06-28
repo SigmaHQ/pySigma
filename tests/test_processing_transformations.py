@@ -872,7 +872,7 @@ def test_fields_list_mapping_with_detection_item_condition(sigma_rule: SigmaRule
                 field_name_conditions=[
                     IncludeFieldCondition(
                         fields=["^field\\d+"],
-                        type="re",
+                        format="re",
                     ),
                 ],
             ),

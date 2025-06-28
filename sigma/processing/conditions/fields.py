@@ -11,25 +11,25 @@ from sigma.exceptions import SigmaConfigurationError
 @dataclass
 class IncludeFieldCondition(FieldNameProcessingCondition):
     """
-    Matches on field name if it is contained in fields list. The parameter 'type' determines if field names are matched as
+    Matches on field name if it is contained in fields list. The parameter 'format' determines if field names are matched as
     plain string ("plain") or regular expressions ("re").
     """
 
     fields: List[str]
-    type: Literal["plain", "re"] = field(default="plain")
+    format: Literal["plain", "re"] = field(default="plain")
     patterns: List[Pattern] = field(init=False, repr=False, default_factory=list)
 
     def __post_init__(self):
         """
-        Check if type is known and pre-compile regular expressions.
+        Check if format is known and pre-compile regular expressions.
         """
-        if self.type == "plain":
+        if self.format == "plain":
             pass
-        elif self.type == "re":
+        elif self.format == "re":
             self.patterns = [re.compile(field) for field in self.fields]
         else:
             raise SigmaConfigurationError(
-                f"Invalid detection item field name condition type '{self.type}', supported types are 'plain' or 're'."
+                f"Invalid detection item field name condition type '{self.format}', supported types are 'plain' or 're'."
             )
 
     def match_field_name(
@@ -38,7 +38,7 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
     ) -> bool:
         if field is None:
             return False
-        elif self.type == "plain":
+        elif self.format == "plain":
             return field in self.fields
         else:  # regular expression matching
             try:

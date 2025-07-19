@@ -663,6 +663,15 @@ class SigmaTimestampPart(SigmaNumber):
         super().__init__(number)
 
 
+class SigmaTimestampPart(SigmaNumber):
+
+    timestamp_part: TimestampPart
+
+    def __init__(self, timestamp_part: TimestampPart, number: int):
+        self.timestamp_part = timestamp_part
+        super().__init__(number)
+
+
 @dataclass
 class SigmaBool(SigmaType):
     """Boolean value type"""

@@ -522,3 +522,100 @@ def test_correlation_invalid_generate():
                 },
             }
         )
+
+
+@pytest.fixture
+def nested_correlation_rule():
+    rules = """
+title: Top level correlation
+id: fab710f8-8b2a-4d7a-a8ec-4cd46d728f12
+name: test_correlation
+status: experimental
+correlation:
+    type: temporal_ordered
+    rules:
+        - rule_a
+        - rule_b
+        - nested_correlation
+    group-by:
+        - User
+    timespan: 10m
+---
+title: Nested correlation
+id: fda46cab-e5fe-4287-96d2-238433ad8ed7
+name: nested_correlation
+correlation:
+    type: event_count
+    rules:
+        - rule_c
+        - rule_d
+    group-by:
+        - User
+    timespan: 10m
+    condition:
+        gte: 10
+---
+title: Rule A
+id: 2d0179f5-8e57-4875-8888-7b18b4458af1
+name: rule_a
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+---
+title: Rule B
+id: e15bb313-747c-4c9f-aa26-20980b5494cc
+name: rule_b
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 2
+    condition: selection
+---
+title: Rule C
+id: d5a68ab4-3d4e-4a54-a82f-d89f600cedff
+name: rule_c
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 3
+    condition: selection
+---
+title: Rule D
+id: 906bab7a-9dd4-48df-8fea-449dbc74979c
+name: rule_d
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4
+    condition: selection
+"""
+    return SigmaCollection.from_yaml(rules)
+
+
+def test_correlation_reference_flattening(nested_correlation_rule):
+    nested_correlation_rule.resolve_rule_references()
+    flattened_rule_ids = [
+        rule.name for rule in nested_correlation_rule["test_correlation"].flatten_rules()
+    ]
+    assert flattened_rule_ids == ["rule_a", "rule_b", "nested_correlation", "rule_c", "rule_d"]
+
+
+def test_correlation_reference_flattening_without_correlations(nested_correlation_rule):
+    nested_correlation_rule.resolve_rule_references()
+    flattened_rule_ids = [
+        rule.name
+        for rule in nested_correlation_rule["test_correlation"].flatten_rules(
+            include_correlations=False
+        )
+    ]
+    assert flattened_rule_ids == ["rule_a", "rule_b", "rule_c", "rule_d"]

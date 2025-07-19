@@ -266,6 +266,14 @@ def test_load_ruleset_with_error():
         SigmaCollection.load_ruleset([Path("tests/files/ruleset_with_errors")])
 
 
+def test_load_ruleset_with_error_collect_errors():
+    sc = SigmaCollection.load_ruleset(
+        [Path("tests/files/ruleset_with_errors")], collect_errors=True
+    )
+    assert len(sc.errors) > 0
+    assert len(sc.rules) == 1
+
+
 def test_load_ruleset_nolist():
     with pytest.raises(TypeError, match="must be list"):
         SigmaCollection.load_ruleset("tests/files/ruleset")

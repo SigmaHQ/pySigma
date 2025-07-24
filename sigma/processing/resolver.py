@@ -6,7 +6,7 @@ from sigma.exceptions import (
     SigmaPipelineNotFoundError,
 )
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union
+from typing import Dict, Iterable, List, Optional, Tuple, Union, cast, Callable
 
 
 @dataclass
@@ -31,7 +31,7 @@ class ProcessingPipelineResolver:
         cls, pipelines: Iterable[ProcessingPipeline]
     ) -> "ProcessingPipelineResolver":
         """Instantiate processing pipeline resolver from list of pipeline objects."""
-        return cls({pipeline.name: pipeline for pipeline in pipelines})
+        return cls({pipeline.name: pipeline for pipeline in pipelines if pipeline.name is not None})
 
     def list_pipelines(self) -> Iterable[Tuple[str, ProcessingPipeline]]:
         """List identifier/processing pipeline tuples."""
@@ -49,7 +49,7 @@ class ProcessingPipelineResolver:
         """
         try:
             pipeline = self.pipelines[spec]
-            if isinstance(pipeline, Callable):
+            if callable(pipeline):
                 resolved_pipeline = pipeline()
             else:
                 resolved_pipeline = pipeline

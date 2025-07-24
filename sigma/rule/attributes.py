@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, List, Type
+from typing import Any, Dict, Optional, List
 from uuid import UUID
 from enum import Enum, auto
 import sigma.exceptions as sigma_exceptions
@@ -9,6 +9,8 @@ from sigma.exceptions import (
 
 
 class EnumLowercaseStringMixin:
+    name: str
+
     def __str__(self) -> str:
         return self.name.lower()
 
@@ -20,43 +22,43 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
     TEST = auto()
     STABLE = auto()
 
-    def __eq__(self, other):
+    def __eq__(self, other: Any) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value == other.value
+            return bool(self.value == other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __ge__(self, other):
+    def __ge__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value >= other.value
+            return bool(self.value >= other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __gt__(self, other):
+    def __gt__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value > other.value
+            return bool(self.value > other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value != other.value
+            return bool(self.value != other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __le__(self, other):
+    def __le__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value <= other.value
+            return bool(self.value <= other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
-            return self.value < other.value
+            return bool(self.value < other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.value.__hash__()
 
 
@@ -67,43 +69,42 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
     HIGH = auto()
     CRITICAL = auto()
 
-    def __eq__(self, other):
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value == other.value
+            return bool(self.value == other.value)
+        return False
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
-
-    def __ge__(self, other):
+    def __ge__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value >= other.value
+            return bool(self.value >= other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
 
-    def __gt__(self, other):
+    def __gt__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value > other.value
+            return bool(self.value > other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
 
-    def __ne__(self, other):
+    def __ne__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value != other.value
+            return bool(self.value != other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
 
-    def __le__(self, other):
+    def __le__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value <= other.value
+            return bool(self.value <= other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
 
-    def __lt__(self, other):
+    def __lt__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
-            return self.value < other.value
+            return bool(self.value < other.value)
 
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel", source=other)
+        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
 
-    def __hash__(self):
+    def __hash__(self) -> int:
         return self.value.__hash__()
 
 
@@ -122,12 +123,12 @@ class SigmaRelatedItem:
     type: SigmaRelatedType
 
     @classmethod
-    def from_dict(cls, value: dict) -> "SigmaRelatedItem":
+    def from_dict(cls, value: Dict[str, str]) -> "SigmaRelatedItem":
         """Returns Related item from dict with fields."""
         try:
             id = UUID(value["id"])
         except ValueError:
-            raise sigma_exceptions.SigmaRelatedError(f"Sigma related identifier must be an UUID")
+            raise sigma_exceptions.SigmaRelatedError("Sigma related identifier must be an UUID")
 
         try:
             type = SigmaRelatedType[value["type"].upper()]
@@ -144,17 +145,17 @@ class SigmaRelatedItem:
 
 @dataclass
 class SigmaRelated:
-    related: List[Type[SigmaRelatedItem]]
+    related: List[SigmaRelatedItem]
 
     @classmethod
-    def from_dict(cls, val: list) -> "SigmaRelated":
+    def from_dict(cls, val: List[Dict[str, str]]) -> "SigmaRelated":
         """Returns Related object from dict with fields."""
 
-        list_ret = []
+        list_ret: List[SigmaRelatedItem] = []
         for v in val:
-            if not "id" in v.keys():
+            if "id" not in v.keys():
                 raise sigma_exceptions.SigmaRelatedError("Sigma related must have an id field")
-            elif not "type" in v.keys():
+            elif "type" not in v.keys():
                 raise sigma_exceptions.SigmaRelatedError("Sigma related must have a type field")
             else:
                 list_ret.append(SigmaRelatedItem.from_dict(v))  # should rise the SigmaRelatedError
@@ -182,8 +183,14 @@ class SigmaRuleTag:
     def __str__(self) -> str:
         return f"{self.namespace}.{self.name}"
 
-    def __eq__(self, other) -> bool:
+    def __eq__(self, other: object) -> bool:
         if isinstance(other, str):
             return other == self.__str__()
         elif type(self) is type(other):
-            return self.name == other.name and self.namespace == other.namespace
+            return (
+                isinstance(other, SigmaRuleTag)
+                and self.name == other.name
+                and self.namespace == other.namespace
+            )
+        else:
+            return False

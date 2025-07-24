@@ -34,6 +34,7 @@ pyparsing = "^3.2"
 pyyaml = "^6.0"
 requests = "^2.32"
 jinja2 = "^3.1.6"
+types-pyyaml = "^6.0.12.20240917"
 
 [tool.poetry.group.dev.dependencies]
 black = "^24.1"
@@ -46,6 +47,7 @@ pytest-cov = "^6.2"
 pytest-mypy = "^1.0"
 Sphinx = "^7.4" # 8.0 is not compatible with Python 3.9
 defusedxml = "^0.7"
+types-requests = "^2.32.0.20250306"
 
 [tool.black]
 line-length = 100
@@ -56,3 +58,4 @@ build-backend = "poetry.core.masonry.api"
 
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::DeprecationWarning"]
+markers = ["online"]

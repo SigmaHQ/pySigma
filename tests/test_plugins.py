@@ -1,3 +1,4 @@
+from typing import Any, Dict
 from uuid import UUID
 from sigma.exceptions import SigmaPluginNotFoundError
 from sigma.pipelines.test.pipeline import another_test_pipeline, YetAnotherTestPipeline
@@ -13,7 +14,6 @@ from sigma.backends.test import TextQueryTestBackend, MandatoryPipelineTestBacke
 from sigma.pipelines.test import dummy_test_pipeline
 import importlib.metadata
 from packaging.specifiers import Specifier
-import sigma
 import pytest
 
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
@@ -170,6 +170,7 @@ def check_module(name: str) -> bool:
         return False
 
 
+@pytest.mark.online
 def test_sigma_plugin_installation():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()
     plugin = plugin_dir.get_plugin_by_uuid("4af37b53-f1ec-4567-8017-2fb9315397a1")  # Splunk backend
@@ -196,7 +197,7 @@ def test_sigma_plugin_directory_default():
 
 
 @pytest.fixture
-def plugin_directory(sigma_plugin: SigmaPlugin, sigma_plugin_dict: dict):
+def plugin_directory(sigma_plugin: SigmaPlugin, sigma_plugin_dict: Dict[str, Any]):
     plugin_directory = SigmaPluginDirectory()
     plugin_directory.register_plugin(sigma_plugin)
 
@@ -268,7 +269,7 @@ def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory: SigmaPlug
 
 
 def test_sigma_plugin_directory_get_plugins_compatible(
-    plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: dict
+    plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: Dict[str, Any]
 ):
     sigma_plugin_dict_incompatible = sigma_plugin_dict.copy()
     sigma_plugin_dict_incompatible["uuid"] = "a350e4dd-6813-4549-a76d-b2c0d4925e62"

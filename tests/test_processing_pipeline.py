@@ -26,7 +26,7 @@ from sigma.processing.conditions import (
 from sigma.processing.postprocessing import EmbedQueryTransformation
 from sigma.processing.transformations import (
     SetStateTransformation,
-    Transformation,
+    PreprocessingTransformation,
     FieldMappingTransformation,
     AddFieldnamePrefixTransformation,
     FieldFunctionTransformation,
@@ -101,7 +101,7 @@ class FieldNameConditionFalse(FieldNameProcessingCondition):
 
 
 @dataclass
-class TransformationPrepend(Transformation):
+class TransformationPrepend(PreprocessingTransformation):
     s: str
 
     def apply(self, rule: SigmaRule) -> SigmaRule:
@@ -111,7 +111,7 @@ class TransformationPrepend(Transformation):
 
 
 @dataclass
-class TransformationAppend(Transformation):
+class TransformationAppend(PreprocessingTransformation):
     s: str
 
     def apply(self, rule: SigmaRule) -> SigmaRule:
@@ -1417,42 +1417,15 @@ def test_processingpipeline_invalid_concatenation_left():
         )
 
 
-@pytest.fixture(scope="module")
-def processing_pipeline_with_field_func_transform():
-    return ProcessingPipeline(
-        items=[
-            ProcessingItem(  # Field mappings
-                identifier="field_transform",
-                transformation=FieldFunctionTransformation(
-                    transform_func=lambda f: f.upper(),
-                    mapping={
-                        "fieldA": "mappedA",
-                    },
-                ),
-            ),
-        ]
+def test_processingitem_match_detection_item_with_field_name_condition_expression(detection_item):
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions={
+            "cond1": FieldNameConditionTrue(dummy="test-true"),
+            "cond2": FieldNameConditionFalse(dummy="test-false"),
+        },
+        field_name_condition_expression=ConditionAND(
+            0, ConditionIdentifier(0, "cond1"), ConditionNOT(10, ConditionIdentifier(14, "cond2"))
+        ),
     )
-
-
-def test_processingpipeline_field_name_transformation_in_field_list(
-    processing_pipeline_with_field_func_transform,
-):
-    rule = processing_pipeline_with_field_func_transform.apply(
-        SigmaRule.from_yaml(
-            f"""
-            title: Test
-            status: test
-            logsource:
-                category: test
-            detection:
-                sel:
-                    fieldA: valueA
-                    fieldB: valueB
-                condition: sel
-            fields:
-                - fieldA
-                - fieldB
-        """
-        )
-    )
-    assert rule.fields == ["mappedA", "FIELDB"]
+    assert processing_item.match_detection_item(detection_item) == True

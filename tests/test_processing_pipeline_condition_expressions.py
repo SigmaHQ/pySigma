@@ -23,7 +23,7 @@ def test_pipeline_condition_expression_identifier(sigma_rule):
         "cond1": RuleConditionTrue(dummy="test-true"),
     }
     condition_expression = "cond1"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result == ConditionIdentifier(0, "cond1")
     assert result.match(sigma_rule)
@@ -35,7 +35,7 @@ def test_pipeline_condition_expression_identifier_not_found():
     }
     condition_expression = "cond2"
     with pytest.raises(SigmaPipelineConditionError, match="cond2.*not found"):
-        parse_condition_expression(condition_expression, conditions).resolve(conditions)
+        parse_condition_expression(condition_expression).resolve(conditions)
 
 
 def test_pipeline_condition_expression_and(sigma_rule):
@@ -44,7 +44,7 @@ def test_pipeline_condition_expression_and(sigma_rule):
         "cond2": RuleConditionFalse(dummy="test-false"),
     }
     condition_expression = "cond1 and cond2"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result == ConditionAND(
         0, ConditionIdentifier(0, "cond1"), ConditionIdentifier(10, "cond2")
@@ -58,7 +58,7 @@ def test_pipeline_condition_expression_or(sigma_rule):
         "cond2": RuleConditionFalse(dummy="test-false"),
     }
     condition_expression = "cond1 or cond2"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result == ConditionOR(
         0, ConditionIdentifier(0, "cond1"), ConditionIdentifier(9, "cond2")
@@ -71,7 +71,7 @@ def test_pipeline_condition_expression_not(sigma_rule):
         "cond1": RuleConditionFalse(dummy="test-false"),
     }
     condition_expression = "not cond1"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result == ConditionNOT(0, ConditionIdentifier(4, "cond1"))
     assert result.match(sigma_rule)
@@ -84,7 +84,7 @@ def test_pipeline_condition_expression_precedence(sigma_rule):
         "cond3": RuleConditionTrue(dummy="test-false"),
     }
     condition_expression = "cond1 and not cond2 or cond3"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result == ConditionOR(
         0,
@@ -103,7 +103,7 @@ def test_pipeline_condition_expression_match_detection_item(detection_item):
         "cond3": DetectionItemConditionTrue(dummy="test-false"),
     }
     condition_expression = "cond1 and not cond2 or cond3"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result.match(detection_item)
 
@@ -115,7 +115,7 @@ def test_pipeline_condition_expression_match_field_name(detection_item):
         "cond3": FieldNameConditionTrue(dummy="test-false"),
     }
     condition_expression = "cond1 and not cond2 or cond3"
-    result = parse_condition_expression(condition_expression, conditions)
+    result = parse_condition_expression(condition_expression)
     result.resolve(conditions)
     assert result.match_detection_item(detection_item)
     assert result.match_field_name("test")
@@ -123,4 +123,37 @@ def test_pipeline_condition_expression_match_field_name(detection_item):
 
 def test_pipeline_condition_expression_invalid():
     with pytest.raises(SigmaPipelineConditionError, match="Error parsing"):
-        parse_condition_expression("cond1 and", {})
+        parse_condition_expression("cond1 and")
+
+
+def test_pipeline_condition_expression_identifier_invalid_match_type():
+    conditions = {
+        "cond1": FieldNameConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_identifier_invalid_detection_item_type():
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match_detection_item(detection_item)
+
+
+def test_pipeline_condition_expression_identifier_invalid_field_name_type():
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
+        result.match_field_name("test")

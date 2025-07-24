@@ -1,18 +1,20 @@
 from dataclasses import dataclass, field
 
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.conditions.base import (
     DetectionItemProcessingCondition,
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Literal, Union
+from typing import Literal, Optional, Union, TYPE_CHECKING
 from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,
 )
 from sigma.exceptions import SigmaConfigurationError, SigmaProcessingItemError
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
 
 
 @dataclass
@@ -41,28 +43,24 @@ class ProcessingStateConditionBase:
     val: Union[str, int, float, bool]
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
 
-    def match_state(self) -> bool:
+    def match_state(self, processing_pipeline: "ProcessingPipeline") -> bool:
         try:
-            state_val = self._pipeline.state[self.key]
+            state_val = processing_pipeline.state[self.key]
         except KeyError:
             return False
-        except AttributeError:
-            raise SigmaProcessingItemError(
-                "No processing pipeline was passed to condition, but required by it"
-            )
 
         if self.op == "eq":
-            return state_val == self.val
+            return bool(state_val == self.val)
         elif self.op == "ne":
-            return state_val != self.val
+            return bool(state_val != self.val)
         elif self.op == "gte":
-            return state_val >= self.val
+            return bool(state_val >= self.val)
         elif self.op == "gt":
-            return state_val > self.val
+            return bool(state_val > self.val)
         elif self.op == "lte":
-            return state_val <= self.val
+            return bool(state_val <= self.val)
         elif self.op == "lt":
-            return state_val < self.val
+            return bool(state_val < self.val)
         else:
             raise SigmaConfigurationError(
                 f"Invalid operation '{self.op}' in rule state condition {str(self)}."
@@ -79,7 +77,11 @@ class RuleProcessingStateCondition(RuleProcessingCondition, ProcessingStateCondi
         self,
         rule: Union[SigmaRule, SigmaCorrelationRule],
     ) -> bool:
-        return self.match_state()
+        if self._pipeline is None:
+            raise SigmaProcessingItemError(
+                f"Processing pipeline must be set before matching condition {str(self)}."
+            )
+        return self.match_state(self._pipeline)
 
 
 @dataclass
@@ -90,9 +92,13 @@ class FieldNameProcessingStateCondition(FieldNameProcessingCondition, Processing
 
     def match_field_name(
         self,
-        field: str,
+        field: Optional[str],
     ) -> bool:
-        return self.match_state()
+        if self._pipeline is None:
+            raise SigmaProcessingItemError(
+                f"Processing pipeline must be set before matching condition {str(self)}."
+            )
+        return self.match_state(self._pipeline)
 
 
 @dataclass
@@ -122,7 +128,11 @@ class DetectionItemProcessingStateCondition(
         self,
         detection_item: SigmaDetectionItem,
     ) -> bool:
-        return self.match_state()
+        if self._pipeline is None:
+            raise SigmaProcessingItemError(
+                f"Processing pipeline must be set before matching condition {str(self)}."
+            )
+        return self.match_state(self._pipeline)
 
 
 @dataclass
@@ -133,11 +143,15 @@ class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
 
     processing_item_id: str
 
-    def match_field_name(self, field: str) -> bool:
+    def match_field_name(self, field: Optional[str]) -> bool:
+        if self._pipeline is None:
+            raise SigmaProcessingItemError(
+                f"Processing pipeline must be set before matching condition {str(self)}."
+            )
         return self._pipeline.field_was_processed_by(field, self.processing_item_id)
 
     def match_detection_item(
         self,
         detection_item: SigmaDetectionItem,
-    ):
+    ) -> bool:
         return detection_item.was_processed_by(self.processing_item_id)

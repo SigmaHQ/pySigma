@@ -1,18 +1,19 @@
 from collections import defaultdict
 import re
-from typing import ClassVar, Dict, Optional, Pattern, Tuple
+from typing import Any, ClassVar, Dict, List, Optional, Pattern, cast
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
 from sigma.pipelines.test import dummy_test_pipeline
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
 from sigma.processing.transformations import FieldMappingTransformation
-from sigma.types import CompareOperators, SigmaCompareExpression
+from sigma.rule.rule import SigmaRule
+from sigma.types import CompareOperators
 
 
 class TextQueryTestBackend(TextQueryBackend):
-    name: str = "Test backend"
-    formats: Dict[str, str] = {
+    name: ClassVar[str] = "Test backend"
+    formats: ClassVar[Dict[str, str]] = {
         "default": "Default format",
         "test": "Dummy test format",
         "state": "Test format that obtains information from state",
@@ -29,7 +30,7 @@ class TextQueryTestBackend(TextQueryBackend):
     eq_token: ClassVar[str] = "="
 
     field_quote: ClassVar[str] = "'"
-    field_quote_pattern: ClassVar[Pattern] = re.compile("^\\w+$")
+    field_quote_pattern: ClassVar[Pattern[str]] = re.compile("^\\w+$")
 
     str_quote: ClassVar[str] = '"'
     escape_char: ClassVar[str] = "\\"
@@ -37,7 +38,7 @@ class TextQueryTestBackend(TextQueryBackend):
     wildcard_single: ClassVar[str] = "?"
     add_escaped: ClassVar[str] = ":"
     filter_chars: ClassVar[str] = "&"
-    bool_values: ClassVar[Dict[bool, str]] = {
+    bool_values: ClassVar[Dict[bool, Optional[str]]] = {
         True: "1",
         False: "0",
     }
@@ -52,7 +53,7 @@ class TextQueryTestBackend(TextQueryBackend):
 
     re_expression: ClassVar[str] = "{field}=/{regex}/"
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[Tuple[str]] = ("/", "bar")
+    re_escape: ClassVar[List[str]] = ["/", "bar"]
 
     case_sensitive_match_expression = "{field} casematch {value}"
     case_sensitive_startswith_expression: ClassVar[str] = "{field} startswith_cased {value}"
@@ -116,8 +117,12 @@ class TextQueryTestBackend(TextQueryBackend):
         "test": "Test correlation method",
     }
     default_correlation_method: ClassVar[str] = "test"
-    default_correlation_query: ClassVar[str] = {"test": "{search}\n{aggregate}\n{condition}"}
-    temporal_correlation_query: ClassVar[str] = {"test": "{search}\n\n{aggregate}\n\n{condition}"}
+    default_correlation_query: ClassVar[Dict[str, str]] = {
+        "test": "{search}\n{aggregate}\n{condition}"
+    }
+    temporal_correlation_query: ClassVar[Dict[str, str]] = {
+        "test": "{search}\n\n{aggregate}\n\n{condition}"
+    }
 
     correlation_search_single_rule_expression: ClassVar[str] = "{query}"
     correlation_search_multi_rule_expression: ClassVar[str] = "{queries}"
@@ -170,33 +175,39 @@ class TextQueryTestBackend(TextQueryBackend):
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
         testparam: Optional[str] = None,
-        **kwargs,
+        **kwargs: Dict[str, Any],
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.testparam = testparam
 
-    def finalize_query_test(self, rule, query, index, state):
-        return "[ " + self.finalize_query_default(rule, query, index, state) + " ]"
+    def finalize_query_test(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        return "[ " + cast(str, self.finalize_query_default(rule, query, index, state)) + " ]"
 
-    def finalize_output_test(self, queries):
-        return self.finalize_output_default(queries)
+    def finalize_output_test(self, queries: List[str]) -> str:
+        return cast(str, self.finalize_output_default(queries))
 
-    def finalize_query_state(self, rule, query, index, state: ConversionState):
+    def finalize_query_state(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
         return (
             "index="
-            + state.processing_state.get("index", "default")
+            + cast(str, state.processing_state.get("index", "default"))
             + " ("
-            + self.finalize_query_default(rule, query, index, state)
+            + cast(str, self.finalize_query_default(rule, query, index, state))
             + ")"
         )
 
-    def finalize_output_state(self, queries):
-        return self.finalize_output_default(queries)
+    def finalize_output_state(self, queries: List[str]) -> str:
+        return cast(str, self.finalize_output_default(queries))
 
-    def finalize_query_list_of_dict(self, rule, query, index, state):
-        return self.finalize_query_default(rule, query, index, state)
+    def finalize_query_list_of_dict(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_list_of_dict(self, queries):
+    def finalize_output_list_of_dict(self, queries: List[str]) -> List[Dict[str, Optional[str]]]:
         return [
             (
                 {"query": query, "test": self.testparam}
@@ -206,18 +217,22 @@ class TextQueryTestBackend(TextQueryBackend):
             for query in self.finalize_output_default(queries)
         ]
 
-    def finalize_query_bytes(self, rule, query, index, state):
-        return self.finalize_query_default(rule, query, index, state)
+    def finalize_query_bytes(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_bytes(self, queries):
+    def finalize_output_bytes(self, queries: List[str]) -> bytes:
         return bytes("\x00".join(self.finalize_output_default(queries)), "utf-8")
 
-    def finalize_query_str(self, rule, query, index, state):
-        return self.finalize_query_default(rule, query, index, state)
+    def finalize_query_str(
+        self, rule: SigmaRule, query: str, index: int, state: ConversionState
+    ) -> str:
+        return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_str(self, queries):
+    def finalize_output_str(self, queries: List[str]) -> str:
         return "\n".join(self.finalize_output_default(queries))
 
 
 class MandatoryPipelineTestBackend(TextQueryTestBackend):
-    requires_pipeline: bool = True
+    requires_pipeline: ClassVar[bool] = True

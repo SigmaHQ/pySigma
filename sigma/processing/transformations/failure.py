@@ -1,17 +1,16 @@
 from dataclasses import dataclass
-from typing import Set
-
-import sigma
+from typing import Set, Union
+from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaTransformationError, SigmaTypeError
 from sigma.processing.transformations.base import (
+    PreprocessingTransformation,
     DetectionItemTransformation,
-    Transformation,
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem, SigmaDetection
 
 
 @dataclass
-class RuleFailureTransformation(Transformation):
+class RuleFailureTransformation(PreprocessingTransformation):
     """
     Raise a SigmaTransformationError with the provided message. This enables transformation
     pipelines to signalize that a certain situation can't be handled, e.g. only a subset of values
@@ -23,7 +22,7 @@ class RuleFailureTransformation(Transformation):
 
     message: str
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         raise SigmaTransformationError(self.message, source=rule.source)
 
 
@@ -45,7 +44,7 @@ class DetectionItemFailureTransformation(DetectionItemTransformation):
 
 
 @dataclass
-class StrictFieldMappingFailure(Transformation):
+class StrictFieldMappingFailure(PreprocessingTransformation):
     message = (
         "The field mapping is not strict. "
         "Please check the field mapping in the configuration file."

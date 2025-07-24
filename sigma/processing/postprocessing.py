@@ -2,25 +2,28 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Dict, List, Optional, Union
-import sigma
+from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
+from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
 from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import QueryPostprocessingItem, ProcessingPipeline
+
 
 @dataclass
 class QueryPostprocessingTransformation(Transformation):
     """Query post processing transformation base class."""
 
-    processing_item: Optional["sigma.processing.pipeline.QueryPostprocessingItem"] = field(
+    processing_item: Optional["QueryPostprocessingItem"] = field(
         init=False, compare=False, default=None
     )
 
     @abstractmethod
-    def apply(self, rule: SigmaRule, query: Any) -> Any:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
 
         :param pipeline: Processing pipeline this transformation was contained.
@@ -32,23 +35,21 @@ class QueryPostprocessingTransformation(Transformation):
         :return: Transformed query.
         :rtype: Any
         """
-        super().apply(rule)  # tracking of applied rules
+        self.processing_item_applied(rule)
 
 
 @dataclass
 class EmbedQueryTransformation(QueryPostprocessingTransformation):
     """Embeds a query between a given prefix and suffix. Only applicable to string queries."""
 
-    prefix: Optional[str] = None
-    suffix: Optional[str] = None
+    prefix: str = ""
+    suffix: str = ""
 
-    def __post_init__(self):
-        self.prefix = self.prefix or ""
-        self.suffix = self.suffix or ""
-
-    def apply(self, rule: SigmaRule, query: str) -> str:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         super().apply(rule, query)
-        return self.prefix + query + self.suffix
+        if isinstance(query, str):
+            return self.prefix + query + self.suffix
+        raise TypeError("Query must be a string for EmbedQueryTransformation.")
 
 
 @dataclass
@@ -66,7 +67,7 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
 
     template: str
 
-    def apply(self, rule: SigmaRule, query: str) -> str:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         return self.template.format(
             query=query,
             rule=rule,
@@ -89,7 +90,7 @@ class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBas
     controls the Jinja2 HTML/XML auto-escaping.
     """
 
-    def apply(self, rule: SigmaRule, query: str) -> str:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         return self.j2template.render(query=query, rule=rule, pipeline=self._pipeline)
 
 
@@ -101,8 +102,8 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
     json_template: str
 
     def _replace_placeholder(
-        self, v: Union[Dict, List, str, int, float], query: str
-    ) -> Union[Dict, List, str, int, float]:
+        self, v: Union[Dict[str, Any], List[Any], str, int, float], query: str
+    ) -> Union[Dict[str, Any], List[Any], str, int, float]:
         if isinstance(v, dict):
             return {k: self._replace_placeholder(v, query) for k, v in v.items()}
         elif isinstance(v, list):
@@ -112,10 +113,10 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
         else:
             return v
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.parsed_json = json.loads(self.json_template)
 
-    def apply(self, rule: SigmaRule, query: str):
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         super().apply(rule, query)
         return json.dumps(self._replace_placeholder(self.parsed_json, query))
 
@@ -127,10 +128,10 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     pattern: str
     replacement: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.re = re.compile(self.pattern)
 
-    def apply(self, rule: SigmaRule, query: str):
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         super().apply(rule, query)
         return self.re.sub(self.replacement, query)
 
@@ -139,12 +140,10 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
 class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation):
     """Applies a list of query postprocessing transformations to the query in a nested manner."""
 
-    items: List["sigma.processing.pipeline.QueryPostprocessingItem"]
-    _nested_pipeline: "sigma.processing.pipeline.ProcessingPipeline" = field(
-        init=False, compare=False, default=None
-    )
+    items: List["QueryPostprocessingItem"]
+    _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
         )  # TODO: move to top-level after restructuring code
@@ -153,26 +152,26 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
 
     @classmethod
     def from_dict(cls, d: Dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
+        from sigma.processing.pipeline import QueryPostprocessingItem
+
         try:
             return NestedQueryPostprocessingTransformation(
-                items=[
-                    sigma.processing.pipeline.QueryPostprocessingItem.from_dict(item)
-                    for item in d["items"]
-                ]
+                items=[QueryPostprocessingItem.from_dict(item) for item in d["items"]]
             )
         except KeyError:
             raise SigmaConfigurationError(
                 "Nested post-processing transformation requires an 'items' key."
             )
 
-    def apply(self, rule: SigmaRule, query: Any) -> Any:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
         super().apply(rule, query)
         query = self._nested_pipeline.postprocess_query(rule, query)
-        self._pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
+        if self._pipeline is not None:
+            self._pipeline.applied_ids.update(self._nested_pipeline.applied_ids)
         return query
 
 
-query_postprocessing_transformations = {
+query_postprocessing_transformations: Dict[str, Type[QueryPostprocessingTransformation]] = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
     "template": QueryTemplateTransformation,

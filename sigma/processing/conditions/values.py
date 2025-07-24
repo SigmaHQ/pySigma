@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from typing import Union
 
-import sigma
 from sigma.processing.conditions.base import (
     ValueProcessingCondition,
 )
@@ -21,7 +20,7 @@ class MatchStringCondition(ValueProcessingCondition):
     pattern: str
     negate: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         super().__post_init__()
         try:
             self.re = re.compile(self.pattern)
@@ -32,7 +31,7 @@ class MatchStringCondition(ValueProcessingCondition):
 
     def match_value(self, value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
-            result = self.re.match(str(value))
+            result = bool(self.re.match(str(value)))
         else:
             result = False
 

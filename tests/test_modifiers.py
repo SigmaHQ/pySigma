@@ -78,12 +78,12 @@ def dummy_union_modifier(dummy_detection_item):
 
 
 @pytest.fixture
-def dummy_sequence_modifier(dummy_detection_item):
-    class DummySequenceModifier(SigmaModifier):
-        def modify(self, val: Sequence[SigmaString]) -> List[SigmaString]:
+def dummy_list_modifier(dummy_detection_item):
+    class DummyListModifier(SigmaModifier):
+        def modify(self, val: List[SigmaString]) -> List[SigmaString]:
             return [SigmaString("")]
 
-    return DummySequenceModifier(dummy_detection_item, [])
+    return DummyListModifier(dummy_detection_item, [])
 
 
 def test_typecheck_plain(dummy_plain_modifier):
@@ -99,8 +99,8 @@ def test_typecheck_plain_wrong_apply(dummy_plain_modifier):
         dummy_plain_modifier.apply(SigmaNumber(123))
 
 
-def test_typecheck_apply_list_input(dummy_sequence_modifier):
-    assert dummy_sequence_modifier.apply([SigmaString("foobar")]) == [SigmaString("")]
+def test_typecheck_apply_list_input(dummy_list_modifier):
+    assert dummy_list_modifier.apply([SigmaString("foobar")]) == [SigmaString("")]
 
 
 def test_typecheck_union(dummy_union_modifier):
@@ -111,12 +111,12 @@ def test_typecheck_union_wrong(dummy_union_modifier):
     assert not dummy_union_modifier.type_check(SigmaRegularExpression(".*"))
 
 
-def test_typecheck_sequence(dummy_sequence_modifier):
-    assert dummy_sequence_modifier.type_check([SigmaString("foobar")])
+def test_typecheck_sequence(dummy_list_modifier):
+    assert dummy_list_modifier.type_check([SigmaString("foobar")])
 
 
-def test_typecheck_sequence_wrong(dummy_sequence_modifier):
-    assert not dummy_sequence_modifier.type_check([SigmaNumber(123)])
+def test_typecheck_sequence_wrong(dummy_list_modifier):
+    assert not dummy_list_modifier.type_check([SigmaNumber(123)])
 
 
 def test_contains_nowildcards(dummy_detection_item):
@@ -492,21 +492,21 @@ def test_compare_string(dummy_detection_item):
 
 
 def test_expand(dummy_detection_item):
-    assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == (
+    assert SigmaExpandModifier(dummy_detection_item, []).modify(SigmaString("test%var%test")).s == [
         "test",
         Placeholder("var"),
         "test",
-    )
+    ]
 
 
 def test_expand_re(dummy_detection_item):
     assert SigmaExpandModifier(dummy_detection_item, []).modify(
         SigmaRegularExpression("test%var%test")
-    ).regexp.s == (
+    ).regexp.s == [
         "test",
         Placeholder("var"),
         "test",
-    )
+    ]
 
 
 def test_cidr(dummy_detection_item):

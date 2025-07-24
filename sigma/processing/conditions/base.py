@@ -1,10 +1,8 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-
-import sigma
+from typing import Literal, Optional, Union, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaType
-from typing import Literal, Optional, Union
 from sigma.rule import (
     SigmaDetection,
     SigmaRule,
@@ -13,23 +11,23 @@ from sigma.rule import (
 from sigma.exceptions import (
     SigmaConfigurationError,
     SigmaProcessingItemError,
-    SigmaRegularExpressionError,
 )
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingPipeline
 
 
 @dataclass
 class ProcessingCondition(ABC):
     """Anchor base class for all processing condition types."""
 
-    _pipeline: Optional["sigma.processing.pipeline.ProcessingPipeline"] = field(
-        init=False, compare=False, default=None
-    )
+    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
-    def set_pipeline(self, pipeline: "sigma.processing.pipeline.ProcessingPipeline"):
+    def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         if self._pipeline is None:
             self._pipeline = pipeline
         else:
-            raise SigmaProcessingItemError(f"Pipeline for condition was already set.")
+            raise SigmaProcessingItemError("Pipeline for condition was already set.")
 
     def _clear_pipeline(self) -> None:
         self._pipeline = None
@@ -56,7 +54,7 @@ class FieldNameProcessingCondition(ProcessingCondition, ABC):
     """
 
     @abstractmethod
-    def match_field_name(self, field: str) -> bool:
+    def match_field_name(self, field: Optional[str]) -> bool:
         "The method match is called for each field name and must return a bool result."
 
     def match_detection_item(
@@ -131,7 +129,7 @@ class ValueProcessingCondition(DetectionItemProcessingCondition):
 
     cond: Literal["any", "all"]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.cond == "any":
             self.match_func = any
         elif self.cond == "all":

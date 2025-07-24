@@ -298,6 +298,25 @@ def test_validator_wildcards_instead_of_modifiers_inconsistent():
     assert validator.validate(rule) == []
 
 
+def test_validator_wildcards_instead_of_modifiers_none():
+    validator = WildcardsInsteadOfModifiersValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: null
+              - "val1"
+              - null
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == []
+
+
 def test_validator_wildcards_instead_of_modifiers_correlation_rule(correlation_rule):
     validator = WildcardsInsteadOfModifiersValidator()
     assert validator.validate(correlation_rule) == []

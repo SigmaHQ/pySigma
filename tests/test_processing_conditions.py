@@ -12,29 +12,16 @@ from sigma.exceptions import (
 )
 import pytest
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.conditions import *
 from sigma.processing.conditions import (
-    ContainsWildcardCondition,
-    DetectionItemProcessingCondition,
-    DetectionItemProcessingItemAppliedCondition,
-    DetectionItemProcessingStateCondition,
-    FieldNameProcessingCondition,
-    FieldNameProcessingItemAppliedCondition,
-    FieldNameProcessingStateCondition,
-    IsNullCondition,
-    IsSigmaCorrelationRuleCondition,
-    IsSigmaRuleCondition,
-    LogsourceCondition,
-    IncludeFieldCondition,
-    ExcludeFieldCondition,
-    MatchStringCondition,
     ProcessingCondition,
-    RuleContainsDetectionItemCondition,
-    RuleContainsFieldCondition,
+    DetectionItemProcessingCondition,
+    FieldNameProcessingCondition,
     RuleProcessingCondition,
-    RuleProcessingItemAppliedCondition,
-    RuleAttributeCondition,
-    RuleProcessingStateCondition,
-    RuleTagCondition,
+    __all__ as conditions_all,
+    rule_conditions,
+    detection_item_conditions,
+    field_name_conditions,
 )
 from sigma.rule import SigmaDetectionItem, SigmaLogSource, SigmaRule
 from tests.test_processing_pipeline import processing_item
@@ -375,11 +362,6 @@ def test_field_state_condition_match(dummy_processing_pipeline):
     assert condition.match_field_name("field")
 
 
-def test_processing_state_condition_base_no_pipeline():
-    with pytest.raises(SigmaProcessingItemError, match="No processing pipeline"):
-        FieldNameProcessingStateCondition("field", "value").match_field_name("field")
-
-
 @pytest.fixture
 def multivalued_detection_item():
     return SigmaDetectionItem("field", [], [SigmaString("value"), SigmaNumber(123)])
@@ -572,6 +554,22 @@ def test_condition_identifiers_completeness():
             )
 
 
+def test_condition_export_completeness():
+    condition_classes = {
+        condition_class.__name__
+        for condition_class in list(rule_conditions.values())
+        + list(detection_item_conditions.values())
+        + list(field_name_conditions.values())
+    }
+
+    conditions_all_set = set(conditions_all)
+    assert conditions_all_set.issuperset(
+        condition_classes
+    ), "Not all conditions are exported, missing: " + ", ".join(
+        condition_classes.difference(conditions_all_set)
+    )
+
+
 @pytest.fixture
 def sigma_correlated_rules():
     return SigmaCollection.from_dicts(
@@ -649,3 +647,52 @@ def sigma_correlated_rules():
             },
         ]
     )
+
+
+def test_rule_attribute_condition_invalid_date_type(sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="must be a string value with a valid date"):
+        RuleAttributeCondition("date", 20220223, "lt").match(sigma_rule)
+
+
+def test_rule_attribute_condition_invalid_sigmalevel_type(sigma_rule):
+    with pytest.raises(
+        SigmaConfigurationError, match="must be a string value with a valid severity level"
+    ):
+        RuleAttributeCondition("level", 123, "lt").match(sigma_rule)
+
+
+def test_rule_attribute_condition_invalid_sigmastatus_type(sigma_rule):
+    with pytest.raises(SigmaConfigurationError, match="must be a string value with a valid status"):
+        RuleAttributeCondition("status", 123, "lt").match(sigma_rule)
+
+
+def test_rule_processing_state_condition_no_pipeline(sigma_rule):
+    condition = RuleProcessingStateCondition("key", "value")
+    with pytest.raises(
+        SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
+    ):
+        condition.match(sigma_rule)
+
+
+def test_field_name_processing_state_condition_no_pipeline():
+    condition = FieldNameProcessingStateCondition("field", "value")
+    with pytest.raises(
+        SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
+    ):
+        condition.match_field_name("field")
+
+
+def test_detection_item_processing_state_condition_no_pipeline(detection_item):
+    condition = DetectionItemProcessingStateCondition("field", "value")
+    with pytest.raises(
+        SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
+    ):
+        condition.match(detection_item)
+
+
+def test_field_name_processing_item_applied_no_pipeline():
+    condition = FieldNameProcessingItemAppliedCondition(processing_item_id="processing_item")
+    with pytest.raises(
+        SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
+    ):
+        condition.match_field_name("fieldA")

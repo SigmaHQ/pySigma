@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Any, Dict, List, Optional, TYPE_CHECKING
 
-import sigma
+if TYPE_CHECKING:
+    from sigma.rule import SigmaRuleBase
 
 
 @dataclass
@@ -13,11 +14,11 @@ class SigmaRuleLocation:
     line: Optional[int] = None
     char: Optional[int] = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if isinstance(self.path, str):
             self.path = Path(self.path)
 
-    def __str__(self):
+    def __str__(self) -> str:
         s = str(self.path.resolve())
         if self.line is not None:
             s += ":" + str(self.line)
@@ -29,15 +30,13 @@ class SigmaRuleLocation:
 class SigmaError(ValueError):
     """Generic Sigma error and super-class of all Sigma exceptions"""
 
-    def __init__(self, *args, **kwargs):
-        try:
-            self.source = kwargs["source"]
-            del kwargs["source"]
-        except KeyError:
-            self.source = None
+    def __init__(
+        self, *args: Any, source: Optional[SigmaRuleLocation] = None, **kwargs: Dict[str, Any]
+    ) -> None:
+        self.source = source
         super().__init__(*args, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         if self.source is not None:
             return super().__str__() + " in " + str(self.source)
         else:
@@ -47,7 +46,9 @@ class SigmaError(ValueError):
         try:
             return (
                 type(self) is type(other)
+                and hasattr(other, "source")
                 and self.source == other.source
+                and hasattr(other, "args")
                 and self.args == other.args
             )
         except AttributeError:
@@ -87,11 +88,17 @@ class SigmaConfigurationError(SigmaError):
 class SigmaConversionError(SigmaError):
     """Rule conversion failed."""
 
-    def __init__(self, rule: "sigma.rule.SigmaRuleBase", *args, **kwargs):
+    def __init__(
+        self,
+        rule: "SigmaRuleBase",
+        source: Optional[SigmaRuleLocation] = None,
+        *args: Any,
+        **kwargs: Dict[str, Any],
+    ) -> None:
         self.rule = rule
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return super().__str__() + " in rule " + str(self.rule)
 
 
@@ -116,12 +123,19 @@ class SigmaModifierError(SigmaError):
 class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
     """One or multiple processing pipelines doesn't matches the given backend."""
 
-    def __init__(self, spec: str, backend: str, *args, **kwargs):
+    def __init__(
+        self,
+        spec: str,
+        backend: str,
+        source: Optional[SigmaRuleLocation] = None,
+        *args: List[Any],
+        **kwargs: Dict[str, Any],
+    ):
         self.wrong_pipeline = spec
         self.backend = backend
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return (
             f"Processing pipelines not allowed for backend '{self.backend}': {self.wrong_pipeline}"
         )
@@ -131,11 +145,17 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
     """An attempt to resolve a processing pipeline from a specifier failed because it was not
     found."""
 
-    def __init__(self, spec: str, *args, **kwargs):
+    def __init__(
+        self,
+        spec: str,
+        source: Optional[SigmaRuleLocation] = None,
+        *args: List[Any],
+        **kwargs: Dict[str, Any],
+    ) -> None:
         self.spec = spec
-        super().__init__(*args, **kwargs)
+        super().__init__(*args, source=source, **kwargs)
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"Processing pipeline '{self.spec}' not found"
 
 
@@ -259,20 +279,23 @@ class SigmaDateError(SigmaError):
 class SigmaPipelineConditionError(SigmaConfigurationError):
     """Error in Sigma pipeline condition"""
 
-    def __init__(self, expression: str, location: int, error: str, *args, **kwargs):
+    def __init__(
+        self,
+        error: str,
+        expression: Optional[str] = None,
+        location: Optional[int] = None,
+        *args: Any,
+        source: Optional[SigmaRuleLocation] = None,
+        **kwargs: Dict[str, Any],
+    ):
         self.expression = expression
         self.location = location
-        self.error = error
-        super().__init__(*args, **kwargs)
+        super().__init__(error, *args, source=source, **kwargs)
 
-    def __str__(self):
-        return f"{self.error} in expression '{self.expression}' at location {self.location}"
-
-
-class SigmaFeatureNotSupportedByBackendError(SigmaError):
-    """Sigma feature is not supported by the backend."""
-
-    pass
+    def __str__(self) -> str:
+        location_info = f" at location {self.location}" if self.location is not None else ""
+        expression_info = f" in expression '{self.expression}'" if self.expression else ""
+        return f"{super().__str__()}{expression_info}{location_info}"
 
 
 class SigmaDescriptionError(SigmaError):
@@ -294,6 +317,12 @@ class SigmaFieldsError(SigmaError):
 
 
 class SigmaIdentifierError(SigmaError):
+    """Error in Sigma rule identifier"""
+
+    pass
+
+
+class SigmaTaxonomyError(SigmaError):
     """Error in Sigma rule identifier"""
 
     pass
@@ -365,5 +394,5 @@ class ExceptionOnUsage:
 
     exception: Exception
 
-    def __getattribute__(self, item):
+    def __getattribute__(self, item: str) -> Any:
         raise object.__getattribute__(self, "exception")

@@ -1,6 +1,5 @@
 from dataclasses import dataclass, field
 
-import sigma
 from sigma.processing.conditions.base import FieldNameProcessingCondition
 from typing import List, Pattern, Literal, Optional
 import re
@@ -17,9 +16,9 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
 
     fields: List[str]
     format: Literal["plain", "re"] = field(default="plain")
-    patterns: List[Pattern] = field(init=False, repr=False, default_factory=list)
+    patterns: List[Pattern[str]] = field(init=False, repr=False, default_factory=list)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """
         Check if format is known and pre-compile regular expressions.
         """
@@ -58,6 +57,6 @@ class ExcludeFieldCondition(IncludeFieldCondition):
 
     def match_field_name(
         self,
-        detection_item: SigmaDetectionItem,
+        field: Optional[str],
     ) -> bool:
-        return not super().match_field_name(detection_item)
+        return not super().match_field_name(field)

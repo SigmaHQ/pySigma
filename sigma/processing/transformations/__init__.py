@@ -1,5 +1,5 @@
-from typing import Dict
-from sigma.processing.transformations.base import Transformation
+from typing import Dict, Type
+from sigma.processing.transformations.base import Transformation, PreprocessingTransformation
 from sigma.processing.transformations.condition import AddConditionTransformation
 from sigma.processing.transformations.detection_item import DropDetectionItemTransformation
 from sigma.processing.transformations.failure import (
@@ -38,7 +38,7 @@ from sigma.processing.transformations.values import (
     CaseTransformation,
 )
 
-transformations: Dict[str, Transformation] = {
+transformations: Dict[str, Type[Transformation]] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
     "field_name_transform": FieldFunctionTransformation,
@@ -67,3 +67,35 @@ transformations: Dict[str, Transformation] = {
     "nest": NestedProcessingTransformation,
     "case": CaseTransformation,
 }
+
+__all__ = [
+    #    "Transformation",
+    #    "PreprocessingTransformation",
+    "FieldMappingTransformation",
+    "FieldPrefixMappingTransformation",
+    "FieldFunctionTransformation",
+    "DropDetectionItemTransformation",
+    "HashesFieldsDetectionItemTransformation",
+    "AddFieldnameSuffixTransformation",
+    "AddFieldnamePrefixTransformation",
+    "WildcardPlaceholderTransformation",
+    "ValueListPlaceholderTransformation",
+    "QueryExpressionPlaceholderTransformation",
+    "AddConditionTransformation",
+    "ChangeLogsourceTransformation",
+    "AddFieldTransformation",
+    "RemoveFieldTransformation",
+    "SetFieldTransformation",
+    "ReplaceStringTransformation",
+    "MapStringTransformation",
+    "SetStateTransformation",
+    "RegexTransformation",
+    "SetValueTransformation",
+    "ConvertTypeTransformation",
+    "RuleFailureTransformation",
+    "DetectionItemFailureTransformation",
+    "StrictFieldMappingFailure",
+    "SetCustomAttributeTransformation",
+    "NestedProcessingTransformation",
+    "CaseTransformation",
+]

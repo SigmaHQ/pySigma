@@ -6,7 +6,7 @@ from sigma.modifiers import (
     SigmaStartswithModifier,
 )
 from sigma.rule import SigmaDetectionItem
-from sigma.types import SigmaString, SpecialChars
+from sigma.types import SigmaString, SigmaType, SpecialChars
 from sigma.validators.base import (
     SigmaDetectionItemValidator,
     SigmaStringValueValidator,
@@ -25,7 +25,7 @@ class DoubleWildcardIssue(SigmaValidationIssue):
 class DoubleWildcardValidator(SigmaStringValueValidator):
     """Check strings for consecutive multi-character wildcards."""
 
-    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
         prev_wildcard = False
         for c in value.s:
             if c == SpecialChars.WILDCARD_MULTI:
@@ -48,11 +48,11 @@ class NumberAsStringIssue(SigmaValidationIssue):
 class NumberAsStringValidator(SigmaStringValueValidator):
     """Check numbers that were expressed as strings."""
 
-    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
         if len(value.s) == 1 and isinstance(value.s[0], str) and not " " in value.s[0]:
             try:
                 int(value.s[0])
-                return [NumberAsStringIssue(self.rule, value)]
+                return [NumberAsStringIssue([self.rule], value)]
             except ValueError:
                 pass
         return []
@@ -73,7 +73,7 @@ class ControlCharacterValidator(SigmaStringValueValidator):
     wrong usage of single backslashes, e.g. before a t character, where double backslashes are required.
     """
 
-    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
         if any((ord(c) < 31 for s in value.s for c in (s if isinstance(s, str) else ""))):
             return [ControlCharacterIssue([self.rule], value)]
         else:
@@ -115,7 +115,8 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
     ) -> List[SigmaValidationIssue]:
         # Warning rule use a single '*' waiting for the `exists` modifier  so check len(value)>1 to allow it
         if (
-            all(
+            detection_item.original_value is not None
+            and all(
                 (
                     isinstance(value, SigmaString)
                     and len(value) > 1
@@ -129,7 +130,8 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
         ):
             return [WildcardsInsteadOfContainsModifierIssue([self.rule], detection_item)]
         elif (
-            all(
+            detection_item.original_value is not None
+            and all(
                 (
                     isinstance(value, SigmaString)
                     and len(value) > 1
@@ -142,7 +144,8 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
         ):
             return [WildcardInsteadOfEndswithIssue([self.rule], detection_item)]
         elif (
-            all(
+            detection_item.original_value is not None
+            and all(
                 (
                     isinstance(value, SigmaString)
                     and len(value) > 1
@@ -172,8 +175,8 @@ class EscapedWildcardValidator(SigmaStringValueValidator):
 
     wildcard_list = ["*", "?"]
 
-    def validate_value(self, value: SigmaString) -> List[SigmaValidationIssue]:
-        if any([x in s for x in self.wildcard_list for s in value if isinstance(s, str)]):
-            return [EscapedWildcardIssue(self.rule, value)]
+    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+        if any([x in s for x in self.wildcard_list for s in value.s if isinstance(s, str)]):
+            return [EscapedWildcardIssue([self.rule], value)]
         else:
             return []

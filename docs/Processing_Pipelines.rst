@@ -189,14 +189,14 @@ Rule Conditions
    "rule_attribute", "RuleAttributeCondition"
    "tag", "RuleTagCondition"
 
-.. autoclass:: sigma.processing.conditions.LogsourceCondition
-.. autoclass:: sigma.processing.conditions.RuleContainsDetectionItemCondition
-.. autoclass:: sigma.processing.conditions.RuleProcessingItemAppliedCondition
-.. autoclass:: sigma.processing.conditions.RuleProcessingStateCondition
-.. autoclass:: sigma.processing.conditions.IsSigmaRuleCondition
-.. autoclass:: sigma.processing.conditions.IsSigmaCorrelationRuleCondition
-.. autoclass:: sigma.processing.conditions.RuleAttributeCondition
-.. autoclass:: sigma.processing.conditions.RuleTagCondition
+.. autoclass:: sigma.processing.conditions.rule.LogsourceCondition
+.. autoclass:: sigma.processing.conditions.rule.RuleContainsDetectionItemCondition
+.. autoclass:: sigma.processing.conditions.state.RuleProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.state.RuleProcessingStateCondition
+.. autoclass:: sigma.processing.conditions.rule.IsSigmaRuleCondition
+.. autoclass:: sigma.processing.conditions.rule.IsSigmaCorrelationRuleCondition
+.. autoclass:: sigma.processing.conditions.rule.RuleAttributeCondition
+.. autoclass:: sigma.processing.conditions.rule.RuleTagCondition
 
 Detection Item Conditions
 =========================
@@ -210,10 +210,10 @@ Detection Item Conditions
    "processing_item_applied", "DetectionItemProcessingItemAppliedCondition"
    "processing_state", "DetectionItemProcessingStateCondition"
 
-.. autoclass:: sigma.processing.conditions.MatchStringCondition
-.. autoclass:: sigma.processing.conditions.IsNullCondition
-.. autoclass:: sigma.processing.conditions.DetectionItemProcessingItemAppliedCondition
-.. autoclass:: sigma.processing.conditions.DetectionItemProcessingStateCondition
+.. autoclass:: sigma.processing.conditions.values.MatchStringCondition
+.. autoclass:: sigma.processing.conditions.values.IsNullCondition
+.. autoclass:: sigma.processing.conditions.state.DetectionItemProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.state.DetectionItemProcessingStateCondition
 
 Field Name Conditions
 =====================
@@ -227,10 +227,10 @@ Field Name Conditions
    "processing_item_applied", "FieldNameProcessingItemAppliedCondition"
    "processing_state", "FieldNameProcessingStateCondition"
 
-.. autoclass:: sigma.processing.conditions.IncludeFieldCondition
-.. autoclass:: sigma.processing.conditions.ExcludeFieldCondition
-.. autoclass:: sigma.processing.conditions.FieldNameProcessingItemAppliedCondition
-.. autoclass:: sigma.processing.conditions.FieldNameProcessingStateCondition
+.. autoclass:: sigma.processing.conditions.fields.IncludeFieldCondition
+.. autoclass:: sigma.processing.conditions.fields.ExcludeFieldCondition
+.. autoclass:: sigma.processing.conditions.state.FieldNameProcessingItemAppliedCondition
+.. autoclass:: sigma.processing.conditions.state.FieldNameProcessingStateCondition
 
 Base Classes
 ============
@@ -242,10 +242,10 @@ condition from processing pipelines defined in YAML files. The mapping is done i
 the respective condition types. This is not necessary for conditions that should be uses privately
 and not be distributed via the main pySigma distribution.
 
-.. autoclass:: sigma.processing.conditions.RuleProcessingCondition
-.. autoclass:: sigma.processing.conditions.DetectionItemProcessingCondition
-.. autoclass:: sigma.processing.conditions.FieldNameProcessingCondition
-.. autoclass:: sigma.processing.conditions.ValueProcessingCondition
+.. autoclass:: sigma.processing.conditions.base.RuleProcessingCondition
+.. autoclass:: sigma.processing.conditions.base.DetectionItemProcessingCondition
+.. autoclass:: sigma.processing.conditions.base.FieldNameProcessingCondition
+.. autoclass:: sigma.processing.conditions.base.ValueProcessingCondition
 
 .. _transformations:
 
@@ -267,6 +267,7 @@ definitions are available:
    "field_name_prefix_mapping", "FieldPrefixMappingTransformation"
    "field_name_transform", "FieldFunctionTransformation"
    "drop_detection_item", "DropDetectionItemTransformation"
+   "hashes_fields", "HashesFieldsDetectionItemTransformation"
    "field_name_suffix", "AddFieldnameSuffixTransformation"
    "field_name_prefix", "AddFieldnamePrefixTransformation"
    "wildcard_placeholders", "WildcardPlaceholderTransformation"
@@ -287,8 +288,34 @@ definitions are available:
    "detection_item_failure", "DetectionItemFailureTransformation"
    "set_custom_attribute", "SetCustomAttributeTransformation"
    "nest", "NestedProcessingTransformation"
+   "case", "CaseTransformation"
 
-.. autoclass:: sigma.processing.transformations.FieldMappingTransformation
+.. autoclass:: sigma.processing.transformations.fields.FieldMappingTransformation
+.. autoclass:: sigma.processing.transformations.fields.FieldPrefixMappingTransformation
+.. autoclass:: sigma.processing.transformations.fields.FieldFunctionTransformation
+.. autoclass:: sigma.processing.transformations.detection_item.DropDetectionItemTransformation
+.. autoclass:: sigma.processing.transformations.values.HashesFieldsDetectionItemTransformation
+.. autoclass:: sigma.processing.transformations.fields.AddFieldnameSuffixTransformation
+.. autoclass:: sigma.processing.transformations.fields.AddFieldnamePrefixTransformation
+.. autoclass:: sigma.processing.transformations.placeholder.WildcardPlaceholderTransformation
+.. autoclass:: sigma.processing.transformations.placeholder.ValueListPlaceholderTransformation
+.. autoclass:: sigma.processing.transformations.placeholder.QueryExpressionPlaceholderTransformation
+.. autoclass:: sigma.processing.transformations.condition.AddConditionTransformation
+.. autoclass:: sigma.processing.transformations.rule.ChangeLogsourceTransformation
+.. autoclass:: sigma.processing.transformations.fields.AddFieldTransformation
+.. autoclass:: sigma.processing.transformations.fields.RemoveFieldTransformation
+.. autoclass:: sigma.processing.transformations.fields.SetFieldTransformation
+.. autoclass:: sigma.processing.transformations.values.ReplaceStringTransformation
+.. autoclass:: sigma.processing.transformations.values.MapStringTransformation
+.. autoclass:: sigma.processing.transformations.state.SetStateTransformation
+.. autoclass:: sigma.processing.transformations.values.RegexTransformation
+.. autoclass:: sigma.processing.transformations.values.SetValueTransformation
+.. autoclass:: sigma.processing.transformations.values.ConvertTypeTransformation
+.. autoclass:: sigma.processing.transformations.failure.RuleFailureTransformation
+.. autoclass:: sigma.processing.transformations.failure.DetectionItemFailureTransformation
+.. autoclass:: sigma.processing.transformations.rule.SetCustomAttributeTransformation
+.. autoclass:: sigma.processing.transformations.meta.NestedProcessingTransformation
+.. autoclass:: sigma.processing.transformations.values.CaseTransformation
 
 YAML example:
 
@@ -359,13 +386,6 @@ YAML example:
       - type: set_state
         state: processed
 
-.. autoclass:: sigma.processing.transformations.RegexTransformation
-.. autoclass:: sigma.processing.transformations.SetValueTransformation
-.. autoclass:: sigma.processing.transformations.ConvertTypeTransformation
-.. autoclass:: sigma.processing.transformations.SetStateTransformation
-.. autoclass:: sigma.processing.transformations.RuleFailureTransformation
-.. autoclass:: sigma.processing.transformations.DetectionItemFailureTransformation
-
 Query Post-Processing Transformations
 ======================================
 
@@ -416,10 +436,10 @@ Base Classes
 There are four transformation base classes that can be derived to implement transformations on
 particular parts of a Sigma rule or the whole Sigma rule:
 
-.. autoclass:: sigma.processing.transformations.Transformation
-.. autoclass:: sigma.processing.transformations.DetectionItemTransformation
-.. autoclass:: sigma.processing.transformations.ValueTransformation
-.. autoclass:: sigma.processing.transformations.ConditionTransformation
+.. autoclass:: sigma.processing.transformations.base.Transformation
+.. autoclass:: sigma.processing.transformations.base.DetectionItemTransformation
+.. autoclass:: sigma.processing.transformations.base.ValueTransformation
+.. autoclass:: sigma.processing.transformations.base.ConditionTransformation
 
 Transformation Tracking
 ***********************

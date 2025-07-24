@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import dataclasses
 from typing import Any, Dict, Optional
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaRuleLocation, SigmaTypeError
 
 
 @dataclass(frozen=True)
@@ -14,7 +14,7 @@ class SigmaLogSource:
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Ensures that log source is not empty."""
         if self.category is None and self.product is None and self.service is None:
             raise sigma_exceptions.SigmaLogsourceError(
@@ -39,7 +39,7 @@ class SigmaLogSource:
 
     @classmethod
     def from_dict(
-        cls, logsource: dict, source: Optional[SigmaRuleLocation] = None
+        cls, logsource: Dict[str, str], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaLogSource":
         """Returns SigmaLogSource object from dict with fields."""
         custom_attributes = {
@@ -55,7 +55,7 @@ class SigmaLogSource:
             custom_attributes if len(custom_attributes) > 0 else None,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         return {
             field.name: str(value)
             for field in dataclasses.fields(self)
@@ -70,7 +70,7 @@ class SigmaLogSource:
         * The log source specifies less attributes than the other and the specified attributes are equal
         """
         if not isinstance(other, self.__class__):
-            raise TypeError(
+            raise SigmaTypeError(
                 "Containment check only allowed between log sources", source=self.source
             )
 
@@ -82,3 +82,14 @@ class SigmaLogSource:
             and (self.product is None or self.product == other.product)
             and (self.service is None or self.service == other.service)
         )
+
+
+class EmptyLogSource(SigmaLogSource):
+    """
+    Log sources can't be empty, but this class is used to represent an empty log source as dummy for error
+    handling purposes.
+    """
+
+    def __post_init__(self) -> None:
+        # Do not raise an error for empty log source
+        pass

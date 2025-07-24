@@ -1,22 +1,28 @@
+from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, List
+from typing import Any, Dict, Optional, Tuple, List, Type, TYPE_CHECKING
 from uuid import UUID
 from datetime import date, datetime
+import datetime as dt
 import yaml
 import re
-import sigma
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaRuleLocation
+from sigma.exceptions import SigmaError, SigmaRuleLocation
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
+from sigma.conversion.state import ConversionState
+
+if TYPE_CHECKING:
+    from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
+    from sigma.rule.attributes import SigmaRelated, SigmaStatus, SigmaRuleTag, SigmaLevel
 
 
 class SigmaYAMLLoader(yaml.SafeLoader):
     """Custom YAML loader implementing additional functionality for Sigma."""
 
-    def construct_mapping(self, node, deep=...):
+    def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Dict[Any, Any]:
         keys = set()
         for k, v in node.value:
-            key = self.construct_object(k, deep=deep)
+            key = self.construct_object(k, deep=deep)  # type: ignore
             if key in keys:
                 raise yaml.error.YAMLError("Duplicate key '{k}'")
             else:
@@ -31,18 +37,18 @@ class SigmaRuleBase:
     id: Optional[UUID] = None
     name: Optional[str] = None
     taxonomy: str = "sigma"
-    related: Optional["sigma.rule.attributes.SigmaRelated"] = None
-    status: Optional["sigma.rule.attributes.SigmaStatus"] = None
+    related: Optional["SigmaRelated"] = None
+    status: Optional["SigmaStatus"] = None
     description: Optional[str] = None
     license: Optional[str] = None
     references: List[str] = field(default_factory=list)
-    tags: List["sigma.rule.attributes.SigmaRuleTag"] = field(default_factory=list)
+    tags: List["SigmaRuleTag"] = field(default_factory=list)
     author: Optional[str] = None
-    date: Optional["datetime.date"] = None
-    modified: Optional["datetime.date"] = None
+    date: Optional["dt.date"] = None
+    modified: Optional["dt.date"] = None
     fields: List[str] = field(default_factory=list)
     falsepositives: List[str] = field(default_factory=list)
-    level: Optional["sigma.rule.attributes.SigmaLevel"] = None
+    level: Optional["SigmaLevel"] = None
     scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
@@ -55,12 +61,12 @@ class SigmaRuleBase:
     _conversion_result: Optional[List[Any]] = field(
         init=False, default=None, repr=False, compare=False
     )
-    _conversion_states: Optional[List["sigma.conversion.state.ConversionState"]] = field(
+    _conversion_states: Optional[List["ConversionState"]] = field(
         init=False, default=None, repr=False, compare=False
     )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
                 self.__setattr__(field, [])
@@ -73,12 +79,12 @@ class SigmaRuleBase:
                 pass
 
     @classmethod
-    def from_dict(
+    def from_dict_common_params(
         cls,
-        rule: dict,
+        rule: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> Tuple[dict, List[Exception]]:
+    ) -> Tuple[Dict[str, Any], List[SigmaError]]:
         """
         Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
         class instantiation of an object derived from the SigmaRuleBase class and the errors list.
@@ -90,7 +96,7 @@ class SigmaRuleBase:
         """
         errors = []
 
-        def get_rule_as_date(name: str, exception_class) -> Optional[date]:
+        def get_rule_as_date(name: str, exception_class: Type[SigmaError]) -> Optional[date]:
             """
             Accepted string based date formats are in range 1000-01-01 .. 3999-12-31:
               * XXXX-XX-XX                                 -- fully corresponds to yaml date format
@@ -99,21 +105,21 @@ class SigmaRuleBase:
                 2024-01-1, 24-1-24, 24/1/1, ...
             """
             nonlocal errors, rule, source
-            result = rule.get(name)
+            value = rule.get(name)
             if (
-                result is not None
-                and not isinstance(result, date)
-                and not isinstance(result, datetime)
+                value is not None
+                and not isinstance(value, date)
+                and not isinstance(value, datetime)
             ):
                 error = True
                 try:
-                    result = str(result)  # forcifully convert whatever the type is into string
+                    value = str(value)  # forcifully convert whatever the type is into string
                     accepted_regexps = (
                         "([1-3][0-9][0-9][0-9])-([01][0-9])-([0-3][0-9])",  # 1000-01-01 .. 3999-12-31
                         "([1-3][0-9][0-9][0-9])/([01]?[0-9])/([0-3]?[0-9])",  # 1000/1/1, 1000/01/01 .. 3999/12/31
                     )
                     for date_regexp in accepted_regexps:
-                        matcher = re.fullmatch(date_regexp, result)
+                        matcher = re.fullmatch(date_regexp, value)
                         if matcher:
                             result = date(int(matcher[1]), int(matcher[2]), int(matcher[3]))
                             error = False
@@ -123,10 +129,13 @@ class SigmaRuleBase:
                 if error:
                     errors.append(
                         exception_class(
-                            f"Rule {name} '{ result }' is invalid, use yyyy-mm-dd", source=source
+                            f"Rule {name} '{ value }' is invalid, use yyyy-mm-dd", source=source
                         )
                     )
-            return result
+                    return None
+                return result
+            else:
+                return value
 
         # Rule identifier may be empty or must be valid UUID
         rule_id = rule.get("id")
@@ -358,14 +367,22 @@ class SigmaRuleBase:
         )
 
     @classmethod
+    @abstractmethod
+    def from_dict(cls, rule: Dict[str, Any], collect_errors: bool = False) -> "SigmaRuleBase":
+        """Convert dict input into SigmaRule object."""
+        raise NotImplementedError(
+            "from_dict method must be implemented in the derived class of SigmaRuleBase"
+        )
+
+    @classmethod
     def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRuleBase":
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert rule object into dict."""
-        d = {
+        d: Dict[str, Any] = {
             "title": self.title,
         }
         # Convert to string where possible
@@ -391,7 +408,7 @@ class SigmaRuleBase:
 
         return d
 
-    def add_backreference(self, rule: "SigmaRuleBase"):
+    def add_backreference(self, rule: "SigmaRuleBase") -> None:
         """Add backreference to another rule."""
         self._backreferences.append(rule)
 
@@ -399,7 +416,7 @@ class SigmaRuleBase:
         """Check if rule is referenced by another rule."""
         return rule in self._backreferences
 
-    def set_conversion_result(self, result: List[Any]):
+    def set_conversion_result(self, result: List[Any]) -> None:
         """Set conversion result."""
         self._conversion_result = result
 
@@ -408,24 +425,26 @@ class SigmaRuleBase:
         if self._conversion_result is None:
             raise sigma_exceptions.SigmaConversionError(
                 self,
+                None,
                 "Conversion result not available",
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: List["sigma.conversion.state.ConversionState"]):
+    def set_conversion_states(self, state: List["ConversionState"]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_states(self) -> List["sigma.conversion.state.ConversionState"]:
+    def get_conversion_states(self) -> List["ConversionState"]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(
                 self,
+                None,
                 "Conversion state not available",
             )
         return self._conversion_states
 
-    def disable_output(self):
+    def disable_output(self) -> None:
         """Disable output of rule."""
         self._output = False
 

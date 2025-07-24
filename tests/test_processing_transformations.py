@@ -30,38 +30,17 @@ from sigma.processing.conditions import (
     rule_conditions,
 )
 from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.transformations import *
 from sigma.processing.transformations import (
-    AddConditionTransformation,
-    AddFieldnamePrefixTransformation,
-    AddFieldnameSuffixTransformation,
-    AddFieldTransformation,
-    CaseTransformation,
-    ChangeLogsourceTransformation,
-    ConvertTypeTransformation,
-    DetectionItemFailureTransformation,
-    DropDetectionItemTransformation,
-    FieldMappingTransformation,
-    FieldPrefixMappingTransformation,
-    HashesFieldsDetectionItemTransformation,
-    MapStringTransformation,
-    NestedProcessingTransformation,
-    QueryExpressionPlaceholderTransformation,
-    RegexTransformation,
-    RemoveFieldTransformation,
-    ReplaceStringTransformation,
-    RuleFailureTransformation,
-    SetCustomAttributeTransformation,
-    SetFieldTransformation,
-    SetStateTransformation,
-    SetValueTransformation,
     Transformation,
-    ValueListPlaceholderTransformation,
-    WildcardPlaceholderTransformation,
     transformations,
+    __all__ as transformations_all,
     StrictFieldMappingFailure,
 )
 from sigma.processing.transformations.base import ConditionTransformation
-from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaLogSource, SigmaRule
+from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
+from sigma.rule.logsource import SigmaLogSource
+from sigma.rule.rule import SigmaRule
 from sigma.types import (
     Placeholder,
     SigmaBool,
@@ -437,6 +416,158 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
         "field1": {"fieldA"},
         "field3": {"fieldC", "fieldD"},
     }
+
+
+@pytest.fixture
+def field_function_transformation():
+    return FieldFunctionTransformation(
+        transform_func=lambda field: f"transformed_{field}",
+        mapping={"field1": "mapped_field1", "field2": "mapped_field2"},
+    )
+
+
+def test_field_function_transformation(dummy_pipeline, field_function_transformation):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [
+                    {
+                        "field1": "value1",
+                        "field2": "value2",
+                        "field3": "value3",
+                    }
+                ],
+                "condition": "test",
+            },
+            "fields": [
+                "field1",
+                "field2",
+                "field3",
+            ],
+        }
+    )
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.set_processing_item(
+        ProcessingItem(
+            field_function_transformation,
+            identifier="test",
+        )
+    )
+    field_function_transformation.apply(sigma_rule)
+    assert sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("mapped_field1", [], [SigmaString("value1")]),
+                    SigmaDetectionItem("mapped_field2", [], [SigmaString("value2")]),
+                    SigmaDetectionItem("transformed_field3", [], [SigmaString("value3")]),
+                ]
+            )
+        ]
+    )
+    assert sigma_rule.fields == [
+        "mapped_field1",
+        "mapped_field2",
+        "transformed_field3",
+    ]
+    assert sigma_rule.was_processed_by("test")
+    assert field_function_transformation._pipeline.field_mappings == {
+        "field1": {"mapped_field1"},
+        "field2": {"mapped_field2"},
+        "field3": {"transformed_field3"},
+    }
+
+
+def test_field_function_transformation_keyword_detection(
+    dummy_pipeline, keyword_sigma_rule, field_function_transformation
+):
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                None,
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
+def test_field_function_transformation_keyword_detection_with_none(
+    monkeypatch, dummy_pipeline, keyword_sigma_rule, field_function_transformation
+):
+    monkeypatch.setattr(field_function_transformation, "apply_keyword", True)
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(keyword_sigma_rule)
+    assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
+        [
+            SigmaDetectionItem(
+                "transformed_None",
+                [],
+                [
+                    SigmaString("value1"),
+                    SigmaString("value2"),
+                    SigmaString("value3"),
+                ],
+            ),
+        ]
+    )
+
+
+def test_field_function_transformation_correlation_rule(
+    dummy_pipeline, sigma_correlation_rule, field_function_transformation
+):
+    sigma_correlation_rule = SigmaCorrelationRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "correlation": {
+                "type": "value_count",
+                "rules": [
+                    "testrule_1",
+                    "testrule_2",
+                ],
+                "timespan": "5m",
+                "group-by": [
+                    "field1",
+                    "field2",
+                    "field3",
+                ],
+                "condition": {
+                    "gte": 10,
+                    "field": "field1",
+                },
+                "aliases": {
+                    "alias1": {
+                        "testrule_1": "field1",
+                        "testrule_2": "field2",
+                    },
+                },
+            },
+        }
+    )
+    field_function_transformation.set_pipeline(dummy_pipeline)
+    field_function_transformation.apply(sigma_correlation_rule)
+    assert sigma_correlation_rule.group_by == [
+        "mapped_field1",
+        "mapped_field2",
+        "transformed_field3",
+    ]
+    assert sigma_correlation_rule.aliases.aliases["alias1"] == SigmaCorrelationFieldAlias(
+        alias="alias1",
+        mapping={
+            SigmaRuleReference("testrule_1"): "mapped_field1",
+            SigmaRuleReference("testrule_2"): "mapped_field2",
+        },
+    )
+    assert sigma_correlation_rule.condition.fieldref == "mapped_field1"
 
 
 @pytest.fixture
@@ -951,10 +1082,10 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders:
         detection_items[0].value[0] == SigmaString("value*test")
         and detection_items[0].was_processed_by("test") == True
         and detection_items[1].value[0].s
-        == ("value", Placeholder("var2"), "test", Placeholder("var3"))
+        == ["value", Placeholder("var2"), "test", Placeholder("var3")]
         and detection_items[1].was_processed_by("test") == False
         and detection_items[2].value[0].s
-        == (
+        == [
             "value",
             SpecialChars.WILDCARD_MULTI,
             "test",
@@ -962,7 +1093,7 @@ def test_wildcard_placeholders_included(dummy_pipeline, sigma_rule_placeholders:
             "test",
             Placeholder("var3"),
             "test",
-        )
+        ]
         and detection_items[2].was_processed_by("test") == True
         and sigma_rule_placeholders.was_processed_by("test")
     )
@@ -985,10 +1116,10 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
         detection_items[0].value[0] == SigmaString("value*test")
         and detection_items[0].was_processed_by("test") == True
         and detection_items[1].value[0].s
-        == ("value", Placeholder("var2"), "test", Placeholder("var3"))
+        == ["value", Placeholder("var2"), "test", Placeholder("var3")]
         and detection_items[1].was_processed_by("test") == False
         and detection_items[2].value[0].s
-        == (
+        == [
             "value",
             SpecialChars.WILDCARD_MULTI,
             "test",
@@ -996,7 +1127,7 @@ def test_wildcard_placeholders_excluded(dummy_pipeline, sigma_rule_placeholders:
             "test",
             Placeholder("var3"),
             "test",
-        )
+        ]
         and detection_items[2].was_processed_by("test") == True
         and sigma_rule_placeholders.was_processed_by("test")
     )
@@ -1162,6 +1293,16 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
         transformation.apply(sigma_rule_placeholders)
 
 
+def test_queryexpr_placeholders_include_and_exclude_error():
+    with pytest.raises(SigmaConfigurationError, match="exclusively"):
+        QueryExpressionPlaceholderTransformation(
+            expression="{field} lookup {id}",
+            mapping={"var1": "placeholder1"},
+            include=["included_field"],
+            exclude=["excluded_field"],
+        )
+
+
 ### ConditionTransformation ###
 @dataclass
 class DummyConditionTransformation(ConditionTransformation):
@@ -1212,6 +1353,7 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
             "newfield2": 123,
             "newfield3": "$category",
             "listfield": ["value1", "value2"],
+            "numlistfield": [1, 2, 3],
         },
         "additional",
     )
@@ -1233,6 +1375,9 @@ def test_addconditiontransformation(dummy_pipeline, sigma_rule: SigmaRule):
                 SigmaDetectionItem("newfield2", [], [SigmaNumber(123)]),
                 SigmaDetectionItem("newfield3", [], [SigmaString("$category")]),
                 SigmaDetectionItem("listfield", [], [SigmaString("value1"), SigmaString("value2")]),
+                SigmaDetectionItem(
+                    "numlistfield", [], [SigmaNumber(1), SigmaNumber(2), SigmaNumber(3)]
+                ),
             ]
         )
         and all(  # detection items are marked as processed by processing item
@@ -1262,6 +1407,8 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
             "newfield1": "$category",
             "newfield2": "$something",
             "listfield": ["$category", "value"],
+            "numfield": 123,
+            "numlistfield": [1, 2, 3],
         },
         "additional",
         template=True,
@@ -1283,6 +1430,10 @@ def test_addconditiontransformation_template(dummy_pipeline, sigma_rule: SigmaRu
                 SigmaDetectionItem("newfield1", [], [SigmaString("test")]),
                 SigmaDetectionItem("newfield2", [], [SigmaString("$something")]),
                 SigmaDetectionItem("listfield", [], [SigmaString("test"), SigmaString("value")]),
+                SigmaDetectionItem("numfield", [], [SigmaNumber(123)]),
+                SigmaDetectionItem(
+                    "numlistfield", [], [SigmaNumber(1), SigmaNumber(2), SigmaNumber(3)]
+                ),
             ]
         )
         and all(  # detection items are marked as processed by processing item
@@ -1985,13 +2136,29 @@ def test_nested_pipeline_transformation_no_items():
 
 
 def test_transformation_identifier_completeness():
+    import sigma.processing.transformations as transformations_module
+
     classes_with_identifiers = transformations.values()
 
     def class_filter(c):
-        return inspect.isclass(c) and not inspect.isabstract(c) and issubclass(c, Transformation)
+        return (
+            inspect.isclass(c)
+            and not inspect.isabstract(c)
+            and issubclass(c, Transformation)
+            and not c is Transformation
+        )
 
     for cls in inspect.getmembers(transformations_module, class_filter):
         assert cls[1] in classes_with_identifiers
+
+
+def test_transformation_export_completeness():
+    assert {transformation.__name__ for transformation in transformations.values()}.issubset(
+        transformations_all
+    ), "Not all transformations are exported in transformations_all: " + ", ".join(
+        set(transformations_all)
+        - {transformation.__name__ for transformation in transformations.values()}
+    )
 
 
 @pytest.fixture
@@ -2057,7 +2224,7 @@ def test_hashes_transformation_drop_algo_prefix():
 
 def test_hashes_transformation_invalid_hash(hashes_transformation):
     detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
-    with pytest.raises(Exception, match="No valid hash algo found"):
+    with pytest.raises(Exception, match="No valid hash algorithm found"):
         hashes_transformation.apply_detection_item(detection_item)
 
 
@@ -2115,6 +2282,11 @@ def test_hashes_transformation_pipe_separator(hashes_transformation):
     ]
 
 
+def test_hashes_transformation_no_string_value(hashes_transformation):
+    detection_item = SigmaDetectionItem("SomethingElse", [], [SigmaNumber(123456)])
+    assert hashes_transformation.apply_detection_item(detection_item) is None
+
+
 def test_case_transformation_lower(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC")])
     transformation = CaseTransformation(method="lower")
@@ -2133,13 +2305,13 @@ def test_case_transformation_special(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC*zer?.123\\")])
     transformation = CaseTransformation(method="upper")
     transformation.apply_detection_item(detection_item)
-    assert detection_item.value[0].s == (
+    assert detection_item.value[0].s == [
         "ABC",
         SpecialChars.WILDCARD_MULTI,
         "ZER",
         SpecialChars.WILDCARD_SINGLE,
         ".123\\",
-    )
+    ]
 
 
 def test_case_transformation_snake_case_from_camel_case(dummy_pipeline):

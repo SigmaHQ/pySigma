@@ -2,8 +2,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import List, Optional, Union
-from uuid import UUID
+from typing import Any, Dict, List, Optional, Union
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
@@ -23,7 +22,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls, detections: dict, source: Optional[SigmaRuleLocation] = None
+        cls, detections: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], str):
@@ -67,7 +66,7 @@ class SigmaGlobalFilter(SigmaDetections):
             source=source,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
         d.update(
             {
@@ -85,22 +84,23 @@ class SigmaFilter(SigmaRuleBase):
     """
 
     logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
-    filter: SigmaGlobalFilter = field(default_factory=SigmaGlobalFilter)
+    filter: SigmaGlobalFilter = field(
+        default_factory=lambda: SigmaGlobalFilter({}, []),
+    )
 
     @classmethod
     def from_dict(
         cls,
-        sigma_filter: dict,
+        sigma_filter: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaFilter":
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
-        kwargs, errors = super().from_dict(sigma_filter, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(sigma_filter, collect_errors, source)
 
         # parse log source
-        filter_logsource = None
         try:
             filter_logsource = SigmaLogSource.from_dict(sigma_filter["logsource"], source)
         except KeyError:
@@ -119,7 +119,6 @@ class SigmaFilter(SigmaRuleBase):
             errors.append(e)
 
         # parse detections
-        filter_global_filter = None
         try:
             filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source)
         except KeyError:
@@ -147,7 +146,7 @@ class SigmaFilter(SigmaRuleBase):
             **kwargs,
         )
 
-    def to_dict(self) -> dict:
+    def to_dict(self) -> Dict[str, Any]:
         """Convert filter object into dict."""
         d = super().to_dict()
         d.update(
@@ -162,7 +161,7 @@ class SigmaFilter(SigmaRuleBase):
     def _should_apply_on_rule(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> bool:
         from sigma.collection import SigmaCollection
 
-        if not self.filter.rules:
+        if not self.filter.rules or isinstance(rule, SigmaCorrelationRule):
             return False
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
@@ -185,7 +184,7 @@ class SigmaFilter(SigmaRuleBase):
     def apply_on_rule(
         self, rule: Union[SigmaRule, SigmaCorrelationRule]
     ) -> Union[SigmaRule, SigmaCorrelationRule]:
-        if not self._should_apply_on_rule(rule):
+        if not self._should_apply_on_rule(rule) or isinstance(rule, SigmaCorrelationRule):
             return rule
 
         filter_condition = self.filter.condition[0]
@@ -200,8 +199,8 @@ class SigmaFilter(SigmaRuleBase):
             )
             rule.detection.detections[cond_name] = condition
 
-        for i, condition in enumerate(rule.detection.condition):
-            rule.detection.condition[i] = f"({condition}) and " + f"({filter_condition})"
+        for i, condition_str in enumerate(rule.detection.condition):
+            rule.detection.condition[i] = f"({condition_str}) and " + f"({filter_condition})"
 
         # Reparse the rule to update the parsed conditions
         rule.detection.__post_init__()

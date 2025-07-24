@@ -1,10 +1,12 @@
 from collections import defaultdict
-from typing import DefaultDict, Dict, Iterable, Iterator, List, Set, Type, Union
+from typing import Any, DefaultDict, Dict, Iterable, Iterator, List, Optional, Set, Type, Union
 from uuid import UUID
 from sigma.exceptions import SigmaConfigurationError, SigmaValidatorConfigurationParsingError
 from sigma.rule import SigmaRule
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
 import yaml
+
+from sigma.validators.core import validator_classname_to_identifier
 
 
 class SigmaValidator:
@@ -18,22 +20,24 @@ class SigmaValidator:
     """
 
     validators: Set[SigmaRuleValidator]
-    exclusions: DefaultDict[UUID, Set[Type[SigmaRuleValidator]]]
-    config: Dict[str, Dict[str, Union[str, int, float, bool]]]
+    exclusions: DefaultDict[Optional[UUID], Set[Type[SigmaRuleValidator]]]
 
     def __init__(
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
-        exclusions: Dict[UUID, Set[SigmaRuleValidator]] = dict(),
-        config: Dict[str, Dict[str, Union[str, int, float, bool, tuple]]] = dict(),
+        exclusions: Dict[Optional[UUID], Set[Type[SigmaRuleValidator]]] = dict(),
+        config: Dict[str, Dict[str, Union[str, int, float, bool]]] = dict(),
     ):
         self.validators = {
-            validator(**config.get(validator.__name__, {})) for validator in validators
+            validator(**config.get(validator_classname_to_identifier(validator.__name__), {}))
+            for validator in validators
         }
         self.exclusions = defaultdict(set, exclusions)
 
     @classmethod
-    def from_dict(cls, d: Dict, validators: Dict[str, SigmaRuleValidator]) -> "SigmaValidator":
+    def from_dict(
+        cls, d: Dict[str, Any], validators: Dict[str, Type[SigmaRuleValidator]]
+    ) -> "SigmaValidator":
         """
         Instantiate SigmaValidator from dict definition. The dict should have the following
         elements:
@@ -76,7 +80,7 @@ class SigmaValidator:
         # Build exclusion dict
         try:
             exclusions = {
-                UUID(rule_id): {
+                (UUID(rule_id) if rule_id is not None else None): {
                     validators[
                         exclusion_name
                     ]  # main purpose of the generators: resolve identifiers into classes
@@ -98,16 +102,13 @@ class SigmaValidator:
                 raise SigmaConfigurationError(
                     f"Configuration for validator '{ validator_name }' is not a dict."
                 )
-            for k, v in params.items():
-                if isinstance(v, list):
-                    params[k] = tuple(v)
-            configuration[validators[validator_name].__name__] = params
+            configuration[validator_name] = params
 
         return cls(validator_classes, exclusions, configuration)
 
     @classmethod
     def from_yaml(
-        cls, validator_config: str, validators: Dict[str, SigmaRuleValidator]
+        cls, validator_config: str, validators: Dict[str, Type[SigmaRuleValidator]]
     ) -> "SigmaValidator":
         try:
             return cls.from_dict(yaml.safe_load(validator_config), validators)
@@ -132,7 +133,7 @@ class SigmaValidator:
         issues: List[SigmaValidationIssue] = []
         exclusions = self.exclusions[rule.id]
         for validator in self.validators:
-            if not validator.__class__ in exclusions:  # Skip if validator is excluded for this rule
+            if validator.__class__ not in exclusions:  # Skip if validator is excluded for this rule
                 issues.extend(validator.validate(rule))
         return issues
 

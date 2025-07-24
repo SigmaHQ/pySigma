@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Optional, Callable
+from typing import Any, Dict, List, Optional, Callable
 
 from sigma.processing.pipeline import ProcessingPipeline
 
@@ -26,16 +26,17 @@ class Pipeline:
         """
         self.func = func
 
-    def __call__(self, *args, **kwargs):
+    def __call__(self, *args: List[Any], **kwargs: Dict[str, Any]) -> Any:
         """
         When the class is called, we call the function if set,
         otherwise we return the class itself.
         """
-        if getattr(self, "apply") and not self.apply.__isabstractmethod__:
-            return self.apply(*args, **kwargs)
+        apply_method = getattr(self, "apply", None)
+        if callable(apply_method) and not getattr(apply_method, "__isabstractmethod__", False):
+            return apply_method(*args, **kwargs)
         return self.func(*args, **kwargs) if self.func is not None else self
 
-    def __new__(cls, *args, **kwargs):
+    def __new__(cls, *args: List[Any], **kwargs: Dict[str, Any]) -> "Pipeline":
         """
         Use the singleton pattern to ensure that only one instance of the class
         is created. This is necessary to ensure that the pipelines are registered
@@ -54,11 +55,3 @@ class Pipeline:
         if not hasattr(cls, "_instance"):
             cls._instance = super(Pipeline, cls).__new__(cls)
         return cls._instance
-
-    @abstractmethod
-    def apply(self, *args, **kwargs):
-        """
-        If the class is inherited, then this method must be implemented to return
-        a ProcessingPipeline object. Otherwise, this method is not called.
-        """
-        raise NotImplementedError("The apply method must be implemented.")

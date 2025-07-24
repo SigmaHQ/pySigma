@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 from datetime import date
 from uuid import UUID
 
-import sigma
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.conditions.base import (
     RuleDetectionItemCondition,
@@ -33,7 +32,7 @@ class LogsourceCondition(RuleProcessingCondition):
     product: Optional[str] = field(default=None)
     service: Optional[str] = field(default=None)
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.logsource = SigmaLogSource(self.category, self.product, self.service)
 
     def match(
@@ -78,7 +77,7 @@ class RuleContainsDetectionItemCondition(RuleDetectionItemCondition):
     field: Optional[str]
     value: Union[str, int, float, bool]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.sigma_value = sigma_type(self.value)
 
     def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
@@ -91,7 +90,7 @@ class RuleContainsDetectionItemCondition(RuleDetectionItemCondition):
                 detection.field is not None
                 and detection.field == self.field
                 and self.sigma_value
-                in [v for v in detection.value if type(self.sigma_value) == type(v)]
+                in [v for v in detection.value if isinstance(self.sigma_value, type(v))]
             ):
                 return True
         else:
@@ -155,7 +154,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
         "lt": "__lt__",
     }
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.op not in self.op_methods:
             raise SigmaConfigurationError(
                 f"Invalid operation '{self.op}' in rule attribute condition {str(self)}."
@@ -174,6 +173,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 return False
 
         # Finally, value has some comparable type
+        compare_value: Union[str, int, float, date, SigmaLevel, SigmaStatus]
         if isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":
                 return str(value) == self.value
@@ -191,6 +191,10 @@ class RuleAttributeCondition(RuleProcessingCondition):
                     f"Invalid number format '{self.value}' in rule attribute condition {str(self)}."
                 )
         elif isinstance(value, date):  # date comparison
+            if not isinstance(self.value, str):
+                raise SigmaConfigurationError(
+                    f"'{self.value}' must be a string value with a valid date but is a {type(self.value)} in rule attribute condition {str(self)}."
+                )
             try:
                 compare_value = date.fromisoformat(self.value)
             except ValueError:
@@ -199,6 +203,10 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 )
         elif isinstance(value, SigmaLevel):
             try:
+                if not isinstance(self.value, str):
+                    raise SigmaConfigurationError(
+                        f"'{self.value}' must be a string value with a valid severity level but is a {type(self.value)} in rule attribute condition {str(self)}."
+                    )
                 compare_value = SigmaLevel[self.value.upper()]
             except KeyError:
                 raise SigmaConfigurationError(
@@ -206,6 +214,10 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 )
         elif isinstance(value, SigmaStatus):
             try:
+                if not isinstance(self.value, str):
+                    raise SigmaConfigurationError(
+                        f"'{self.value}' must be a string value with a valid status but is a {type(self.value)} in rule attribute condition {str(self)}."
+                    )
                 compare_value = SigmaStatus[self.value.upper()]
             except KeyError:
                 raise SigmaConfigurationError(
@@ -217,7 +229,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
             )
 
         try:
-            return getattr(value, self.op_methods[self.op])(compare_value)
+            return bool(getattr(value, self.op_methods[self.op])(compare_value))
         except AttributeError:  # operation not supported by value type
             return False
 
@@ -230,7 +242,7 @@ class RuleTagCondition(RuleProcessingCondition):
 
     tag: str
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         self.match_tag = SigmaRuleTag.from_str(self.tag)
 
     def match(

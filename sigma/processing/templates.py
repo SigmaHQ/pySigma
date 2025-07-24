@@ -12,7 +12,7 @@ class TemplateBase:
     path: Optional[str] = None
     autoescape: bool = False
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         if self.path is None:
             self.j2template = Template(self.template, autoescape=self.autoescape)
         else:

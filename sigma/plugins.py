@@ -8,6 +8,7 @@ import pkgutil
 import re
 import subprocess
 import sys
+from types import ModuleType
 from typing import Callable, Dict, Any, List, Optional, Set, Union, get_type_hints
 from uuid import UUID
 import requests
@@ -41,22 +42,22 @@ class InstalledSigmaPlugins:
     pipelines: Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
     validators: Dict[str, SigmaRuleValidator] = field(default_factory=dict)
 
-    def register_backend(self, id: str, backend: Backend):
+    def register_backend(self, id: str, backend: Backend) -> None:
         self.backends[id] = backend
 
-    def register_pipeline(self, id: str, pipeline: Callable[[], ProcessingPipeline]):
+    def register_pipeline(self, id: str, pipeline: Callable[[], ProcessingPipeline]) -> None:
         self.pipelines[id] = pipeline
 
-    def register_validator(self, id: str, validator: SigmaRuleValidator):
+    def register_validator(self, id: str, validator: SigmaRuleValidator) -> None:
         self.validators[id] = validator
 
     @classmethod
     def _discover_module_directories(
-        cls, module, directory_name: str, include: bool
+        cls, module: ModuleType, directory_name: str, include: bool
     ) -> Dict[str, Any]:
         result = dict()
 
-        def is_pipeline(obj) -> bool:
+        def is_pipeline(obj: Any) -> bool:
             """Checks if an object is a pipeline."""
             return any(
                 [
@@ -67,7 +68,7 @@ class InstalledSigmaPlugins:
                 ]
             )
 
-        def is_validator(obj) -> bool:
+        def is_validator(obj: Any) -> bool:
             """Checks if an object is a validator."""
             return (
                 inspect.isclass(obj)
@@ -75,11 +76,11 @@ class InstalledSigmaPlugins:
                 and obj.__module__ != "sigma.validators.base"
             )
 
-        def is_backend(obj) -> bool:
+        def is_backend(obj: Any) -> bool:
             """Checks if an object is a backend."""
             return inspect.isclass(obj) and issubclass(obj, Backend)
 
-        def is_duplicate(container, klass, name) -> bool:
+        def is_duplicate(container: Dict[str, Any], klass: Any, name: str) -> bool:
             return name in container and container[name] != klass
 
         if include:
@@ -166,8 +167,10 @@ class InstalledSigmaPlugins:
                                 if is_duplicate(result, klass, identifier):
                                     # If there is a duplicate, use the class name instead.
                                     # This prevents the backend from being overwritten.
+                                    class_name = klass.__name__
+                                    result_class_name = result[identifier].__class__.__name__
                                     warnings.warn(
-                                        f"The '{klass.__name__}' wanted to overwrite the class '{result[identifier].__name__}' registered as '{identifier}'. Consider setting the 'identifier' attribute on the '{result[identifier].__name__}'. Ignoring the '{klass.__name__}'.",
+                                        f"The '{class_name}' wanted to overwrite the class '{result_class_name}' registered as '{identifier}'. Consider setting the 'identifier' attribute on the '{result_class_name}'. Ignoring the '{class_name}'.",
                                     )
                                 else:
                                     # Ignore duplicate backends.
@@ -186,7 +189,7 @@ class InstalledSigmaPlugins:
         include_backends: bool = True,
         include_pipelines: bool = True,
         include_validators: bool = True,
-    ):
+    ) -> "InstalledSigmaPlugins":
         """Automatically discovers backends, pipelines and validators in their corresponding module
         namespaces and return a InstalledSigmaPlugins class containing all identified classes and generators.
         """
@@ -210,7 +213,7 @@ class InstalledSigmaPlugins:
         )
 
     @staticmethod
-    def _get_backend_identifier(obj: Any, default: str) -> Optional[str]:
+    def _get_backend_identifier(obj: Any, default: str) -> str:
         """
         Get the identifier of a backend object. This is either the identifier attribute of
         the object, the __identifier__ attribute of the object, or the __class__ attribute
@@ -246,7 +249,7 @@ class InstalledSigmaPlugins:
                 identifier = getattr(obj, "__name__", None)
 
             # 4. Convert the name to snake_case.
-            if identifier:
+            if isinstance(identifier, str):
                 identifier = removesuffix(identifier, "Backend")
                 identifier = removesuffix(identifier, "backend")
                 identifier = removesuffix(identifier, "_")
@@ -256,7 +259,7 @@ class InstalledSigmaPlugins:
                 rebuilt_identifier = "_".join(words).lower()
                 # 5. If we still have the "base" backend, return the module identifier instead.
                 if rebuilt_identifier == "base":
-                    return obj.__module__.split(".")[-1].lower()
+                    return str(obj.__module__).split(".")[-1].lower()
                 return rebuilt_identifier
             else:
                 # 6. If we still don't have an identifier, return the default.
@@ -305,7 +308,7 @@ class SigmaPlugin:
     capabilities: Set[SigmaPluginCapability] = field(default_factory=set)
 
     @classmethod
-    def from_dict(cls, d: Dict) -> "SigmaPlugin":
+    def from_dict(cls, d: Dict[str, Any]) -> "SigmaPlugin":
         """Construct a SigmaPlugin object from a dict that results in parsing a plugin description
         from the JSON format linked above."""
         kwargs = {k.replace("-", "_"): v for k, v in d.items()}
@@ -333,14 +336,14 @@ class SigmaPlugin:
         try:
             subprocess.check_call([sys.executable, "-m", "pip", "-qqq", "show", self.package])
             return True
-        except:
+        except Exception:
             return False
 
     def has_capability(self, capability: SigmaPluginCapability) -> bool:
         """Checks if the plugin has the specified capability."""
         return capability in self.capabilities
 
-    def install(self):
+    def install(self) -> None:
         """Install plugin with pip."""
         if sys.prefix == sys.base_prefix:  # not in a virtual environment
             subprocess.check_call(
@@ -368,7 +371,7 @@ class SigmaPlugin:
                 ]
             )
 
-    def upgrade(self):
+    def upgrade(self) -> None:
         """Upgrade plugin with pip."""
         if sys.prefix == sys.base_prefix:  # not in a virtual environment
             subprocess.check_call(
@@ -398,7 +401,7 @@ class SigmaPlugin:
                 ]
             )
 
-    def uninstall(self):
+    def uninstall(self) -> None:
         """Uninstall plugin with pip."""
         subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
 
@@ -411,11 +414,11 @@ class SigmaPluginDirectory:
     plugins: Dict[UUID, SigmaPlugin] = field(default_factory=dict)
     note: Optional[str] = None
 
-    def register_plugin(self, plugin: SigmaPlugin):
+    def register_plugin(self, plugin: SigmaPlugin) -> None:
         self.plugins[plugin.uuid] = plugin
 
     @classmethod
-    def from_dict(cls, d: Dict):
+    def from_dict(cls, d: Dict[str, Any]) -> "SigmaPluginDirectory":
         return cls(
             plugins={
                 UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
@@ -425,26 +428,30 @@ class SigmaPluginDirectory:
         )
 
     @classmethod
-    def from_url(cls, url: str, *args, **kwargs) -> "SigmaPluginDirectory":
+    def from_url(
+        cls, url: str, *args: List[Any], **kwargs: Dict[str, Any]
+    ) -> "SigmaPluginDirectory":
         """Loads the plugin directory from an arbitrary location. All further
         arguments are passed to requests.get()."""
-        response = requests.get(url, *args, **kwargs)
+        response = requests.get(url, *args, **kwargs)  # type: ignore
         response.raise_for_status()
         return cls.from_dict(response.json())
 
     @classmethod
-    def default_plugin_directory(cls, *args, **kwargs) -> "SigmaPluginDirectory":
+    def default_plugin_directory(
+        cls, *args: List[Any], **kwargs: Dict[str, Any]
+    ) -> "SigmaPluginDirectory":
         """Loads the plugin directory from the pySigma-plugin-directory repository. All further
         arguments are passed to requests.get()."""
         return cls.from_url(default_plugin_directory, *args, **kwargs)
 
-    def plugin_count(self):
+    def plugin_count(self) -> int:
         return len(self.plugins)
 
     def get_plugins(
         self,
-        plugin_types: Set[SigmaPluginType] = {t for t in SigmaPluginType},
-        plugin_states: Set[SigmaPluginState] = {s for s in SigmaPluginState},
+        plugin_types: Set[SigmaPluginType] = set(SigmaPluginType),
+        plugin_states: Set[SigmaPluginState] = set(SigmaPluginState),
         compatible_only: bool = False,
     ) -> List[SigmaPlugin]:
         """Return a list of plugins with the specified type and state. Returns all plugins if not specified."""

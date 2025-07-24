@@ -1,16 +1,22 @@
 from abc import ABC, abstractmethod
 import re
 from typing import (
+    Any,
     ClassVar,
+    Generator,
+    Iterator,
     Optional,
     Union,
     List,
-    Sequence,
     Dict,
     Type,
+    cast,
     get_origin,
     get_args,
     get_type_hints,
+    Generic,
+    TypeVar,
+    TYPE_CHECKING,
 )
 from collections.abc import Sequence as SequenceABC
 from base64 import b64encode
@@ -32,33 +38,40 @@ from sigma.types import (
     SigmaCIDRExpression,
     SigmaTimestampPart,
     TimestampPart,
+    SigmaStringPartType,
 )
-from sigma.conditions import ConditionAND
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
-import sigma
+
+if TYPE_CHECKING:
+    from .rule import SigmaDetectionItem
+
+T = TypeVar("T", bound=Union[SigmaType, List[SigmaType]])
+R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
 
 
 ### Base Classes ###
-class SigmaModifier(ABC):
+class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
-    detection_item: "sigma.rule.SigmaDetectionItem"
-    applied_modifiers: List["SigmaModifier"]
+    detection_item: "SigmaDetectionItem"
+    applied_modifiers: List[Type["SigmaModifier[T, R]"]]
 
     def __init__(
         self,
-        detection_item: "sigma.rule.SigmaDetectionItem",
-        applied_modifiers: List["SigmaModifier"],
+        detection_item: "SigmaDetectionItem",
+        applied_modifiers: List[Type["SigmaModifier[T, R]"]],
         source: Optional[SigmaRuleLocation] = None,
     ):
         self.detection_item = detection_item
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(self, val: Union[SigmaType, Sequence[SigmaType]], explicit_type=None) -> bool:
+    def type_check(self, val: T, explicit_type: Optional[Type[T]] = None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
+        if th is Any:
+            return True
         to = get_origin(th)  # get possible generic type of type hint
         if to is None:  # Plain type in annotation
             return isinstance(val, th)
@@ -67,17 +80,16 @@ class SigmaModifier(ABC):
                 if isinstance(val, t):
                     return True
             return False
-        elif to is SequenceABC:  # type hint is sequence
+        elif to is list and isinstance(val, list):  # type hint is sequence
             inner_type = get_args(th)[0]
             return all([self.type_check(item, explicit_type=inner_type) for item in val])
+        return False
 
     @abstractmethod
-    def modify(
-        self, val: Union[SigmaType, Sequence[SigmaType]]
-    ) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
-    def apply(self, val: Union[SigmaType, Sequence[SigmaType]]) -> List[SigmaType]:
+    def apply(self, val: T) -> List[T]:
         """
         Modifier entry point containing the default operations:
         * Type checking
@@ -85,7 +97,14 @@ class SigmaModifier(ABC):
         * Handle values of SigmaExpansion objects separately.
         """
         if isinstance(val, SigmaExpansion):  # Handle each SigmaExpansion item separately
-            return [SigmaExpansion([va for v in val.values for va in self.apply(v)])]
+            return [
+                cast(
+                    T,
+                    SigmaExpansion(
+                        [cast(SigmaType, va) for v in val.values for va in self.apply(cast(T, v))]
+                    ),
+                )
+            ]
         else:
             if not self.type_check(val):
                 raise SigmaTypeError(
@@ -96,27 +115,32 @@ class SigmaModifier(ABC):
             if isinstance(r, List):
                 return r
             else:
-                return [r]
+                return [cast(T, r)]
 
 
-class SigmaValueModifier(SigmaModifier):
+class SigmaValueModifier(SigmaModifier[T, R]):
     """Base class for all modifiers that handle each value for the modifier scope separately"""
 
     @abstractmethod
-    def modify(self, val: SigmaType) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
 
-class SigmaListModifier(SigmaModifier):
+class SigmaListModifier(SigmaModifier[T, R]):
     """Base class for all modifiers that handle all values for the modifier scope as a whole."""
 
     @abstractmethod
-    def modify(self, val: Sequence[SigmaType]) -> Union[SigmaType, List[SigmaType]]:
+    def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
 
 ### Modifier Implementations ###
-class SigmaContainsModifier(SigmaValueModifier):
+class SigmaContainsModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts wildcards around a string to match it somewhere inside another string instead of as a whole."""
 
     def modify(
@@ -140,7 +164,12 @@ class SigmaContainsModifier(SigmaValueModifier):
         return val
 
 
-class SigmaStartswithModifier(SigmaValueModifier):
+class SigmaStartswithModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts a wildcard at the end of a string to match arbitrary values after the given prefix."""
 
     def modify(
@@ -159,7 +188,12 @@ class SigmaStartswithModifier(SigmaValueModifier):
         return val
 
 
-class SigmaEndswithModifier(SigmaValueModifier):
+class SigmaEndswithModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+    ]
+):
     """Puts a wildcard before a string to match arbitrary values before it."""
 
     def modify(
@@ -178,7 +212,7 @@ class SigmaEndswithModifier(SigmaValueModifier):
         return val
 
 
-class SigmaBase64Modifier(SigmaValueModifier):
+class SigmaBase64Modifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as Base64 value."""
 
     def modify(self, val: SigmaString) -> SigmaString:
@@ -190,7 +224,7 @@ class SigmaBase64Modifier(SigmaValueModifier):
         return SigmaString(b64encode(bytes(val)).decode())
 
 
-class SigmaBase64OffsetModifier(SigmaValueModifier):
+class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     """
     Encode string as Base64 value with different offsets to match it at different locations in
     encoded form.
@@ -217,11 +251,11 @@ class SigmaBase64OffsetModifier(SigmaValueModifier):
         )
 
 
-class SigmaWideModifier(SigmaValueModifier):
+class SigmaWideModifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as wide string (UTF-16LE)."""
 
     def modify(self, val: SigmaString) -> SigmaString:
-        r = list()
+        r: List[SigmaStringPartType] = list()
         for item in val.s:
             if isinstance(
                 item, str
@@ -237,11 +271,11 @@ class SigmaWideModifier(SigmaValueModifier):
                 r.append(item)
 
         s = SigmaString()
-        s.s = tuple(r)
+        s.s = r
         return s
 
 
-class SigmaWindowsDashModifier(SigmaValueModifier):
+class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     """
     Expand parameter characters / and - that are often interchangeable in Windows into the other
     form if it appears between word boundaries. E.g. in -param-name the first dash will be expanded
@@ -253,20 +287,23 @@ class SigmaWindowsDashModifier(SigmaValueModifier):
     horizontal_bar = chr(int("2015", 16))
 
     def modify(self, val: SigmaString) -> SigmaExpansion:
-        def callback(p: Placeholder):
+        def callback(p: Placeholder) -> Iterator[Union[str, Placeholder]]:
             if p.name == "_windash":
                 yield from ("-", "/", self.en_dash, self.em_dash, self.horizontal_bar)
             else:
                 yield p
 
         return SigmaExpansion(
-            val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash").replace_placeholders(
-                callback
+            cast(
+                List[SigmaType],
+                val.replace_with_placeholder(
+                    re.compile("\\B[-/]\\b"), "_windash"
+                ).replace_placeholders(callback),
             )
         )
 
 
-class SigmaRegularExpressionModifier(SigmaValueModifier):
+class SigmaRegularExpressionModifier(SigmaValueModifier[SigmaString, SigmaRegularExpression]):
     """Treats string value as (case-sensitive) regular expression."""
 
     def modify(self, val: SigmaString) -> SigmaRegularExpression:
@@ -278,7 +315,9 @@ class SigmaRegularExpressionModifier(SigmaValueModifier):
         return SigmaRegularExpression(val.original)
 
 
-class SigmaRegularExpressionFlagModifier(SigmaValueModifier):
+class SigmaRegularExpressionFlagModifier(
+    SigmaValueModifier[SigmaRegularExpression, SigmaRegularExpression]
+):
     """Generic base class for setting a regular expression flag including checks"""
 
     flag: ClassVar[SigmaRegularExpressionFlag]
@@ -306,12 +345,12 @@ class SigmaRegularExpressionDotAllFlagModifier(SigmaRegularExpressionFlagModifie
     flag: ClassVar[SigmaRegularExpressionFlag] = SigmaRegularExpressionFlag.DOTALL
 
 
-class SigmaCaseSensitiveModifier(SigmaValueModifier):
+class SigmaCaseSensitiveModifier(SigmaValueModifier[SigmaString, SigmaCasedString]):
     def modify(self, val: SigmaString) -> SigmaCasedString:
         return SigmaCasedString.from_sigma_string(val)
 
 
-class SigmaCIDRModifier(SigmaValueModifier):
+class SigmaCIDRModifier(SigmaValueModifier[SigmaString, SigmaCIDRExpression]):
     """Treat value as IP (v4 or v6) CIDR network."""
 
     def modify(self, val: SigmaString) -> SigmaCIDRExpression:
@@ -323,15 +362,17 @@ class SigmaCIDRModifier(SigmaValueModifier):
         return SigmaCIDRExpression(str(val), source=self.source)
 
 
-class SigmaAllModifier(SigmaListModifier):
+class SigmaAllModifier(SigmaListModifier[Any, Any]):
     """Match all values of a list instead of any pf them."""
 
-    def modify(self, val: Sequence[SigmaType]) -> List[SigmaType]:
+    def modify(self, val: Any) -> Any:
+        from sigma.conditions import ConditionAND
+
         self.detection_item.value_linking = ConditionAND
         return val
 
 
-class SigmaCompareModifier(SigmaValueModifier):
+class SigmaCompareModifier(SigmaValueModifier[SigmaNumber, SigmaCompareExpression]):
     """Base class for numeric comparison operator modifiers."""
 
     op: ClassVar[CompareOperators]
@@ -379,7 +420,7 @@ class SigmaFieldReferenceModifier(SigmaValueModifier):
         return SigmaFieldReference(val.to_plain())
 
 
-class SigmaExistsModifier(SigmaValueModifier):
+class SigmaExistsModifier(SigmaValueModifier[SigmaBool, SigmaExists]):
     """Modifies to check if the field name provided as value exists in the matched event."""
 
     def modify(self, val: SigmaBool) -> SigmaExists:
@@ -393,7 +434,7 @@ class SigmaExistsModifier(SigmaValueModifier):
         return SigmaExists(val.boolean)
 
 
-class SigmaExpandModifier(SigmaValueModifier):
+class SigmaExpandModifier(SigmaValueModifier[SigmaString, SigmaString]):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
     with stub objects that are later expanded to one or multiple strings or replaced with some SIEM
@@ -406,62 +447,67 @@ class SigmaExpandModifier(SigmaValueModifier):
         return val.insert_placeholders()
 
 
-class SigmaTimestampMinuteModifier(SigmaValueModifier):
+class SigmaTimestampModifier(SigmaValueModifier[SigmaNumber, SigmaTimestampPart]):
+    """
+    Base class for timestamp modifiers that parse the field as a datetime/timestamp and transform it to a specific part.
+    """
+
+    time_part_unit: ClassVar[TimestampPart]
+
+    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
+        return SigmaTimestampPart(self.time_part_unit, int(val.number))
+
+
+class SigmaTimestampMinuteModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the minute number. Between 0 and 59.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.MINUTE, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.MINUTE
 
 
-class SigmaTimestampHourModifier(SigmaValueModifier):
+class SigmaTimestampHourModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the hour number. Between 0 and 23.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.HOUR, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.HOUR
 
 
-class SigmaTimestampDayModifier(SigmaValueModifier):
+class SigmaTimestampDayModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the day of the month number. Between 1 and 31.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.DAY, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.DAY
 
 
-class SigmaTimestampWeekModifier(SigmaValueModifier):
+class SigmaTimestampWeekModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the week of the year number. Between 1 and 52.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.WEEK, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.WEEK
 
 
-class SigmaTimestampMonthModifier(SigmaValueModifier):
+class SigmaTimestampMonthModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the month of the year number. Between 1 and 12.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.MONTH, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.MONTH
 
 
-class SigmaTimestampYearModifier(SigmaValueModifier):
+class SigmaTimestampYearModifier(SigmaTimestampModifier):
     """
     Modifier that parses the field as a datetime/timestamp and transforms it to the year number.
     """
 
-    def modify(self, val: SigmaNumber) -> SigmaTimestampPart:
-        return SigmaTimestampPart(TimestampPart.YEAR, val.number)
+    time_part_unit: ClassVar[TimestampPart] = TimestampPart.YEAR
 
 
 # Mapping from modifier identifier strings to modifier classes
-modifier_mapping: Dict[str, Type[SigmaModifier]] = {
+modifier_mapping: Dict[str, Type[SigmaModifier[Any, Any]]] = {
     "all": SigmaAllModifier,
     "base64": SigmaBase64Modifier,
     "base64offset": SigmaBase64OffsetModifier,

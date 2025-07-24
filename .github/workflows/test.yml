@@ -28,6 +28,8 @@ jobs:
         run: poetry run black --check .
       - name: Run tests
         run: poetry run pytest --cov=sigma --cov-report term --cov-report xml:cov.xml -vv
+      - name: Static type checking with mypy
+        run: poetry run mypy
       - name: Store coverage for badge
         if: ${{ runner.os == 'Linux' }}
         run: poetry run python print-coverage.py >> $GITHUB_ENV

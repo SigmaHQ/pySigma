@@ -1,7 +1,9 @@
 from collections import UserDict, defaultdict
 from dataclasses import dataclass, field
-import sigma
-from typing import List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Set, Union, TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sigma.processing.pipeline import ProcessingItemBase
 
 
 @dataclass
@@ -13,9 +15,7 @@ class ProcessingItemTrackingMixin:
 
     applied_processing_items: Set[str] = field(init=False, compare=False, default_factory=set)
 
-    def add_applied_processing_item(
-        self, processing_item: Optional["sigma.processing.pipeline.ProcessingItem"]
-    ):
+    def add_applied_processing_item(self, processing_item: Optional["ProcessingItemBase"]) -> None:
         """Add identifier of processing item to set of applied processing items."""
         if processing_item is not None and processing_item.identifier is not None:
             self.applied_processing_items.add(processing_item.identifier)
@@ -25,7 +25,7 @@ class ProcessingItemTrackingMixin:
         return processing_item_id in self.applied_processing_items
 
 
-class FieldMappingTracking(UserDict):
+class FieldMappingTracking(UserDict[Optional[str], Set[str]]):
     """
     Tracking class for field mappings. Tracks initial field name to finally mapped name after a
     processing pipeline was applied. Each key maps the source field to a set of target fields.
@@ -34,11 +34,13 @@ class FieldMappingTracking(UserDict):
     the fields list is excluded from it. This might change in the future depending on use cases.
     """
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args: List[Any], **kwargs: Dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
-        self.target_fields = defaultdict(set)  # Create reverse mapping
+        self.target_fields: defaultdict[Optional[str], Set[Optional[str]]] = defaultdict(
+            set
+        )  # Create reverse mapping
 
-    def add_mapping(self, source: str, target: Union[str, List[str]]) -> None:
+    def add_mapping(self, source: Optional[str], target: Union[str, List[str]]) -> None:
         """
         This method must be invoked for each field name mapping applied in a processing pipeline to
         get a precise result of the final mapping.
@@ -50,7 +52,8 @@ class FieldMappingTracking(UserDict):
             # Replace each occurrence of a mapping to the source with the target field.
             for source_field in self.target_fields[source]:
                 target_set = self[source_field]
-                target_set.remove(source)
+                if source is not None:
+                    target_set.remove(source)
                 target_set.update(target)
 
             # Update reverse mapping: remove source and add new target

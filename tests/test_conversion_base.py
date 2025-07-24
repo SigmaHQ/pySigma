@@ -845,7 +845,30 @@ def test_convert_value_str_wildcard_no_match_expr(test_backend, monkeypatch):
     )
 
 
-def test_convert_value_str_placeholder(test_backend):
+def test_convert_value_str_placeholder():
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
+        vars={"test": ["foo", "bar"]},
+    )
+    backend = TextQueryTestBackend(pipeline)
+    backend.convert(
+        SigmaCollection.from_yaml(
+            """
+        title: Test
+        status: test
+        logsource:
+            category: test_category
+            product: test_product
+        detection:
+            sel:
+                fieldA|expand: "%test%"
+            condition: sel
+    """
+        )
+    ) == ['mappedA="foo" or mappedA="bar"']
+
+
+def test_convert_value_str_unhandled_placeholder(test_backend):
     with pytest.raises(SigmaPlaceholderError, match="unhandled placeholder 'test'"):
         test_backend.convert(
             SigmaCollection.from_yaml(
@@ -1339,7 +1362,7 @@ def test_convert_value_regex_unbound_not_escaped_escape(test_backend):
     )
 
 
-def test_convert_value_regex_value_list():
+def test_convert_value_regex_placeholder_value_list():
     pipeline = ProcessingPipeline(
         [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
         vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
@@ -1365,7 +1388,7 @@ def test_convert_value_regex_value_list():
     )
 
 
-def test_convert_value_regex_value_list_endswith():
+def test_convert_value_regex_placeholder_value_list_endswith():
     pipeline = ProcessingPipeline(
         [ProcessingItem(ValueListPlaceholderTransformation(["test"]))],
         vars={"test": ["pat.*tern/foobar", "pat.*te\\rn/foobar"]},
@@ -2830,7 +2853,7 @@ def test_convert_query_expression_defaults(
     )
 
 
-def test_convert_dropped_detection_item_and():
+def test_convert_dropped_detection_item_and_partial():
     backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2863,7 +2886,74 @@ def test_convert_dropped_detection_item_and():
     )
 
 
-def test_convert_dropped_detection_item_or():
+def test_convert_dropped_detection_item_and_complete():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID", "fieldB"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 and sel2
+        """
+            )
+        )
+        == []
+    )
+
+
+def test_convert_dropped_detection_item_and_in_list():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    EventID|all:
+                        - 123
+                        - 456
+                        - 789
+                condition: sel
+        """
+            )
+        )
+        == []
+    )
+
+
+def test_convert_dropped_detection_item_or_partial():
     backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2893,6 +2983,172 @@ def test_convert_dropped_detection_item_or():
             )
         )
         == ['fieldB="value"']
+    )
+
+
+def test_convert_dropped_detection_item_or_complete():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID", "fieldB"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 or sel2
+        """
+            )
+        )
+        == []
+    )
+
+
+def test_convert_dropped_detection_item_or_in_list():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    EventID:
+                        - 123
+                        - 456
+                        - 789
+                condition: sel
+        """
+            )
+        )
+        == []
+    )
+
+
+def test_convert_dropped_detection_item_not():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    EventID: 123
+                condition: not sel
+        """
+            )
+        )
+        == []
+    )
+
+
+def test_convert_dropped_detection_item_group_partial():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["EventID"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: (sel1 or sel2) and not sel1
+        """
+            )
+        )
+        == ['(fieldB="value")']
+    )
+
+
+def test_convert_dropped_detection_item_group_complete():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                    field_name_conditions=[IncludeFieldCondition(fields=["field", "fieldB"])],
+                ),
+            ]
+        ),
+    )
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    field: value
+                sel2:
+                    fieldB: value2
+                sel3:
+                    fieldC: value3
+                condition: (sel1 or sel2) and sel3
+        """
+            )
+        )
+        == ['fieldC="value3"']
     )
 
 

@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from typing import Set, Union
 from sigma.correlations import SigmaCorrelationRule
-from sigma.exceptions import SigmaTransformationError, SigmaTypeError
+from sigma.exceptions import SigmaTransformationError
 from sigma.processing.transformations.base import (
     PreprocessingTransformation,
     DetectionItemTransformation,
@@ -72,32 +72,35 @@ class StrictFieldMappingFailure(PreprocessingTransformation):
 
         return field_names
 
-    def apply(self, rule: SigmaRule) -> None:
+    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
+        if isinstance(rule, SigmaRule):
+            pipeline = self._pipeline
+            if pipeline is None:
+                raise SigmaTransformationError("Pipeline is not set for the transformation.")
+            field_mappings = pipeline.field_mappings
 
-        pipeline: "sigma.processing.pipeline.ProcessingPipeline" = self._pipeline
-        field_mappings: "sigma.processing.tracking.FieldMappingTracking" = pipeline.field_mappings
+            # Get all field names used in the rule (after any transformations have been applied)
+            all_fields = self._get_all_field_names(rule)
 
-        # Get all field names used in the rule (after any transformations have been applied)
-        all_fields = self._get_all_field_names(rule)
+            # Check which original fields from the rule were not explicitly mapped
+            # We need to check the target_fields reverse mapping to see which original fields
+            # are represented by the current field names
+            unmapped_fields = []
 
-        # Check which original fields from the rule were not explicitly mapped
-        # We need to check the target_fields reverse mapping to see which original fields
-        # are represented by the current field names
-        unmapped_fields = []
+            for field in all_fields:
+                # Check if this field is in the target_fields (meaning it was mapped from an original field)
+                # or if it's in the field_mappings keys (meaning it was an original field that was mapped)
+                is_mapped = field in field_mappings or field in field_mappings.target_fields
+                if not is_mapped:
+                    unmapped_fields.append(field)
 
-        for field in all_fields:
-            # Check if this field is in the target_fields (meaning it was mapped from an original field)
-            # or if it's in the field_mappings keys (meaning it was an original field that was mapped)
-            is_mapped = field in field_mappings or field in field_mappings.target_fields
-            if not is_mapped:
-                unmapped_fields.append(field)
-
-        # Raise error if there are unmapped fields
-        if unmapped_fields:
-            unmapped_fields_str = ", ".join(
-                unmapped_fields
-            )  # Create a comma-separated list of unmapped fields
-            raise SigmaTransformationError(
-                f"The following fields are not mapped: {unmapped_fields_str}", source=rule.source
-            )
+            # Raise error if there are unmapped fields
+            if unmapped_fields:
+                unmapped_fields_str = ", ".join(
+                    unmapped_fields
+                )  # Create a comma-separated list of unmapped fields
+                raise SigmaTransformationError(
+                    f"The following fields are not mapped: {unmapped_fields_str}",
+                    source=rule.source,
+                )

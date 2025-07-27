@@ -69,8 +69,8 @@ transformations: Dict[str, Type[Transformation]] = {
 }
 
 __all__ = [
-    #    "Transformation",
-    #    "PreprocessingTransformation",
+    "Transformation",
+    "PreprocessingTransformation",
     "FieldMappingTransformation",
     "FieldPrefixMappingTransformation",
     "FieldFunctionTransformation",

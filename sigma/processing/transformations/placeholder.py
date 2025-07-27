@@ -54,19 +54,23 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
         self.check_exclusivity()
         return super().__post_init__()
 
-    def apply_value(
-        self, field: str, val: Union[SigmaString, SigmaRegularExpression]
-    ) -> Union[
-        SigmaString, Iterable[SigmaString], SigmaRegularExpression, Iterable[SigmaRegularExpression]
+    def apply_value(self, field: Optional[str], val: SigmaType) -> Union[
+        None,
+        SigmaString,
+        Iterable[SigmaString],
+        SigmaRegularExpression,
+        Iterable[SigmaRegularExpression],
     ]:
-        if val.contains_placeholder(self.include, self.exclude):
+        if isinstance(val, (SigmaString, SigmaRegularExpression)) and val.contains_placeholder(
+            self.include, self.exclude
+        ):
             return val.replace_placeholders(self.placeholder_replacements_base)
         else:
             return None
 
     def placeholder_replacements_base(
         self, p: Placeholder
-    ) -> Iterable[Union[str, SpecialChars, Placeholder, SigmaString]]:
+    ) -> Iterator[Union[str, SpecialChars, Placeholder, SigmaString]]:
         """
         Base placeholder replacement callback. Calls real callback if placeholder is included or not excluded,
         else it passes the placeholder back to caller.

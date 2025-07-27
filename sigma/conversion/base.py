@@ -1984,7 +1984,7 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         correlation_type: SigmaCorrelationTypeLiteral,
         method: str,
-    ) -> str:
+    ) -> List[str]:
         template = (
             getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
         )
@@ -2202,7 +2202,7 @@ class TextQueryBackend(Backend):
         referenced_rules: List[SigmaRuleReference],
         group_by: Optional[List[str]],
         method: str,
-    ):
+    ) -> str:
         if self.correlation_fields_expression is None:
             return ""
         else:
@@ -2215,9 +2215,13 @@ class TextQueryBackend(Backend):
             # Include fields from the correlation rule
             for fld in referenced_rules_fields + correlation_rule_fields:
                 # Exclude groupby fields and keep only unique fields (remove duplicates)
-                if fld not in group_by and fld not in all_fields:
+                if (group_by is None or fld not in group_by) and fld not in all_fields:
                     all_fields.append(fld)
-            if len(all_fields) == 0:  # if no fields
+            if (
+                len(all_fields) == 0
+                or self.correlation_fields_field_expression is None
+                or self.correlation_fields_field_expression_joiner is None
+            ):
                 return ""
             return self.correlation_fields_expression[method].format(
                 fields=self.correlation_fields_field_expression_joiner[method].join(

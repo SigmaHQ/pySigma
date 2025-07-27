@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, IO, TYPE_CHECKING
+from typing import Any, Callable, Dict, Iterable, List, Optional, Union, IO, TYPE_CHECKING, cast
 from uuid import UUID
 
 import yaml
@@ -88,7 +88,9 @@ class SigmaCollection:
                 rule.resolve_rule_references(self)
 
         # Extract all filters from the rules
-        filters: List[SigmaFilter] = [rule for rule in self.rules if isinstance(rule, SigmaFilter)]
+        filters: List[SigmaFilter] = [
+            cast(SigmaFilter, rule) for rule in self.rules if isinstance(rule, SigmaFilter)
+        ]
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
 
         # Apply filters on each rule and replace the rule with the filtered rule
@@ -126,34 +128,33 @@ class SigmaCollection:
             if isinstance(
                 rule, SigmaRule
             ):  # Included rules are already parsed, skip collection action processing
-                parsed_rule = rule
-                parsed_rules.append(parsed_rule)
-                parsed_rule.source = source
+                parsed_rules.append(rule)
+                rule.source = source
             else:
                 action = rule.get("action")
                 if action is None:  # no action defined
                     if "correlation" in rule:  # correlation rule - no global rule merge
-                        parsed_rule = SigmaCorrelationRule.from_dict(
+                        parsed_correlation_rule = SigmaCorrelationRule.from_dict(
                             rule,
                             collect_errors,
                             source,
                         )
-                        parsed_rules.append(parsed_rule)
-                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
+                        parsed_rules.append(parsed_correlation_rule)
+                        errors.extend(parsed_correlation_rule.errors)  # Propagate errors from rule
                     elif "filter" in rule:  # correlation rule - no global rule merge
-                        parsed_rule = SigmaFilter.from_dict(
+                        parsed_filter_rule = SigmaFilter.from_dict(
                             rule,
                             collect_errors,
                             source,
                         )
-                        parsed_rules.append(parsed_rule)
-                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
+                        parsed_rules.append(parsed_filter_rule)
+                        errors.extend(parsed_filter_rule.errors)  # Propagate errors from rule
                     else:  # merge with global rule and parse as simple rule
-                        parsed_rule = SigmaRule.from_dict(
+                        parsed_merged_rule = SigmaRule.from_dict(
                             deep_dict_update(rule, global_rule), collect_errors, source
                         )
-                        parsed_rules.append(parsed_rule)
-                        errors.extend(parsed_rule.errors)  # Propagate errors from rule
+                        parsed_rules.append(parsed_merged_rule)
+                        errors.extend(parsed_merged_rule.errors)  # Propagate errors from rule
                         prev_rule = rule
                 elif action == "global":  # set global rule template
                     del rule["action"]
@@ -245,6 +246,7 @@ class SigmaCollection:
         :param recursion_pattern: Pattern used to recurse into directories, defaults to ``**/*.yml``.
 
         :return: :class:`SigmaCollection` of all sigma rules contained in given paths.
+
         """
         if not isinstance(inputs, Iterable) or isinstance(inputs, str):
             raise TypeError(

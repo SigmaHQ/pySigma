@@ -7,6 +7,7 @@ from sigma.exceptions import (
 )
 from sigma.processing.pipeline import ProcessingPipeline
 from typing import Dict, Iterable, List, Optional, Tuple, Union, cast, Callable
+from collections import namedtuple
 
 
 @dataclass
@@ -81,11 +82,13 @@ class ProcessingPipelineResolver:
         compatibility check for the usage of the specified backend with the pipeline.
         """
 
-        def resolve_path(spec):
-            pipeline = self.resolve_pipeline(spec, target)
-            return {"pipeline": pipeline, "priority": pipeline.priority, "path": spec}
+        PipelineInfo = namedtuple("PipelineInfo", ["pipeline", "priority", "path"])
 
-        def resolve_spec(pipelines, spec):
+        def resolve_path(spec: str) -> PipelineInfo:
+            pipeline = self.resolve_pipeline(spec, target)
+            return PipelineInfo(pipeline=pipeline, priority=pipeline.priority, path=spec)
+
+        def resolve_spec(pipelines: List[PipelineInfo], spec: str) -> List[PipelineInfo]:
             spec_path = Path(spec.rstrip("/*"))
             if spec_path.is_dir():
                 pipelines.extend([resolve_path(str(path)) for path in spec_path.glob("**/*.yml")])
@@ -94,11 +97,9 @@ class ProcessingPipelineResolver:
 
             return pipelines
 
-        pipelines = reduce(resolve_spec, pipeline_specs, [])
+        pipelines: List[PipelineInfo] = reduce(resolve_spec, pipeline_specs, [])
 
         return (
-            sum(
-                [p["pipeline"] for p in sorted(pipelines, key=lambda p: (p["priority"], p["path"]))]
-            )
+            sum([p.pipeline for p in sorted(pipelines, key=lambda p: (p.priority, p.path))])
             or ProcessingPipeline()
         )

@@ -411,7 +411,7 @@ class SigmaNotEqualModifier(SigmaCompareModifier):
     op: ClassVar[CompareOperators] = CompareOperators.NEQ
 
 
-class SigmaFieldReferenceModifier(SigmaValueModifier):
+class SigmaFieldReferenceModifier(SigmaValueModifier[SigmaString, SigmaFieldReference]):
     """Modifiers a plain string into the field reference type."""
 
     def modify(self, val: SigmaString) -> SigmaFieldReference:
@@ -434,7 +434,11 @@ class SigmaExistsModifier(SigmaValueModifier[SigmaBool, SigmaExists]):
         return SigmaExists(val.boolean)
 
 
-class SigmaExpandModifier(SigmaValueModifier[SigmaString, SigmaString]):
+class SigmaExpandModifier(
+    SigmaValueModifier[
+        Union[SigmaString, SigmaRegularExpression], Union[SigmaString, SigmaRegularExpression]
+    ]
+):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
     with stub objects that are later expanded to one or multiple strings or replaced with some SIEM

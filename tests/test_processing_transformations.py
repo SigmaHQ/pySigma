@@ -2342,7 +2342,7 @@ def test_case_transformation_error():
         transformation = CaseTransformation(method="SnakeCase")
 
 
-def test_conversion_strict_mapped_fields_throws_exception():
+def test_strict_mapped_fields_throws_exception():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2379,7 +2379,7 @@ def test_conversion_strict_mapped_fields_throws_exception():
         )
 
 
-def test_conversion_strict_mapped_fields_does_not_throw_exception():
+def test_strict_mapped_fields_does_not_throw_exception():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2417,7 +2417,7 @@ def test_conversion_strict_mapped_fields_does_not_throw_exception():
     )
 
 
-def test_conversion_strict_mapped_fields_on_prefixing():
+def test_strict_mapped_fields_on_prefixing():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2448,7 +2448,7 @@ def test_conversion_strict_mapped_fields_on_prefixing():
     )
 
 
-def test_conversion_strict_mapped_fields_on_suffixing():
+def test_strict_mapped_fields_on_suffixing():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2479,7 +2479,7 @@ def test_conversion_strict_mapped_fields_on_suffixing():
     )
 
 
-def test_conversion_strict_mapped_fields_multiple_pipelines():
+def test_strict_mapped_fields_multiple_pipelines():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2521,7 +2521,7 @@ def test_conversion_strict_mapped_fields_multiple_pipelines():
     )
 
 
-def test_conversion_strict_mapped_fields_multiple_pipelines_error():
+def test_strict_mapped_fields_multiple_pipelines_error():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(
             [
@@ -2560,3 +2560,9 @@ def test_conversion_strict_mapped_fields_multiple_pipelines_error():
                 """
             )
         )
+
+
+def test_strict_mapped_fields_correlation_rule(dummy_pipeline, sigma_correlation_rule):
+    transformation = StrictFieldMappingFailure()
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_correlation_rule)

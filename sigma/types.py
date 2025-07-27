@@ -478,7 +478,7 @@ class SigmaString(SigmaType):
     def replace_placeholders(
         self,
         callback: Callable[
-            [Placeholder], Iterable[Union[str, SpecialChars, Placeholder, "SigmaString"]]
+            [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
         ],
     ) -> List["SigmaString"]:
         """
@@ -690,15 +690,6 @@ class SigmaTimestampPart(SigmaNumber):
         super().__init__(number)
 
 
-class SigmaTimestampPart(SigmaNumber):
-
-    timestamp_part: TimestampPart
-
-    def __init__(self, timestamp_part: TimestampPart, number: int):
-        self.timestamp_part = timestamp_part
-        super().__init__(number)
-
-
 @dataclass
 class SigmaBool(SigmaType):
     """Boolean value type"""
@@ -831,7 +822,10 @@ class SigmaRegularExpression(SigmaType):
         return self
 
     def replace_placeholders(
-        self, callback: Callable[[Placeholder], Iterator[Union[str, SpecialChars, Placeholder]]]
+        self,
+        callback: Callable[
+            [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
+        ],
     ) -> List["SigmaRegularExpression"]:
         """
         Replace all occurrences of string part matching regular expression with placeholder.

@@ -1805,11 +1805,19 @@ class TextQueryBackend(Backend):
                 "Expected SigmaCompareExpression for cond.value, got {type(cond_value)}"
             )
 
-        if isinstance(cond.value, SigmaCompareExpression) and cond.value.number and isinstance(cond.value.number, SigmaTimestampPart):
-            return self.field_timestamp_part_expression.format(
-                        field=self.escape_and_quote_field(cond.field),
-                        timestamp_part=self.timestamp_part_mapping[cond.value.number.timestamp_part],
-                    ) + self.compare_operators[cond_value.op] + str(cond.value.number)
+        if (
+            isinstance(cond.value, SigmaCompareExpression)
+            and cond.value.number
+            and isinstance(cond.value.number, SigmaTimestampPart)
+        ):
+            return (
+                self.field_timestamp_part_expression.format(
+                    field=self.escape_and_quote_field(cond.field),
+                    timestamp_part=self.timestamp_part_mapping[cond.value.number.timestamp_part],
+                )
+                + self.compare_operators[cond_value.op]
+                + str(cond.value.number)
+            )
         else:
             return self.compare_op_expression.format(
                 field=self.escape_and_quote_field(cond.field),

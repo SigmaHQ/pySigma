@@ -20,7 +20,8 @@ from sigma.types import (
     SigmaNull,
     SigmaRegularExpression,
     SigmaTimestampPart,
-    TimestampPart, SigmaCompareExpression,
+    TimestampPart,
+    SigmaCompareExpression,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,

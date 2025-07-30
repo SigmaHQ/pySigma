@@ -1805,11 +1805,17 @@ class TextQueryBackend(Backend):
                 "Expected SigmaCompareExpression for cond.value, got {type(cond_value)}"
             )
 
-        return self.compare_op_expression.format(
-            field=self.escape_and_quote_field(cond.field),
-            operator=self.compare_operators[cond_value.op],
-            value=cond_value.number,
-        )
+        if isinstance(cond.value, SigmaCompareExpression) and cond.value.number and isinstance(cond.value.number, SigmaTimestampPart):
+            return self.field_timestamp_part_expression.format(
+                        field=self.escape_and_quote_field(cond.field),
+                        timestamp_part=self.timestamp_part_mapping[cond.value.number.timestamp_part],
+                    ) + self.compare_operators[cond_value.op] + str(cond.value.number)
+        else:
+            return self.compare_op_expression.format(
+                field=self.escape_and_quote_field(cond.field),
+                operator=self.compare_operators[cond_value.op],
+                value=cond_value.number,
+            )
 
     def convert_condition_field_eq_field_escape_and_quote(
         self, field1: str, field2: str

@@ -3500,6 +3500,6 @@ def test_convert_timestamp_part_modifiers(test_backend, monkeypatch):
             )
         )
         == [
-            'strftime(timestamp, "%M")=1 and strftime(timestamp, "%H")=2 and strftime(timestamp, "%d")=3 and strftime(timestamp, "%V")=4 and strftime(timestamp, "%m")=5 and strftime(timestamp, "%Y")=6 and timestamp>7 and timestamp>=8 and timestamp<9 and timestamp<=10 and timestamp>11 and timestamp>=12'
+            'strftime(timestamp, "%M")=1 and strftime(timestamp, "%H")=2 and strftime(timestamp, "%d")=3 and strftime(timestamp, "%V")=4 and strftime(timestamp, "%m")=5 and strftime(timestamp, "%Y")=6 and strftime(timestamp, "%M")>7 and strftime(timestamp, "%H")>=8 and strftime(timestamp, "%d")<9 and strftime(timestamp, "%V")<=10 and strftime(timestamp, "%m")>11 and strftime(timestamp, "%Y")>=12'
         ]
     )

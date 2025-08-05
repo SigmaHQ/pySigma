@@ -182,6 +182,14 @@ class Backend(ABC):
         multiple queries, but might also be some arbitrary data structure required for further
         processing.
         """
+        self.last_processing_pipeline = (
+            self.backend_processing_pipeline
+            + self.processing_pipeline
+            + self.output_format_processing_pipeline[output_format or self.default_format]
+        )
+        self.last_processing_pipeline.vars.update(
+            {"backend_" + key: value for key, value in self.backend_options.items()}
+        )
         rule_collection.resolve_rule_references()
         queries = [
             query
@@ -201,14 +209,6 @@ class Backend(ABC):
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
         try:
-            self.last_processing_pipeline = (
-                self.backend_processing_pipeline
-                + self.processing_pipeline
-                + self.output_format_processing_pipeline[output_format or self.default_format]
-            )
-            self.last_processing_pipeline.vars.update(
-                {"backend_" + key: value for key, value in self.backend_options.items()}
-            )
 
             error_state = "applying processing pipeline on"
             self.last_processing_pipeline.apply(rule)  # 1. Apply transformations

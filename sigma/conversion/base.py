@@ -1809,6 +1809,8 @@ class TextQueryBackend(Backend):
             isinstance(cond.value, SigmaCompareExpression)
             and cond.value.number
             and isinstance(cond.value.number, SigmaTimestampPart)
+            and self.field_timestamp_part_expression
+            and self.timestamp_part_mapping
         ):
             return (
                 self.field_timestamp_part_expression.format(

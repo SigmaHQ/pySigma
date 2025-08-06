@@ -1,3 +1,4 @@
+import re
 from typing import Any, Dict
 from uuid import UUID
 from sigma.exceptions import SigmaPluginNotFoundError
@@ -92,7 +93,7 @@ def sigma_plugin_dict():
         "project_url": "https://github.com/SigmaHQ/pySigma-backend-test",
         "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
         "state": "testing",
-        "pysigma_version": ">=0.9.0",
+        "pysigma_version": ">=1.0.0",
         "capabilities": [
             "event_count_correlation_conversion",
             "value_count_correlation_conversion",
@@ -111,7 +112,7 @@ def sigma_plugin():
         project_url="https://github.com/SigmaHQ/pySigma-backend-test",
         report_issue_url="https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
         state=SigmaPluginState.TESTING,
-        pysigma_version=Specifier(">=0.9.0"),
+        pysigma_version=Specifier(">=1.0.0"),
         capabilities={
             SigmaPluginCapability.EVENT_COUNT_CORRELATION_CONVERSION,
             SigmaPluginCapability.VALUE_COUNT_CORRELATION_CONVERSION,
@@ -129,6 +130,10 @@ def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, 
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
 
 
+@pytest.mark.xfail(
+    condition=re.match(r"^\d+\.\d+\.\d+\w+\d+$", importlib.metadata.version("pysigma")),
+    reason="pysigma version is release candidate or other special version.",
+)
 def test_sigma_plugin_version_compatible(sigma_plugin):
     pysigma_version = importlib.metadata.version("pysigma")
     sigma_plugin.pysigma_version = Specifier(

@@ -21,6 +21,7 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaTimestampPart,
     TimestampPart,
+    SigmaCompareExpression,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,
@@ -1692,7 +1693,7 @@ def test_sigmarule_bad_scope():
         )
 
 
-def test_sigmarule_timestamp_modifiers():
+def test_sigmarule_timestamp_modifiers_equals():
     rule = SigmaRule.from_dict(
         {
             "title": "Test",
@@ -1721,3 +1722,35 @@ def test_sigmarule_timestamp_modifiers():
     assert detection_items[3].value[0] == SigmaTimestampPart(TimestampPart.WEEK, 4)
     assert detection_items[4].value[0] == SigmaTimestampPart(TimestampPart.MONTH, 5)
     assert detection_items[5].value[0] == SigmaTimestampPart(TimestampPart.YEAR, 6)
+
+
+def test_sigmarule_timestamp_modifiers_greater_than():
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "timestamp|minute|gt": 1,
+                    "timestamp|hour|gte": 2,
+                    "timestamp|day|lt": 3,
+                    "timestamp|week|lte": 4,
+                    "timestamp|month|gt": 5,
+                    "timestamp|year|gte": 6,
+                },
+                "condition": "selection",
+            },
+        },
+        source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+    )
+    detection_items = rule.detection["selection"].detection_items
+    assert isinstance(detection_items[0].value[0], SigmaCompareExpression)
+    assert detection_items[0].value[0].number == SigmaTimestampPart(TimestampPart.MINUTE, 1)
+    assert detection_items[1].value[0].number == SigmaTimestampPart(TimestampPart.HOUR, 2)
+    assert detection_items[2].value[0].number == SigmaTimestampPart(TimestampPart.DAY, 3)
+    assert detection_items[3].value[0].number == SigmaTimestampPart(TimestampPart.WEEK, 4)
+    assert detection_items[4].value[0].number == SigmaTimestampPart(TimestampPart.MONTH, 5)
+    assert detection_items[5].value[0].number == SigmaTimestampPart(TimestampPart.YEAR, 6)

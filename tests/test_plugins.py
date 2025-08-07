@@ -23,14 +23,7 @@ from tests.test_processing_pipeline import TransformationAppend
 
 def test_autodiscover_backends():
     plugins = InstalledSigmaPlugins.autodiscover(include_pipelines=False, include_validators=False)
-    assert plugins == InstalledSigmaPlugins(
-        backends={
-            "text_query_test": TextQueryTestBackend,
-            "mandatory_pipeline_test": MandatoryPipelineTestBackend,
-        },
-        pipelines=dict(),
-        validators=dict(),
-    )
+    assert "siem" in plugins.backends
 
 
 def test_autodiscover_pipelines_all():

@@ -58,3 +58,8 @@ build-backend = "poetry.core.masonry.api"
 [tool.pytest.ini_options]
 filterwarnings = ["ignore::DeprecationWarning"]
 markers = ["online"]
+
+[project.entry-points."sigma.backends"]
+test = "sigma.backends.test.backend:TextQueryTestBackend"
+mandatory_pipeline_test = "sigma.backends.test.backend:MandatoryPipelineTestBackend"
+siem = "sigma.backends.siem.siem:SiemBackend"

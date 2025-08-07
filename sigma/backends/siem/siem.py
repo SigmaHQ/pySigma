@@ -35,7 +35,7 @@ class SiemBackend(TextQueryBackend):
 
     or_token: ClassVar[str] = " OR "
     and_token: ClassVar[str] = " AND "
-    not_token: ClassVar[str] = "NOT "
+    not_token: ClassVar[str] = "NOT " # This is not used in the pattern, but required by the base class
     eq_token: ClassVar[str] = "="
 
     # Enable conversion of OR conditions to IN expressions
@@ -50,6 +50,15 @@ class SiemBackend(TextQueryBackend):
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.rows = []
+        self.negation_mapping = {
+            "EQ": "NEQ", "NEQ": "EQ",
+            "CONT": "NCONT", "NCONT": "CONT",
+            "SW": "NSW", "NSW": "SW",
+            "EW": "NEW", "NEW": "EW",
+            "GT": "LTE", "GTE": "LT",
+            "LT": "GTE", "LTE": "GT",
+            "MATCHES": "NMATCHES", "NMATCHES": "MATCHES", # Assuming NMATCHES is the negated form
+        }
 
     def add_row(self, field: str, operator: str, value: Any, value_type: str, logic: str = "AND") -> int:
         """Adds a row to the criteria and returns its index."""
@@ -72,10 +81,6 @@ class SiemBackend(TextQueryBackend):
     def convert_condition_as_in_expression(
         self, cond: ConditionOR, state: ConversionState
     ) -> str:
-        """
-        Conversion of OR conditions into a single row with multiple values,
-        or multiple rows if the value count exceeds 25.
-        """
         if not cond.args:
             return ""
 
@@ -100,6 +105,9 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
+        if getattr(state, "negated", False):
+            operator = self.negation_mapping.get(operator, "N" + operator)
+
         if len(values) <= 25:
             row_index = self.add_row(field, operator, ",".join(values), "TEXT")
             return str(row_index)
@@ -115,7 +123,6 @@ class SiemBackend(TextQueryBackend):
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> str:
-        """Convert field = string value expressions."""
         value_str = str(cond.value)
 
         if value_str.startswith("*") and value_str.endswith("*"):
@@ -131,32 +138,46 @@ class SiemBackend(TextQueryBackend):
             operator = "EQ"
             value = value_str
 
+        if getattr(state, "negated", False):
+            operator = self.negation_mapping.get(operator, "N" + operator)
+
         row_index = self.add_row(cond.field, operator, value, "TEXT")
         return str(row_index)
 
     def convert_condition_field_eq_val_num(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> str:
-        row_index = self.add_row(cond.field, "EQ", cond.value, "NUM")
+        operator = "EQ"
+        if getattr(state, "negated", False):
+            operator = self.negation_mapping.get(operator, "N" + operator)
+        row_index = self.add_row(cond.field, operator, cond.value, "NUM")
         return str(row_index)
 
     def convert_condition_field_eq_val_re(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> str:
-        row_index = self.add_row(cond.field, "MATCHES", cond.value, "TEXT")
+        operator = "MATCHES"
+        if getattr(state, "negated", False):
+            operator = self.negation_mapping.get(operator, "N" + operator)
+        row_index = self.add_row(cond.field, operator, cond.value, "TEXT")
         return str(row_index)
 
     def convert_condition_field_compare_op_val(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> str:
         op = self.compare_operators[cond.value.op]
+        if getattr(state, "negated", False):
+            op = self.negation_mapping.get(op, "N" + op)
         row_index = self.add_row(cond.field, op, cond.value.number, "NUM")
         return str(row_index)
 
     def convert_condition_val_str(
         self, cond: ConditionValueExpression, state: ConversionState
     ) -> str:
-        row_index = self.add_row("RAWLOG", "CONT", cond.value, "TEXT")
+        operator = "CONT"
+        if getattr(state, "negated", False):
+            operator = self.negation_mapping.get(operator, "N" + operator)
+        row_index = self.add_row("RAWLOG", operator, cond.value, "TEXT")
         return str(row_index)
 
     def convert_condition_or(self, cond: ConditionOR, state: ConversionState) -> str:
@@ -167,7 +188,6 @@ class SiemBackend(TextQueryBackend):
         for i, arg in enumerate(cond.args):
             part = self.convert_condition(arg, state)
             if part and i > 0:
-                # Find the first row number in this part to set its logic to OR
                 match = re.search(r'\d+', part)
                 if match:
                     row_num = int(match.group(0))
@@ -182,7 +202,19 @@ class SiemBackend(TextQueryBackend):
         return f"({' AND '.join(filter(None, parts))})"
 
     def convert_condition_not(self, cond: ConditionNOT, state: ConversionState) -> str:
-        raise NotImplementedError("NOT operations are not supported in patterns.")
+        arg = cond.args[0]
+
+        if isinstance(arg, ConditionOR):
+            return self.convert_condition(ConditionAND([ConditionNOT([sub_arg]) for sub_arg in arg.args]), state)
+
+        if isinstance(arg, ConditionAND):
+            return self.convert_condition(ConditionOR([ConditionNOT([sub_arg]) for sub_arg in arg.args]), state)
+
+        is_negated_before = getattr(state, "negated", False)
+        state.negated = not is_negated_before
+        result = self.convert_condition(arg, state)
+        state.negated = is_negated_before
+        return result
 
     def convert_condition(
         self,
@@ -231,9 +263,7 @@ class SiemBackend(TextQueryBackend):
     ) -> Any:
         pattern = query
         pattern = re.sub(r"\((\d+)\)", r"\1", pattern)
-        # Remove outer parentheses if they are the only ones and not necessary
         if pattern.startswith("(") and pattern.endswith(")"):
-            # Check if parentheses are redundant
             p_count = 0
             is_redundant = True
             for i, char in enumerate(pattern[:-1]):

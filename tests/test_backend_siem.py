@@ -181,3 +181,63 @@ def test_siem_backend_not_and_condition(siem_backend):
     }
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
+
+def test_siem_backend_null_condition(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine: null
+            condition: selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "NOT_EXISTS",
+                        "FIELD": "COMMANDLINE",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json
+
+def test_siem_backend_not_null_condition(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine: null
+            condition: not selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "EXISTS",
+                        "FIELD": "COMMANDLINE",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json

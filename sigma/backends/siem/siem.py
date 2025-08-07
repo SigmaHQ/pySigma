@@ -17,6 +17,7 @@ from sigma.types import (
     SigmaString,
     SigmaNumber,
     SigmaRegularExpression,
+    SigmaNull,
 )
 from sigma.rule import SigmaRule
 
@@ -57,25 +58,26 @@ class SiemBackend(TextQueryBackend):
             "EW": "NEW", "NEW": "EW",
             "GT": "LTE", "GTE": "LT",
             "LT": "GTE", "LTE": "GT",
-            "MATCHES": "NMATCHES", "NMATCHES": "MATCHES", # Assuming NMATCHES is the negated form
+            "MATCHES": "NMATCHES", "NMATCHES": "MATCHES",
         }
 
     def add_row(self, field: str, operator: str, value: Any, value_type: str, logic: str = "AND") -> int:
         """Adds a row to the criteria and returns its index."""
         row_index = len(self.rows) + 1
 
-        if isinstance(value, str):
-            value = value.replace("\\", "\\\\")
+        row = {
+            "CONDI": operator,
+            "FIELD": field.upper(),
+            "TYPE": value_type,
+            "LOGIC": logic,
+        }
 
-        self.rows.append(
-            {
-                "CONDI": operator,
-                "FIELD": field.upper(),
-                "VALUE": str(value),
-                "TYPE": value_type,
-                "LOGIC": logic,
-            }
-        )
+        if value is not None:
+            if isinstance(value, str):
+                value = value.replace("\\", "\\\\")
+            row["VALUE"] = str(value)
+
+        self.rows.append(row)
         return row_index
 
     def convert_condition_as_in_expression(
@@ -171,6 +173,16 @@ class SiemBackend(TextQueryBackend):
         row_index = self.add_row(cond.field, op, cond.value.number, "NUM")
         return str(row_index)
 
+    def convert_condition_field_eq_val_null(
+        self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
+    ) -> str:
+        if getattr(state, "negated", False):
+            operator = "EXISTS"
+        else:
+            operator = "NOT_EXISTS"
+        row_index = self.add_row(cond.field, operator, None, "TEXT")
+        return str(row_index)
+
     def convert_condition_val_str(
         self, cond: ConditionValueExpression, state: ConversionState
     ) -> str:
@@ -249,6 +261,8 @@ class SiemBackend(TextQueryBackend):
             return self.convert_condition_field_eq_val_re(cond, state)
         elif isinstance(cond.value, SigmaCompareExpression):
             return self.convert_condition_field_compare_op_val(cond, state)
+        elif isinstance(cond.value, SigmaNull):
+            return self.convert_condition_field_eq_val_null(cond, state)
         else:
             raise NotImplementedError(f"Unsupported value type: {type(cond.value)}")
 

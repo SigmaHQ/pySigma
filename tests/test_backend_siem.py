@@ -39,66 +39,6 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
-def test_siem_backend_windash_modifier(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Windash
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                CommandLine|contains|all|windash:
-                    - '-s '
-                    - '-f '
-            condition: selection
-    """)
-    result_json = json.loads(siem_backend.convert(rule)[0])
-
-    # Check the pattern
-    assert result_json["actions"][0]["pattern"] == "1 AND 2"
-
-    # Check the rows
-    rows = result_json["actions"][0]["rows"]
-    assert len(rows) == 2
-
-    assert rows[0]["FIELD"] == "COMMANDLINE"
-    assert rows[0]["CONDI"] == "CONT"
-    assert "-s " in rows[0]["VALUE"]
-    assert "/s " in rows[0]["VALUE"]
-
-    assert rows[1]["FIELD"] == "COMMANDLINE"
-    assert rows[1]["CONDI"] == "CONT"
-    assert "-f " in rows[1]["VALUE"]
-    assert "/f " in rows[1]["VALUE"]
-
-def test_siem_backend_unsupported_cidr(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Unsupported CIDR
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                DestinationIp|cidr: '192.168.0.0/16'
-            condition: selection
-    """)
-    with pytest.raises(NotImplementedError, match="CIDR expressions are not supported"):
-        siem_backend.convert(rule)
-
-def test_siem_backend_unsupported_fieldref(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Unsupported FieldRef
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                Image|fieldref: 'ParentImage'
-            condition: selection
-    """)
-    with pytest.raises(NotImplementedError, match="Field references are not supported"):
-        siem_backend.convert(rule)
-
 def test_siem_backend_and_condition(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule
@@ -138,18 +78,18 @@ def test_siem_backend_and_condition(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
-def test_siem_backend_or_condition(siem_backend):
+def test_siem_backend_or_condition_in_operator(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule
         logsource:
             category: process_creation
             product: windows
         detection:
-            selection1:
-                Image: 'C:\\Windows\\System32\\cmd.exe'
-            selection2:
-                Image: 'C:\\Windows\\System32\\powershell.exe'
-            condition: selection1 or selection2
+            selection:
+                Image:
+                    - 'C:\\Windows\\System32\\cmd.exe'
+                    - 'C:\\Windows\\System32\\powershell.exe'
+            condition: selection
     """)
     expected_json = {
         "actions": [
@@ -158,9 +98,12 @@ def test_siem_backend_or_condition(siem_backend):
                 "pattern": "1",
                 "rows": [
                     {
-                        "CONDI": "EQ",
+                        "CONDI": "IN",
                         "FIELD": "PROCESSNAME",
-                        "VALUE": "C:\\Windows\\System32\\cmd.exe,C:\\Windows\\System32\\powershell.exe",
+                        "VALUE": [
+                            "C:\\Windows\\System32\\cmd.exe",
+                            "C:\\Windows\\System32\\powershell.exe"
+                        ],
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     }
@@ -301,3 +244,63 @@ def test_siem_backend_not_null_condition(siem_backend):
     }
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
+
+def test_siem_backend_unsupported_cidr(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Unsupported CIDR
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                DestinationIp|cidr: '192.168.0.0/16'
+            condition: selection
+    """)
+    with pytest.raises(NotImplementedError, match="CIDR expressions are not supported"):
+        siem_backend.convert(rule)
+
+def test_siem_backend_unsupported_fieldref(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Unsupported FieldRef
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                Image|fieldref: 'ParentImage'
+            condition: selection
+    """)
+    with pytest.raises(NotImplementedError, match="Field references are not supported"):
+        siem_backend.convert(rule)
+
+def test_siem_backend_windash_modifier(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Windash
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|contains|all|windash:
+                    - '-s '
+                    - '-f '
+            condition: selection
+    """)
+    result_json = json.loads(siem_backend.convert(rule)[0])
+
+    # Check the pattern
+    assert result_json["actions"][0]["pattern"] == "1 AND 2"
+
+    # Check the rows
+    rows = result_json["actions"][0]["rows"]
+    assert len(rows) == 2
+
+    assert rows[0]["FIELD"] == "COMMANDLINE"
+    assert rows[0]["CONDI"] == "CONT"
+    assert "-s " in rows[0]["VALUE"]
+    assert "/s " in rows[0]["VALUE"]
+
+    assert rows[1]["FIELD"] == "COMMANDLINE"
+    assert rows[1]["CONDI"] == "CONT"
+    assert "-f " in rows[1]["VALUE"]
+    assert "/f " in rows[1]["VALUE"]

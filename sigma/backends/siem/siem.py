@@ -97,6 +97,7 @@ class SiemBackend(TextQueryBackend):
             "GT": "LTE", "GTE": "LT",
             "LT": "GTE", "LTE": "GT",
             "MATCHES": "NMATCHES", "NMATCHES": "MATCHES",
+            "IN": "NIN", "NIN": "IN",
         }
 
     def add_row(self, field: str, operator: str, value: Any, value_type: str, logic: str = "AND") -> int:
@@ -111,7 +112,11 @@ class SiemBackend(TextQueryBackend):
         }
 
         if value is not None:
-            row["VALUE"] = str(value)
+            # json.dumps will handle escaping of strings within the list
+            if isinstance(value, list):
+                row["VALUE"] = value
+            else:
+                row["VALUE"] = str(value)
 
         self.rows.append(row)
         return row_index
@@ -143,18 +148,28 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
+        # Determine the operator and value format (list for IN, string for others)
+        if operator == "EQ":
+            final_operator = "IN"
+            final_value = values
+        else:
+            final_operator = operator
+            final_value = ",".join(values)
+
         if getattr(state, "negated", False):
-            operator = self.negation_mapping.get(operator, "N" + operator)
+            final_operator = self.negation_mapping.get(final_operator, "N" + final_operator)
 
         if len(values) <= 25:
-            row_index = self.add_row(field, operator, ",".join(values), "TEXT")
+            row_index = self.add_row(field, final_operator, final_value, "TEXT")
             return str(row_index)
         else:
             chunks = [values[i:i+25] for i in range(0, len(values), 25)]
             row_indices = []
             for i, chunk in enumerate(chunks):
                 logic = "OR" if i > 0 else "AND"
-                row_indices.append(self.add_row(field, operator, ",".join(chunk), "TEXT", logic=logic))
+                # For IN operator, the chunk is a list. For others, it's a comma-separated string.
+                chunk_value = chunk if final_operator in ("IN", "NIN") else ",".join(chunk)
+                row_indices.append(self.add_row(field, final_operator, chunk_value, "TEXT", logic=logic))
 
             return f"({' OR '.join(map(str, row_indices))})"
 

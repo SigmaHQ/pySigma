@@ -12,6 +12,8 @@ from sigma.conditions import (
     ConditionValueExpression,
     ConditionItem,
 )
+from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.transformations import FieldMappingTransformation
 from sigma.types import (
     SigmaCompareExpression,
     SigmaString,
@@ -29,6 +31,38 @@ class SiemBackend(TextQueryBackend):
     formats: ClassVar[Dict[str, str]] = {
         "default": "SIEM criteria JSON",
     }
+
+    field_mappings: ClassVar[Dict[str, str]] = {
+        "Image": "PROCESSNAME",
+        "ParentImage": "PARENTPROCESSNAME",
+        "Details": "CHANGES",
+        "TargetObject": "OBJECTNAME",
+        "ScriptBlockText": "SCRIPTEXECUTED",
+        "EventType": "EVENT_TYPE",
+        "ImageLoaded": "OBJECTNAME",
+        "DestinationHostname": "DESTINATIONHOST",
+        "QueryName": "QUERY",
+        "ParentCommandLine": "PARENTPROCESSCOMMANDLINE",
+        "Product": "PRODUCT_NAME",
+        "TargetFilename": "FILENAME",
+        "Initiated": "IS_INITIATED",
+        "Description": "MESSAGE",
+        "SourceImage": "PARENTPROCESSNAME",
+        "DestinationPort": "DEST_PORT",
+        "PipeName": "OBJECTNAME",
+        "CurrentDirectory": "CWD",
+        "GrantedAccess": "ACCESSRIGHT",
+        "TargetImage": "PROCESSNAME",
+        "Company": "COMPANY_NAME"
+    }
+
+    backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline(
+        items=[
+            ProcessingItem(
+                transformation=FieldMappingTransformation(field_mappings)
+            )
+        ]
+    )
 
     precedence: ClassVar[Tuple[type, type, type]] = (ConditionOR, ConditionAND, ConditionNOT)
     group_expression: ClassVar[str] = "({expr})"
@@ -73,8 +107,6 @@ class SiemBackend(TextQueryBackend):
         }
 
         if value is not None:
-            if isinstance(value, str):
-                value = value.replace("\\", "\\\\")
             row["VALUE"] = str(value)
 
         self.rows.append(row)

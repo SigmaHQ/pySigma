@@ -27,8 +27,8 @@ def test_siem_backend_simple_rule(siem_backend):
                 "rows": [
                     {
                         "CONDI": "EQ",
-                        "FIELD": "IMAGE",
-                        "VALUE": "C:\\\\Windows\\\\System32\\\\cmd.exe",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     }
@@ -59,8 +59,8 @@ def test_siem_backend_and_condition(siem_backend):
                 "rows": [
                     {
                         "CONDI": "EQ",
-                        "FIELD": "IMAGE",
-                        "VALUE": "C:\\\\Windows\\\\System32\\\\cmd.exe",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     },
@@ -99,8 +99,8 @@ def test_siem_backend_or_condition(siem_backend):
                 "rows": [
                     {
                         "CONDI": "EQ",
-                        "FIELD": "IMAGE",
-                        "VALUE": "C:\\\\Windows\\\\System32\\\\cmd.exe,C:\\\\Windows\\\\System32\\\\powershell.exe",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe,C:\\Windows\\System32\\powershell.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     }
@@ -130,8 +130,8 @@ def test_siem_backend_not_condition(siem_backend):
                 "rows": [
                     {
                         "CONDI": "NEQ",
-                        "FIELD": "IMAGE",
-                        "VALUE": "C:\\\\Windows\\\\System32\\\\cmd.exe",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     }
@@ -163,8 +163,8 @@ def test_siem_backend_not_and_condition(siem_backend):
                 "rows": [
                     {
                         "CONDI": "NEQ",
-                        "FIELD": "IMAGE",
-                        "VALUE": "C:\\\\Windows\\\\System32\\\\cmd.exe",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     },

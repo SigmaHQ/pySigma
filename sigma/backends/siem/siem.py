@@ -20,6 +20,9 @@ from sigma.types import (
     SigmaNumber,
     SigmaRegularExpression,
     SigmaNull,
+    SigmaCIDRExpression,
+    SigmaFieldReference,
+    SigmaQueryExpression,
 )
 from sigma.rule import SigmaRule
 
@@ -295,12 +298,20 @@ class SiemBackend(TextQueryBackend):
             return self.convert_condition_field_compare_op_val(cond, state)
         elif isinstance(cond.value, SigmaNull):
             return self.convert_condition_field_eq_val_null(cond, state)
+        elif isinstance(cond.value, SigmaCIDRExpression):
+            raise NotImplementedError("CIDR expressions are not supported by this backend.")
+        elif isinstance(cond.value, SigmaFieldReference):
+            raise NotImplementedError("Field references are not supported by this backend.")
+        elif isinstance(cond.value, SigmaQueryExpression):
+            raise NotImplementedError("Query expressions are not supported by this backend.")
         else:
             raise NotImplementedError(f"Unsupported value type: {type(cond.value)}")
 
     def convert_condition_val(self, cond: ConditionValueExpression, state: ConversionState) -> Any:
         if isinstance(cond.value, SigmaString):
             return self.convert_condition_val_str(cond, state)
+        elif isinstance(cond.value, SigmaQueryExpression):
+            raise NotImplementedError("Query expressions are not supported by this backend.")
         else:
             raise NotImplementedError(f"Unsupported value type: {type(cond.value)}")
 
@@ -329,8 +340,8 @@ class SiemBackend(TextQueryBackend):
         return {
             "actions": [
                 {
-                    "pattern": pattern,
                     "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                    "pattern": pattern,
                     "rows": self.rows,
                 }
             ]

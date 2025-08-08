@@ -39,6 +39,34 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
+def test_siem_backend_unsupported_cidr(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Unsupported CIDR
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                DestinationIp|cidr: '192.168.0.0/16'
+            condition: selection
+    """)
+    with pytest.raises(NotImplementedError, match="CIDR expressions are not supported"):
+        siem_backend.convert(rule)
+
+def test_siem_backend_unsupported_fieldref(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Unsupported FieldRef
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                Image|fieldref: 'ParentImage'
+            condition: selection
+    """)
+    with pytest.raises(NotImplementedError, match="Field references are not supported"):
+        siem_backend.convert(rule)
+
 def test_siem_backend_and_condition(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule

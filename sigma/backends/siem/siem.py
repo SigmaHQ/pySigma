@@ -366,8 +366,8 @@ class SiemBackend(TextQueryBackend):
         return {
             "actions": [
                 {
-                    "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
                     "pattern": pattern,
+                    "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
                     "rows": self.rows,
                 }
             ]

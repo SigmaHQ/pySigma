@@ -39,6 +39,38 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
+def test_siem_backend_windash_modifier(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Windash
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|contains|all|windash:
+                    - '-s '
+                    - '-f '
+            condition: selection
+    """)
+    result_json = json.loads(siem_backend.convert(rule)[0])
+
+    # Check the pattern
+    assert result_json["actions"][0]["pattern"] == "1 AND 2"
+
+    # Check the rows
+    rows = result_json["actions"][0]["rows"]
+    assert len(rows) == 2
+
+    assert rows[0]["FIELD"] == "COMMANDLINE"
+    assert rows[0]["CONDI"] == "CONT"
+    assert "-s " in rows[0]["VALUE"]
+    assert "/s " in rows[0]["VALUE"]
+
+    assert rows[1]["FIELD"] == "COMMANDLINE"
+    assert rows[1]["CONDI"] == "CONT"
+    assert "-f " in rows[1]["VALUE"]
+    assert "/f " in rows[1]["VALUE"]
+
 def test_siem_backend_unsupported_cidr(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Unsupported CIDR

@@ -23,6 +23,7 @@ from sigma.types import (
     SigmaCIDRExpression,
     SigmaFieldReference,
     SigmaQueryExpression,
+    SigmaExpansion,
 )
 from sigma.rule import SigmaRule
 
@@ -298,6 +299,8 @@ class SiemBackend(TextQueryBackend):
             return self.convert_condition_field_compare_op_val(cond, state)
         elif isinstance(cond.value, SigmaNull):
             return self.convert_condition_field_eq_val_null(cond, state)
+        elif isinstance(cond.value, SigmaExpansion):
+            return super().convert_condition_field_eq_expansion(cond, state)
         elif isinstance(cond.value, SigmaCIDRExpression):
             raise NotImplementedError("CIDR expressions are not supported by this backend.")
         elif isinstance(cond.value, SigmaFieldReference):

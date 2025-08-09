@@ -13,6 +13,7 @@ from sigma.conditions import (
     ConditionItem,
 )
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.conditions import RuleContainsDetectionItemCondition
 from sigma.processing.transformations import FieldMappingTransformation
 from sigma.processing.transformations.interim import TargetObjectTransformation
 from sigma.types import (
@@ -65,9 +66,9 @@ class SiemBackend(TextQueryBackend):
         items=[
             ProcessingItem(
                 transformation=TargetObjectTransformation(),
-                rule_conditions=[{
-                    "field": "TargetObject"
-                }]
+                rule_conditions=[
+                    RuleContainsDetectionItemCondition(field="TargetObject")
+                ]
             ),
             ProcessingItem(
                 transformation=FieldMappingTransformation(field_mappings)

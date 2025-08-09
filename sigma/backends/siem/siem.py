@@ -120,7 +120,6 @@ class SiemBackend(TextQueryBackend):
         }
 
         if value is not None:
-            # json.dumps will handle escaping of strings within the list
             if isinstance(value, list):
                 row["VALUE"] = value
             else:
@@ -156,7 +155,6 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
-        # Determine the operator and value format (list for IN, string for others)
         if operator == "EQ":
             final_operator = "IN"
             final_value = values
@@ -175,7 +173,6 @@ class SiemBackend(TextQueryBackend):
             row_indices = []
             for i, chunk in enumerate(chunks):
                 logic = "OR" if i > 0 else "AND"
-                # For IN operator, the chunk is a list. For others, it's a comma-separated string.
                 chunk_value = chunk if final_operator in ("IN", "NIN") else ",".join(chunk)
                 row_indices.append(self.add_row(field, final_operator, chunk_value, "TEXT", logic=logic))
 
@@ -275,7 +272,7 @@ class SiemBackend(TextQueryBackend):
     def convert_condition_not(self, cond: ConditionNOT, state: ConversionState) -> str:
         arg = cond.args[0]
 
-        if isinstance(arg, ConditionOR):
+        if isinstance(arg, ConditionOR) and not self.decide_convert_condition_as_in_expression(arg, state):
             return self.convert_condition(ConditionAND([ConditionNOT([sub_arg]) for sub_arg in arg.args]), state)
 
         if isinstance(arg, ConditionAND):

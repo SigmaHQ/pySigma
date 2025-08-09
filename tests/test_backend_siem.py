@@ -39,6 +39,42 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
+def test_siem_backend_not_or_condition_nin(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                Image:
+                    - 'C:\\Windows\\System32\\cmd.exe'
+                    - 'C:\\Windows\\System32\\powershell.exe'
+            condition: not selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "NIN",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": [
+                            "C:\\Windows\\System32\\cmd.exe",
+                            "C:\\Windows\\System32\\powershell.exe"
+                        ],
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json
+
 def test_siem_backend_and_condition(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule

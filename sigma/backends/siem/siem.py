@@ -14,6 +14,7 @@ from sigma.conditions import (
 )
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation
+from sigma.processing.transformations.interim import TargetObjectTransformation
 from sigma.types import (
     SigmaCompareExpression,
     SigmaString,
@@ -63,8 +64,14 @@ class SiemBackend(TextQueryBackend):
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline(
         items=[
             ProcessingItem(
+                transformation=TargetObjectTransformation(),
+                rule_conditions=[{
+                    "field": "TargetObject"
+                }]
+            ),
+            ProcessingItem(
                 transformation=FieldMappingTransformation(field_mappings)
-            )
+            ),
         ]
     )
 

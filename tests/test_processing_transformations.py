@@ -2566,3 +2566,224 @@ def test_strict_mapped_fields_correlation_rule(dummy_pipeline, sigma_correlation
     transformation = StrictFieldMappingFailure()
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(sigma_correlation_rule)
+
+
+def test_target_object_transformation_equals(dummy_pipeline):
+    from sigma.processing.transformations.interim import TargetObjectTransformation
+    from sigma.conditions import ConditionAND, ConditionOR
+    from sigma.modifiers import (
+        SigmaContainsModifier,
+        SigmaStartswithModifier,
+        SigmaEndswithModifier,
+    )
+    transformation = TargetObjectTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+
+    # Test equals with backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject": r"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services\MyService"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem("ObjectName", [], value=[SigmaString(r"HKEY_LOCAL_MACHINE\System\CurrentControlSet\Services")]),
+            SigmaDetectionItem("ObjectValue", [], value=[SigmaString("MyService")]),
+        ],
+        item_linking=ConditionAND
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+
+def test_target_object_transformation_contains(dummy_pipeline):
+    from sigma.processing.transformations.interim import TargetObjectTransformation
+    from sigma.conditions import ConditionAND, ConditionOR
+    from sigma.modifiers import (
+        SigmaContainsModifier,
+        SigmaStartswithModifier,
+        SigmaEndswithModifier,
+    )
+    transformation = TargetObjectTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+
+    # Test contains with backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|contains": r"CurrentControlSet\Services"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem(
+                "ObjectName", [SigmaContainsModifier], value=[SigmaString(r"CurrentControlSet\Services")]
+            ),
+            SigmaDetection(
+                detection_items=[
+                    SigmaDetectionItem(
+                        "ObjectName",
+                        [SigmaEndswithModifier],
+                        value=[SigmaString("CurrentControlSet")],
+                    ),
+                    SigmaDetectionItem(
+                        "ObjectValue",
+                        [SigmaStartswithModifier],
+                        value=[SigmaString("Services")],
+                    ),
+                ],
+                item_linking=ConditionAND,
+            ),
+        ],
+        item_linking=ConditionOR,
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+    # Test contains without backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|contains": "Services"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem(
+                "ObjectName", [SigmaContainsModifier], value=[SigmaString("Services")]
+            ),
+            SigmaDetectionItem(
+                "ObjectValue", [SigmaContainsModifier], value=[SigmaString("Services")]
+            ),
+        ],
+        item_linking=ConditionOR,
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+
+def test_target_object_transformation_endswith(dummy_pipeline):
+    from sigma.processing.transformations.interim import TargetObjectTransformation
+    from sigma.conditions import ConditionAND, ConditionOR
+    from sigma.modifiers import SigmaEndswithModifier
+    transformation = TargetObjectTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+
+    # Test endswith with backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|endswith": r"Services\MyService"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem("ObjectName", [SigmaEndswithModifier], value=[SigmaString(r"Services")]),
+            SigmaDetectionItem("ObjectValue", [], value=[SigmaString("MyService")]),
+        ],
+        item_linking=ConditionAND
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+    # Test endswith without backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|endswith": "MyService"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetectionItem(
+        "ObjectValue", [SigmaEndswithModifier], value=[SigmaString("MyService")]
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+    # Test equals without backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject": "JustAString"
+            },
+            "condition": "test",
+        },
+    })
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == sigma_rule.detection.detections["test"].detection_items[0]
+
+
+def test_target_object_transformation_startswith(dummy_pipeline):
+    from sigma.processing.transformations.interim import TargetObjectTransformation
+    from sigma.conditions import ConditionAND, ConditionOR
+    from sigma.modifiers import SigmaStartswithModifier
+    transformation = TargetObjectTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+
+    # Test startswith with backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|startswith": r"HKEY_LOCAL_MACHINE\System"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem("ObjectName", [], value=[SigmaString(r"HKEY_LOCAL_MACHINE")]),
+            SigmaDetectionItem("ObjectValue", [SigmaStartswithModifier], value=[SigmaString("System")]),
+        ],
+        item_linking=ConditionAND
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
+    # Test startswith without backslash
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {
+            "test": {
+                "TargetObject|startswith": "HKEY_LOCAL_MACHINE"
+            },
+            "condition": "test",
+        },
+    })
+    expected_detection = SigmaDetectionItem(
+        "ObjectName", [SigmaStartswithModifier], value=[SigmaString("HKEY_LOCAL_MACHINE")]
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection

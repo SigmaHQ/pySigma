@@ -68,6 +68,12 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     auto_modifiers: bool = dataclasses.field(default=True, compare=False, repr=False)
 
     def __post_init__(self) -> None:
+        if not isinstance(self.value, list) or not all(
+            isinstance(val, SigmaType) for val in self.value
+        ):
+            raise sigma_exceptions.SigmaTypeError(
+                "Value must be a list of SigmaType instances", source=self.source
+            )
         self.original_value = self.value.copy()  # Create a copy of original values
         if self.auto_modifiers:
             self.apply_modifiers()

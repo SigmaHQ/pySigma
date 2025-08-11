@@ -238,13 +238,6 @@ def test_sigmadetectionitem_keyword_single():
     )
 
 
-def test_sigmadetectionitem_value_cleanup_multi():
-    """Multiple value cleanup."""
-    assert SigmaDetectionItem(None, [], ["value", 123]) == SigmaDetectionItem(
-        None, [], [SigmaString("value"), SigmaNumber(123)]
-    )
-
-
 def test_sigmadetectionitem_keyword_single_to_plain():
     """Single keyword detection."""
     assert SigmaDetectionItem(None, [], [SigmaString("value*")]).to_plain() == "value*"
@@ -444,6 +437,22 @@ def test_sigmadetectionitem_processing_item_tracking(processing_item):
     detection_item = SigmaDetectionItem.from_mapping("key", "value")
     detection_item.add_applied_processing_item(processing_item)
     assert detection_item.was_processed_by("test")
+
+
+def test_sigmadetectionitem_invalid_value_type():
+    """Test that SigmaDetectionItem raises an error if value is not a list."""
+    with pytest.raises(
+        sigma_exceptions.SigmaTypeError, match="Value must be a list of SigmaType instances"
+    ):
+        SigmaDetectionItem(field="key", modifiers=[], value="invalid_value")
+
+
+def test_sigmadetectionitem_invalid_value_elements():
+    """Test that SigmaDetectionItem raises an error if value contains non-SigmaType elements."""
+    with pytest.raises(
+        sigma_exceptions.SigmaTypeError, match="Value must be a list of SigmaType instances"
+    ):
+        SigmaDetectionItem(field="key", modifiers=[], value=["valid", 123, object()])
 
 
 ### SigmaDetection tests ###

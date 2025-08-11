@@ -56,7 +56,7 @@ from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
 @pytest.fixture
 def dummy_detection_item():
-    return SigmaDetectionItem(None, [], ["foobar"])
+    return SigmaDetectionItem(None, [], [SigmaString("foobar")])
 
 
 @pytest.fixture

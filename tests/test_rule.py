@@ -1270,7 +1270,7 @@ def sigma_rule():
         scope=[
             "scope1",
             "scope2",
-        ]
+        ],
     )
 
 

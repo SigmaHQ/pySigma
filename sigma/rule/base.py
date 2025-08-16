@@ -391,8 +391,8 @@ class SigmaRuleBase:
                 d[field] = str(s)
 
         # copy list of strings
-        for field in ("references", "fields", "falsepositives"):
-            if len(l := self.__getattribute__(field)) > 0:
+        for field in ("references", "fields", "falsepositives", "scope"):
+            if (l := self.__getattribute__(field)) is not None and len(l) > 0:
                 d[field] = l.copy()
 
         # the special cases

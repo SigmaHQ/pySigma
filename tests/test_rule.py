@@ -1267,6 +1267,10 @@ def sigma_rule():
             "Everything",
         ],
         level=SigmaLevel.LOW,
+        scope=[
+            "scope1",
+            "scope2",
+        ]
     )
 
 
@@ -1306,6 +1310,9 @@ def test_sigmarule_fromyaml(sigma_rule):
     falsepositives:
         - Everything
     level: low
+    scope:
+        - scope1
+        - scope2     
     """
     )
     assert sigmarule_from_yaml == sigma_rule
@@ -1348,6 +1355,9 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
         - Everything
     level: low
     custom: attribute
+    scope:
+        - scope1
+        - scope2    
     """
     )
     assert sigmarule_from_yaml == sigma_rule
@@ -1414,6 +1424,7 @@ def test_sigmarule_to_dict(sigma_rule: SigmaRule):
             "Everything",
         ],
         "level": "low",
+        "scope": ["scope1", "scope2"],
     }
 
 

@@ -335,7 +335,7 @@ def test_include_field_condition_re_nomatch():
 
 
 def test_include_field_condition_wrong_type():
-    with pytest.raises(SigmaConfigurationError, match="Invalid.*type"):
+    with pytest.raises(SigmaConfigurationError, match="Invalid.*matching mode"):
         IncludeFieldCondition(["field", "otherfield"], "invalid")
 
 

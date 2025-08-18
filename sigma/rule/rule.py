@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, cast
 from sigma.rule.base import SigmaRuleBase
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 import sigma.exceptions as sigma_exceptions
@@ -79,6 +79,11 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             errors=errors,
             **kwargs,
         )
+
+    @classmethod
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRule":
+        """Convert YAML input string with single document into SigmaRule object."""
+        return cast(SigmaRule, super().from_yaml(rule, collect_errors))
 
     def to_dict(self) -> Dict[str, Any]:
         """Convert rule object into dict."""

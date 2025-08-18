@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, TYPE_CHECKING
+from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, TYPE_CHECKING, cast
 
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
@@ -392,6 +392,11 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             errors=errors,
             **kwargs,
         )
+
+    @classmethod
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaCorrelationRule":
+        """Convert YAML input string with single document into SigmaCorrelationRule object."""
+        return cast(SigmaCorrelationRule, super().from_yaml(rule, collect_errors))
 
     def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()

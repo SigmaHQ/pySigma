@@ -2,7 +2,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
@@ -206,3 +206,8 @@ class SigmaFilter(SigmaRuleBase):
         rule.detection.__post_init__()
 
         return rule
+
+    @classmethod
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaFilter":
+        """Convert YAML input string with single document into SigmaFilter object."""
+        return cast(SigmaFilter, super().from_yaml(rule, collect_errors))

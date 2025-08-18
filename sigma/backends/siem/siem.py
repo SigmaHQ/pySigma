@@ -1,6 +1,7 @@
 import json
 from typing import Any, ClassVar, Dict, List, Optional, Tuple, Union
 import re
+import math
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
@@ -155,26 +156,29 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
-        if operator == "EQ":
-            final_operator = "IN"
-            final_value = values
-        else:
-            final_operator = operator
-            final_value = ",".join(values)
+        # For EQ, use IN operator. For others, keep the original operator.
+        final_operator = "IN" if operator == "EQ" else operator
 
         if getattr(state, "negated", False):
             final_operator = self.negation_mapping.get(final_operator, "N" + final_operator)
 
-        if len(values) <= 25:
+        # Always use a list for the value in multi-value scenarios.
+        final_value = values
+
+        # Balanced chunking logic
+        num_values = len(final_value)
+        if num_values <= 25:
             row_index = self.add_row(field, final_operator, final_value, "TEXT")
             return str(row_index)
         else:
-            chunks = [values[i:i+25] for i in range(0, len(values), 25)]
+            num_chunks = math.ceil(num_values / 25)
+            chunk_size = math.ceil(num_values / num_chunks)
+            chunks = [final_value[i:i+chunk_size] for i in range(0, num_values, chunk_size)]
+
             row_indices = []
             for i, chunk in enumerate(chunks):
                 logic = "OR" if i > 0 else "AND"
-                chunk_value = chunk if final_operator in ("IN", "NIN") else ",".join(chunk)
-                row_indices.append(self.add_row(field, final_operator, chunk_value, "TEXT", logic=logic))
+                row_indices.append(self.add_row(field, final_operator, chunk, "TEXT", logic=logic))
 
             return f"({' OR '.join(map(str, row_indices))})"
 
@@ -270,17 +274,15 @@ class SiemBackend(TextQueryBackend):
         return f"({' AND '.join(filter(None, parts))})"
 
     def convert_condition_not(self, cond: ConditionNOT, state: ConversionState) -> str:
-        arg = cond.args[0]
+        if isinstance(cond.args[0], ConditionOR) and not self.decide_convert_condition_as_in_expression(cond.args[0], state):
+            return self.convert_condition(ConditionAND([ConditionNOT([sub_arg]) for sub_arg in cond.args[0].args]), state)
 
-        if isinstance(arg, ConditionOR) and not self.decide_convert_condition_as_in_expression(arg, state):
-            return self.convert_condition(ConditionAND([ConditionNOT([sub_arg]) for sub_arg in arg.args]), state)
-
-        if isinstance(arg, ConditionAND):
-            return self.convert_condition(ConditionOR([ConditionNOT([sub_arg]) for sub_arg in arg.args]), state)
+        if isinstance(cond.args[0], ConditionAND):
+            return self.convert_condition(ConditionOR([ConditionNOT([sub_arg]) for sub_arg in cond.args[0].args]), state)
 
         is_negated_before = getattr(state, "negated", False)
         state.negated = not is_negated_before
-        result = self.convert_condition(arg, state)
+        result = self.convert_condition(cond.args[0], state)
         state.negated = is_negated_before
         return result
 

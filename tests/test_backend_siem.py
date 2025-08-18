@@ -394,3 +394,35 @@ def test_siem_backend_windash_modifier(siem_backend):
     assert rows[1]["CONDI"] == "CONT"
     assert "-f " in rows[1]["VALUE"]
     assert "/f " in rows[1]["VALUE"]
+
+def test_siem_backend_ignore_eventid(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Ignore EventID
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                EventID: 4688
+                Image: 'C:\\Windows\\System32\\cmd.exe'
+            condition: selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "EQ",
+                        "FIELD": "PROCESSNAME",
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json

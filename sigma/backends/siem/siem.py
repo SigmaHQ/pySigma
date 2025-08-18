@@ -14,8 +14,8 @@ from sigma.conditions import (
     ConditionItem,
 )
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+from sigma.processing.transformations import FieldMappingTransformation, DropDetectionItemTransformation
 from sigma.processing.conditions import IncludeFieldCondition
-from sigma.processing.transformations import FieldMappingTransformation
 from sigma.processing.transformations.interim import TargetObjectTransformation
 from sigma.types import (
     SigmaCompareExpression,
@@ -73,6 +73,10 @@ class SiemBackend(TextQueryBackend):
             ),
             ProcessingItem(
                 transformation=FieldMappingTransformation(field_mappings)
+            ),
+            ProcessingItem(
+                transformation=DropDetectionItemTransformation(),
+                field_name_conditions=[IncludeFieldCondition(fields=["EventID"])]
             ),
         ]
     )
@@ -156,14 +160,16 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
-        # For EQ, use IN operator. For others, keep the original operator.
-        final_operator = "IN" if operator == "EQ" else operator
+        if operator == "EQ":
+            final_operator = "IN"
+            final_value = values
+        else:
+            final_operator = operator
+            # For non-EQ operators, we still use a list now.
+            final_value = values
 
         if getattr(state, "negated", False):
             final_operator = self.negation_mapping.get(final_operator, "N" + final_operator)
-
-        # Always use a list for the value in multi-value scenarios.
-        final_value = values
 
         # Balanced chunking logic
         num_values = len(final_value)

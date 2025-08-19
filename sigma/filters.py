@@ -2,18 +2,14 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Dict, List, Optional, Union
+
+from typing_extensions import Self
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
 from sigma.exceptions import SigmaRuleLocation
-from sigma.rule import (
-    SigmaLogSource,
-    SigmaDetections,
-    SigmaDetection,
-    SigmaRule,
-    SigmaRuleBase,
-)
+from sigma.rule import SigmaDetection, SigmaDetections, SigmaLogSource, SigmaRule, SigmaRuleBase
 
 
 @dataclass
@@ -23,7 +19,7 @@ class SigmaGlobalFilter(SigmaDetections):
     @classmethod
     def from_dict(
         cls, detections: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
-    ) -> "SigmaGlobalFilter":
+    ) -> Self:
         try:
             if isinstance(detections["condition"], str):
                 condition = [detections["condition"]]
@@ -94,7 +90,7 @@ class SigmaFilter(SigmaRuleBase):
         sigma_filter: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaFilter":
+    ) -> Self:
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
@@ -206,8 +202,3 @@ class SigmaFilter(SigmaRuleBase):
         rule.detection.__post_init__()
 
         return rule
-
-    @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaFilter":
-        """Convert YAML input string with single document into SigmaFilter object."""
-        return cast(SigmaFilter, super().from_yaml(rule, collect_errors))

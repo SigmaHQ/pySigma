@@ -1,12 +1,11 @@
-import re
-from collections import Counter
-from collections import defaultdict
+from collections import Counter, defaultdict
 from dataclasses import dataclass
-from typing import ClassVar, Dict, List, Set, Union
+from typing import ClassVar, Dict, List, Sequence, Set, Union
 from uuid import UUID
 
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule
+from sigma.rule.base import SigmaRuleBase
 from sigma.validators.base import (
     SigmaRuleValidator,
     SigmaValidationIssue,
@@ -51,7 +50,7 @@ class IdentifierCollisionIssue(SigmaValidationIssue):
 class IdentifierUniquenessValidator(SigmaRuleValidator):
     """Check rule UUID uniqueness."""
 
-    ids: Dict[UUID, List[Union[SigmaRule, SigmaCorrelationRule]]]
+    ids: Dict[UUID, List[SigmaRuleBase]]
 
     def __init__(self) -> None:
         self.ids = defaultdict(list)
@@ -61,7 +60,7 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
             self.ids[rule.id].append(rule)
         return []
 
-    def finalize(self) -> List[SigmaValidationIssue]:
+    def finalize(self) -> Sequence[SigmaValidationIssue]:
         return [
             IdentifierCollisionIssue(rules, id) for id, rules in self.ids.items() if len(rules) > 1
         ]
@@ -77,17 +76,17 @@ class DuplicateTitleIssue(SigmaValidationIssue):
 class DuplicateTitleValidator(SigmaRuleValidator):
     """Check rule title uniqueness."""
 
-    titles: Dict[str, List[Union[SigmaRule, SigmaCorrelationRule]]]
+    titles: Dict[str, List[SigmaRuleBase]]
 
     def __init__(self) -> None:
         self.titles = defaultdict(list)
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRuleBase]) -> List[SigmaValidationIssue]:
         if rule.title is not None:
             self.titles[rule.title].append(rule)
         return []
 
-    def finalize(self) -> List[SigmaValidationIssue]:
+    def finalize(self) -> Sequence[SigmaValidationIssue]:
         return [
             DuplicateTitleIssue(rules, title)
             for title, rules in self.titles.items()
@@ -124,20 +123,20 @@ class DuplicateFilenameIssue(SigmaValidationIssue):
 class DuplicateFilenameValidator(SigmaRuleValidator):
     """Check rule filename uniqueness."""
 
-    filenames_to_rules: Dict[str, List[Union[SigmaRule, SigmaCorrelationRule]]]
+    filenames_to_rules: Dict[str, List[Union[SigmaRuleBase]]]
     filenames_to_paths: Dict[str, Set[str]]
 
     def __init__(self) -> None:
         self.filenames_to_rules = defaultdict(list)
         self.filenames_to_paths = defaultdict(set)
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRuleBase]) -> Sequence[SigmaValidationIssue]:
         if rule.source is not None:
             self.filenames_to_rules[rule.source.path.name].append(rule)
             self.filenames_to_paths[rule.source.path.name].add(str(rule.source.path))
         return []
 
-    def finalize(self) -> List[SigmaValidationIssue]:
+    def finalize(self) -> Sequence[SigmaValidationIssue]:
         return [
             DuplicateFilenameIssue(self.filenames_to_rules[filename], filename)
             for filename, paths in self.filenames_to_paths.items()

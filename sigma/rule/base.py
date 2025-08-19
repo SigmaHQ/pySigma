@@ -5,15 +5,14 @@ from uuid import UUID
 from datetime import date, datetime
 import datetime as dt
 import yaml
-import re
+from typing_extensions import Self
+
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import SigmaError, SigmaRuleLocation
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
-from sigma.conversion.state import ConversionState
 
 if TYPE_CHECKING:
-    from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
-    from sigma.rule.attributes import SigmaRelated, SigmaStatus, SigmaRuleTag, SigmaLevel
+    from sigma.conversion.state import ConversionState
+    from sigma.exceptions import SigmaError, SigmaRuleLocation
 
 
 class SigmaYAMLLoader(yaml.SafeLoader):
@@ -55,14 +54,14 @@ class SigmaRuleBase:
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
     custom_attributes: Dict[str, Any] = field(compare=False, default_factory=dict)
 
-    _backreferences: List["SigmaRuleBase"] = field(
-        init=False, default_factory=list, repr=False, compare=False
+    _backreferences: List[Self] = field(init=False, default_factory=list, repr=False, compare=False)
+    _conversion_result: list[Any] | None = field(
     )
-    _conversion_result: Optional[List[Any]] = field(
-        init=False, default=None, repr=False, compare=False
-    )
-    _conversion_states: Optional[List["ConversionState"]] = field(
-        init=False, default=None, repr=False, compare=False
+    _conversion_states: Optional[List[ConversionState]] = field(
+        init=False,
+        default=None,
+        repr=False,
+        compare=False,
     )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
 
@@ -368,14 +367,14 @@ class SigmaRuleBase:
 
     @classmethod
     @abstractmethod
-    def from_dict(cls, rule: Dict[str, Any], collect_errors: bool = False) -> "SigmaRuleBase":
+    def from_dict(cls, rule: Dict[str, Any], collect_errors: bool = False) -> Self:
         """Convert dict input into SigmaRule object."""
         raise NotImplementedError(
             "from_dict method must be implemented in the derived class of SigmaRuleBase"
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRuleBase":
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
@@ -408,11 +407,11 @@ class SigmaRuleBase:
 
         return d
 
-    def add_backreference(self, rule: "SigmaRuleBase") -> None:
+    def add_backreference(self, rule: Self) -> None:
         """Add backreference to another rule."""
         self._backreferences.append(rule)
 
-    def referenced_by(self, rule: "SigmaRuleBase") -> bool:
+    def referenced_by(self, rule: Self) -> bool:
         """Check if rule is referenced by another rule."""
         return rule in self._backreferences
 
@@ -430,11 +429,11 @@ class SigmaRuleBase:
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: List["ConversionState"]) -> None:
+    def set_conversion_states(self, state: List[ConversionState]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_states(self) -> List["ConversionState"]:
+    def get_conversion_states(self) -> List[ConversionState]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(
@@ -448,6 +447,6 @@ class SigmaRuleBase:
         """Disable output of rule."""
         self._output = False
 
-    def __lt__(self, other: "SigmaRuleBase") -> bool:
+    def __lt__(self, other: Self) -> bool:
         """Sort rules by backreference. A rule referenced by another rule is smaller."""
         return self.referenced_by(other)

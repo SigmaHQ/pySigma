@@ -1,11 +1,14 @@
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import Any, Dict, Iterator, List, Literal, Optional, Set, Union, TYPE_CHECKING, cast
+from typing import TYPE_CHECKING, Any, Dict, Iterator, List, Literal, Optional, Set
+
+from typing_extensions import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
-from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
+from sigma.rule import EnumLowercaseStringMixin
+from sigma.rule.base import SigmaRuleBase
 
 if TYPE_CHECKING:
     from sigma.collection import SigmaCollection
@@ -35,7 +38,7 @@ class SigmaRuleReference:
     """
 
     reference: str
-    rule: Union[SigmaRule, "SigmaCorrelationRule"] = field(init=False, repr=False, compare=False)
+    rule: SigmaRuleBase = field(init=False, repr=False, compare=False)
 
     def resolve(self, rule_collection: "SigmaCollection") -> None:
         """
@@ -253,7 +256,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         rule: Dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaCorrelationRule":
+    ) -> Self:
         kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
         correlation_rule = rule.get("correlation", dict())
 
@@ -393,11 +396,6 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             **kwargs,
         )
 
-    @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaCorrelationRule":
-        """Convert YAML input string with single document into SigmaCorrelationRule object."""
-        return cast(SigmaCorrelationRule, super().from_yaml(rule, collect_errors))
-
     def to_dict(self) -> Dict[str, Any]:
         d = super().to_dict()
         dc = {
@@ -428,9 +426,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
 
         self.aliases.resolve_rule_references(rule_collection)
 
-    def flatten_rules(
-        self, include_correlations: bool = True
-    ) -> List[Union[SigmaRule, "SigmaCorrelationRule"]]:
+    def flatten_rules(self, include_correlations: bool = True) -> List[SigmaRuleBase]:
         """
         Flattens the rules in the correlation rule and returns a list of Sigma rules. If include_correlations
         is set to False, only the Sigma rules are returned, excluding nested correlation rules.
@@ -438,7 +434,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         Returns:
             List of Sigma rules.
         """
-        rules: List[Union[SigmaRule, "SigmaCorrelationRule"]] = []
+        rules: List[SigmaRuleBase] = []
         for rule_ref in self.rules:
             rule = rule_ref.rule
             if isinstance(rule, SigmaCorrelationRule):

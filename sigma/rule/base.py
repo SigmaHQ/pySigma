@@ -1,9 +1,11 @@
+import datetime as dt
+import re
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Dict, Optional, Tuple, List, Type, TYPE_CHECKING
-from uuid import UUID
 from datetime import date, datetime
-import datetime as dt
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Tuple, Type
+from uuid import UUID
+
 import yaml
 from typing_extensions import Self
 
@@ -51,12 +53,14 @@ class SigmaRuleBase:
     scope: Optional[List[str]] = None
 
     errors: List[sigma_exceptions.SigmaError] = field(default_factory=list)
-    source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
+    source: Optional["SigmaRuleLocation"] = field(default=None, compare=False)
     custom_attributes: Dict[str, Any] = field(compare=False, default_factory=dict)
 
     _backreferences: List[Self] = field(init=False, default_factory=list, repr=False, compare=False)
-    _conversion_result: list[Any] | None = field()
-    _conversion_states: Optional[List[ConversionState]] = field(
+    _conversion_result: Optional[List[Any]] = field(
+        init=False, default=None, repr=False, compare=False
+    )
+    _conversion_states: Optional[List["ConversionState"]] = field(
         init=False,
         default=None,
         repr=False,

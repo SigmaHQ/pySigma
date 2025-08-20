@@ -2596,6 +2596,56 @@ def test_target_object_transformation_equals(dummy_pipeline):
     result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
     assert result == expected_detection
 
+
+def test_logsource_category_startswith_condition():
+    from sigma.processing.conditions.custom import LogsourceCategoryStartsWithCondition
+
+    rule_with_file_category = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "file_event"},
+        "detection": {"test": {"foo": "bar"}, "condition": "test"},
+    })
+
+    rule_with_other_category = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "process_creation"},
+        "detection": {"test": {"foo": "bar"}, "condition": "test"},
+    })
+
+    condition = LogsourceCategoryStartsWithCondition(prefix="file_")
+
+    assert condition.match(rule_with_file_category) == True
+    assert condition.match(rule_with_other_category) == False
+
+
+def test_duplicate_targetfilename_transformation(dummy_pipeline):
+    from sigma.processing.transformations.interim import DuplicateTargetFilenameTransformation
+    from sigma.conditions import ConditionOR
+    transformation = DuplicateTargetFilenameTransformation()
+    transformation.set_pipeline(dummy_pipeline)
+
+    sigma_rule = SigmaRule.from_dict({
+        "title": "Test",
+        "logsource": {"category": "file_event"},
+        "detection": {
+            "test": {
+                "TargetFilename": "/path/to/file"
+            },
+            "condition": "test",
+        },
+    })
+
+    expected_detection = SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem("TargetFilename", [], value=[SigmaString("/path/to/file")]),
+            SigmaDetectionItem("ObjectName", [], value=[SigmaString("/path/to/file")]),
+        ],
+        item_linking=ConditionOR
+    )
+
+    result = transformation.apply_detection_item(sigma_rule.detection.detections["test"].detection_items[0])
+    assert result == expected_detection
+
     # Test equals without backslash
     sigma_rule = SigmaRule.from_dict({
         "title": "Test",

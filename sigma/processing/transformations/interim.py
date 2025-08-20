@@ -117,3 +117,24 @@ class TargetObjectTransformation(DetectionItemTransformation):
                 )
 
         return detection_item
+
+
+class DuplicateTargetFilenameTransformation(DetectionItemTransformation):
+    """
+    Duplicates the TargetFilename field into an ObjectName field.
+    """
+
+    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> SigmaDetectionItem:
+        if detection_item.field == "TargetFilename":
+            return SigmaDetection(
+                detection_items=[
+                    detection_item,
+                    SigmaDetectionItem(
+                        "ObjectName",
+                        detection_item.modifiers,
+                        value=detection_item.value,
+                    ),
+                ],
+                item_linking=ConditionOR,
+            )
+        return detection_item

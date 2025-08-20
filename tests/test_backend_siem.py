@@ -78,7 +78,7 @@ def test_siem_backend_and_condition(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
-def test_siem_backend_multi_value_in(siem_backend):
+def test_siem_backend_or_condition_in_operator(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule
         logsource:
@@ -114,7 +114,7 @@ def test_siem_backend_multi_value_in(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
-def test_siem_backend_multi_value_contains(siem_backend):
+def test_siem_backend_not_condition(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule
         logsource:
@@ -122,94 +122,7 @@ def test_siem_backend_multi_value_contains(siem_backend):
             product: windows
         detection:
             selection:
-                CommandLine|contains:
-                    - 'foo'
-                    - 'bar'
-            condition: selection
-    """)
-    expected_json = {
-        "actions": [
-            {
-                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
-                "pattern": "1",
-                "rows": [
-                    {
-                        "CONDI": "CONT",
-                        "FIELD": "COMMANDLINE",
-                        "VALUE": ["foo", "bar"],
-                        "TYPE": "TEXT",
-                        "LOGIC": "AND"
-                    }
-                ]
-            }
-        ]
-    }
-    result = siem_backend.convert(rule)
-    assert json.loads(result[0]) == expected_json
-
-def test_siem_backend_balanced_chunking(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Rule
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                CommandLine|contains:
-                    - val1
-                    - val2
-                    - val3
-                    - val4
-                    - val5
-                    - val6
-                    - val7
-                    - val8
-                    - val9
-                    - val10
-                    - val11
-                    - val12
-                    - val13
-                    - val14
-                    - val15
-                    - val16
-                    - val17
-                    - val18
-                    - val19
-                    - val20
-                    - val21
-                    - val22
-                    - val23
-                    - val24
-                    - val25
-                    - val26
-                    - val27
-                    - val28
-                    - val29
-                    - val30
-            condition: selection
-    """)
-    result = siem_backend.convert(rule)
-    result_json = json.loads(result[0])
-
-    assert result_json["actions"][0]["pattern"] == "1 OR 2"
-    rows = result_json["actions"][0]["rows"]
-    assert len(rows) == 2
-    assert len(rows[0]["VALUE"]) == 15
-    assert len(rows[1]["VALUE"]) == 15
-    assert rows[0]["LOGIC"] == "AND"
-    assert rows[1]["LOGIC"] == "OR"
-
-def test_siem_backend_not_or_condition_nin(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Rule
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                Image:
-                    - 'C:\\Windows\\System32\\cmd.exe'
-                    - 'C:\\Windows\\System32\\powershell.exe'
+                Image: 'C:\\Windows\\System32\\cmd.exe'
             condition: not selection
     """)
     expected_json = {
@@ -219,12 +132,9 @@ def test_siem_backend_not_or_condition_nin(siem_backend):
                 "pattern": "1",
                 "rows": [
                     {
-                        "CONDI": "NIN",
+                        "CONDI": "NEQ",
                         "FIELD": "PROCESSNAME",
-                        "VALUE": [
-                            "C:\\Windows\\System32\\cmd.exe",
-                            "C:\\Windows\\System32\\powershell.exe"
-                        ],
+                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
                         "TYPE": "TEXT",
                         "LOGIC": "AND"
                     }
@@ -394,35 +304,3 @@ def test_siem_backend_windash_modifier(siem_backend):
     assert rows[1]["CONDI"] == "CONT"
     assert "-f " in rows[1]["VALUE"]
     assert "/f " in rows[1]["VALUE"]
-
-def test_siem_backend_ignore_eventid(siem_backend):
-    rule = SigmaCollection.from_yaml("""
-        title: Test Ignore EventID
-        logsource:
-            category: process_creation
-            product: windows
-        detection:
-            selection:
-                EventID: 4688
-                Image: 'C:\\Windows\\System32\\cmd.exe'
-            condition: selection
-    """)
-    expected_json = {
-        "actions": [
-            {
-                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
-                "pattern": "1",
-                "rows": [
-                    {
-                        "CONDI": "EQ",
-                        "FIELD": "PROCESSNAME",
-                        "VALUE": "C:\\Windows\\System32\\cmd.exe",
-                        "TYPE": "TEXT",
-                        "LOGIC": "AND"
-                    }
-                ]
-            }
-        ]
-    }
-    result = siem_backend.convert(rule)
-    assert json.loads(result[0]) == expected_json

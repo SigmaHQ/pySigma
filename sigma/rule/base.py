@@ -85,8 +85,8 @@ class SigmaRuleBase:
         cls,
         rule: Dict[str, Any],
         collect_errors: bool = False,
-        source: Optional[SigmaRuleLocation] = None,
-    ) -> Tuple[Dict[str, Any], List[SigmaError]]:
+        source: Optional["SigmaRuleLocation"] = None,
+    ) -> Tuple[Dict[str, Any], List["SigmaError"]]:
         """
         Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
         class instantiation of an object derived from the SigmaRuleBase class and the errors list.
@@ -98,7 +98,7 @@ class SigmaRuleBase:
         """
         errors = []
 
-        def get_rule_as_date(name: str, exception_class: Type[SigmaError]) -> Optional[date]:
+        def get_rule_as_date(name: str, exception_class: Type["SigmaError"]) -> Optional[date]:
             """
             Accepted string based date formats are in range 1000-01-01 .. 3999-12-31:
               * XXXX-XX-XX                                 -- fully corresponds to yaml date format
@@ -432,11 +432,11 @@ class SigmaRuleBase:
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: List[ConversionState]) -> None:
+    def set_conversion_states(self, state: List["ConversionState"]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_states(self) -> List[ConversionState]:
+    def get_conversion_states(self) -> List["ConversionState"]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(

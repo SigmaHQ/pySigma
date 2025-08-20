@@ -55,8 +55,7 @@ class SigmaRuleBase:
     custom_attributes: Dict[str, Any] = field(compare=False, default_factory=dict)
 
     _backreferences: List[Self] = field(init=False, default_factory=list, repr=False, compare=False)
-    _conversion_result: list[Any] | None = field(
-    )
+    _conversion_result: list[Any] | None = field()
     _conversion_states: Optional[List[ConversionState]] = field(
         init=False,
         default=None,

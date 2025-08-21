@@ -39,6 +39,56 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
+def test_siem_backend_target_object_transform(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: registry_add
+            product: windows
+        detection:
+            selection:
+                TargetObject: 'HKLM\\System\\CurrentControlSet\\services\\TCPIP'
+            condition: selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1 OR (2 AND 3)",
+                "rows": [
+                    {
+                        "CONDI": "EQ",
+                        "FIELD": "OBJECTNAME",
+                        "VALUE": "HKLM\\System\\CurrentControlSet\\services\\TCPIP",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    },
+                    {
+                        "CONDI": "EQ",
+                        "FIELD": "OBJECTNAME",
+                        "VALUE": "HKLM\\System\\CurrentControlSet\\services",
+                        "TYPE": "TEXT",
+                        "LOGIC": "OR"
+                    },
+                    {
+                        "CONDI": "EQ",
+                        "FIELD": "OBJECTVALUENAME",
+                        "VALUE": "TCPIP",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+
+    # Normalize the pattern by removing parentheses around single numbers
+    result_json = json.loads(result[0])
+    result_json["actions"][0]["pattern"] = result_json["actions"][0]["pattern"].replace("(1)", "1").replace("(2)", "2").replace("(3)", "3")
+
+    assert result_json == expected_json
+
 def test_siem_backend_cont_empty_string_as_exists(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule

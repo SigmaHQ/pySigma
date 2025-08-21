@@ -24,11 +24,13 @@ class TargetObjectTransformation(DetectionItemTransformation):
         s_value = str(detection_item.value[0])
         modifiers = detection_item.modifiers
 
+        transformed_detection = None
+
         # Equals (no modifier)
         if not modifiers:
             if "\\" in s_value:
                 object_name, object_value = s_value.rsplit("\\", 1)
-                return SigmaDetection(
+                transformed_detection = SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem("ObjectName", [], value=[SigmaString(object_name)]),
                         SigmaDetectionItem("OBJECTVALUENAME", [], value=[SigmaString(object_value)]),
@@ -40,7 +42,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
         elif SigmaStartswithModifier in modifiers:
             if "\\" in s_value:
                 name_part, value_part = s_value.rsplit("\\", 1)
-                return SigmaDetection(
+                transformed_detection = SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem("ObjectName", [], value=[SigmaString(name_part)]),
                         SigmaDetectionItem(
@@ -52,7 +54,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                     item_linking=ConditionAND,
                 )
             else:
-                return SigmaDetectionItem(
+                transformed_detection = SigmaDetectionItem(
                     "ObjectName", [SigmaStartswithModifier], value=[SigmaString(s_value)]
                 )
 
@@ -60,7 +62,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
         elif SigmaEndswithModifier in modifiers:
             if "\\" in s_value:
                 name_part, value_part = s_value.rsplit("\\", 1)
-                return SigmaDetection(
+                transformed_detection = SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem(
                             "ObjectName", [SigmaEndswithModifier], value=[SigmaString(name_part)]
@@ -70,7 +72,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                     item_linking=ConditionAND,
                 )
             else:
-                return SigmaDetectionItem(
+                transformed_detection = SigmaDetectionItem(
                     "OBJECTVALUENAME", [SigmaEndswithModifier], value=[SigmaString(s_value)]
                 )
 
@@ -79,7 +81,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
             if "\\" in s_value:
                 name_part, value_part = s_value.rsplit("\\", 1)
                 # ObjectName|contains: 'foo\bar' OR (ObjectName|endswith: 'foo' AND OBJECTVALUENAME|startswith: 'bar')
-                return SigmaDetection(
+                transformed_detection = SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem(
                             "ObjectName", [SigmaContainsModifier], value=[SigmaString(s_value)]
@@ -104,7 +106,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                 )
             else:
                 # ObjectName|contains: 'value' OR OBJECTVALUENAME|contains: 'value'
-                return SigmaDetection(
+                transformed_detection = SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem(
                             "ObjectName", [SigmaContainsModifier], value=[SigmaString(s_value)]
@@ -115,6 +117,15 @@ class TargetObjectTransformation(DetectionItemTransformation):
                     ],
                     item_linking=ConditionOR,
                 )
+
+        if transformed_detection:
+            return SigmaDetection(
+                detection_items=[
+                    detection_item,
+                    transformed_detection,
+                ],
+                item_linking=ConditionOR,
+            )
 
         return detection_item
 

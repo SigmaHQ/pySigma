@@ -71,17 +71,24 @@ class SiemBackend(TextQueryBackend):
                 transformation=TargetObjectTransformation(),
                 field_name_conditions=[
                     IncludeFieldCondition(fields=["TargetObject"])
+                ],
+                rule_conditions=[
+                    LogsourceCategoryStartsWithCondition(prefix="registry")
                 ]
+            ),
+            ProcessingItem(
+                transformation=DropDetectionItemTransformation(),
+                field_name_conditions=[IncludeFieldCondition(fields=["EventID"])]
+            ),
+            ProcessingItem(
+                transformation=FieldMappingTransformation(field_mappings)
             ),
             ProcessingItem(
                 transformation=DuplicateTargetFilenameTransformation(),
                 rule_conditions=[
                     LogsourceCategoryStartsWithCondition(prefix="file_")
                 ]
-            ),
-            ProcessingItem(
-                transformation=FieldMappingTransformation(field_mappings)
-            ),
+            )
         ]
     )
 

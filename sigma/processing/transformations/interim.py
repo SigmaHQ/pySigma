@@ -10,7 +10,7 @@ from sigma.modifiers import (
 
 class TargetObjectTransformation(DetectionItemTransformation):
     """
-    Transforms a TargetObject field into a combination of ObjectName and ObjectValue,
+    Transforms a TargetObject field into a combination of ObjectName and OBJECTVALUENAME,
     handling various modifiers.
     """
 
@@ -31,7 +31,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                 return SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem("ObjectName", [], value=[SigmaString(object_name)]),
-                        SigmaDetectionItem("ObjectValue", [], value=[SigmaString(object_value)]),
+                        SigmaDetectionItem("OBJECTVALUENAME", [], value=[SigmaString(object_value)]),
                     ],
                     item_linking=ConditionAND,
                 )
@@ -44,7 +44,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                     detection_items=[
                         SigmaDetectionItem("ObjectName", [], value=[SigmaString(name_part)]),
                         SigmaDetectionItem(
-                            "ObjectValue",
+                            "OBJECTVALUENAME",
                             [SigmaStartswithModifier],
                             value=[SigmaString(value_part)],
                         ),
@@ -65,20 +65,20 @@ class TargetObjectTransformation(DetectionItemTransformation):
                         SigmaDetectionItem(
                             "ObjectName", [SigmaEndswithModifier], value=[SigmaString(name_part)]
                         ),
-                        SigmaDetectionItem("ObjectValue", [], value=[SigmaString(value_part)]),
+                        SigmaDetectionItem("OBJECTVALUENAME", [], value=[SigmaString(value_part)]),
                     ],
                     item_linking=ConditionAND,
                 )
             else:
                 return SigmaDetectionItem(
-                    "ObjectValue", [SigmaEndswithModifier], value=[SigmaString(s_value)]
+                    "OBJECTVALUENAME", [SigmaEndswithModifier], value=[SigmaString(s_value)]
                 )
 
         # Contains
         elif SigmaContainsModifier in modifiers:
             if "\\" in s_value:
                 name_part, value_part = s_value.rsplit("\\", 1)
-                # ObjectName|contains: 'foo\bar' OR (ObjectName|endswith: 'foo' AND ObjectValue|startswith: 'bar')
+                # ObjectName|contains: 'foo\bar' OR (ObjectName|endswith: 'foo' AND OBJECTVALUENAME|startswith: 'bar')
                 return SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem(
@@ -92,7 +92,7 @@ class TargetObjectTransformation(DetectionItemTransformation):
                                     value=[SigmaString(name_part)],
                                 ),
                                 SigmaDetectionItem(
-                                    "ObjectValue",
+                                    "OBJECTVALUENAME",
                                     [SigmaStartswithModifier],
                                     value=[SigmaString(value_part)],
                                 ),
@@ -103,14 +103,14 @@ class TargetObjectTransformation(DetectionItemTransformation):
                     item_linking=ConditionOR,
                 )
             else:
-                # ObjectName|contains: 'value' OR ObjectValue|contains: 'value'
+                # ObjectName|contains: 'value' OR OBJECTVALUENAME|contains: 'value'
                 return SigmaDetection(
                     detection_items=[
                         SigmaDetectionItem(
                             "ObjectName", [SigmaContainsModifier], value=[SigmaString(s_value)]
                         ),
                         SigmaDetectionItem(
-                            "ObjectValue", [SigmaContainsModifier], value=[SigmaString(s_value)]
+                            "OBJECTVALUENAME", [SigmaContainsModifier], value=[SigmaString(s_value)]
                         ),
                     ],
                     item_linking=ConditionOR,

@@ -16,6 +16,9 @@ from sigma.conditions import (
 from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
 from sigma.processing.transformations import FieldMappingTransformation, DropDetectionItemTransformation
 from sigma.processing.conditions import IncludeFieldCondition
+from sigma.processing.conditions.custom import LogsourceCategoryStartsWithCondition
+from sigma.processing.transformations import FieldMappingTransformation
+from sigma.processing.transformations.interim import TargetObjectTransformation, DuplicateTargetFilenameTransformation
 from sigma.types import (
     SigmaCompareExpression,
     SigmaString,
@@ -65,11 +68,19 @@ class SiemBackend(TextQueryBackend):
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline(
         items=[
             ProcessingItem(
-                transformation=FieldMappingTransformation(field_mappings)
+                transformation=TargetObjectTransformation(),
+                field_name_conditions=[
+                    IncludeFieldCondition(fields=["TargetObject"])
+                ]
             ),
             ProcessingItem(
-                transformation=DropDetectionItemTransformation(),
-                field_name_conditions=[IncludeFieldCondition(fields=["EventID"])]
+                transformation=DuplicateTargetFilenameTransformation(),
+                rule_conditions=[
+                    LogsourceCategoryStartsWithCondition(prefix="file_")
+                ]
+            ),
+            ProcessingItem(
+                transformation=FieldMappingTransformation(field_mappings)
             ),
         ]
     )
@@ -118,6 +129,7 @@ class SiemBackend(TextQueryBackend):
         }
 
         if value is not None:
+            # json.dumps will handle escaping of strings within the list
             if isinstance(value, list):
                 row["VALUE"] = value
             else:
@@ -153,7 +165,13 @@ class SiemBackend(TextQueryBackend):
         if not values:
             return self.convert_condition_or(cond, state)
 
-        final_operator = "IN" if operator == "EQ" else operator
+        # Determine the operator and value format (list for IN, string for others)
+        if operator == "EQ":
+            final_operator = "IN"
+            final_value = values
+        else:
+            final_operator = operator
+            final_value = ",".join(values)
 
         if getattr(state, "negated", False):
             final_operator = self.negation_mapping.get(final_operator, "N" + final_operator)

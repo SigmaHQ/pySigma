@@ -128,6 +128,10 @@ class SiemBackend(TextQueryBackend):
         """Adds a row to the criteria and returns its index."""
         row_index = len(self.rows) + 1
 
+        if (operator in ("CONT", "NCONT")) and value == "":
+            operator = "EXISTS" if operator == "CONT" else "NOT_EXISTS"
+            value = None
+
         row = {
             "CONDI": operator,
             "FIELD": field.upper(),

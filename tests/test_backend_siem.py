@@ -39,6 +39,66 @@ def test_siem_backend_simple_rule(siem_backend):
     result = siem_backend.convert(rule)
     assert json.loads(result[0]) == expected_json
 
+def test_siem_backend_cont_empty_string_as_exists(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                Image|contains: ''
+            condition: selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "EXISTS",
+                        "FIELD": "PROCESSNAME",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json
+
+def test_siem_backend_ncont_empty_string_as_not_exists(siem_backend):
+    rule = SigmaCollection.from_yaml("""
+        title: Test Rule
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                Image|contains: ''
+            condition: not selection
+    """)
+    expected_json = {
+        "actions": [
+            {
+                "ACTION_UNIQUE_NAME": "PLACEHOLDER_ACTION",
+                "pattern": "1",
+                "rows": [
+                    {
+                        "CONDI": "NOT_EXISTS",
+                        "FIELD": "PROCESSNAME",
+                        "TYPE": "TEXT",
+                        "LOGIC": "AND"
+                    }
+                ]
+            }
+        ]
+    }
+    result = siem_backend.convert(rule)
+    assert json.loads(result[0]) == expected_json
+
 def test_siem_backend_and_condition(siem_backend):
     rule = SigmaCollection.from_yaml("""
         title: Test Rule

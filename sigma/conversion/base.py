@@ -171,6 +171,19 @@ class Backend(ABC):
         self.collect_errors = collect_errors
         self.backend_options = backend_options
 
+    def init_processing_pipeline(self, output_format: Optional[str] = None) -> None:
+        """
+        Initialize the processing pipeline by combining backend, processing, and output format pipelines.
+        """
+        self.last_processing_pipeline = (
+            self.backend_processing_pipeline
+            + self.processing_pipeline
+            + self.output_format_processing_pipeline[output_format or self.default_format]
+        )
+        self.last_processing_pipeline.vars.update(
+            {"backend_" + key: value for key, value in self.backend_options.items()}
+        )
+
     def convert(
         self,
         rule_collection: SigmaCollection,
@@ -182,14 +195,7 @@ class Backend(ABC):
         multiple queries, but might also be some arbitrary data structure required for further
         processing.
         """
-        self.last_processing_pipeline = (
-            self.backend_processing_pipeline
-            + self.processing_pipeline
-            + self.output_format_processing_pipeline[output_format or self.default_format]
-        )
-        self.last_processing_pipeline.vars.update(
-            {"backend_" + key: value for key, value in self.backend_options.items()}
-        )
+        self.init_processing_pipeline(output_format)
         rule_collection.resolve_rule_references()
         queries = [
             query
@@ -209,6 +215,12 @@ class Backend(ABC):
         Convert a single Sigma rule into the target data structure (usually query, see above).
         """
         try:
+            # Initialize processing pipeline if not already done
+            if (
+                not hasattr(self, "last_processing_pipeline")
+                or self.last_processing_pipeline is None
+            ):
+                self.init_processing_pipeline(output_format)
 
             error_state = "applying processing pipeline on"
             self.last_processing_pipeline.apply(rule)  # 1. Apply transformations

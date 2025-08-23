@@ -34,6 +34,7 @@ from typing import (
     Any,
     Type,
     cast,
+    Callable,
 )
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.collection import SigmaCollection
@@ -189,11 +190,23 @@ class Backend(ABC):
         rule_collection: SigmaCollection,
         output_format: Optional[str] = None,
         correlation_method: Optional[str] = None,
+        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], None]] = None,
     ) -> Any:
         """
         Convert a Sigma ruleset into the target data structure. Usually the result are one or
         multiple queries, but might also be some arbitrary data structure required for further
         processing.
+
+        Args:
+            rule_collection: Collection of Sigma rules to convert
+            output_format: The output format to use for conversion
+            correlation_method: Method to use for correlation rule conversion
+            callback: Optional callback function called for each condition conversion.
+                     Receives (rule, output_format, index, cond, result) parameters.
+                     Called for every iteration, even when result is None.
+
+        Returns:
+            Converted data structure (usually queries)
         """
         self.init_processing_pipeline(output_format)
         rule_collection.resolve_rule_references()
@@ -201,7 +214,7 @@ class Backend(ABC):
             query
             for rule in rule_collection.rules
             for query in (
-                self.convert_rule(rule, output_format or self.default_format)
+                self.convert_rule(rule, output_format or self.default_format, callback)
                 if isinstance(rule, SigmaRule)
                 else self.convert_correlation_rule(
                     rule, output_format or self.default_format, correlation_method
@@ -210,9 +223,24 @@ class Backend(ABC):
         ]
         return self.finalize(queries, output_format or self.default_format)
 
-    def convert_rule(self, rule: SigmaRule, output_format: Optional[str] = None) -> List[Any]:
+    def convert_rule(
+        self,
+        rule: SigmaRule,
+        output_format: Optional[str] = None,
+        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], None]] = None,
+    ) -> List[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
+
+        Args:
+            rule: The Sigma rule to convert
+            output_format: The output format to use for conversion
+            callback: Optional callback function called for each condition conversion.
+                     Receives (rule, output_format, index, cond, result) parameters.
+                     Called for every iteration, even when result is None.
+
+        Returns:
+            List of converted queries
         """
         try:
             # Initialize processing pipeline if not already done
@@ -231,11 +259,13 @@ class Backend(ABC):
                 ConversionState(processing_state=dict(self.last_processing_pipeline.state))
                 for _ in rule.detection.parsed_condition
             ]
-            queries = [
-                result
-                for index, cond in enumerate(rule.detection.parsed_condition)
-                if (result := self.convert_condition(cond.parsed, states[index])) is not None
-            ]
+            queries = []
+            for index, cond in enumerate(rule.detection.parsed_condition):
+                result = self.convert_condition(cond.parsed, states[index])
+                if callback is not None:
+                    callback(rule, output_format, index, cond, result)
+                if result is not None:
+                    queries.append(result)
 
             error_state = "finalizing query for"
             # 3. Postprocess generated query if not part of a correlation rule

@@ -190,7 +190,7 @@ class Backend(ABC):
         rule_collection: SigmaCollection,
         output_format: Optional[str] = None,
         correlation_method: Optional[str] = None,
-        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], None]] = None,
+        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], Any]] = None,
     ) -> Any:
         """
         Convert a Sigma ruleset into the target data structure. Usually the result are one or
@@ -202,7 +202,9 @@ class Backend(ABC):
             output_format: The output format to use for conversion
             correlation_method: Method to use for correlation rule conversion
             callback: Optional callback function called for each condition conversion.
-                     Receives (rule, output_format, index, cond, result) parameters.
+                     Receives (rule, output_format, index, cond, result) parameters and
+                     returns a potentially modified result. The returned value replaces
+                     the original conversion result. Return None to skip the result.
                      Called for every iteration, even when result is None.
 
         Returns:
@@ -227,7 +229,7 @@ class Backend(ABC):
         self,
         rule: SigmaRule,
         output_format: Optional[str] = None,
-        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], None]] = None,
+        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], Any]] = None,
     ) -> List[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
@@ -236,7 +238,9 @@ class Backend(ABC):
             rule: The Sigma rule to convert
             output_format: The output format to use for conversion
             callback: Optional callback function called for each condition conversion.
-                     Receives (rule, output_format, index, cond, result) parameters.
+                     Receives (rule, output_format, index, cond, result) parameters and
+                     returns a potentially modified result. The returned value replaces
+                     the original conversion result. Return None to skip the result.
                      Called for every iteration, even when result is None.
 
         Returns:
@@ -263,7 +267,7 @@ class Backend(ABC):
             for index, cond in enumerate(rule.detection.parsed_condition):
                 result = self.convert_condition(cond.parsed, states[index])
                 if callback is not None:
-                    callback(rule, output_format, index, cond, result)
+                    result = callback(rule, output_format, index, cond, result)
                 if result is not None:
                     queries.append(result)
 

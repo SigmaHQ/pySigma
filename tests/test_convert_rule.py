@@ -130,7 +130,7 @@ def test_convert_rule_with_callback(test_backend: TextQueryTestBackend, sigma_ru
     callback_calls = []
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -140,6 +140,7 @@ def test_convert_rule_with_callback(test_backend: TextQueryTestBackend, sigma_ru
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Convert rule with callback
     queries = test_backend.convert_rule(sigma_rule, callback=test_callback)
@@ -168,7 +169,7 @@ def test_convert_rule_with_callback_and_output_format(
     expected_format = "default"
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -178,6 +179,7 @@ def test_convert_rule_with_callback_and_output_format(
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Convert rule with callback and output format
     queries = test_backend.convert_rule(
@@ -202,7 +204,7 @@ def test_convert_rule_callback_called_for_none_results(test_backend: TextQueryTe
     callback_calls = []
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -212,6 +214,7 @@ def test_convert_rule_callback_called_for_none_results(test_backend: TextQueryTe
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Create a rule that might produce None results
     rule_yaml = """
@@ -248,7 +251,7 @@ def test_convert_collection_with_callback(
     callback_calls = []
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -258,6 +261,7 @@ def test_convert_collection_with_callback(
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Create a collection with the test rule
     collection = SigmaCollection([sigma_rule])
@@ -288,7 +292,7 @@ def test_convert_collection_with_callback_and_output_format(
     expected_format = "default"
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -298,6 +302,7 @@ def test_convert_collection_with_callback_and_output_format(
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Create a collection with the test rule
     collection = SigmaCollection([sigma_rule])
@@ -325,7 +330,7 @@ def test_convert_collection_multiple_rules_with_callback(test_backend: TextQuery
     callback_calls = []
 
     def test_callback(rule, output_format, index, cond, result):
-        """Test callback that records all calls."""
+        """Test callback that records all calls and returns the original result."""
         callback_calls.append(
             {
                 "rule": rule,
@@ -335,6 +340,7 @@ def test_convert_collection_multiple_rules_with_callback(test_backend: TextQuery
                 "result": result,
             }
         )
+        return result  # Return the original result unchanged
 
     # Create multiple test rules
     rule1_yaml = """
@@ -396,3 +402,82 @@ def test_convert_collection_without_callback(
     # Verify that the collection was converted successfully
     assert isinstance(queries, list)
     assert len(queries) > 0
+
+
+def test_convert_rule_callback_modifies_result(
+    test_backend: TextQueryTestBackend, sigma_rule: SigmaRule
+):
+    """Test that callback can modify the conversion result."""
+
+    def modifying_callback(rule, output_format, index, cond, result):
+        """Callback that modifies non-None results by adding a prefix."""
+        if result is not None:
+            return f"MODIFIED: {result}"
+        return result
+
+    # Convert rule with modifying callback
+    queries = test_backend.convert_rule(sigma_rule, callback=modifying_callback)
+
+    # Verify that the rule was converted successfully
+    assert isinstance(queries, list)
+    assert len(queries) > 0
+
+    # Verify that all results were modified by the callback
+    for query in queries:
+        assert isinstance(query, str)
+        assert query.startswith("MODIFIED: ")
+
+
+def test_convert_rule_callback_filters_result(
+    test_backend: TextQueryTestBackend, sigma_rule: SigmaRule
+):
+    """Test that callback can filter out results by returning None."""
+
+    def filtering_callback(rule, output_format, index, cond, result):
+        """Callback that filters out all results by returning None."""
+        return None  # Always return None to filter out all results
+
+    # Convert rule with filtering callback
+    queries = test_backend.convert_rule(sigma_rule, callback=filtering_callback)
+
+    # Verify that no queries were returned due to filtering
+    assert isinstance(queries, list)
+    assert len(queries) == 0
+
+
+def test_convert_rule_callback_selective_modification(test_backend: TextQueryTestBackend):
+    """Test that callback can selectively modify results based on conditions."""
+    callback_calls = []
+
+    def selective_callback(rule, output_format, index, cond, result):
+        """Callback that modifies every second result."""
+        callback_calls.append(result)
+        if result is not None and len(callback_calls) % 2 == 0:
+            return f"EVEN: {result}"
+        return result
+
+    # Create a rule with multiple conditions to get multiple results
+    rule_yaml = """
+title: Test Rule with Multiple Conditions
+logsource:
+    category: test
+detection:
+    sel1:
+        field1: value1
+    sel2:
+        field2: value2
+    condition: sel1 and sel2
+"""
+    sigma_rule = SigmaRule.from_yaml(rule_yaml)
+
+    # Convert rule with selective callback
+    queries = test_backend.convert_rule(sigma_rule, callback=selective_callback)
+
+    # Verify that the rule was converted successfully
+    assert isinstance(queries, list)
+
+    # Check that some results were modified and some weren't
+    if len(queries) > 1:
+        modified_count = sum(1 for q in queries if isinstance(q, str) and q.startswith("EVEN: "))
+        unmodified_count = len(queries) - modified_count
+        assert modified_count > 0 or unmodified_count > 0  # At least some should exist

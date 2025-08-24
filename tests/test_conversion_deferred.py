@@ -180,3 +180,42 @@ def test_deferred_only_conversion(test_backend: TextQueryTestBackend):
         )
         == ['* | mappedA="foo.*bar"']
     )
+
+
+def test_deferred_conversion_correlation_rule_references(test_backend: TextQueryTestBackend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+title: Referenced Rule with Deferred
+name: rule_with_deferred
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel:
+        fieldA|re: foo.*bar
+        fieldB: normalvalue
+    condition: sel
+---
+title: Correlation Rule
+status: test
+correlation:
+    type: event_count
+    rules:
+        - rule_with_deferred
+    group-by:
+        - fieldC
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+            )
+        )
+        == [
+            """fieldB="normalvalue" | mappedA="foo.*bar"
+| aggregate window=5min count() as event_count by fieldC
+| where event_count >= 10"""
+        ]
+    )

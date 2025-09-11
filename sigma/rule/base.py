@@ -16,7 +16,7 @@ if TYPE_CHECKING:
     from sigma.rule.attributes import SigmaRelated, SigmaStatus, SigmaRuleTag, SigmaLevel
 
 
-class SigmaYAMLLoader(yaml.SafeLoader):
+class SigmaYAMLLoader(yaml.CSafeLoader):
     """Custom YAML loader implementing additional functionality for Sigma."""
 
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> Dict[Any, Any]:

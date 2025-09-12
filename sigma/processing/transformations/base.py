@@ -199,12 +199,23 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
 
             # finally map the field name in the condition
             if rule.condition is not None and (fieldref := rule.condition.fieldref) is not None:
-                mapped_field = self._apply_field_name(fieldref)
-                if len(mapped_field) > 1:
-                    raise SigmaConfigurationError(
-                        "Field name mapping transformation can't be applied to correlation rule condition field reference because it results in multiple field names."
-                    )
-                rule.condition.fieldref = mapped_field[0]
+                if isinstance(fieldref, list):
+                    mapped_fields = []
+                    for field in fieldref:
+                        mapped_field = self._apply_field_name(field)
+                        if len(mapped_field) > 1:
+                            raise SigmaConfigurationError(
+                                "Field name mapping transformation can't be applied to correlation rule condition field reference because it results in multiple field names."
+                            )
+                        mapped_fields.append(mapped_field[0])
+                    rule.condition.fieldref = mapped_fields
+                else:
+                    mapped_field = self._apply_field_name(fieldref)
+                    if len(mapped_field) > 1:
+                        raise SigmaConfigurationError(
+                            "Field name mapping transformation can't be applied to correlation rule condition field reference because it results in multiple field names."
+                        )
+                    rule.condition.fieldref = mapped_field[0]
 
         return super().apply(rule)
 

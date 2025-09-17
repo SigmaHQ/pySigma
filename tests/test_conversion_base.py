@@ -2919,6 +2919,39 @@ def test_convert_dropped_detection_item_and_complete():
     )
 
 
+def test_convert_dropped_detection_item_and_complete_with_custom_expression():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                ),
+            ]
+        ),
+    )
+    backend.empty_and_expression = "TRUE"
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 and sel2
+        """
+            )
+        )
+        == ["TRUE"]
+    )
+
+
 def test_convert_dropped_detection_item_and_in_list():
     backend = TextQueryTestBackend(
         ProcessingPipeline(
@@ -3016,6 +3049,39 @@ def test_convert_dropped_detection_item_or_complete():
             )
         )
         == []
+    )
+
+
+def test_convert_dropped_detection_item_or_complete_with_custom_expression():
+    backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    DropDetectionItemTransformation(),
+                ),
+            ]
+        ),
+    )
+    backend.empty_or_expression = "FALSE"
+    assert (
+        backend.convert(
+            SigmaCollection.from_yaml(
+                """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    EventID: 123
+                sel2:
+                    fieldB: value
+                condition: sel1 or sel2
+        """
+            )
+        )
+        == ["FALSE"]
     )
 
 

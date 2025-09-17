@@ -161,6 +161,14 @@ class Backend(ABC):
     # use not_eq_token, not_eq_expression, etc. to implement != as a separate expression instead of not_token in ConditionNOT
     convert_not_as_not_eq: ClassVar[bool] = False
 
+    # Return value for empty AND and OR expressions
+    empty_or_expression: ClassVar[Optional[str]] = (
+        None  # Value returned when OR expression has no arguments
+    )
+    empty_and_expression: ClassVar[Optional[str]] = (
+        None  # Value returned when AND expression has no arguments
+    )
+
     def __init__(
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,
@@ -1345,7 +1353,7 @@ class TextQueryBackend(Backend):
             ]
 
             if len(args) == 0:
-                return None
+                return self.empty_or_expression
             else:
                 return joiner.join(args)
         except TypeError:  # pragma: no cover
@@ -1414,7 +1422,7 @@ class TextQueryBackend(Backend):
             ]
 
             if len(args) == 0:
-                return None
+                return self.empty_and_expression
             else:
                 return joiner.join(args)
         except TypeError:  # pragma: no cover

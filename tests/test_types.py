@@ -468,6 +468,14 @@ def test_string_index_slice_open_start_negative_end(sigma_string):
     assert sigma_string[:-1] == SigmaString("*Test*Str\\*ing")
 
 
+def test_string_index_cased_index():
+    assert SigmaCasedString("TestCasedString")[4:9] == SigmaCasedString("Cased")
+
+
+def test_string_index_cased_type():
+    assert type(SigmaCasedString("TestCasedString")[4:9]) is SigmaCasedString
+
+
 def test_string_index_invalid_type(sigma_string):
     with pytest.raises(TypeError, match="indices must be"):
         sigma_string["invalid"]

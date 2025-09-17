@@ -215,7 +215,7 @@ class SigmaString(SigmaType):
 
         # Range checks
         if start > end or start >= length:
-            return SigmaString("")
+            return self.__class__("")
         if start < 0 or end < 0 or (end != inf and end > length):
             raise IndexError("SigmaString index out of range")
 
@@ -232,7 +232,7 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return SigmaString(e[start : cast(int, end)])
+                        return self.__class__(e[start : cast(int, end)])
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -262,9 +262,9 @@ class SigmaString(SigmaType):
             i += 1
 
         if len(result) == 0:  # Special case: start begins after string - return empty string
-            return SigmaString("")
+            return self.__class__("")
         else:  # Return calculated result
-            s = SigmaString()
+            s = self.__class__()
             s.s = result
             return s
 

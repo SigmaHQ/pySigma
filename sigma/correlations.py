@@ -64,7 +64,7 @@ class SigmaCorrelationConditionOperator(Enum):
 class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
     count: int
-    fieldref: Optional[str|list[str]] = field(default=None)
+    fieldref: Optional[Union[str, list[str]]] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
 
     @classmethod

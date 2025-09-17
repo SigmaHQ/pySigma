@@ -719,6 +719,47 @@ def test_field_prefix_mapping_correlation_rule(
     assert sigma_correlation_rule.condition.fieldref == "mapped1.field"
 
 
+def test_field_prefix_mapping_correlation_rule_with_multiple_fields(
+    dummy_pipeline, sigma_correlation_rule, field_prefix_mapping_transformation
+):
+    sigma_correlation_rule = SigmaCorrelationRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "correlation": {
+                "type": "value_count",
+                "rules": [
+                    "testrule_1",
+                    "testrule_2",
+                ],
+                "timespan": "5m",
+                "group-by": [
+                    "testalias",
+                    "test1.field",
+                    "test.field",
+                    "test2.field",
+                ],
+                "condition": {
+                    "gte": 10,
+                    "field": [
+                        "test1.field1",
+                        "test1.field2",
+                    ],
+                },
+                "aliases": {
+                    "testalias": {
+                        "testrule_1": "test1.field",
+                        "testrule_2": "test3.field",
+                    },
+                },
+            },
+        }
+    )
+    field_prefix_mapping_transformation.set_pipeline(dummy_pipeline)
+    field_prefix_mapping_transformation.apply(sigma_correlation_rule)
+    assert sigma_correlation_rule.condition.fieldref == ["mapped1.field1", "mapped1.field2"]
+
+
 def test_drop_detection_item_transformation(sigma_rule: SigmaRule, dummy_pipeline):
     transformation = DropDetectionItemTransformation()
     processing_item = ProcessingItem(

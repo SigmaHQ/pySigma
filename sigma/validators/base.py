@@ -1,9 +1,10 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-from typing import ClassVar, List, Optional, Set, Type, Union
-from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
+from typing import ClassVar, List, Optional, Sequence, Union
+
 from sigma.correlations import SigmaCorrelationRule
+from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
 
 
@@ -35,7 +36,7 @@ class SigmaValidationIssue(ABC):
 
     description: ClassVar[str] = "Sigma rule validation issue"
     severity: ClassVar[SigmaValidationIssueSeverity]
-    rules: List[Union[SigmaRule, SigmaCorrelationRule]]
+    rules: List[SigmaRuleBase]
 
     def __post_init__(self) -> None:
         """Ensure that `self.rules` contains a list, even when a single rule was provided."""
@@ -69,7 +70,9 @@ class SigmaRuleValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule]
+    ) -> Sequence[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
@@ -80,7 +83,7 @@ class SigmaRuleValidator(ABC):
         self.rule = rule
         return []
 
-    def finalize(self) -> List[SigmaValidationIssue]:
+    def finalize(self) -> Sequence[SigmaValidationIssue]:
         """
         Finalize a validation run and return validation issues that apply to multiple rules.
 

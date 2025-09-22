@@ -1,7 +1,5 @@
-from typing import Dict, List
-
 mitre_attack_version: str = "17.1"
-mitre_attack_tactics: Dict[str, str] = {
+mitre_attack_tactics: dict[str, str] = {
     "TA0001": "initial-access",
     "TA0002": "execution",
     "TA0003": "persistence",
@@ -17,7 +15,7 @@ mitre_attack_tactics: Dict[str, str] = {
     "TA0042": "resource-development",
     "TA0043": "reconnaissance",
 }
-mitre_attack_techniques: Dict[str, str] = {
+mitre_attack_techniques: dict[str, str] = {
     "T1001": "Data Obfuscation",
     "T1001.001": "Junk Data",
     "T1001.002": "Steganography",
@@ -732,7 +730,7 @@ mitre_attack_techniques: Dict[str, str] = {
     "T1674": "Input Injection",
     "T1675": "ESXi Administration Command",
 }
-mitre_attack_techniques_tactics_mapping: Dict[str, List[str]] = {
+mitre_attack_techniques_tactics_mapping: dict[str, list[str]] = {
     "T1001": ["command-and-control"],
     "T1001.001": ["command-and-control"],
     "T1001.002": ["command-and-control"],
@@ -1443,7 +1441,7 @@ mitre_attack_techniques_tactics_mapping: Dict[str, List[str]] = {
     "T1674": ["execution"],
     "T1675": ["execution"],
 }
-mitre_attack_intrusion_sets: Dict[str, str] = {
+mitre_attack_intrusion_sets: dict[str, str] = {
     "G0001": "Axiom",
     "G0002": "Moafee",
     "G0003": "Cleaver",
@@ -1629,7 +1627,7 @@ mitre_attack_intrusion_sets: Dict[str, str] = {
     "G1046": "Storm-1811",
     "G1047": "Velvet Ant",
 }
-mitre_attack_software: Dict[str, str] = {
+mitre_attack_software: dict[str, str] = {
     "S0001": "Trojan.Mebromi",
     "S0002": "Mimikatz",
     "S0003": "RIPTIDE",
@@ -2386,7 +2384,7 @@ mitre_attack_software: Dict[str, str] = {
     "S1212": "RansomHub",
     "S1213": "Lumma Stealer",
 }
-mitre_attack_datasources: Dict[str, str] = {
+mitre_attack_datasources: dict[str, str] = {
     "DS0001": "Firmware",
     "DS0002": "User Account",
     "DS0003": "Scheduled Job",
@@ -2425,7 +2423,7 @@ mitre_attack_datasources: Dict[str, str] = {
     "DS0037": "Certificate",
     "DS0038": "Domain Name",
 }
-mitre_attack_mitigations: Dict[str, str] = {
+mitre_attack_mitigations: dict[str, str] = {
     "M1013": "Application Developer Guidance",
     "M1015": "Active Directory Configuration",
     "M1016": "Vulnerability Scanning",

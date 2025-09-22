@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 from types import ModuleType
-from typing import Callable, Dict, Any, List, Optional, Set, Union, get_type_hints
+from typing import Callable, Any, Optional, Union, get_type_hints
 from uuid import UUID
 import requests
 from packaging.version import Version
@@ -38,9 +38,9 @@ class InstalledSigmaPlugins:
     autodiscovery of them in the sigma.backends, sigma.pipelines and sigma.validators module namespaces.
     """
 
-    backends: Dict[str, Backend] = field(default_factory=dict)
-    pipelines: Dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
-    validators: Dict[str, SigmaRuleValidator] = field(default_factory=dict)
+    backends: dict[str, Backend] = field(default_factory=dict)
+    pipelines: dict[str, Callable[[], ProcessingPipeline]] = field(default_factory=dict)
+    validators: dict[str, SigmaRuleValidator] = field(default_factory=dict)
 
     def register_backend(self, id: str, backend: Backend) -> None:
         self.backends[id] = backend
@@ -54,7 +54,7 @@ class InstalledSigmaPlugins:
     @classmethod
     def _discover_module_directories(
         cls, module: ModuleType, directory_name: str, include: bool
-    ) -> Dict[str, Any]:
+    ) -> dict[str, Any]:
         result = dict()
 
         def is_pipeline(obj: Any) -> bool:
@@ -80,7 +80,7 @@ class InstalledSigmaPlugins:
             """Checks if an object is a backend."""
             return inspect.isclass(obj) and issubclass(obj, Backend)
 
-        def is_duplicate(container: Dict[str, Any], klass: Any, name: str) -> bool:
+        def is_duplicate(container: dict[str, Any], klass: Any, name: str) -> bool:
             return name in container and container[name] != klass
 
         if include:
@@ -88,7 +88,7 @@ class InstalledSigmaPlugins:
                 # attempt to merge backend directory from module into collected backend directory
                 try:
                     imported_module = importlib.import_module(mod.name)
-                    submodules: Dict[str, Any] = {}
+                    submodules: dict[str, Any] = {}
 
                     # Skip base, common and test pipelines
                     if imported_module.__name__ in [
@@ -305,10 +305,10 @@ class SigmaPlugin:
     report_issue_url: str
     state: SigmaPluginState
     pysigma_version: Specifier
-    capabilities: Set[SigmaPluginCapability] = field(default_factory=set)
+    capabilities: set[SigmaPluginCapability] = field(default_factory=set)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "SigmaPlugin":
+    def from_dict(cls, d: dict[str, Any]) -> "SigmaPlugin":
         """Construct a SigmaPlugin object from a dict that results in parsing a plugin description
         from the JSON format linked above."""
         kwargs = {k.replace("-", "_"): v for k, v in d.items()}
@@ -411,14 +411,14 @@ class SigmaPluginDirectory:
     """A directory of pySigma plugins that can be loaded from the pySigma-plugin-directory
     repository or an arbitrary location."""
 
-    plugins: Dict[UUID, SigmaPlugin] = field(default_factory=dict)
+    plugins: dict[UUID, SigmaPlugin] = field(default_factory=dict)
     note: Optional[str] = None
 
     def register_plugin(self, plugin: SigmaPlugin) -> None:
         self.plugins[plugin.uuid] = plugin
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "SigmaPluginDirectory":
+    def from_dict(cls, d: dict[str, Any]) -> "SigmaPluginDirectory":
         return cls(
             plugins={
                 UUID(uuid): SigmaPlugin.from_dict({"uuid": uuid, **plugin_dict})
@@ -429,7 +429,7 @@ class SigmaPluginDirectory:
 
     @classmethod
     def from_url(
-        cls, url: str, *args: List[Any], **kwargs: Dict[str, Any]
+        cls, url: str, *args: list[Any], **kwargs: dict[str, Any]
     ) -> "SigmaPluginDirectory":
         """Loads the plugin directory from an arbitrary location. All further
         arguments are passed to requests.get()."""
@@ -439,7 +439,7 @@ class SigmaPluginDirectory:
 
     @classmethod
     def default_plugin_directory(
-        cls, *args: List[Any], **kwargs: Dict[str, Any]
+        cls, *args: list[Any], **kwargs: dict[str, Any]
     ) -> "SigmaPluginDirectory":
         """Loads the plugin directory from the pySigma-plugin-directory repository. All further
         arguments are passed to requests.get()."""
@@ -450,10 +450,10 @@ class SigmaPluginDirectory:
 
     def get_plugins(
         self,
-        plugin_types: Set[SigmaPluginType] = set(SigmaPluginType),
-        plugin_states: Set[SigmaPluginState] = set(SigmaPluginState),
+        plugin_types: set[SigmaPluginType] = set(SigmaPluginType),
+        plugin_states: set[SigmaPluginState] = set(SigmaPluginState),
         compatible_only: bool = False,
-    ) -> List[SigmaPlugin]:
+    ) -> list[SigmaPlugin]:
         """Return a list of plugins with the specified type and state. Returns all plugins if not specified."""
         return [
             plugin

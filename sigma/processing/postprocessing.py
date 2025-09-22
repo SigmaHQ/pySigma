@@ -2,7 +2,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Dict, List, Optional, Type, Union, TYPE_CHECKING
+from typing import Any, Optional, Type, Union, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
@@ -102,8 +102,8 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
     json_template: str
 
     def _replace_placeholder(
-        self, v: Union[Dict[str, Any], List[Any], str, int, float], query: str
-    ) -> Union[Dict[str, Any], List[Any], str, int, float]:
+        self, v: Union[dict[str, Any], list[Any], str, int, float], query: str
+    ) -> Union[dict[str, Any], list[Any], str, int, float]:
         if isinstance(v, dict):
             return {k: self._replace_placeholder(v, query) for k, v in v.items()}
         elif isinstance(v, list):
@@ -140,7 +140,7 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
 class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation):
     """Applies a list of query postprocessing transformations to the query in a nested manner."""
 
-    items: List["QueryPostprocessingItem"]
+    items: list["QueryPostprocessingItem"]
     _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
     def __post_init__(self) -> None:
@@ -151,7 +151,7 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
         self._nested_pipeline = ProcessingPipeline(postprocessing_items=self.items)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
+    def from_dict(cls, d: dict[str, Any]) -> "NestedQueryPostprocessingTransformation":
         from sigma.processing.pipeline import QueryPostprocessingItem
 
         try:
@@ -171,7 +171,7 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
         return query
 
 
-query_postprocessing_transformations: Dict[str, Type[QueryPostprocessingTransformation]] = {
+query_postprocessing_transformations: dict[str, Type[QueryPostprocessingTransformation]] = {
     "embed": EmbedQueryTransformation,
     "simple_template": QuerySimpleTemplateTransformation,
     "template": QueryTemplateTransformation,

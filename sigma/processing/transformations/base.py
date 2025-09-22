@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 import dataclasses
-from typing import Any, Dict, Iterable, List, Optional, Union, TYPE_CHECKING
+from typing import Any, Iterable, Optional, Union, TYPE_CHECKING
 from dataclasses import dataclass, field
 from sigma.conditions import ConditionOR
 from sigma.correlations import SigmaCorrelationRule
@@ -33,7 +33,7 @@ class Transformation(ABC):
     _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Transformation":
+    def from_dict(cls, d: dict[str, Any]) -> "Transformation":
         try:
             return cls(**d)
         except TypeError as e:
@@ -136,7 +136,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
     """
 
     @abstractmethod
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
         """
         Map a field name to one or multiple field names. The result is used in detection items, references
         as well as in the field list of the Sigma rule. If the result is None, the field name is
@@ -144,7 +144,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         transformed result.
         """
 
-    def _apply_field_name(self, field: str) -> List[str]:
+    def _apply_field_name(self, field: str) -> list[str]:
         """
         Evaluate field name conditions and perform transformation with apply_field_name() method if
         condition matches, else return original value.
@@ -223,7 +223,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         self, detection_item: SigmaDetectionItem
     ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
         """Apply field name transformations to field references in detection item values."""
-        new_values: List[SigmaType] = []
+        new_values: list[SigmaType] = []
         fieldref_match = False
         for value in detection_item.value:
             if isinstance(value, SigmaFieldReference) and (
@@ -342,7 +342,7 @@ class StringValueTransformation(ValueTransformation):
 
     def apply_value(
         self, field: Optional[str], val: SigmaType
-    ) -> Optional[Union[SigmaType, List[SigmaType]]]:
+    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
         if isinstance(val, SigmaString):
             return self.apply_string_value(field, val)
         return None
@@ -350,7 +350,7 @@ class StringValueTransformation(ValueTransformation):
     @abstractmethod
     def apply_string_value(
         self, field: Optional[str], val: SigmaString
-    ) -> Optional[Union[SigmaType, List[SigmaType]]]:
+    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
         """
         Perform a value transformation. This method can return:
 

@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Dict, List, Optional, TYPE_CHECKING
+from typing import Any, Optional, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sigma.rule import SigmaRuleBase
@@ -31,7 +31,7 @@ class SigmaError(ValueError):
     """Generic Sigma error and super-class of all Sigma exceptions"""
 
     def __init__(
-        self, *args: Any, source: Optional[SigmaRuleLocation] = None, **kwargs: Dict[str, Any]
+        self, *args: Any, source: Optional[SigmaRuleLocation] = None, **kwargs: dict[str, Any]
     ) -> None:
         self.source = source
         super().__init__(*args, **kwargs)
@@ -93,7 +93,7 @@ class SigmaConversionError(SigmaError):
         rule: "SigmaRuleBase",
         source: Optional[SigmaRuleLocation] = None,
         *args: Any,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ) -> None:
         self.rule = rule
         super().__init__(*args, source=source, **kwargs)
@@ -128,8 +128,8 @@ class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
         spec: str,
         backend: str,
         source: Optional[SigmaRuleLocation] = None,
-        *args: List[Any],
-        **kwargs: Dict[str, Any],
+        *args: list[Any],
+        **kwargs: dict[str, Any],
     ):
         self.wrong_pipeline = spec
         self.backend = backend
@@ -149,8 +149,8 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
         self,
         spec: str,
         source: Optional[SigmaRuleLocation] = None,
-        *args: List[Any],
-        **kwargs: Dict[str, Any],
+        *args: list[Any],
+        **kwargs: dict[str, Any],
     ) -> None:
         self.spec = spec
         super().__init__(*args, source=source, **kwargs)
@@ -286,7 +286,7 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
         location: Optional[int] = None,
         *args: Any,
         source: Optional[SigmaRuleLocation] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         self.expression = expression
         self.location = location

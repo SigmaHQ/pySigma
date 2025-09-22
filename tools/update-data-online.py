@@ -39,14 +39,14 @@ class MyMitreAttackData:
 
     def __init__(self):
         self.attack_version: Optional[str] = None
-        self.tactics: Dict[str, str] = dict()
-        self.techniques: Dict[str, str] = dict()
-        self.techniques_tactics_mapping: Dict[str, list] = dict()
-        self.intrusion_sets: Dict[str, str] = dict()
-        self.software: Dict[str, str] = dict()
-        self.datasources: Dict[str, str] = dict()
-        self.mitigations: Dict[str, str] = dict()
-        self.assets: Dict[str, str] = dict()
+        self.tactics: dict[str, str] = dict()
+        self.techniques: dict[str, str] = dict()
+        self.techniques_tactics_mapping: dict[str, list] = dict()
+        self.intrusion_sets: dict[str, str] = dict()
+        self.software: dict[str, str] = dict()
+        self.datasources: dict[str, str] = dict()
+        self.mitigations: dict[str, str] = dict()
+        self.assets: dict[str, str] = dict()
 
     def fetch_attack_stix_json(self, url: str) -> Optional[Dict]:
         try:
@@ -153,40 +153,39 @@ class MyMitreAttackData:
 
     def generate_attack_content(self) -> None:
         with self.PY_PATH.open("w", encoding="UTF-8", newline="") as fileoutput:
-            print("from typing import Dict, List", file=fileoutput)
             print(f'mitre_attack_version: str = "{self.attack_version}"', file=fileoutput)
             print(
-                "mitre_attack_tactics: Dict[str, str] = "
+                "mitre_attack_tactics: dict[str, str] = "
                 + pformat(self.tactics, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_techniques: Dict[str, str] = "
+                "mitre_attack_techniques: dict[str, str] = "
                 + pformat(self.techniques, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_techniques_tactics_mapping: Dict[str, List[str]] = "
+                "mitre_attack_techniques_tactics_mapping: dict[str, list[str]] = "
                 + pformat(self.techniques_tactics_mapping, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_intrusion_sets: Dict[str, str] = "
+                "mitre_attack_intrusion_sets: dict[str, str] = "
                 + pformat(self.intrusion_sets, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_software: Dict[str, str] = "
+                "mitre_attack_software: dict[str, str] = "
                 + pformat(self.software, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_datasources: Dict[str, str] = "
+                "mitre_attack_datasources: dict[str, str] = "
                 + pformat(self.datasources, indent=4, sort_dicts=True),
                 file=fileoutput,
             )
             print(
-                "mitre_attack_mitigations: Dict[str, str] = "
+                "mitre_attack_mitigations: dict[str, str] = "
                 + pformat(self.mitigations, indent=4, sort_dicts=True),
                 file=fileoutput,
             )

@@ -1,8 +1,6 @@
 import dataclasses
 from sigma.conditions import ConditionOR
 from typing import (
-    List,
-    Dict,
     Optional,
     Union,
     Callable,
@@ -21,9 +19,9 @@ from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
 
-    mapping: Dict[Optional[str], Union[str, List[str]]]
+    mapping: dict[Optional[str], Union[str, list[str]]]
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
         return self.mapping.get(field)
 
 
@@ -31,7 +29,7 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
         if field is None:
             return None
 
@@ -56,7 +54,7 @@ class FieldFunctionTransformation(FieldMappingTransformation):
     transform_func: Callable[[Optional[str]], str]
     apply_keyword: bool = False
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, List[str]]:
+    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
         if field is None and not self.apply_keyword:
             return None
         return self.mapping.get(field, self.transform_func(field))
@@ -96,7 +94,7 @@ class AddFieldTransformation(PreprocessingTransformation):
     Add one or multiple fields to the Sigma rule. The field is added to the fields list of the rule:
     """
 
-    field: Union[str, List[str]]
+    field: Union[str, list[str]]
 
     def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
@@ -113,7 +111,7 @@ class RemoveFieldTransformation(PreprocessingTransformation):
     rules list, it is ignored.
     """
 
-    field: Union[str, List[str]]
+    field: Union[str, list[str]]
 
     def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)
@@ -136,7 +134,7 @@ class SetFieldTransformation(PreprocessingTransformation):
     Set fields to the Sigma rule. The fields are set to the fields list of the transformation.
     """
 
-    fields: List[str]
+    fields: list[str]
 
     def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
         super().apply(rule)

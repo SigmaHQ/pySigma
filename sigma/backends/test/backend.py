@@ -1,6 +1,6 @@
 from collections import defaultdict
 import re
-from typing import Any, ClassVar, Dict, List, Optional, Pattern, cast
+from typing import Any, ClassVar, Optional, Pattern, cast
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
@@ -13,7 +13,7 @@ from sigma.types import CompareOperators
 
 class TextQueryTestBackend(TextQueryBackend):
     name: ClassVar[str] = "Test backend"
-    formats: ClassVar[Dict[str, str]] = {
+    formats: ClassVar[dict[str, str]] = {
         "default": "Default format",
         "test": "Dummy test format",
         "state": "Test format that obtains information from state",
@@ -38,7 +38,7 @@ class TextQueryTestBackend(TextQueryBackend):
     wildcard_single: ClassVar[str] = "?"
     add_escaped: ClassVar[str] = ":"
     filter_chars: ClassVar[str] = "&"
-    bool_values: ClassVar[Dict[bool, Optional[str]]] = {
+    bool_values: ClassVar[dict[bool, Optional[str]]] = {
         True: "1",
         False: "0",
     }
@@ -53,7 +53,7 @@ class TextQueryTestBackend(TextQueryBackend):
 
     re_expression: ClassVar[str] = "{field}=/{regex}/"
     re_escape_char: ClassVar[str] = "\\"
-    re_escape: ClassVar[List[str]] = ["/", "bar"]
+    re_escape: ClassVar[list[str]] = ["/", "bar"]
 
     case_sensitive_match_expression = "{field} casematch {value}"
     case_sensitive_startswith_expression: ClassVar[str] = "{field} startswith_cased {value}"
@@ -63,7 +63,7 @@ class TextQueryTestBackend(TextQueryBackend):
     cidr_expression: ClassVar[str] = "cidrmatch('{field}', \"{value}\")"
 
     compare_op_expression: ClassVar[str] = "{field}{operator}{value}"
-    compare_operators: ClassVar[Dict[CompareOperators, str]] = {
+    compare_operators: ClassVar[dict[CompareOperators, str]] = {
         CompareOperators.LT: "<",
         CompareOperators.LTE: "<=",
         CompareOperators.GT: ">",
@@ -113,14 +113,14 @@ class TextQueryTestBackend(TextQueryBackend):
     )
 
     # Correlations
-    correlation_methods: ClassVar[Dict[str, str]] = {
+    correlation_methods: ClassVar[dict[str, str]] = {
         "test": "Test correlation method",
     }
     default_correlation_method: ClassVar[str] = "test"
-    default_correlation_query: ClassVar[Dict[str, str]] = {
+    default_correlation_query: ClassVar[dict[str, str]] = {
         "test": "{search}\n{aggregate}\n{condition}"
     }
-    temporal_correlation_query: ClassVar[Dict[str, str]] = {
+    temporal_correlation_query: ClassVar[dict[str, str]] = {
         "test": "{search}\n\n{aggregate}\n\n{condition}"
     }
 
@@ -134,39 +134,39 @@ class TextQueryTestBackend(TextQueryBackend):
     correlation_search_field_normalization_expression: ClassVar[str] = " | set {alias}={field}"
     correlation_search_field_normalization_expression_joiner: ClassVar[str] = ""
 
-    event_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+    event_count_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| aggregate window={timespan} count() as event_count{groupby}"
     }
-    value_count_aggregation_expression: ClassVar[Dict[str, str]] = {
+    value_count_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| aggregate window={timespan} value_count({field}) as value_count{groupby}"
     }
-    temporal_aggregation_expression: ClassVar[Dict[str, str]] = {
+    temporal_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| temporal window={timespan} eventtypes={referenced_rules}{groupby}"
     }
-    temporal_ordered_aggregation_expression: ClassVar[Dict[str, str]] = {
+    temporal_ordered_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| temporal ordered=true window={timespan} eventtypes={referenced_rules}{groupby}"
     }
 
-    timespan_mapping: ClassVar[Dict[str, str]] = {
+    timespan_mapping: ClassVar[dict[str, str]] = {
         "m": "min",
     }
-    referenced_rules_expression: ClassVar[Dict[str, str]] = {"test": "{ruleid}"}
-    referenced_rules_expression_joiner: ClassVar[Dict[str, str]] = {"test": ","}
+    referenced_rules_expression: ClassVar[dict[str, str]] = {"test": "{ruleid}"}
+    referenced_rules_expression_joiner: ClassVar[dict[str, str]] = {"test": ","}
 
-    groupby_expression: ClassVar[Dict[str, str]] = {"test": " by {fields}"}
-    groupby_field_expression: ClassVar[Dict[str, str]] = {"test": "{field}"}
-    groupby_field_expression_joiner: ClassVar[Dict[str, str]] = {"test": ", "}
+    groupby_expression: ClassVar[dict[str, str]] = {"test": " by {fields}"}
+    groupby_field_expression: ClassVar[dict[str, str]] = {"test": "{field}"}
+    groupby_field_expression_joiner: ClassVar[dict[str, str]] = {"test": ", "}
 
-    event_count_condition_expression: ClassVar[Dict[str, str]] = {
+    event_count_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where event_count {op} {count}"
     }
-    value_count_condition_expression: ClassVar[Dict[str, str]] = {
+    value_count_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where value_count {op} {count}"
     }
-    temporal_condition_expression: ClassVar[Dict[str, str]] = {
+    temporal_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where eventtype_count {op} {count}"
     }
-    temporal_ordered_condition_expression: ClassVar[Dict[str, str]] = {
+    temporal_ordered_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where eventtype_count {op} {count} and eventtype_order={referenced_rules}"
     }
 
@@ -175,7 +175,7 @@ class TextQueryTestBackend(TextQueryBackend):
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
         testparam: Optional[str] = None,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
         self.testparam = testparam
@@ -185,7 +185,7 @@ class TextQueryTestBackend(TextQueryBackend):
     ) -> str:
         return "[ " + cast(str, self.finalize_query_default(rule, query, index, state)) + " ]"
 
-    def finalize_output_test(self, queries: List[str]) -> str:
+    def finalize_output_test(self, queries: list[str]) -> str:
         return cast(str, self.finalize_output_default(queries))
 
     def finalize_query_state(
@@ -199,7 +199,7 @@ class TextQueryTestBackend(TextQueryBackend):
             + ")"
         )
 
-    def finalize_output_state(self, queries: List[str]) -> str:
+    def finalize_output_state(self, queries: list[str]) -> str:
         return cast(str, self.finalize_output_default(queries))
 
     def finalize_query_list_of_dict(
@@ -207,7 +207,7 @@ class TextQueryTestBackend(TextQueryBackend):
     ) -> str:
         return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_list_of_dict(self, queries: List[str]) -> List[Dict[str, Optional[str]]]:
+    def finalize_output_list_of_dict(self, queries: list[str]) -> list[dict[str, Optional[str]]]:
         return [
             (
                 {"query": query, "test": self.testparam}
@@ -222,7 +222,7 @@ class TextQueryTestBackend(TextQueryBackend):
     ) -> str:
         return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_bytes(self, queries: List[str]) -> bytes:
+    def finalize_output_bytes(self, queries: list[str]) -> bytes:
         return bytes("\x00".join(self.finalize_output_default(queries)), "utf-8")
 
     def finalize_query_str(
@@ -230,7 +230,7 @@ class TextQueryTestBackend(TextQueryBackend):
     ) -> str:
         return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_str(self, queries: List[str]) -> str:
+    def finalize_output_str(self, queries: list[str]) -> str:
         return "\n".join(self.finalize_output_default(queries))
 
 

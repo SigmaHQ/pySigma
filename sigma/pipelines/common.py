@@ -1,4 +1,3 @@
-from typing import List
 from sigma.processing.conditions import (
     LogsourceCondition,
     RuleContainsDetectionItemCondition,
@@ -331,7 +330,7 @@ def generate_windows_logsource_items(
     cond_field_template: str,
     cond_value_template: str,
     identifier_template: str = "windows_logsource_{service}",
-) -> List[ProcessingItem]:
+) -> list[ProcessingItem]:
     """Generate processing items for all Windows logsource mappings from templates. All templates
     are defined as Python f-string ("{variable}"). Available variables in each template are:
 
@@ -349,7 +348,7 @@ def generate_windows_logsource_items(
     :return: List of ProcessingItem that can be used in the items attribute of a ProcessingPipeline
         object. Usually, an additional field name mapping between the Sigma taxonomy and the target
         system field names is required.
-    :rtype: List[ProcessingItem]
+    :rtype: list[ProcessingItem]
     """
     return [
         ProcessingItem(

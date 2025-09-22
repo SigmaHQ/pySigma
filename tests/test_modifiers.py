@@ -80,7 +80,7 @@ def dummy_union_modifier(dummy_detection_item):
 @pytest.fixture
 def dummy_list_modifier(dummy_detection_item):
     class DummyListModifier(SigmaModifier):
-        def modify(self, val: List[SigmaString]) -> List[SigmaString]:
+        def modify(self, val: list[SigmaString]) -> list[SigmaString]:
             return [SigmaString("")]
 
     return DummyListModifier(dummy_detection_item, [])

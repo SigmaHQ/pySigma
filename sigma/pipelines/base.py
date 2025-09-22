@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Dict, List, Optional, Callable
+from typing import Any, Optional, Callable
 
 from sigma.processing.pipeline import ProcessingPipeline
 
@@ -26,7 +26,7 @@ class Pipeline:
         """
         self.func = func
 
-    def __call__(self, *args: List[Any], **kwargs: Dict[str, Any]) -> Any:
+    def __call__(self, *args: list[Any], **kwargs: dict[str, Any]) -> Any:
         """
         When the class is called, we call the function if set,
         otherwise we return the class itself.
@@ -36,7 +36,7 @@ class Pipeline:
             return apply_method(*args, **kwargs)
         return self.func(*args, **kwargs) if self.func is not None else self
 
-    def __new__(cls, *args: List[Any], **kwargs: Dict[str, Any]) -> "Pipeline":
+    def __new__(cls, *args: list[Any], **kwargs: dict[str, Any]) -> "Pipeline":
         """
         Use the singleton pattern to ensure that only one instance of the class
         is created. This is necessary to ensure that the pipelines are registered

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Dict, Optional, TYPE_CHECKING
+from typing import Any, ClassVar, Optional, TYPE_CHECKING
 from sigma.conditions import ParentChainMixin
 
 if TYPE_CHECKING:
@@ -68,7 +68,7 @@ class DeferredTextQueryExpression(DeferredQueryExpression):
     field: Optional[str]
     value: str
     template: ClassVar[str]
-    operators: ClassVar[Dict[bool, str]]
+    operators: ClassVar[dict[bool, str]]
     default_field: ClassVar[Optional[str]]
 
     def __post_init__(self) -> None:

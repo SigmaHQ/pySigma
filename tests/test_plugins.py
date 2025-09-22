@@ -202,7 +202,7 @@ def test_sigma_plugin_directory_default():
 
 
 @pytest.fixture
-def plugin_directory(sigma_plugin: SigmaPlugin, sigma_plugin_dict: Dict[str, Any]):
+def plugin_directory(sigma_plugin: SigmaPlugin, sigma_plugin_dict: dict[str, Any]):
     plugin_directory = SigmaPluginDirectory()
     plugin_directory.register_plugin(sigma_plugin)
 
@@ -274,7 +274,7 @@ def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory: SigmaPlug
 
 
 def test_sigma_plugin_directory_get_plugins_compatible(
-    plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: Dict[str, Any]
+    plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: dict[str, Any]
 ):
     sigma_plugin_dict_incompatible = sigma_plugin_dict.copy()
     sigma_plugin_dict_incompatible["uuid"] = "a350e4dd-6813-4549-a76d-b2c0d4925e62"

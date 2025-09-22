@@ -1,7 +1,5 @@
 from typing import (
     Any,
-    List,
-    Dict,
     Union,
     TYPE_CHECKING,
 )
@@ -21,10 +19,10 @@ class NestedProcessingTransformation(PreprocessingTransformation):
     whole set of transformations that match the given conditions of the enclosng processing item.
     """
 
-    items: InitVar[List[Union[Dict[str, Any], "ProcessingItem"]]]
+    items: InitVar[list[Union[dict[str, Any], "ProcessingItem"]]]
     _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
-    def __post_init__(self, items: List[Union[Dict[str, Any], "ProcessingItem"]]) -> None:
+    def __post_init__(self, items: list[Union[dict[str, Any], "ProcessingItem"]]) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
             ProcessingItem,
@@ -36,7 +34,7 @@ class NestedProcessingTransformation(PreprocessingTransformation):
         self._nested_pipeline = ProcessingPipeline(items=clean_items)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "NestedProcessingTransformation":
+    def from_dict(cls, d: dict[str, Any]) -> "NestedProcessingTransformation":
         from sigma.processing.pipeline import (
             ProcessingItem,
         )  # TODO: move to top-level after restructuring code

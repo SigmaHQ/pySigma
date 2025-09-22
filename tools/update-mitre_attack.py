@@ -68,27 +68,26 @@ print(
     f"Found { len(tactics) } tactics, { len(techniques) } techniques ({ len(techniques_tactics_mapping) } mapped to tactics), { len(intrusion_sets) } intrusion sets and { len(software) } malwares.",
     file=stderr,
 )
-print("from typing import Dict, List", file=args.output)
 print(f'mitre_attack_version: str = "{ attack_version }"', file=args.output)
 print(
-    "mitre_attack_tactics: Dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True),
+    "mitre_attack_tactics: dict[str, str] = " + pformat(tactics, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
-    "mitre_attack_techniques: Dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True),
+    "mitre_attack_techniques: dict[str, str] = " + pformat(techniques, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
-    "mitre_attack_techniques_tactics_mapping: Dict[str, List[str]] = "
+    "mitre_attack_techniques_tactics_mapping: dict[str, list[str]] = "
     + pformat(techniques_tactics_mapping, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
-    "mitre_attack_intrusion_sets: Dict[str, str] = "
+    "mitre_attack_intrusion_sets: dict[str, str] = "
     + pformat(intrusion_sets, indent=4, sort_dicts=True),
     file=args.output,
 )
 print(
-    "mitre_attack_software: Dict[str, str] = " + pformat(software, indent=4, sort_dicts=True),
+    "mitre_attack_software: dict[str, str] = " + pformat(software, indent=4, sort_dicts=True),
     file=args.output,
 )

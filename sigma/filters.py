@@ -2,7 +2,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Union, cast
+from typing import Any, Optional, Union, cast
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
@@ -18,11 +18,11 @@ from sigma.rule import (
 
 @dataclass
 class SigmaGlobalFilter(SigmaDetections):
-    rules: List[SigmaRuleReference] = field(default_factory=list)
+    rules: list[SigmaRuleReference] = field(default_factory=list)
 
     @classmethod
     def from_dict(
-        cls, detections: Dict[str, Any], source: Optional[SigmaRuleLocation] = None
+        cls, detections: dict[str, Any], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaGlobalFilter":
         try:
             if isinstance(detections["condition"], str):
@@ -66,7 +66,7 @@ class SigmaGlobalFilter(SigmaDetections):
             source=source,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         d = super().to_dict()
         d.update(
             {
@@ -91,7 +91,7 @@ class SigmaFilter(SigmaRuleBase):
     @classmethod
     def from_dict(
         cls,
-        sigma_filter: Dict[str, Any],
+        sigma_filter: dict[str, Any],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
     ) -> "SigmaFilter":
@@ -146,7 +146,7 @@ class SigmaFilter(SigmaRuleBase):
             **kwargs,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         """Convert filter object into dict."""
         d = super().to_dict()
         d.update(

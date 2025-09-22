@@ -1,7 +1,5 @@
 from sigma.conditions import SigmaCondition
 from typing import (
-    List,
-    Dict,
     Optional,
     Union,
 )
@@ -26,7 +24,7 @@ class AddConditionTransformation(ConditionTransformation):
     * $category, $product and $service: with the corresponding values of the Sigma rule log source.
     """
 
-    conditions: Dict[str, Union[int, str, List[str]]] = field(default_factory=dict)
+    conditions: dict[str, Union[int, str, list[str]]] = field(default_factory=dict)
     name: str = field(
         default_factory=lambda: "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10))),
         compare=False,

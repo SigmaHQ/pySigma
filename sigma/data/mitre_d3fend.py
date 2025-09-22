@@ -1,7 +1,7 @@
-from typing import Dict, List
+from typing import List
 
 mitre_d3fend_version: str = "0.16.0"
-mitre_d3fend_tactics: Dict[str, str] = {
+mitre_d3fend_tactics: dict[str, str] = {
     "Deceive": "Deceive",
     "Isolate": "Isolate",
     "Detect": "Detect",
@@ -10,7 +10,7 @@ mitre_d3fend_tactics: Dict[str, str] = {
     "Harden": "Harden",
     "Model": "Model",
 }
-mitre_d3fend_techniques: Dict[str, str] = {
+mitre_d3fend_techniques: dict[str, str] = {
     "D3-OAM": "Operational Activity Mapping",
     "D3-OM": "Organization Mapping",
     "D3-ORA": "Operational Risk Assessment",
@@ -195,7 +195,7 @@ mitre_d3fend_techniques: Dict[str, str] = {
     "D3-ANCI": "Authentication Cache Invalidation",
     "D3-AL": "Account Locking",
 }
-mitre_d3fend_artifacts: Dict[str, str] = {
+mitre_d3fend_artifacts: dict[str, str] = {
     "d3f-AccessControlConfiguration": "Access Control Configuration",
     "d3f-AccessControlGroup": "Access Control Group",
     "d3f-AccessControlList": "Access Control List",

@@ -2,8 +2,6 @@ from collections import defaultdict
 from sigma.conditions import ConditionOR
 from typing import (
     ClassVar,
-    List,
-    Dict,
     Literal,
     Optional,
     Tuple,
@@ -47,10 +45,10 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
     based on their length.
 
     Attributes:
-        valid_hash_algos (List[str]): List of supported hash algorithms.
+        valid_hash_algos (list[str]): List of supported hash algorithms.
         field_prefix (str): Prefix to add to the new field names.
         drop_algo_prefix (bool): If True, omits the algorithm name from the new field name.
-        hash_lengths (Dict[int, str]): Mapping of hash lengths to their corresponding algorithms.
+        hash_lengths (dict[int, str]): Mapping of hash lengths to their corresponding algorithms.
 
     Example:
         Input:
@@ -62,10 +60,10 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             FileMD5: '987B65CD9B9F4E9A1AFD8F8B48CF64A7'
     """
 
-    valid_hash_algos: List[str]
+    valid_hash_algos: list[str]
     field_prefix: str = ""
     drop_algo_prefix: bool = False
-    hash_lengths: ClassVar[Dict[int, str]] = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
+    hash_lengths: ClassVar[dict[int, str]] = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
@@ -91,7 +89,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             values = detection_item.value
             if not isinstance(values, list):
                 values = [values]
-            algo_dict = self._parse_hash_values(cast(List[SigmaString], values))
+            algo_dict = self._parse_hash_values(cast(list[SigmaString], values))
 
             if not algo_dict:
                 raise Exception(
@@ -102,15 +100,15 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         else:
             return None
 
-    def _parse_hash_values(self, values: List[SigmaString]) -> Dict[str, List[str]]:
+    def _parse_hash_values(self, values: list[SigmaString]) -> dict[str, list[str]]:
         """
         Parses the hash values from the detection item.
 
         Args:
-            values (Union[SigmaString, List[SigmaString]]): The hash values to parse.
+            values (Union[SigmaString, list[SigmaString]]): The hash values to parse.
 
         Returns:
-            Dict[str, List[str]]: A dictionary mapping field names to lists of hash values.
+            dict[str, list[str]]: A dictionary mapping field names to lists of hash values.
         """
         algo_dict = defaultdict(list)
 
@@ -122,7 +120,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
 
         return algo_dict
 
-    def _extract_hash_algo_and_value(self, value: str) -> Tuple[str, str]:
+    def _extract_hash_algo_and_value(self, value: str) -> tuple[str, str]:
         """
         Extracts the hash algorithm and value from a string.
 
@@ -130,7 +128,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             value (str): The string containing the hash algorithm and value.
 
         Returns:
-            Tuple[str, str]: A tuple containing the hash algorithm and value.
+            tuple[str, str]: A tuple containing the hash algorithm and value.
         """
         parts = value.split("|") if "|" in value else value.split("=")
         if len(parts) == 2:
@@ -166,12 +164,12 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         """
         return f"{self.field_prefix}{'' if self.drop_algo_prefix else hash_algo}"
 
-    def _create_new_detection_items(self, algo_dict: Dict[str, List[str]]) -> SigmaDetection:
+    def _create_new_detection_items(self, algo_dict: dict[str, list[str]]) -> SigmaDetection:
         """
         Creates new detection items based on the parsed hash values.
 
         Args:
-            algo_dict (Dict[str, List[str]]): A dictionary mapping field names to lists of hash values.
+            algo_dict (dict[str, list[str]]): A dictionary mapping field names to lists of hash values.
 
         Returns:
             SigmaDetection: A new SigmaDetection object containing the created detection items.
@@ -244,11 +242,11 @@ class MapStringTransformation(StringValueTransformation):
     Map static string value to one or multiple other strings.
     """
 
-    mapping: Dict[str, Union[str, List[str]]]
+    mapping: dict[str, Union[str, list[str]]]
 
     def apply_string_value(
         self, field: Optional[str], val: SigmaString
-    ) -> Optional[Union[SigmaType, List[SigmaType]]]:
+    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
         mapped = self.mapping.get(str(val), None)
         if isinstance(mapped, str):
             return SigmaString(mapped)

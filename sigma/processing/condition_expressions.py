@@ -4,11 +4,8 @@ from typing import (
     Any,
     Callable,
     ClassVar,
-    Dict,
     Iterable,
-    List,
     Optional,
-    Set,
     Union,
     cast,
     TYPE_CHECKING,
@@ -50,13 +47,13 @@ class ConditionExpression(ABC):
     @classmethod
     @abstractmethod
     def from_parsed(
-        cls, s: str, l: int, t: Union[ParseResults, List[Any]]
+        cls, s: str, l: int, t: Union[ParseResults, list[Any]]
     ) -> "ConditionExpression":
         """Create condition object from parse result"""
         pass
 
     @abstractmethod
-    def resolve(self, conditions: Dict[str, ProcessingCondition]) -> Set[str]:
+    def resolve(self, conditions: dict[str, ProcessingCondition]) -> set[str]:
         """
         Resolve identifiers contained in the condition expression.
 
@@ -123,13 +120,13 @@ class ConditionIdentifier(ConditionExpression):
 
     @classmethod
     def from_parsed(
-        cls, s: str, l: int, t: Union[ParseResults, List[Any]]
+        cls, s: str, l: int, t: Union[ParseResults, list[Any]]
     ) -> "ConditionIdentifier":
         expr = cls(l, t[0])
         expr.set_expression(s)
         return expr
 
-    def resolve(self, conditions: Dict[str, ProcessingCondition]) -> Set[str]:
+    def resolve(self, conditions: dict[str, ProcessingCondition]) -> set[str]:
         """
         Resolve identifiers contained in the condition expression.
 
@@ -191,12 +188,12 @@ class BinaryConditionOp(ConditionExpression):
     _function: ClassVar[Callable[[Iterable[bool]], bool]]  # any or all
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, List[Any]]) -> "BinaryConditionOp":
+    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list[Any]]) -> "BinaryConditionOp":
         expr = cls(l, t[0][0], t[0][2])
         expr.set_expression(s)
         return expr
 
-    def resolve(self, conditions: Dict[str, ProcessingCondition]) -> Set[str]:
+    def resolve(self, conditions: dict[str, ProcessingCondition]) -> set[str]:
         """
         Resolve identifiers contained in the condition expression.
 
@@ -248,12 +245,12 @@ class ConditionNOT(ConditionExpression):
     condition: ConditionExpression
 
     @classmethod
-    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, List[Any]]) -> "ConditionNOT":
+    def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list[Any]]) -> "ConditionNOT":
         expr = cls(l, t[0][1])
         expr.set_expression(s)
         return expr
 
-    def resolve(self, conditions: Dict[str, ProcessingCondition]) -> Set[str]:
+    def resolve(self, conditions: dict[str, ProcessingCondition]) -> set[str]:
         """
         Resolve identifiers contained in the condition expression.
 

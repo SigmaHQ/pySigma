@@ -1,4 +1,4 @@
-from typing import Dict, Type
+from typing import Type
 from sigma.processing.transformations.base import Transformation, PreprocessingTransformation
 from sigma.processing.transformations.condition import AddConditionTransformation
 from sigma.processing.transformations.detection_item import DropDetectionItemTransformation
@@ -38,7 +38,7 @@ from sigma.processing.transformations.values import (
     CaseTransformation,
 )
 
-transformations: Dict[str, Type[Transformation]] = {
+transformations: dict[str, Type[Transformation]] = {
     "field_name_mapping": FieldMappingTransformation,
     "field_name_prefix_mapping": FieldPrefixMappingTransformation,
     "field_name_transform": FieldFunctionTransformation,

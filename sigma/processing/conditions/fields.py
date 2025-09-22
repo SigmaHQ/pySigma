@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 
 from sigma.processing.conditions.base import FieldNameProcessingCondition
-from typing import List, Pattern, Literal, Optional
+from typing import Pattern, Literal, Optional
 import re
 from sigma.rule import SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError
@@ -14,9 +14,9 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
     plain string ("plain") or regular expressions ("re").
     """
 
-    fields: List[str]
+    fields: list[str]
     mode: Literal["plain", "re"] = field(default="plain")
-    patterns: List[Pattern[str]] = field(init=False, repr=False, default_factory=list)
+    patterns: list[Pattern[str]] = field(init=False, repr=False, default_factory=list)
 
     def __post_init__(self) -> None:
         """

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, Dict, List, Union
+from typing import ClassVar, Union
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaNumber
@@ -12,7 +12,7 @@ from sigma.validators.base import (
 )
 from sigma.rule import SigmaLogSource
 
-specific_to_generic_logsource_mapping: Dict[SigmaLogSource, Dict[int, str]] = {
+specific_to_generic_logsource_mapping: dict[SigmaLogSource, dict[int, str]] = {
     SigmaLogSource(None, "windows", "sysmon"): {
         1: "process_creation",
         2: "file_change",
@@ -67,7 +67,7 @@ class SpecificInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
 class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
     """Identify usage of specific Windows event identifiers where corresponding generic log sources exist."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 
@@ -84,7 +84,7 @@ class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
 
     def validate_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         if detection_item.field == "EventID":
             return [
                 SpecificInsteadOfGenericLogsourceIssue(
@@ -111,7 +111,7 @@ class FieldnameLogsourceIssue(SigmaValidationIssue):
 class FieldnameLogsourceValidator(SigmaRuleValidator):
     """Identify usage of invalid field names in the log source."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaRule) and rule.logsource.custom_attributes:
             return [
                 FieldnameLogsourceIssue(rules=[rule], fieldname=name)

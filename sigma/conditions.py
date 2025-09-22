@@ -11,7 +11,7 @@ from pyparsing import (
     ParseResults,
     ParseException,
 )
-from typing import ClassVar, List, Optional, Union, Type, cast, TYPE_CHECKING
+from typing import ClassVar, Optional, Union, Type, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 
@@ -36,7 +36,7 @@ class ParentChainMixin:
 
     def parent_chain(
         self,
-    ) -> List[
+    ) -> list[
         Union[
             "ConditionType",
             "SigmaDetectionItem",
@@ -51,7 +51,7 @@ class ParentChainMixin:
 
     def parent_chain_classes(
         self,
-    ) -> List[
+    ) -> list[
         Union[
             Type["ConditionType"],
             Type["SigmaDetectionItem"],
@@ -63,7 +63,7 @@ class ParentChainMixin:
 
     def parent_chain_condition_classes(
         self,
-    ) -> List[
+    ) -> list[
         Union[
             Type["ConditionType"],
             Type["SigmaDetectionItem"],
@@ -109,7 +109,7 @@ class ConditionItem(ParentChainMixin, ABC):
     token_list: ClassVar[bool] = (
         False  # determines if the value passed as tokenized is a ParseResult or a simple list object
     )
-    args: List[
+    args: list[
         Union[
             "ConditionIdentifier",
             "ConditionItem",
@@ -122,8 +122,8 @@ class ConditionItem(ParentChainMixin, ABC):
 
     @classmethod
     def from_parsed(
-        cls, s: str, l: int, t: Union[ParseResults, List["ConditionItem"]]
-    ) -> List["ConditionItem"]:
+        cls, s: str, l: int, t: Union[ParseResults, list["ConditionItem"]]
+    ) -> list["ConditionItem"]:
         """Create condition object from parse result"""
         if cls.arg_count == 1:
             if cls.token_list:
@@ -197,7 +197,7 @@ class ConditionNOT(ConditionItem):
 
 @dataclass
 class ConditionIdentifier(ConditionItem):
-    args: List[str]  # type: ignore
+    args: list[str]  # type: ignore
     arg_count: ClassVar[int] = 1
     token_list: ClassVar[bool] = True
     identifier: str = field(init=False)
@@ -233,7 +233,7 @@ class ConditionIdentifier(ConditionItem):
 
 @dataclass
 class ConditionSelector(ConditionItem):
-    args: List[str]  # type: ignore
+    args: list[str]  # type: ignore
     arg_count: ClassVar[int] = 2
     token_list: ClassVar[bool] = True
     cond_class: Union[type[ConditionAND], type[ConditionOR]] = field(init=False)
@@ -250,7 +250,7 @@ class ConditionSelector(ConditionItem):
 
     def resolve_referenced_detections(
         self, detections: "SigmaDetections"
-    ) -> List[ConditionIdentifier]:
+    ) -> list[ConditionIdentifier]:
         """
         Resolve all detection identifiers referenced by the selector.
         """
@@ -285,7 +285,7 @@ class ConditionSelector(ConditionItem):
         ids = self.resolve_referenced_detections(detections)
         cond = self.cond_class(
             cast(
-                List[
+                list[
                     Union[
                         ConditionIdentifier,
                         ConditionItem,

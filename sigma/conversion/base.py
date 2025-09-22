@@ -28,9 +28,6 @@ from typing import (
     Union,
     ClassVar,
     Optional,
-    Tuple,
-    List,
-    Dict,
     Any,
     Type,
     cast,
@@ -120,7 +117,7 @@ class Backend(ABC):
     """
 
     name: ClassVar[str] = "Base backend"  # A descriptive name of the backend
-    formats: ClassVar[Dict[str, str]] = (
+    formats: ClassVar[dict[str, str]] = (
         {  # Output formats provided by the backend as name -> description mapping. The name should match to finalize_output_<name>.
             "default": "Default output format",
         }
@@ -131,19 +128,19 @@ class Backend(ABC):
 
     # Backends can offer different methods of correlation query generation. That are described by
     # correlation_methods:
-    correlation_methods: ClassVar[Optional[Dict[str, str]]] = None
+    correlation_methods: ClassVar[Optional[dict[str, str]]] = None
     # The following class variable defines the default method that should be chosen if none is provided.
     default_correlation_method: ClassVar[str] = "default"
 
     processing_pipeline: Optional[ProcessingPipeline]
     last_processing_pipeline: ProcessingPipeline
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline()
-    output_format_processing_pipeline: ClassVar[Dict[str, ProcessingPipeline]] = defaultdict(
+    output_format_processing_pipeline: ClassVar[dict[str, ProcessingPipeline]] = defaultdict(
         ProcessingPipeline
     )
     default_format: ClassVar[str] = "default"
     collect_errors: bool = False
-    errors: List[Tuple[SigmaRule, SigmaError]]
+    errors: list[tuple[SigmaRule, SigmaError]]
 
     # Perform finalization on all queries used in a correl
     finalize_correlation_subqueries = False
@@ -173,7 +170,7 @@ class Backend(ABC):
         self,
         processing_pipeline: Optional[ProcessingPipeline] = None,
         collect_errors: bool = False,
-        **backend_options: Dict[str, Any],
+        **backend_options: dict[str, Any],
     ):
         self.processing_pipeline = processing_pipeline
         self.errors = list()
@@ -238,7 +235,7 @@ class Backend(ABC):
         rule: SigmaRule,
         output_format: Optional[str] = None,
         callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], Any]] = None,
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
 
@@ -347,7 +344,7 @@ class Backend(ABC):
         if not all((isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args)):
             return False
         # After the check it can be assumed that all arguments are of type ConditionFieldEqualsValueExpression
-        args = cast(List[ConditionFieldEqualsValueExpression], cond.args)
+        args = cast(list[ConditionFieldEqualsValueExpression], cond.args)
 
         # Build a set of all fields appearing in condition arguments
         fields = {arg.field for arg in args}
@@ -633,7 +630,7 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: Optional[str] = None,
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert a correlation rule into the target data structure (usually query).
 
@@ -699,7 +696,7 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert an event count correlation rule into the target data structure (usually query).
 
@@ -718,7 +715,7 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert a value count correlation rule into the target data structure (usually query).
 
@@ -737,7 +734,7 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert a temporal correlation rule into the target data structure (usually query).
 
@@ -756,7 +753,7 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[Any]:
+    ) -> list[Any]:
         """
         Convert an ordered temporal correlation rule into the target data structure (usually query).
 
@@ -798,12 +795,12 @@ class Backend(ABC):
         """
         return query
 
-    def finalize(self, queries: List[Any], output_format: str) -> Any:
+    def finalize(self, queries: list[Any], output_format: str) -> Any:
         """Finalize output. Dispatches to format-specific method."""
         output = self.__getattribute__("finalize_output_" + output_format)(queries)
         return self.last_processing_pipeline.finalize(output)
 
-    def finalize_output_default(self, queries: List[Any]) -> Any:
+    def finalize_output_default(self, queries: list[Any]) -> Any:
         """
         Default finalization.
 
@@ -822,7 +819,7 @@ class TextQueryBackend(Backend):
 
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
-    precedence: ClassVar[Tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]] = (
+    precedence: ClassVar[tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]] = (
         ConditionNOT,
         ConditionAND,
         ConditionOR,
@@ -862,7 +859,7 @@ class TextQueryBackend(Backend):
     query_expression: ClassVar[str] = "{query}"
     # The following dict defines default values for the conversion state. They are used if
     # the respective state is not set.
-    state_defaults: ClassVar[Dict[str, str]] = dict()
+    state_defaults: ClassVar[dict[str, str]] = dict()
 
     # String output
     ## Fields
@@ -906,7 +903,7 @@ class TextQueryBackend(Backend):
     add_escaped: ClassVar[str] = ""  # Characters quoted in addition to wildcards and string quote
     filter_chars: ClassVar[str] = ""  # Characters filtered
     ### Booleans
-    bool_values: ClassVar[Dict[bool, Optional[str]]] = (
+    bool_values: ClassVar[dict[bool, Optional[str]]] = (
         {  # Values to which boolean values are mapped.
             True: None,
             False: None,
@@ -934,7 +931,7 @@ class TextQueryBackend(Backend):
     re_expression: ClassVar[Optional[str]] = None
     not_re_expression: ClassVar[Optional[str]] = None
     re_escape_char: ClassVar[str] = "\\"  # Character used for escaping in regular expressions
-    re_escape: ClassVar[List[str]] = []  # List of strings that are escaped
+    re_escape: ClassVar[list[str]] = []  # List of strings that are escaped
     re_escape_escape_char: bool = True  # If True, the escape character is also escaped
     re_flag_prefix: bool = (
         True  # If True, the flags are prepended as (?x) group at the beginning of the regular expression, e.g. (?i). If this is not supported by the target, it should be set to False.
@@ -943,7 +940,7 @@ class TextQueryBackend(Backend):
     # flag_x placeholders in re_expression template.
     # By default, i, m and s are defined. If a flag is not supported by the target query language,
     # remove it from re_flags or don't define it to ensure proper error handling in case of appearance.
-    re_flags: Dict[SigmaRegularExpressionFlag, str] = SigmaRegularExpression.sigma_to_re_flag
+    re_flags: dict[SigmaRegularExpressionFlag, str] = SigmaRegularExpression.sigma_to_re_flag
 
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
@@ -972,7 +969,7 @@ class TextQueryBackend(Backend):
     compare_op_expression: ClassVar[Optional[str]] = (
         None  # Compare operation query as format string with placeholders {field}, {operator} and {value}
     )
-    compare_operators: ClassVar[Optional[Dict[CompareOperators, str]]] = (
+    compare_operators: ClassVar[Optional[dict[CompareOperators, str]]] = (
         None  # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
     )
 
@@ -989,7 +986,7 @@ class TextQueryBackend(Backend):
     timestamp_part_mapping: ClassVar[Optional[dict[TimestampPart, str]]] = None
     """Mapping to map a TimestampPart enum value to it's string representation of the target SIEM. Example value: '%M' for minute."""
 
-    field_equals_field_escaping_quoting: Tuple[bool, bool] = (
+    field_equals_field_escaping_quoting: tuple[bool, bool] = (
         True,
         True,
     )  # If regular field-escaping/quoting is applied to field1 and field2. A custom escaping/quoting can be implemented in the convert_condition_field_eq_field_escape_and_quote method.
@@ -1051,11 +1048,11 @@ class TextQueryBackend(Backend):
     #   phase.
     # * {condition} is the condition expression generated by the correlation query condition phase.
     # If a correlation query template for a specific correlation type is not defined, the default correlation query template is used.
-    default_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
-    event_count_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
-    value_count_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
-    temporal_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
-    temporal_ordered_correlation_query: ClassVar[Optional[Dict[str, str]]] = None
+    default_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    event_count_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    value_count_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    temporal_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    temporal_ordered_correlation_query: ClassVar[Optional[dict[str, str]]] = None
 
     ## Correlation query search phase
     # The first step of a correlation query is to match events described by the referred Sigma
@@ -1128,16 +1125,16 @@ class TextQueryBackend(Backend):
     #   method.
     # * {groupby} contains the group by expression generated by the groupby_* templates below.
     # * {search} contains the search expression generated by the correlation query search phase.
-    event_count_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+    event_count_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
         None  # Expression for event count correlation rules
     )
-    value_count_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+    value_count_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
         None  # Expression for value count correlation rules
     )
-    temporal_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+    temporal_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
         None  # Expression for temporal correlation rules
     )
-    temporal_ordered_aggregation_expression: ClassVar[Optional[Dict[str, str]]] = (
+    temporal_ordered_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
         None  # Expression for ordered temporal correlation rules
     )
 
@@ -1149,37 +1146,37 @@ class TextQueryBackend(Backend):
     #   convert_timespan.
     # The mapping can be incomplete. Non-existent timespan specifiers will be passed as-is if no
     # mapping is defined for them.
-    timespan_mapping: ClassVar[Optional[Dict[str, str]]] = None
+    timespan_mapping: ClassVar[Optional[dict[str, str]]] = None
     timespan_seconds: ClassVar[bool] = (
         False  # If True, timespan is converted to seconds instead of using a more readable timespan specification like 5m.
     )
 
     # Expression for a referenced rule as format string with {ruleid} placeholder that is replaced
     # with the rule name or id similar to the search query expression.
-    referenced_rules_expression: ClassVar[Optional[Dict[str, str]]] = None
+    referenced_rules_expression: ClassVar[Optional[dict[str, str]]] = None
     # All referenced rules expressions are joined with the following joiner:
-    referenced_rules_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+    referenced_rules_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
 
     # The following class variables defined the templates for the group by expression.
     # First an expression frame is definied:
-    groupby_expression: ClassVar[Optional[Dict[str, str]]] = None
+    groupby_expression: ClassVar[Optional[dict[str, str]]] = None
     # This expression only contains the {fields} placeholder that is replaced by the result of
     # groupby_field_expression for each group by field joined by groupby_field_expression_joiner. The expression template
     # itself can only contain a {field} placeholder for a single field name.
-    groupby_field_expression: ClassVar[Optional[Dict[str, str]]] = None
-    groupby_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+    groupby_field_expression: ClassVar[Optional[dict[str, str]]] = None
+    groupby_field_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
     # Groupy by expression in the case that no fields were provided in the correlation rule:
-    groupby_expression_nofield: ClassVar[Optional[Dict[str, str]]] = None
+    groupby_expression_nofield: ClassVar[Optional[dict[str, str]]] = None
 
     # The following class variables defined the templates for the correlation fields expression, which are collecetd from
     # referenced rules and then appended to the correlation rule.
     # First an expression frame is definied:
-    correlation_fields_expression: ClassVar[Optional[Dict[str, str]]] = None
+    correlation_fields_expression: ClassVar[Optional[dict[str, str]]] = None
     # This expression only contains the {fields} placeholder that is replaced by the result of
     # correlation_fields_field_expression for each group by field joined by correlation_fields_field_expression_joiner. The expression template
     # itself can only contain a {field} placeholder for a single field name.
-    correlation_fields_field_expression: ClassVar[Optional[Dict[str, str]]] = None
-    correlation_fields_field_expression_joiner: ClassVar[Optional[Dict[str, str]]] = None
+    correlation_fields_field_expression: ClassVar[Optional[dict[str, str]]] = None
+    correlation_fields_field_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
 
     ## Correlation query condition phase
     # The final correlation query phase adds a final filter that filters the aggregated events
@@ -1192,14 +1189,14 @@ class TextQueryBackend(Backend):
     # * {referenced_rules} contains the Sigma rules that are referred by the correlation rule. This
     #   expression is generated by the referenced_rules_expression template in combination with the
     #   referenced_rules_expression_joiner defined above.
-    event_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
-    value_count_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
-    temporal_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
-    temporal_ordered_condition_expression: ClassVar[Optional[Dict[str, str]]] = None
+    event_count_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    value_count_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    temporal_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    temporal_ordered_condition_expression: ClassVar[Optional[dict[str, str]]] = None
     # The following mapping defines the mapping from Sigma correlation condition operators like
     # "lt", "gte" into the operatpors expected by the target query language.
     correlation_condition_mapping: ClassVar[
-        Optional[Dict[SigmaCorrelationConditionOperator, str]]
+        Optional[dict[SigmaCorrelationConditionOperator, str]]
     ] = {
         SigmaCorrelationConditionOperator.LT: "<",
         SigmaCorrelationConditionOperator.LTE: "<=",
@@ -1209,7 +1206,7 @@ class TextQueryBackend(Backend):
         SigmaCorrelationConditionOperator.NEQ: "!=",
     }
 
-    def __new__(cls, *args: Any, **kwargs: Dict[str, Any]) -> "TextQueryBackend":
+    def __new__(cls, *args: Any, **kwargs: dict[str, Any]) -> "TextQueryBackend":
         c = super().__new__(cls)
         cls.explicit_not_exists_expression = cls.field_not_exists_expression is not None
         return c
@@ -1761,7 +1758,7 @@ class TextQueryBackend(Backend):
             self.re_flag_prefix,
         )
 
-    def get_flag_template(self, r: SigmaRegularExpression) -> Dict[str, str]:
+    def get_flag_template(self, r: SigmaRegularExpression) -> dict[str, str]:
         """Return the flag_x template variales used for regular expression templates as dict that
         maps flag_x template variable names to the static template if flag is set in regular
         expression r or an empty string if flag is not set."""
@@ -1883,7 +1880,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_field_escape_and_quote(
         self, field1: str, field2: str
-    ) -> Tuple[str, str]:
+    ) -> tuple[str, str]:
         """Escape and quote field names of a field-quals-field expression."""
         return (
             (
@@ -2054,7 +2051,7 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         correlation_type: SigmaCorrelationTypeLiteral,
         method: str,
-    ) -> List[str]:
+    ) -> list[str]:
         template = (
             getattr(self, f"{correlation_type}_correlation_query") or self.default_correlation_query
         )
@@ -2093,7 +2090,7 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[str]:
+    ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "event_count", method)
 
     def convert_correlation_value_count_rule(
@@ -2101,7 +2098,7 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[str]:
+    ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_count", method)
 
     def convert_correlation_temporal_rule(
@@ -2109,7 +2106,7 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[str]:
+    ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "temporal", method)
 
     def convert_correlation_temporal_ordered_rule(
@@ -2117,14 +2114,14 @@ class TextQueryBackend(Backend):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: str = "default",
-    ) -> List[str]:
+    ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "temporal_ordered", method)
 
     # Implementation of the search phase of the correlation query.
     def convert_correlation_search(
         self,
         rule: SigmaCorrelationRule,
-        **kwargs: Dict[str, Any],
+        **kwargs: dict[str, Any],
     ) -> str:
         if (  # if the correlation rule refers only a single rule and this rule results only in a single query
             len(rule.rules) == 1
@@ -2246,7 +2243,7 @@ class TextQueryBackend(Backend):
         method: str,
         search: str,
     ) -> str:
-        templates: Dict[str, str] = getattr(self, f"{correlation_type}_aggregation_expression")
+        templates: dict[str, str] = getattr(self, f"{correlation_type}_aggregation_expression")
         if templates is None:
             raise NotImplementedError(
                 f"Correlation type '{correlation_type}' is not supported by backend."
@@ -2268,9 +2265,9 @@ class TextQueryBackend(Backend):
 
     def convert_correlation_aggregation_fields_from_template(
         self,
-        correlation_rule_fields: List[str],
-        referenced_rules: List[SigmaRuleReference],
-        group_by: Optional[List[str]],
+        correlation_rule_fields: list[str],
+        referenced_rules: list[SigmaRuleReference],
+        group_by: Optional[list[str]],
         method: str,
     ) -> str:
         if self.correlation_fields_expression is None:
@@ -2305,7 +2302,7 @@ class TextQueryBackend(Backend):
             )
 
     def convert_correlation_aggregation_groupby_from_template(
-        self, group_by: Optional[List[str]], method: str
+        self, group_by: Optional[list[str]], method: str
     ) -> str:
         if group_by is None:
             if self.groupby_expression_nofield is None:
@@ -2331,7 +2328,7 @@ class TextQueryBackend(Backend):
             )
 
     def convert_referenced_rules(
-        self, referenced_rules: List[SigmaRuleReference], method: str
+        self, referenced_rules: list[SigmaRuleReference], method: str
     ) -> str:
         if (
             self.referenced_rules_expression is None
@@ -2356,11 +2353,11 @@ class TextQueryBackend(Backend):
     def convert_correlation_condition_from_template(
         self,
         cond: SigmaCorrelationCondition,
-        referenced_rules: List[SigmaRuleReference],
+        referenced_rules: list[SigmaRuleReference],
         correlation_type: SigmaCorrelationTypeLiteral,
         method: str,
     ) -> str:
-        templates: Dict[str, str] = getattr(self, f"{correlation_type}_condition_expression")
+        templates: dict[str, str] = getattr(self, f"{correlation_type}_condition_expression")
         if templates is None or self.correlation_condition_mapping is None:
             raise NotImplementedError(
                 f"Correlation type '{correlation_type}' is not supported by backend."

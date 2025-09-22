@@ -8,7 +8,7 @@ from sigma.processing.conditions.base import (
     RuleProcessingCondition,
 )
 from sigma.types import sigma_type
-from typing import ClassVar, Dict, Literal, Optional, Union
+from typing import ClassVar, Literal, Optional, Union
 from sigma.rule import (
     SigmaDetection,
     SigmaLevel,
@@ -145,7 +145,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
     attribute: str
     value: Union[str, int, float]
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
-    op_methods: ClassVar[Dict[str, str]] = {
+    op_methods: ClassVar[dict[str, str]] = {
         "eq": "__eq__",
         "ne": "__ne__",
         "gte": "__ge__",

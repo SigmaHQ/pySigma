@@ -4,7 +4,7 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Dict, Mapping, Type
+from typing import Mapping, Type
 
 from sigma.processing.conditions.fields import ExcludeFieldCondition, IncludeFieldCondition
 from sigma.processing.conditions.rule import (

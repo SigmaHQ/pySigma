@@ -1,6 +1,6 @@
 from collections import UserDict, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Dict, List, Optional, Set, Union, TYPE_CHECKING
+from typing import Any, Optional, Set, Union, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
@@ -13,7 +13,7 @@ class ProcessingItemTrackingMixin:
     like detection items and conditions.
     """
 
-    applied_processing_items: Set[str] = field(init=False, compare=False, default_factory=set)
+    applied_processing_items: set[str] = field(init=False, compare=False, default_factory=set)
 
     def add_applied_processing_item(self, processing_item: Optional["ProcessingItemBase"]) -> None:
         """Add identifier of processing item to set of applied processing items."""
@@ -25,7 +25,7 @@ class ProcessingItemTrackingMixin:
         return processing_item_id in self.applied_processing_items
 
 
-class FieldMappingTracking(UserDict[Optional[str], Set[str]]):
+class FieldMappingTracking(UserDict[Optional[str], set[str]]):
     """
     Tracking class for field mappings. Tracks initial field name to finally mapped name after a
     processing pipeline was applied. Each key maps the source field to a set of target fields.
@@ -34,13 +34,13 @@ class FieldMappingTracking(UserDict[Optional[str], Set[str]]):
     the fields list is excluded from it. This might change in the future depending on use cases.
     """
 
-    def __init__(self, *args: List[Any], **kwargs: Dict[str, Any]) -> None:
+    def __init__(self, *args: list[Any], **kwargs: dict[str, Any]) -> None:
         super().__init__(*args, **kwargs)
-        self.target_fields: defaultdict[Optional[str], Set[Optional[str]]] = defaultdict(
+        self.target_fields: defaultdict[Optional[str], set[Optional[str]]] = defaultdict(
             set
         )  # Create reverse mapping
 
-    def add_mapping(self, source: Optional[str], target: Union[str, List[str]]) -> None:
+    def add_mapping(self, source: Optional[str], target: Union[str, list[str]]) -> None:
         """
         This method must be invoked for each field name mapping applied in a processing pipeline to
         get a precise result of the final mapping.

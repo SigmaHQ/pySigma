@@ -1,7 +1,7 @@
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-from typing import Any, Dict, List, Optional, Type, TYPE_CHECKING
+from typing import Any, Optional, Type, TYPE_CHECKING
 
 import yaml
 from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError
@@ -19,7 +19,7 @@ class Finalizer:
     _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "Finalizer":
+    def from_dict(cls, d: dict[str, Any]) -> "Finalizer":
         try:
             return cls(**d)
         except TypeError as e:
@@ -32,11 +32,11 @@ class Finalizer:
             raise SigmaTransformationError("Pipeline for finalizer was already set.")
 
     @abstractmethod
-    def apply(self, queries: List[Any]) -> Any:
+    def apply(self, queries: list[Any]) -> Any:
         """Finalize output by applying a transformation to the list of generated and postprocessed queries.
 
         :param queries: List of converted and postprocessed queries that should be finalized.
-        :type queries: List[Any]
+        :type queries: list[Any]
         :return: Output that can be used in further processing of the conversion result.
         :rtype: Any
         """
@@ -51,7 +51,7 @@ class ConcatenateQueriesFinalizer(Finalizer):
     prefix: str = ""
     suffix: str = ""
 
-    def apply(self, queries: List[str]) -> str:
+    def apply(self, queries: list[str]) -> str:
         return self.prefix + self.separator.join(queries) + self.suffix
 
 
@@ -59,7 +59,7 @@ class ConcatenateQueriesFinalizer(Finalizer):
 class JSONFinalizer(Finalizer):
     indent: Optional[int] = None
 
-    def apply(self, queries: List[Any]) -> str:
+    def apply(self, queries: list[Any]) -> str:
         return json.dumps(queries, indent=self.indent)
 
 
@@ -67,7 +67,7 @@ class JSONFinalizer(Finalizer):
 class YAMLFinalizer(Finalizer):
     indent: Optional[int] = None
 
-    def apply(self, queries: List[Any]) -> str:
+    def apply(self, queries: list[Any]) -> str:
         return yaml.safe_dump(queries, indent=self.indent)
 
 
@@ -85,7 +85,7 @@ class TemplateFinalizer(Finalizer, TemplateBase):
     controls the Jinja2 HTML/XML auto-escaping.
     """
 
-    def apply(self, queries: List[Any]) -> str:
+    def apply(self, queries: list[Any]) -> str:
         return self.j2template.render(queries=queries, pipeline=self._pipeline)
 
 
@@ -93,7 +93,7 @@ class TemplateFinalizer(Finalizer, TemplateBase):
 class NestedFinalizer(Finalizer):
     """Apply a list of finalizers to the queries in a nested fashion."""
 
-    finalizers: List[Finalizer]
+    finalizers: list[Finalizer]
     _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False)
 
     def __post_init__(self) -> None:
@@ -104,7 +104,7 @@ class NestedFinalizer(Finalizer):
         self._nested_pipeline = ProcessingPipeline(finalizers=self.finalizers)
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "NestedFinalizer":
+    def from_dict(cls, d: dict[str, Any]) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
         fs = []
@@ -116,11 +116,11 @@ class NestedFinalizer(Finalizer):
             fs.append(finalizers[finalizer_type].from_dict(finalizer))
         return cls(finalizers=fs)
 
-    def apply(self, queries: List[Any]) -> Any:
+    def apply(self, queries: list[Any]) -> Any:
         return self._nested_pipeline.finalize(queries)
 
 
-finalizers: Dict[str, Type[Finalizer]] = {
+finalizers: dict[str, Type[Finalizer]] = {
     "concat": ConcatenateQueriesFinalizer,
     "json": JSONFinalizer,
     "yaml": YAMLFinalizer,

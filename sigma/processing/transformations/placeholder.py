@@ -1,8 +1,6 @@
 from abc import abstractmethod
 from typing import (
     Iterable,
-    List,
-    Dict,
     Optional,
     Union,
     Iterator,
@@ -25,8 +23,8 @@ from sigma.types import (
 
 @dataclass
 class PlaceholderIncludeExcludeMixin:
-    include: Optional[List[str]] = field(default=None)
-    exclude: Optional[List[str]] = field(default=None)
+    include: Optional[list[str]] = field(default=None)
+    exclude: Optional[list[str]] = field(default=None)
 
     def check_exclusivity(self) -> None:
         if self.include is not None and self.exclude is not None:
@@ -123,7 +121,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
         except KeyError:
             raise SigmaValueError(f"Placeholder replacement variable '{ p.name }' doesn't exists.")
 
-        if not isinstance(values, List):
+        if not isinstance(values, list):
             values = [values]
 
         if {isinstance(item, (str, int, float)) for item in values} != {True}:
@@ -151,7 +149,7 @@ class QueryExpressionPlaceholderTransformation(
     """
 
     expression: str = ""
-    mapping: Dict[str, str] = field(default_factory=dict)
+    mapping: dict[str, str] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         self.check_exclusivity()

@@ -1,7 +1,7 @@
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Union, IO, TYPE_CHECKING, cast
+from typing import Any, Callable, Iterable, Optional, Union, IO, TYPE_CHECKING, cast
 from uuid import UUID
 
 import yaml
@@ -19,28 +19,28 @@ from sigma.filters import SigmaFilter
 if TYPE_CHECKING:
     from sigma.filters import SigmaGlobalFilter
 
-NestedDict = Dict[str, Union[str, int, float, bool, None, "NestedDict"]]
+NestedDict = dict[str, Union[str, int, float, bool, None, "NestedDict"]]
 
 
 @dataclass
 class SigmaCollection:
     """Collection of Sigma rules"""
 
-    init_rules: InitVar[List[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]]]
-    errors: List[SigmaError] = field(default_factory=list)
+    init_rules: InitVar[list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]]]
+    errors: list[SigmaError] = field(default_factory=list)
     collect_filters: InitVar[bool] = False
-    rules: List[Union[SigmaRule, SigmaCorrelationRule]] = field(default_factory=list)
-    filters: List[SigmaFilter] = field(default_factory=list)
-    ids_to_rules: Dict[UUID, Union[SigmaRule, SigmaCorrelationRule]] = field(
+    rules: list[Union[SigmaRule, SigmaCorrelationRule]] = field(default_factory=list)
+    filters: list[SigmaFilter] = field(default_factory=list)
+    ids_to_rules: dict[UUID, Union[SigmaRule, SigmaCorrelationRule]] = field(
         init=False, repr=False, hash=False, compare=False
     )
-    names_to_rules: Dict[str, Union[SigmaRule, SigmaCorrelationRule]] = field(
+    names_to_rules: dict[str, Union[SigmaRule, SigmaCorrelationRule]] = field(
         init=False, repr=False, hash=False, compare=False
     )
 
     def __post_init__(
         self,
-        init_rules: List[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]],
+        init_rules: list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]],
         collect_filters: bool,
     ) -> None:
         """
@@ -62,7 +62,7 @@ class SigmaCollection:
         if self.filters and not collect_filters:
             self.apply_filters(self.filters)
 
-    def apply_filters(self, filters: List[SigmaFilter]) -> None:
+    def apply_filters(self, filters: list[SigmaFilter]) -> None:
         """
         Apply filters on each rule and replace the rule with the filtered rule
         """
@@ -88,7 +88,7 @@ class SigmaCollection:
                 rule.resolve_rule_references(self)
 
         # Extract all filters from the rules
-        filters: List[SigmaFilter] = [
+        filters: list[SigmaFilter] = [
             cast(SigmaFilter, rule) for rule in self.rules if isinstance(rule, SigmaFilter)
         ]
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
@@ -106,7 +106,7 @@ class SigmaCollection:
     @classmethod
     def from_dicts(
         cls,
-        rules: List[NestedDict],
+        rules: list[NestedDict],
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
         collect_filters: bool = False,
@@ -119,8 +119,8 @@ class SigmaCollection:
 
         If collect_filters is set, filters are only collected in the collection but not yet applied to the rules.
         """
-        errors: List[SigmaError] = []
-        parsed_rules: List[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]] = list()
+        errors: list[SigmaError] = []
+        parsed_rules: list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]] = list()
         prev_rule = dict()
         global_rule: NestedDict = dict()
 
@@ -204,7 +204,7 @@ class SigmaCollection:
     @classmethod
     def resolve_paths(
         cls,
-        inputs: List[Union[str, Path]],
+        inputs: list[Union[str, Path]],
         recursion_pattern: str = "**/*.yml",
     ) -> Iterable[Path]:
         """
@@ -222,7 +222,7 @@ class SigmaCollection:
     @classmethod
     def load_ruleset(
         cls,
-        inputs: List[Union[str, Path]],
+        inputs: list[Union[str, Path]],
         collect_errors: bool = False,
         on_beforeload: Optional[Callable[[Path], Optional[Path]]] = None,
         on_load: Optional[Callable[[Path, "SigmaCollection"], Optional["SigmaCollection"]]] = None,
@@ -323,7 +323,7 @@ class SigmaCollection:
             raise SigmaRuleNotFoundError(f"Rule '{ i }' not found in rule collection")
 
 
-def deep_dict_update(dest: Dict[Any, Any], src: Dict[Any, Any]) -> Dict[Any, Any]:
+def deep_dict_update(dest: dict[Any, Any], src: dict[Any, Any]) -> dict[Any, Any]:
     for k, v in src.items():
         if isinstance(v, dict):
             dest[k] = deep_dict_update(dest.get(k, {}), v)

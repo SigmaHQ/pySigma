@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, fields
 from enum import Enum, auto
-from typing import ClassVar, List, Optional, Set, Type, Union
+from typing import ClassVar, Optional, Set, Type, Union
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaString, SigmaType
@@ -35,7 +35,7 @@ class SigmaValidationIssue(ABC):
 
     description: ClassVar[str] = "Sigma rule validation issue"
     severity: ClassVar[SigmaValidationIssueSeverity]
-    rules: List[Union[SigmaRule, SigmaCorrelationRule]]
+    rules: list[Union[SigmaRule, SigmaCorrelationRule]]
 
     def __post_init__(self) -> None:
         """Ensure that `self.rules` contains a list, even when a single rule was provided."""
@@ -69,23 +69,23 @@ class SigmaRuleValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
         :type rule: SigmaRuleBase
         :return: List of validation issue objects describing.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
         self.rule = rule
         return []
 
-    def finalize(self) -> List[SigmaValidationIssue]:
+    def finalize(self) -> list[SigmaValidationIssue]:
         """
         Finalize a validation run and return validation issues that apply to multiple rules.
 
         :return: List of validation issues.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
         return []
 
@@ -105,7 +105,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
     effects in implementations of them methods mentioned above.
     """
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         """
         Iterate over all detections and call validate_detection() for each.
         """
@@ -122,7 +122,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
     @abstractmethod
     def validate_detection(
         self, name: str, detection: SigmaDetection
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         """Implementation of the detection validation. It is invoked for each detection.
 
         :param name: Name of the validated detection.
@@ -130,7 +130,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
         :param detection: detection definition that should be validated.
         :type detection: SigmaDetection
         :return: List of validation issue objects describing.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
 
 
@@ -151,7 +151,7 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
 
     def validate_detection(
         self, name: Optional[str], detection: SigmaDetection
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         """
         Iterate over all detection items of a detection definition and call
         validate_detection_item() method on each detection item or this method itself recursively
@@ -170,13 +170,13 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
     @abstractmethod
     def validate_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         """Implementation of the detection item validation. It is invoked for each detection item.
 
         :param detection_item: detection item that should be validated.
         :type detection_item: SigmaDetectionItem
         :return: List of validation issue objects describing.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
 
 
@@ -197,7 +197,7 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
 
     def validate_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         """
         Iterate over all values of a detection item and call validate_value() method for each of
         them.
@@ -205,13 +205,13 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
         return [issue for value in detection_item.value for issue in self.validate_value(value)]
 
     @abstractmethod
-    def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
+    def validate_value(self, value: SigmaType) -> list[SigmaValidationIssue]:
         """Implementation of the value validation. It is invoked for each value of a type.
 
         :param value: detection item that should be validated.
         :type value: SigmaType
         :return: List of validation issue objects describing.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
 
 
@@ -231,19 +231,19 @@ class SigmaStringValueValidator(SigmaValueValidator):
     effects in implementations of them methods mentioned above.
     """
 
-    def validate_value(self, value: SigmaType) -> List[SigmaValidationIssue]:
+    def validate_value(self, value: SigmaType) -> list[SigmaValidationIssue]:
         if isinstance(value, SigmaString):
             return self.validate_string(value)
         return []
 
     @abstractmethod
-    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
         """Implementation of the string value validation. It is invoked for each SigmaString value.
 
         :param value: detection item that should be validated.
         :type value: SigmaString
         :return: List of validation issue objects describing.
-        :rtype: List[SigmaValidationIssue]
+        :rtype: list[SigmaValidationIssue]
         """
 
 
@@ -253,10 +253,10 @@ class SigmaTagValidator(SigmaRuleValidator):
     each tag.
     """
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         super().validate(rule)
         return [issue for tag in rule.tags for issue in self.validate_tag(tag)]
 
     @abstractmethod
-    def validate_tag(self, tag: SigmaRuleTag) -> List[SigmaValidationIssue]:
+    def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
         """Validates a tag."""

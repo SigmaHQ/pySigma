@@ -7,8 +7,6 @@ from typing import (
     Iterator,
     Optional,
     Union,
-    List,
-    Dict,
     Type,
     cast,
     get_origin,
@@ -45,8 +43,8 @@ from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 if TYPE_CHECKING:
     from .rule import SigmaDetectionItem
 
-T = TypeVar("T", bound=Union[SigmaType, List[SigmaType]])
-R = TypeVar("R", bound=Union[SigmaType, List[SigmaType]])
+T = TypeVar("T", bound=Union[SigmaType, list[SigmaType]])
+R = TypeVar("R", bound=Union[SigmaType, list[SigmaType]])
 
 
 ### Base Classes ###
@@ -54,12 +52,12 @@ class SigmaModifier(ABC, Generic[T, R]):
     """Base class for all Sigma modifiers"""
 
     detection_item: "SigmaDetectionItem"
-    applied_modifiers: List[Type["SigmaModifier[T, R]"]]
+    applied_modifiers: list[Type["SigmaModifier[T, R]"]]
 
     def __init__(
         self,
         detection_item: "SigmaDetectionItem",
-        applied_modifiers: List[Type["SigmaModifier[T, R]"]],
+        applied_modifiers: list[Type["SigmaModifier[T, R]"]],
         source: Optional[SigmaRuleLocation] = None,
     ):
         self.detection_item = detection_item
@@ -89,7 +87,7 @@ class SigmaModifier(ABC, Generic[T, R]):
     def modify(self, val: T) -> R:
         """This method should be overridden with the modifier implementation."""
 
-    def apply(self, val: T) -> List[T]:
+    def apply(self, val: T) -> list[T]:
         """
         Modifier entry point containing the default operations:
         * Type checking
@@ -112,7 +110,7 @@ class SigmaModifier(ABC, Generic[T, R]):
                     source=self.source,
                 )
             r = self.modify(val)
-            if isinstance(r, List):
+            if isinstance(r, list):
                 return r
             else:
                 return [cast(T, r)]
@@ -255,7 +253,7 @@ class SigmaWideModifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as wide string (UTF-16LE)."""
 
     def modify(self, val: SigmaString) -> SigmaString:
-        r: List[SigmaStringPartType] = list()
+        r: list[SigmaStringPartType] = list()
         for item in val.s:
             if isinstance(
                 item, str
@@ -295,7 +293,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
 
         return SigmaExpansion(
             cast(
-                List[SigmaType],
+                list[SigmaType],
                 val.replace_with_placeholder(
                     re.compile("\\B[-/]\\b"), "_windash"
                 ).replace_placeholders(callback),
@@ -511,7 +509,7 @@ class SigmaTimestampYearModifier(SigmaTimestampModifier):
 
 
 # Mapping from modifier identifier strings to modifier classes
-modifier_mapping: Dict[str, Type[SigmaModifier[Any, Any]]] = {
+modifier_mapping: dict[str, Type[SigmaModifier[Any, Any]]] = {
     "all": SigmaAllModifier,
     "base64": SigmaBase64Modifier,
     "base64offset": SigmaBase64OffsetModifier,
@@ -545,6 +543,6 @@ modifier_mapping: Dict[str, Type[SigmaModifier[Any, Any]]] = {
 }
 
 # Mapping from modifier class to identifier
-reverse_modifier_mapping: Dict[str, str] = {
+reverse_modifier_mapping: dict[str, str] = {
     modifier_class.__name__: identifier for identifier, modifier_class in modifier_mapping.items()
 }

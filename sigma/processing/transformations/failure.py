@@ -50,7 +50,7 @@ class StrictFieldMappingFailure(PreprocessingTransformation):
         "Please check the field mapping in the configuration file."
     )
 
-    def _get_all_field_names(self, rule: SigmaRule) -> Set[str]:
+    def _get_all_field_names(self, rule: SigmaRule) -> set[str]:
         """Extract all field names from the rule's detection items."""
         field_names = set()
 
@@ -59,7 +59,7 @@ class StrictFieldMappingFailure(PreprocessingTransformation):
 
         return field_names
 
-    def _get_fields_from_detection(self, detection: SigmaDetection) -> Set[str]:
+    def _get_fields_from_detection(self, detection: SigmaDetection) -> set[str]:
         """Recursively extract field names from a detection."""
         field_names = set()
 

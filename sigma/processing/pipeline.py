@@ -3,15 +3,11 @@ from dataclasses import dataclass, field
 from functools import partial
 import hashlib
 from typing import (
-    FrozenSet,
-    List,
     Literal,
     Mapping,
-    Set,
     Any,
     Callable,
     Iterable,
-    Dict,
     Tuple,
     Optional,
     Type,
@@ -57,7 +53,7 @@ class ProcessingItemBase:
     transformation: Transformation
     rule_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     rule_condition_negation: bool = False
-    rule_conditions: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition]] = (
+    rule_conditions: Union[list[RuleProcessingCondition], dict[str, RuleProcessingCondition]] = (
         field(default_factory=list)
     )
     rule_condition_expression: Optional[ConditionExpression] = (
@@ -69,13 +65,13 @@ class ProcessingItemBase:
 
     @classmethod
     def _base_args_from_dict(
-        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
-    ) -> Dict[str, Any]:
+        cls, d: dict[str, Any], transformations: dict[str, Type[Transformation]]
+    ) -> dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
         rule_conds = cls._parse_conditions(
             cast(
-                Dict[
+                dict[
                     str,
                     Type[ProcessingCondition],
                 ],
@@ -156,7 +152,7 @@ class ProcessingItemBase:
         )  # set processing item in transformation object after it is instantiated
         self._resolve_condition_expression(
             self.rule_condition_expression,
-            cast(Dict[str, ProcessingCondition], self.rule_conditions),
+            cast(dict[str, ProcessingCondition], self.rule_conditions),
             "Rule condition",
         )
         if self.identifier is None or self.identifier == "":
@@ -202,7 +198,7 @@ class ProcessingItemBase:
     def _resolve_condition_expression(
         self,
         expr: Optional[ConditionExpression],
-        conditions: Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
+        conditions: Union[dict[str, ProcessingCondition], list[ProcessingCondition]],
         name: str,
     ) -> None:
         if expr is not None:
@@ -228,7 +224,7 @@ class ProcessingItemBase:
             str,
             Type[ProcessingCondition],
         ],
-        cond_def: Dict[str, Any],
+        cond_def: dict[str, Any],
         ref: str,
     ) -> ProcessingCondition:
         try:
@@ -256,19 +252,19 @@ class ProcessingItemBase:
             str,
             Type[ProcessingCondition],
         ],
-        cond_defs: Dict[str, Dict[str, Any]],
+        cond_defs: dict[str, dict[str, Any]],
     ) -> Union[
-        List[ProcessingCondition],
-        Dict[str, ProcessingCondition],
+        list[ProcessingCondition],
+        dict[str, ProcessingCondition],
     ]:
         """Parse dict of conditions into list or dict of condition object instances.
 
         :param condition_class_mapping: Mapping between condition type identifiers and condition classes.
-        :type condition_class_mapping: Dict[str, Union[Type[RuleProcessingCondition], Type[DetectionItemProcessingCondition], Type[FieldNameProcessingCondition]]]
+        :type condition_class_mapping: dict[str, Union[Type[RuleProcessingCondition], Type[DetectionItemProcessingCondition], Type[FieldNameProcessingCondition]]]
         :param cond_defs: Definition of conditions for the pipeline.
-        :type cond_defs: Dict[str, Dict]
+        :type cond_defs: dict[str, Dict]
         :return: List or dict of condition classes as defined in dict.
-        :rtype: Union[List[RuleProcessingCondition], Dict[str, RuleProcessingCondition], List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition], List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]]
+        :rtype: Union[list[RuleProcessingCondition], dict[str, RuleProcessingCondition], list[DetectionItemProcessingCondition], dict[str, DetectionItemProcessingCondition], list[FieldNameProcessingCondition], dict[str, FieldNameProcessingCondition]]
         """
         if isinstance(cond_defs, dict):
             return {
@@ -285,7 +281,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _parse_condition_linking(
-        cls, d: Dict[str, Any], op_name: str
+        cls, d: dict[str, Any], op_name: str
     ) -> Optional[Callable[[Iterable[bool]], bool]]:
         condition_linking = {
             "or": any,
@@ -296,7 +292,7 @@ class ProcessingItemBase:
 
     @classmethod
     def _instantiate_transformation(
-        cls, d: Dict[str, Any], transformations: Dict[str, Type[Transformation]]
+        cls, d: dict[str, Any], transformations: dict[str, Type[Transformation]]
     ) -> Transformation:
         try:
             transformation_class_name = d["type"]
@@ -396,18 +392,18 @@ class ProcessingItem(ProcessingItemBase):
     )
     detection_item_condition_negation: bool = False
     detection_item_conditions: Union[
-        List[DetectionItemProcessingCondition], Dict[str, DetectionItemProcessingCondition]
+        list[DetectionItemProcessingCondition], dict[str, DetectionItemProcessingCondition]
     ] = field(default_factory=list)
     detection_item_condition_expression: Optional[ConditionExpression] = None
     field_name_condition_linking: Optional[Callable[[Iterable[bool]], bool]] = None  # any or all
     field_name_condition_negation: bool = False
     field_name_conditions: Union[
-        List[FieldNameProcessingCondition], Dict[str, FieldNameProcessingCondition]
+        list[FieldNameProcessingCondition], dict[str, FieldNameProcessingCondition]
     ] = field(default_factory=list)
     field_name_condition_expression: Optional[ConditionExpression] = None
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ProcessingItem":
+    def from_dict(cls, d: dict[str, Any]) -> "ProcessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(d, transformations)
 
@@ -461,7 +457,7 @@ class ProcessingItem(ProcessingItemBase):
         self._resolve_condition_expression(
             self.detection_item_condition_expression,
             cast(
-                Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
+                Union[dict[str, ProcessingCondition], list[ProcessingCondition]],
                 self.detection_item_conditions,
             ),
             "Detection item condition",
@@ -476,7 +472,7 @@ class ProcessingItem(ProcessingItemBase):
         self._resolve_condition_expression(
             self.field_name_condition_expression,
             cast(
-                Union[Dict[str, ProcessingCondition], List[ProcessingCondition]],
+                Union[dict[str, ProcessingCondition], list[ProcessingCondition]],
                 self.field_name_conditions,
             ),
             "Field name condition",
@@ -633,10 +629,10 @@ class QueryPostprocessingItem(ProcessingItemBase):
     transformation: QueryPostprocessingTransformation
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "QueryPostprocessingItem":
+    def from_dict(cls, d: dict[str, Any]) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(
-            d, cast(Dict[str, Type[Transformation]], query_postprocessing_transformations)
+            d, cast(dict[str, Type[Transformation]], query_postprocessing_transformations)
         )
         return cls(**kwargs)
 
@@ -644,7 +640,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         self,
         rule: Union[SigmaRule, SigmaCorrelationRule],
         query: str,
-    ) -> Tuple[str, bool]:
+    ) -> tuple[str, bool]:
         """
         Matches condition against rule and performs transformation of query if condition is true or not present.
         Returns query and bool if transformation was applied.
@@ -673,30 +669,30 @@ class ProcessingPipeline:
     variables that can be used from processing items.
     """
 
-    items: List[ProcessingItem] = field(default_factory=list)
-    postprocessing_items: List[QueryPostprocessingItem] = field(default_factory=list)
-    finalizers: List[Finalizer] = field(default_factory=list)
-    vars: Dict[str, Any] = field(default_factory=dict)
+    items: list[ProcessingItem] = field(default_factory=list)
+    postprocessing_items: list[QueryPostprocessingItem] = field(default_factory=list)
+    finalizers: list[Finalizer] = field(default_factory=list)
+    vars: dict[str, Any] = field(default_factory=dict)
     priority: int = field(default=0)
     name: Optional[str] = field(default=None)
-    allowed_backends: FrozenSet[str] = field(
+    allowed_backends: frozenset[str] = field(
         default_factory=frozenset
     )  # Set of identifiers of backends (from the backends mapping) that are allowed to use this processing pipeline. This can be used by frontends like Sigma CLI to warn the user about inappropriate usage.
     # The following items are reset for each invocation of apply().
     # TODO: move this to parameters or return values of apply().
-    applied: List[bool] = field(
+    applied: list[bool] = field(
         init=False, compare=False, default_factory=list
     )  # list of applied items as booleans. If True, the corresponding item at the same position was applied
-    applied_ids: Set[str] = field(
+    applied_ids: set[str] = field(
         init=False, compare=False, default_factory=set
     )  # set of identifiers of applied items, doesn't contains items without identifier
-    field_name_applied_ids: Dict[str, Set[str]] = field(
+    field_name_applied_ids: dict[str, set[str]] = field(
         init=False, compare=False, default_factory=partial(defaultdict, set)
     )  # Mapping of field names from rule fields list to set of applied processing items
     field_mappings: FieldMappingTracking = field(
         init=False, compare=False, default_factory=FieldMappingTracking
     )  # Mapping between initial field names and finally mapped field name.
-    state: Dict[str, Any] = field(
+    state: dict[str, Any] = field(
         init=False, compare=False, default_factory=dict
     )  # pipeline state: allows to set variables that can be used in conversion (e.g. indices, data model names etc.)
 
@@ -734,7 +730,7 @@ class ProcessingPipeline:
             finalizer._pipeline = None
 
     @classmethod
-    def from_dict(cls, d: Dict[str, Any]) -> "ProcessingPipeline":
+    def from_dict(cls, d: dict[str, Any]) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
 
         custom_keys = [
@@ -841,7 +837,7 @@ class ProcessingPipeline:
         return output
 
     def track_field_processing_items(
-        self, src_field: str, dest_field: List[str], processing_item_id: Optional[str]
+        self, src_field: str, dest_field: list[str], processing_item_id: Optional[str]
     ) -> None:
         """
         Track processing items that were applied to field names. This adds the processing_item_id to
@@ -849,7 +845,7 @@ class ProcessingPipeline:
         tracking set to all fields in dest_field.
         """
         if [src_field] != dest_field:  # Only add if source field was mapped to something different.
-            applied_identifiers: Set[str] = self.field_name_applied_ids[src_field]
+            applied_identifiers: set[str] = self.field_name_applied_ids[src_field]
             if processing_item_id is not None:
                 applied_identifiers.add(processing_item_id)
             del self.field_name_applied_ids[src_field]

@@ -25,7 +25,7 @@ class DoubleWildcardIssue(SigmaValidationIssue):
 class DoubleWildcardValidator(SigmaStringValueValidator):
     """Check strings for consecutive multi-character wildcards."""
 
-    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
         prev_wildcard = False
         for c in value.s:
             if c == SpecialChars.WILDCARD_MULTI:
@@ -48,7 +48,7 @@ class NumberAsStringIssue(SigmaValidationIssue):
 class NumberAsStringValidator(SigmaStringValueValidator):
     """Check numbers that were expressed as strings."""
 
-    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
         if len(value.s) == 1 and isinstance(value.s[0], str) and not " " in value.s[0]:
             try:
                 int(value.s[0])
@@ -73,7 +73,7 @@ class ControlCharacterValidator(SigmaStringValueValidator):
     wrong usage of single backslashes, e.g. before a t character, where double backslashes are required.
     """
 
-    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
         if any((ord(c) < 31 for s in value.s for c in (s if isinstance(s, str) else ""))):
             return [ControlCharacterIssue([self.rule], value)]
         else:
@@ -112,7 +112,7 @@ class WildcardsInsteadOfModifiersValidator(SigmaDetectionItemValidator):
 
     def validate_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> List[SigmaValidationIssue]:
+    ) -> list[SigmaValidationIssue]:
         # Warning rule use a single '*' waiting for the `exists` modifier  so check len(value)>1 to allow it
         if (
             detection_item.original_value is not None
@@ -175,7 +175,7 @@ class EscapedWildcardValidator(SigmaStringValueValidator):
 
     wildcard_list = ["*", "?"]
 
-    def validate_string(self, value: SigmaString) -> List[SigmaValidationIssue]:
+    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
         if any([x in s for x in self.wildcard_list for s in value.s if isinstance(s, str)]):
             return [EscapedWildcardIssue([self.rule], value)]
         else:

@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import dataclasses
-from typing import Any, Dict, Optional
+from typing import Any, Optional
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError
 
@@ -12,7 +12,7 @@ class SigmaLogSource:
     service: Optional[str] = field(default=None)
     definition: Optional[str] = field(default=None)
     source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
-    custom_attributes: Optional[Dict[str, Any]] = field(default=None, compare=False)
+    custom_attributes: Optional[dict[str, Any]] = field(default=None, compare=False)
 
     def __post_init__(self) -> None:
         """Ensures that log source is not empty."""
@@ -39,7 +39,7 @@ class SigmaLogSource:
 
     @classmethod
     def from_dict(
-        cls, logsource: Dict[str, str], source: Optional[SigmaRuleLocation] = None
+        cls, logsource: dict[str, str], source: Optional[SigmaRuleLocation] = None
     ) -> "SigmaLogSource":
         """Returns SigmaLogSource object from dict with fields."""
         custom_attributes = {
@@ -55,7 +55,7 @@ class SigmaLogSource:
             custom_attributes if len(custom_attributes) > 0 else None,
         )
 
-    def to_dict(self) -> Dict[str, Any]:
+    def to_dict(self) -> dict[str, Any]:
         return {
             field.name: str(value)
             for field in dataclasses.fields(self)

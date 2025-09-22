@@ -6,12 +6,9 @@ from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
 from typing import (
     ClassVar,
-    Dict,
     Pattern,
-    Set,
     Type,
     Union,
-    List,
     Optional,
     Any,
     Iterable,
@@ -122,7 +119,7 @@ class SigmaString(SigmaType):
     """
 
     original: str  # the original string, untouched
-    s: List[
+    s: list[
         SigmaStringPartType
     ]  # the string is represented as sequence of strings and characters with special meaning
 
@@ -144,7 +141,7 @@ class SigmaString(SigmaType):
 
         self.original = s
 
-        r: List[Union[str, SpecialChars, Placeholder]] = list()
+        r: list[Union[str, SpecialChars, Placeholder]] = list()
         acc = ""  # string accumulation until special character appears
         escaped = False  # escape mode flag: characters in this mode are always accumulated
         for c in s:
@@ -220,7 +217,7 @@ class SigmaString(SigmaType):
             raise IndexError("SigmaString index out of range")
 
         i = 0  # Pointer to SigmaString element
-        result: List[Union[str, SpecialChars, Placeholder]] = []  # Result: indexed string part
+        result: list[Union[str, SpecialChars, Placeholder]] = []  # Result: indexed string part
 
         # Find start. The variables start and end now contain the remaining characters until the
         # indexed part begins/ends relative to the current element.
@@ -273,7 +270,7 @@ class SigmaString(SigmaType):
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
         """
-        res: List[Union[str, SpecialChars, Placeholder]] = []
+        res: list[Union[str, SpecialChars, Placeholder]] = []
         for part in self.s:  # iterate over all parts and...
             if isinstance(part, str):  # ...search in strings...
                 lastpos = 0
@@ -309,7 +306,7 @@ class SigmaString(SigmaType):
         :return: Returns a string with the replacement placeholders.
         :rtype: SigmaString
         """
-        result: List[Union[str, SpecialChars, Placeholder]] = []
+        result: list[Union[str, SpecialChars, Placeholder]] = []
         for e in self.s:
             if isinstance(e, str):
                 matched = False
@@ -338,7 +335,7 @@ class SigmaString(SigmaType):
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
         src = list(reversed(self.s))
-        res: List[SigmaStringPartType] = []
+        res: list[SigmaStringPartType] = []
         while src:
             item = src.pop()
             try:
@@ -455,7 +452,7 @@ class SigmaString(SigmaType):
         return any([isinstance(item, SpecialChars) for item in self.s])
 
     def contains_placeholder(
-        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
+        self, include: Optional[list[str]] = None, exclude: Optional[list[str]] = None
     ) -> bool:
         """
         Check if string contains placeholders and if any placeholder name is
@@ -480,7 +477,7 @@ class SigmaString(SigmaType):
         callback: Callable[
             [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
         ],
-    ) -> List["SigmaString"]:
+    ) -> list["SigmaString"]:
         """
         Iterate over all placeholders and call the callback for each one. The callback is called with the placeholder instance
         as argument and yields replacement values (plain strings or SpecialChars instances). Each yielded replacement value
@@ -729,13 +726,13 @@ class SigmaRegularExpression(SigmaType):
 
     regexp: SigmaString = field(init=False)
     regexp_init: InitVar[Union[SigmaString, str]]
-    flags: Set[SigmaRegularExpressionFlag] = field(default_factory=set)
-    sigma_to_python_flags: ClassVar[Dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
+    flags: set[SigmaRegularExpressionFlag] = field(default_factory=set)
+    sigma_to_python_flags: ClassVar[dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
         SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
         SigmaRegularExpressionFlag.MULTILINE: re.MULTILINE,
         SigmaRegularExpressionFlag.DOTALL: re.DOTALL,
     }
-    sigma_to_re_flag: ClassVar[Dict[SigmaRegularExpressionFlag, str]] = {
+    sigma_to_re_flag: ClassVar[dict[SigmaRegularExpressionFlag, str]] = {
         SigmaRegularExpressionFlag.IGNORECASE: "i",
         SigmaRegularExpressionFlag.MULTILINE: "m",
         SigmaRegularExpressionFlag.DOTALL: "s",
@@ -771,7 +768,7 @@ class SigmaRegularExpression(SigmaType):
 
     def escape(
         self,
-        escaped: List[str] = cast(List[str], ()),
+        escaped: list[str] = cast(list[str], ()),
         escape_char: str = "\\",
         escape_escape_char: bool = True,
         flag_prefix: bool = True,
@@ -808,7 +805,7 @@ class SigmaRegularExpression(SigmaType):
         return prefix + escape_char.join([regexp_str[i:j] for i, j in ranges])
 
     def contains_placeholder(
-        self, include: Optional[List[str]] = None, exclude: Optional[List[str]] = None
+        self, include: Optional[list[str]] = None, exclude: Optional[list[str]] = None
     ) -> bool:
         return self.regexp.contains_placeholder(include, exclude)
 
@@ -826,7 +823,7 @@ class SigmaRegularExpression(SigmaType):
         callback: Callable[
             [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
         ],
-    ) -> List["SigmaRegularExpression"]:
+    ) -> list["SigmaRegularExpression"]:
         """
         Replace all occurrences of string part matching regular expression with placeholder.
         """
@@ -857,7 +854,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
     def expand(
         self,
         wildcard: str = "*",
-    ) -> List[str]:
+    ) -> list[str]:
         """
         Convert CIDR range into a list of wildcard patterns or plain CIDR notation. The following parameters allow to change the behavior:
 
@@ -999,10 +996,10 @@ class SigmaExpansion(NoPlainConversionMixin, SigmaType):
        context that encloses the expansion.
     """
 
-    values: List[SigmaType]
+    values: list[SigmaType]
 
 
-type_map: Dict[type, Type[SigmaType]] = {
+type_map: dict[type, Type[SigmaType]] = {
     bool: SigmaBool,
     int: SigmaNumber,
     float: SigmaNumber,

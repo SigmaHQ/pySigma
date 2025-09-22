@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 from re import Pattern
 import re
-from typing import ClassVar, List, Set, Union
+from typing import ClassVar, Set, Union
 from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
     ConditionIdentifier,
@@ -28,7 +28,7 @@ class DanglingDetectionIssue(SigmaValidationIssue):
 class DanglingDetectionValidator(SigmaRuleValidator):
     """Check for detection definitions not referenced from condition."""
 
-    detection_names: Set[str]
+    detection_names: set[str]
 
     def condition_referenced_ids(
         self,
@@ -40,7 +40,7 @@ class DanglingDetectionValidator(SigmaRuleValidator):
             None,
         ],
         detections: SigmaDetections,
-    ) -> Set[str]:
+    ) -> set[str]:
         """
         Return detection item identifier referenced by condition.
 
@@ -49,7 +49,7 @@ class DanglingDetectionValidator(SigmaRuleValidator):
         :param detections: Detections referenced from condition.
         :type detections: SigmaDetections
         :return: Set of referenced detection identifiers.
-        :rtype: Set[str]
+        :rtype: set[str]
         """
         if isinstance(cond, ConditionIdentifier):  # Only one id referenced.
             return {cond.identifier}
@@ -63,7 +63,7 @@ class DanglingDetectionValidator(SigmaRuleValidator):
         else:  # Fallback if something different is encountered: return empty set.
             return set()
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 
@@ -100,7 +100,7 @@ class DanglingConditionValidator(SigmaRuleValidator):
             None,
         ],
         detections: SigmaDetections,
-    ) -> Set[str]:
+    ) -> set[str]:
         """
         Return set of unknown item identifier referenced by condition.
 
@@ -109,7 +109,7 @@ class DanglingConditionValidator(SigmaRuleValidator):
         :param detections: Detections referenced from condition.
         :type detections: SigmaDetections
         :return: Set of unknown referenced detection identifiers.
-        :rtype: Set[str]
+        :rtype: set[str]
         """
         if isinstance(cond, ConditionSelector):  # Resolve all referenced ids and return
             resolved_detections = {
@@ -129,7 +129,7 @@ class DanglingConditionValidator(SigmaRuleValidator):
         else:  # Fallback if something different is encountered: return empty set.
             return set()
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 
@@ -152,7 +152,7 @@ class ThemConditionWithSingleDetectionIssue(SigmaValidationIssue):
 class ThemConditionWithSingleDetectionValidator(SigmaRuleValidator):
     """Detect conditions referring to 'them' with only one detection."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 
@@ -178,7 +178,7 @@ class AllOfThemConditionValidator(SigmaRuleValidator):
 
     re_all_of_them: ClassVar[Pattern[str]] = re.compile("all\\s+of\\s+them")
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> List[SigmaValidationIssue]:
+    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 

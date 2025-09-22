@@ -367,7 +367,6 @@ detection:
     condition: selection
 """
     )
-    rule_collection.resolve_rule_references()
     return rule_collection
 
 
@@ -422,4 +421,46 @@ correlation:
     group-by: user
     timespan: 5m
 """
-        ).resolve_rule_references()
+        )
+
+
+def test_disable_resolve_references():
+    # YAML with two simple rules and a correlation referencing them
+    yaml_str = """
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\a.exe'
+    condition: selection
+---
+title: Rule 2
+name: rule-2
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\b.exe'
+    condition: selection
+---
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+"""
+
+    # from_yaml: disable resolution
+    sc_unresolved = SigmaCollection.from_yaml(yaml_str, resolve_references=False)
+    corr = [r for r in sc_unresolved.rules if isinstance(r, SigmaCorrelationRule)][0]
+    # references should be SigmaRuleReference objects and not yet resolved
+    assert isinstance(corr.rules[0], SigmaRuleReference)
+    assert not hasattr(corr.rules[0], "rule")

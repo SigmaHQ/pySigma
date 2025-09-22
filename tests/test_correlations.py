@@ -603,7 +603,6 @@ detection:
 
 
 def test_correlation_reference_flattening(nested_correlation_rule):
-    nested_correlation_rule.resolve_rule_references()
     flattened_rule_ids = [
         rule.name for rule in nested_correlation_rule["test_correlation"].flatten_rules()
     ]
@@ -611,7 +610,6 @@ def test_correlation_reference_flattening(nested_correlation_rule):
 
 
 def test_correlation_reference_flattening_without_correlations(nested_correlation_rule):
-    nested_correlation_rule.resolve_rule_references()
     flattened_rule_ids = [
         rule.name
         for rule in nested_correlation_rule["test_correlation"].flatten_rules(

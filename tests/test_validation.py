@@ -44,7 +44,7 @@ def test_sigmavalidator_validate_rules(rule_with_id, rule_without_id, rules_with
 
 
 def test_sigmavalidator_validate_correlation_rules(correlation_rule):
-    rules = SigmaCollection([correlation_rule])
+    rules = SigmaCollection([correlation_rule], resolve_references=False)
     validator = SigmaValidator(
         {IdentifierExistenceValidator, IdentifierUniquenessValidator, DanglingDetectionValidator}
     )

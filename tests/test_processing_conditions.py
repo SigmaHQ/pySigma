@@ -102,28 +102,24 @@ def test_logsource_no_match(sigma_rule):
 
 
 def test_logsource_match_correlation_rule_cat(sigma_correlated_rules):
-    sigma_correlated_rules.resolve_rule_references()
     assert LogsourceCondition(category="test_category").match(
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
 def test_logsource_match_correlation_rule_prod(sigma_correlated_rules):
-    sigma_correlated_rules.resolve_rule_references()
     assert LogsourceCondition(product="test_product").match(
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
 def test_logsource_no_match_correlation_rule_both(sigma_correlated_rules):
-    sigma_correlated_rules.resolve_rule_references()
     assert not LogsourceCondition(category="test_category", product="test_product").match(
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )
 
 
 def test_logsource_no_match_correlation_rule(sigma_correlated_rules):
-    sigma_correlated_rules.resolve_rule_references()
     assert not LogsourceCondition(service="test_service").match(
         cast(SigmaCorrelationRule, sigma_correlated_rules.rules[-1]),
     )

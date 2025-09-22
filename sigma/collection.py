@@ -29,6 +29,7 @@ class SigmaCollection:
     init_rules: InitVar[list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]]]
     errors: list[SigmaError] = field(default_factory=list)
     collect_filters: InitVar[bool] = False
+    resolve_references: InitVar[bool] = True
     rules: list[Union[SigmaRule, SigmaCorrelationRule]] = field(default_factory=list)
     filters: list[SigmaFilter] = field(default_factory=list)
     ids_to_rules: dict[UUID, Union[SigmaRule, SigmaCorrelationRule]] = field(
@@ -42,6 +43,7 @@ class SigmaCollection:
         self,
         init_rules: list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]],
         collect_filters: bool,
+        resolve_references: bool,
     ) -> None:
         """
         Map rule identifiers to rules and resolve rule references in correlation rules.
@@ -61,6 +63,10 @@ class SigmaCollection:
                 raise TypeError(f"Object of type { type(rule) } not supported in SigmaCollection")
         if self.filters and not collect_filters:
             self.apply_filters(self.filters)
+        # By default resolve rule references after initialization. This can be disabled
+        # by passing resolve_references=False as an init-only parameter.
+        if resolve_references:
+            self.resolve_rule_references()
 
     def apply_filters(self, filters: list[SigmaFilter]) -> None:
         """
@@ -110,6 +116,7 @@ class SigmaCollection:
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
         collect_filters: bool = False,
+        resolve_references: bool = True,
     ) -> "SigmaCollection":
         """
         Generate a rule collection from list of dicts containing parsed YAML content.
@@ -179,7 +186,12 @@ class SigmaCollection:
                     else:
                         raise exception
 
-        return cls(parsed_rules, errors, collect_filters)
+        return cls(
+            init_rules=parsed_rules,
+            errors=errors,
+            collect_filters=collect_filters,
+            resolve_references=resolve_references,
+        )
 
     @classmethod
     def from_yaml(
@@ -188,6 +200,7 @@ class SigmaCollection:
         collect_errors: bool = False,
         source: Optional[SigmaRuleLocation] = None,
         collect_filters: bool = False,
+        resolve_references: bool = True,
     ) -> "SigmaCollection":
         """
         Generate a rule collection from a string containing one or multiple YAML documents.
@@ -198,7 +211,11 @@ class SigmaCollection:
         If collect_filters is set, filters are only collected in the collection but not yet applied to the rules.
         """
         return cls.from_dicts(
-            list(yaml.safe_load_all(yaml_str)), collect_errors, source, collect_filters
+            list(yaml.safe_load_all(yaml_str)),
+            collect_errors,
+            source,
+            collect_filters,
+            resolve_references,
         )
 
     @classmethod
@@ -227,6 +244,7 @@ class SigmaCollection:
         on_beforeload: Optional[Callable[[Path], Optional[Path]]] = None,
         on_load: Optional[Callable[[Path, "SigmaCollection"], Optional["SigmaCollection"]]] = None,
         recursion_pattern: str = "**/*.yml",
+        resolve_references: bool = True,
     ) -> "SigmaCollection":
         """
         Load a ruleset from a list of files or directories and construct a :class:`SigmaCollection`
@@ -264,11 +282,14 @@ class SigmaCollection:
             else:
                 result_path = path
             if result_path is not None:  # Skip if path is None
+                # Load per-file collections without resolving references yet. The
+                # final resolution will be done after merging all collections below.
                 sigma_collection = SigmaCollection.from_yaml(
                     result_path.open(encoding="utf-8"),
                     collect_errors,
-                    collect_filters=True,
                     source=SigmaRuleLocation(result_path),
+                    collect_filters=True,
+                    resolve_references=False,
                 )
                 if (
                     on_load is not None
@@ -279,17 +300,24 @@ class SigmaCollection:
                 if result_sigma_collection is not None:  # Skip if nothing
                     sigma_collections.append(result_sigma_collection)
 
-        # Finally merge all SigmaCollection's and return the result
-        return cls.merge(sigma_collections)
+        # Finally merge all SigmaCollection's and return the result. Merge without
+        # resolving references (we'll do a single resolution pass after merge).
+        merged = cls.merge(sigma_collections, resolve_references=False)
+        if resolve_references:
+            merged.resolve_rule_references()
+        return merged
 
     @classmethod
-    def merge(cls, collections: Iterable["SigmaCollection"]) -> "SigmaCollection":
+    def merge(
+        cls, collections: Iterable["SigmaCollection"], resolve_references: bool = True
+    ) -> "SigmaCollection":
         """Merge multiple SigmaCollection objects into one and return it."""
         return cls(
             init_rules=[
                 rule for collection in collections for rule in collection.rules + collection.filters
             ],
             errors=[error for collection in collections for error in collection.errors],
+            resolve_references=resolve_references,
         )
 
     def get_output_rules(self) -> Iterable[SigmaRuleBase]:

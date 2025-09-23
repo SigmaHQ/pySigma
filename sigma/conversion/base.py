@@ -270,7 +270,10 @@ class Backend(ABC):
             ]
             queries = []
             for index, cond in enumerate(rule.detection.parsed_condition):
-                result = self.convert_condition(cond.parsed, states[index])
+                state = states[index]
+                result = self.convert_condition(cond.parsed, state)
+                if result is not None:
+                    result = self.finish_query(rule, result, state)
                 if callback is not None:
                     result = callback(rule, output_format, index, cond, result)
                 if result is not None:
@@ -765,6 +768,22 @@ class Backend(ABC):
         Returns:
             Any: The converted data structure.
         """
+
+    def finish_query(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any, state: ConversionState
+    ) -> Any:
+        """
+        Finish the query. This is the place where final not format-specific adjustments to the query
+        are made, e.g. appending deferred query parts or selection of fields.
+
+        Args:
+            rule (Union[SigmaRule, SigmaCorrelationRule]): The rule associated with the query.
+            query (Any): The query to be finished.
+
+        Returns:
+            Any: The finished query.
+        """
+        return query
 
     def finalize_query(
         self,
@@ -2385,16 +2404,11 @@ class TextQueryBackend(Backend):
         else:  # return timespan as is
             return timespan.spec
 
-    def finalize_query(
-        self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
-        query: Union[str, DeferredQueryExpression],
-        index: int,
-        state: ConversionState,
-        output_format: str,
-    ) -> Union[str, DeferredQueryExpression]:
+    def finish_query(
+        self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any, state: ConversionState
+    ) -> Any:
         """
-        Finalize query by appending deferred query parts to the main conversion result as specified
+        Finish query by appending deferred query parts to the main conversion result as specified
         with deferred_start and deferred_separator.
         """
         conversion_state = ChainMap(state.processing_state, self.state_defaults)  # type: ignore
@@ -2404,39 +2418,42 @@ class TextQueryBackend(Backend):
                 raise NotImplementedError("Deferred query parts are not supported by the backend.")
             if isinstance(query, DeferredQueryExpression):
                 query = self.deferred_only_query
-            return cast(
-                Union[str, DeferredQueryExpression],
-                super().finalize_query(
-                    rule,
-                    self.query_expression.format(
-                        query=query,
-                        rule=rule,
-                        state=conversion_state,
+            query = (
+                self.query_expression.format(
+                    query=query,
+                    rule=rule,
+                    state=conversion_state,
+                )
+                + self.deferred_start
+                + self.deferred_separator.join(
+                    (
+                        deferred_expression.finalize_expression()
+                        for deferred_expression in state.deferred
                     )
-                    + self.deferred_start
-                    + self.deferred_separator.join(
-                        (
-                            deferred_expression.finalize_expression()
-                            for deferred_expression in state.deferred
-                        )
-                    ),
-                    index,
-                    state,
-                    output_format,
-                ),
+                )
             )
         else:
-            return cast(
-                Union[str, DeferredQueryExpression],
-                super().finalize_query(
-                    rule,
-                    self.query_expression.format(
-                        query=query,
-                        rule=rule,
-                        state=conversion_state,
-                    ),
-                    index,
-                    state,
-                    output_format,
-                ),
+            query = self.query_expression.format(
+                query=query,
+                rule=rule,
+                state=conversion_state,
             )
+
+        return super().finish_query(rule, query, state)
+
+    def finalize_query(
+        self,
+        rule: Union[SigmaRule, SigmaCorrelationRule],
+        query: Union[str, DeferredQueryExpression],
+        index: int,
+        state: ConversionState,
+        output_format: str,
+    ) -> Union[str, DeferredQueryExpression]:
+        """
+        Finalize query by calling the parent implementation. Deferred query processing
+        is now handled in finish_query method.
+        """
+        return cast(
+            Union[str, DeferredQueryExpression],
+            super().finalize_query(rule, query, index, state, output_format),
+        )

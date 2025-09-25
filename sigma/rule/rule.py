@@ -1,12 +1,12 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Optional, Any, cast
-from sigma.rule.base import SigmaRuleBase
-from sigma.processing.tracking import ProcessingItemTrackingMixin
+from typing import Any, cast
+
 import sigma.exceptions as sigma_exceptions
-from sigma.exceptions import (
-    SigmaRuleLocation,
-    SigmaError,
-)
+from sigma.exceptions import SigmaError, SigmaRuleLocation
+from sigma.processing.tracking import ProcessingItemTrackingMixin
+from sigma.rule.base import SigmaRuleBase
 from sigma.rule.detection import EmptySigmaDetections, SigmaDetections
 from sigma.rule.logsource import EmptyLogSource, SigmaLogSource
 
@@ -25,8 +25,8 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         cls,
         rule: dict[str, Any],
         collect_errors: bool = False,
-        source: Optional[SigmaRuleLocation] = None,
-    ) -> "SigmaRule":
+        source: SigmaRuleLocation | None = None,
+    ) -> SigmaRule:
         """
         Convert Sigma rule parsed in dict structure into SigmaRule object.
 
@@ -81,9 +81,9 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> "SigmaRule":
+    def from_yaml(cls, rule: str, collect_errors: bool = False) -> SigmaRule:
         """Convert YAML input string with single document into SigmaRule object."""
-        return cast(SigmaRule, super().from_yaml(rule, collect_errors))
+        return cast("SigmaRule", super().from_yaml(rule, collect_errors))
 
     def to_dict(self) -> dict[str, Any]:
         """Convert rule object into dict."""

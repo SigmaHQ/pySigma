@@ -1,7 +1,10 @@
+from __future__ import annotations
+
+from collections.abc import Iterable, Iterator
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import Any, Callable, Iterable, Optional, Union, IO, TYPE_CHECKING, cast
+from typing import IO, Any, Callable, cast
 from uuid import UUID
 
 import yaml
@@ -13,35 +16,32 @@ from sigma.exceptions import (
     SigmaRuleLocation,
     SigmaRuleNotFoundError,
 )
-from sigma.rule import SigmaRule, SigmaRuleBase
 from sigma.filters import SigmaFilter
+from sigma.rule import SigmaRule, SigmaRuleBase
 
-if TYPE_CHECKING:
-    from sigma.filters import SigmaGlobalFilter
-
-NestedDict = dict[str, Union[str, int, float, bool, None, "NestedDict"]]
+NestedDict = dict[str, "str | int | float | bool | None | NestedDict"]
 
 
 @dataclass
 class SigmaCollection:
     """Collection of Sigma rules"""
 
-    init_rules: InitVar[list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]]]
+    init_rules: InitVar[list[SigmaRule | SigmaCorrelationRule | SigmaFilter]]
     errors: list[SigmaError] = field(default_factory=list)
     collect_filters: InitVar[bool] = False
     resolve_references: InitVar[bool] = True
-    rules: list[Union[SigmaRule, SigmaCorrelationRule]] = field(default_factory=list)
+    rules: list[SigmaRule | SigmaCorrelationRule] = field(default_factory=list)
     filters: list[SigmaFilter] = field(default_factory=list)
-    ids_to_rules: dict[UUID, Union[SigmaRule, SigmaCorrelationRule]] = field(
+    ids_to_rules: dict[UUID, SigmaRule | SigmaCorrelationRule] = field(
         init=False, repr=False, hash=False, compare=False
     )
-    names_to_rules: dict[str, Union[SigmaRule, SigmaCorrelationRule]] = field(
+    names_to_rules: dict[str, SigmaRule | SigmaCorrelationRule] = field(
         init=False, repr=False, hash=False, compare=False
     )
 
     def __post_init__(
         self,
-        init_rules: list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]],
+        init_rules: list[SigmaRule | SigmaCorrelationRule | SigmaFilter],
         collect_filters: bool,
         resolve_references: bool,
     ) -> None:
@@ -95,7 +95,7 @@ class SigmaCollection:
 
         # Extract all filters from the rules
         filters: list[SigmaFilter] = [
-            cast(SigmaFilter, rule) for rule in self.rules if isinstance(rule, SigmaFilter)
+            cast("SigmaFilter", rule) for rule in self.rules if isinstance(rule, SigmaFilter)
         ]
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
 
@@ -114,10 +114,10 @@ class SigmaCollection:
         cls,
         rules: list[NestedDict],
         collect_errors: bool = False,
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
-    ) -> "SigmaCollection":
+    ) -> SigmaCollection:
         """
         Generate a rule collection from list of dicts containing parsed YAML content.
 
@@ -127,7 +127,7 @@ class SigmaCollection:
         If collect_filters is set, filters are only collected in the collection but not yet applied to the rules.
         """
         errors: list[SigmaError] = []
-        parsed_rules: list[Union[SigmaRule, SigmaCorrelationRule, SigmaFilter]] = list()
+        parsed_rules: list[SigmaRule | SigmaCorrelationRule | SigmaFilter] = list()
         prev_rule = dict()
         global_rule: NestedDict = dict()
 
@@ -196,12 +196,12 @@ class SigmaCollection:
     @classmethod
     def from_yaml(
         cls,
-        yaml_str: Union[bytes, str, IO[Any]],
+        yaml_str: bytes | str | IO[Any],
         collect_errors: bool = False,
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
-    ) -> "SigmaCollection":
+    ) -> SigmaCollection:
         """
         Generate a rule collection from a string containing one or multiple YAML documents.
 
@@ -221,7 +221,7 @@ class SigmaCollection:
     @classmethod
     def resolve_paths(
         cls,
-        inputs: list[Union[str, Path]],
+        inputs: list[str | Path],
         recursion_pattern: str = "**/*.yml",
     ) -> Iterable[Path]:
         """
@@ -239,13 +239,13 @@ class SigmaCollection:
     @classmethod
     def load_ruleset(
         cls,
-        inputs: list[Union[str, Path]],
+        inputs: list[str | Path],
         collect_errors: bool = False,
-        on_beforeload: Optional[Callable[[Path], Optional[Path]]] = None,
-        on_load: Optional[Callable[[Path, "SigmaCollection"], Optional["SigmaCollection"]]] = None,
+        on_beforeload: Callable[[Path], Path | None] | None = None,
+        on_load: Callable[[Path, SigmaCollection], SigmaCollection | None] | None = None,
         recursion_pattern: str = "**/*.yml",
         resolve_references: bool = True,
-    ) -> "SigmaCollection":
+    ) -> SigmaCollection:
         """
         Load a ruleset from a list of files or directories and construct a :class:`SigmaCollection`
         object.
@@ -278,7 +278,7 @@ class SigmaCollection:
             if (
                 on_beforeload is not None
             ):  # replace path with return value of on_beforeload function if provided
-                result_path: Optional[Path] = on_beforeload(path)
+                result_path: Path | None = on_beforeload(path)
             else:
                 result_path = path
             if result_path is not None:  # Skip if path is None
@@ -309,8 +309,8 @@ class SigmaCollection:
 
     @classmethod
     def merge(
-        cls, collections: Iterable["SigmaCollection"], resolve_references: bool = True
-    ) -> "SigmaCollection":
+        cls, collections: Iterable[SigmaCollection], resolve_references: bool = True
+    ) -> SigmaCollection:
         """Merge multiple SigmaCollection objects into one and return it."""
         return cls(
             init_rules=[
@@ -328,13 +328,13 @@ class SigmaCollection:
         """Returns an iterator across all rules that are not referenced by any other rule"""
         return (rule for rule in self.rules if not rule._backreferences)
 
-    def __iter__(self) -> Iterable[SigmaRuleBase]:
+    def __iter__(self) -> Iterator[SigmaRuleBase]:
         return iter(self.rules)
 
     def __len__(self) -> int:
         return len(self.rules)
 
-    def __getitem__(self, i: Union[int, str, UUID]) -> Union[SigmaRule, SigmaCorrelationRule]:
+    def __getitem__(self, i: int | str | UUID) -> SigmaRule | SigmaCorrelationRule:
         try:
             if isinstance(i, int):  # Index by position
                 return self.rules[i]

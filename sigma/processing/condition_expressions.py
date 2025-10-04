@@ -272,7 +272,7 @@ def parse_condition_expression(
     condition_expression: str,
 ) -> ConditionExpression:
     identifier = Word(alphanums + "_-")
-    identifier.setParseAction(ConditionIdentifier.from_parsed)
+    identifier.set_parse_action(ConditionIdentifier.from_parsed)
     condition_parser = infix_notation(
         identifier,
         [

@@ -316,12 +316,12 @@ class ConditionValueExpression(ParentChainMixin):
 
 
 identifier = Word(alphanums + "_-")
-identifier.setParseAction(ConditionIdentifier.from_parsed)
+identifier.set_parse_action(ConditionIdentifier.from_parsed)
 
 quantifier = Keyword("1") | Keyword("any") | Keyword("all")
 identifier_pattern = Word(alphanums + "*_")
 selector = quantifier + Keyword("of") + identifier_pattern
-selector.setParseAction(ConditionSelector.from_parsed)
+selector.set_parse_action(ConditionSelector.from_parsed)
 
 operand = selector | identifier
 condition = infix_notation(

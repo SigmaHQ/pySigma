@@ -189,6 +189,8 @@ class Backend(ABC):
         self.last_processing_pipeline.vars.update(
             {"backend_" + key: value for key, value in self.backend_options.items()}
         )
+        self.last_processing_pipeline.vars["backend"] = self.name
+        self.last_processing_pipeline.vars["output_format"] = output_format or self.default_format
 
     def convert(
         self,

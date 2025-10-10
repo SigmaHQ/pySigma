@@ -110,7 +110,10 @@ def test_backend_options_passing_to_pipeline():
             """
         )
     )
-    assert test_backend.last_processing_pipeline.vars["backend_test"] == "testvalue"
+    vars = test_backend.last_processing_pipeline.vars
+    assert vars["backend"] == "Test backend"
+    assert vars["output_format"] == "default"
+    assert vars["backend_test"] == "testvalue"
     assert result == ["query='field=\"value\"', state=testvalue"]
 
 

@@ -653,6 +653,25 @@ def test_sigmadetections_none_condition():
         )
 
 
+def test_sigmadetections_issue_245():
+    detections_dict = {
+        "selection": [
+            {
+                "fieldA": ["value1", "value2"],
+                "fieldB": ["value3", "value4"],
+            },
+            {
+                "fieldA": "value5",
+                "fieldC": "value6",
+            },
+        ],
+        "condition": "selection",
+    }
+
+    detections = SigmaDetections.from_dict(detections_dict)
+    assert detections.to_dict() == detections_dict
+
+
 def test_detectionitem_all_modified_key_plain_values_postprocess():
     """
     Test if postprocessed condition result of an all-modified field-bound value list results in an
@@ -901,6 +920,28 @@ def test_sigmadetection_dict_and_keyword_to_plain():
             ],
             source=sigma_exceptions.SigmaRuleLocation("test.yml"),
         ).to_plain()
+
+
+def test_sigmadetection_with_mixed_items_to_plain():
+    with pytest.raises(sigma_exceptions.SigmaValueError, match="Can't convert detection.*test.yml"):
+        SigmaDetection(
+            detection_items=[
+                SigmaDetectionItem("field1", [], [SigmaString("value1")]),
+                SigmaDetection(
+                    [SigmaDetectionItem("field2", [], [SigmaString("value2")])],
+                ),
+            ],
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        ).to_plain()
+
+
+def test_sigmadetection_list_of_sigmadetection_to_plain():
+    assert SigmaDetection(
+        detection_items=[
+            SigmaDetection([SigmaDetectionItem("field1", [], [SigmaString("value1")])]),
+            SigmaDetection([SigmaDetectionItem("field2", [], [SigmaString("value2")])]),
+        ]
+    ).to_plain() == [{"field1": "value1"}, {"field2": "value2"}]
 
 
 ### SigmaRule tests ###
@@ -1410,9 +1451,10 @@ def test_sigmarule_to_dict(sigma_rule: SigmaRule):
             "selection_1": {
                 "CommandLine|contains": "test.exe",
             },
-            "selection_2": {
-                "CommandLine|contains|all": ["test.exe", "cmd.exe"],
-            },
+            "selection_2": [
+                {"CommandLine|contains": "test.exe"},
+                {"CommandLine|contains": "cmd.exe"},
+            ],
             "selection_3": [
                 "keyword_1",
                 "keyword_2",

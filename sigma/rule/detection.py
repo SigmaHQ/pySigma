@@ -27,17 +27,17 @@ if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
 
 # Type alias for plain detection types
-SigmaDetectionPlainList = list[Union[str, int, float, bool, None]]
-SigmaDetectionPlainDict = dict[str, Union[str, int, float, bool, SigmaDetectionPlainList, None]]
-SigmaDetectionPlainTypes = Union[
-    SigmaDetectionPlainDict,
-    SigmaDetectionPlainList,
-    str,
-    int,
-    float,
-    bool,
-    None,
-]
+# SigmaPlainValue = Union[str, int, float, bool, None]
+# SigmaDetectionPlainList = list[SigmaPlainValue]
+# SigmaDetectionPlainDict = dict[str, Union[SigmaPlainValue, SigmaDetectionPlainList]]
+# SigmaDetectionPlainTypes = Union[
+#     SigmaDetectionPlainDict,
+#     SigmaDetectionPlainList,
+#     SigmaPlainValue,
+#     list[SigmaDetectionPlainDict],
+#     list[SigmaPlainValue],
+# ]
+SigmaDetectionPlainTypes = Union[dict[str, Any], list[Any], str, int, float, bool, None]
 
 
 @dataclass
@@ -395,12 +395,10 @@ class SigmaDetection(ParentChainMixin):
                         source=self.source,
                     )
                 elif detection_items_types == {dict}:  # only dict's, merge them together
-                    merged_dict: SigmaDetectionPlainDict = dict()
+                    merged_dict = dict()
                     # The following double loop (the second one is no real one, as it operates on a
                     # single element dict) merges keys (not fields!) into the merged dict.
-                    for detection_item_converted in cast(
-                        list[SigmaDetectionPlainDict], detection_items
-                    ):
+                    for detection_item_converted in cast(list[Any], detection_items):
                         for k, v in detection_item_converted.items():
                             if k not in merged_dict:  # key doesn't exists in merged dict: just add
                                 merged_dict[k] = v
@@ -412,7 +410,7 @@ class SigmaDetection(ParentChainMixin):
                                     ):  # make list from existing all-modified value if it's a plain value
                                         merged_dict[k] = [mk]
                                     mkl = cast(
-                                        SigmaDetectionPlainList, merged_dict[k]
+                                        list[Any], merged_dict[k]
                                     )  # existing value is a list
 
                                     if isinstance(
@@ -448,7 +446,7 @@ class SigmaDetection(ParentChainMixin):
                                             mak, list
                                         ):  # ensure that existing 'all' key is a list
                                             merged_dict[ak] = [mak]
-                                        makl = cast(SigmaDetectionPlainList, merged_dict[ak])
+                                        makl = cast(list[Any], merged_dict[ak])
                                         makl.extend(vs)
                                     else:  # create new 'all' key from both existing keys
                                         merged_dict[ak] = vs
@@ -459,10 +457,8 @@ class SigmaDetection(ParentChainMixin):
                         for k, v in merged_dict.items()
                     }
                 else:  # only lists and plain values, merge them into one list
-                    merged_list: SigmaDetectionPlainList = list()
-                    for detection_item_converted_list in cast(
-                        SigmaDetectionPlainList, detection_items
-                    ):
+                    merged_list: list[Any] = list()
+                    for detection_item_converted_list in cast(list[Any], detection_items):
                         if isinstance(
                             detection_item_converted_list, list
                         ):  # if item is a list, extend result list with it.

@@ -653,7 +653,7 @@ def test_sigmadetections_none_condition():
         )
 
 
-def test_sigmadetections_issue_245():
+def test_sigmadetections_from_to_dict_inversity_with_list_of_dicts():
     detections_dict = {
         "selection": [
             {
@@ -665,6 +665,33 @@ def test_sigmadetections_issue_245():
                 "fieldC": "value6",
             },
         ],
+        "condition": "selection",
+    }
+
+    detections = SigmaDetections.from_dict(detections_dict)
+    assert detections.to_dict() == detections_dict
+
+
+def test_sigmadetections_from_to_dict_inversity_with_dict_of_lists():
+    detections_dict = {
+        "selection": {
+            "fieldA": ["value1", "value2", "value3"],
+            "fieldB": ["value4", "value5"],
+        },
+        "condition": "selection",
+    }
+
+    detections = SigmaDetections.from_dict(detections_dict)
+    assert detections.to_dict() == detections_dict
+
+
+def test_sigmadetections_from_to_dict_inversity_with_dict_of_values():
+    detections_dict = {
+        "selection": {
+            "fieldA": "value1",
+            "fieldB": 123,
+            "fieldC": True,
+        },
         "condition": "selection",
     }
 

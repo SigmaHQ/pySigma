@@ -207,3 +207,13 @@ def test_query_template_transformation_with_nonexistent_vars_file(dummy_pipeline
             template="test",
             vars="tests/files/nonexistent.py"
         )
+
+
+def test_query_template_transformation_from_dict_with_vars(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
+    """Test that vars parameter works when loading from dict (YAML pipeline)."""
+    transformation = QueryTemplateTransformation.from_dict({
+        "template": "price = {{ format_price(19.99) }}\nquery = {{ query }}",
+        "vars": "tests/files/template_vars.py"
+    })
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == 'price = 19.99€\nquery = field="value"'

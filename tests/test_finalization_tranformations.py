@@ -190,3 +190,13 @@ def test_template_finalizer_splunk_rba_use_case(dummy_pipeline):
     assert "risk_object=\"system\"" in result
     assert "risk_category=\"malware\"" in result
     assert "risk_score=75" in result
+
+
+def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
+    """Test that vars parameter works when loading from dict (YAML pipeline)."""
+    transformation = TemplateFinalizer.from_dict({
+        "template": "price = {{ format_price(19.99) }}",
+        "vars": "tests/files/template_vars.py"
+    })
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2"]) == "price = 19.99€"

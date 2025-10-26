@@ -27,17 +27,17 @@ if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
 
 # Type alias for plain detection types
-SigmaDetectionPlainList = list[Union[str, int, float, bool, None]]
-SigmaDetectionPlainDict = dict[str, Union[str, int, float, bool, SigmaDetectionPlainList, None]]
-SigmaDetectionPlainTypes = Union[
-    SigmaDetectionPlainDict,
-    SigmaDetectionPlainList,
-    str,
-    int,
-    float,
-    bool,
-    None,
-]
+# SigmaPlainValue = Union[str, int, float, bool, None]
+# SigmaDetectionPlainList = list[SigmaPlainValue]
+# SigmaDetectionPlainDict = dict[str, Union[SigmaPlainValue, SigmaDetectionPlainList]]
+# SigmaDetectionPlainTypes = Union[
+#     SigmaDetectionPlainDict,
+#     SigmaDetectionPlainList,
+#     SigmaPlainValue,
+#     list[SigmaDetectionPlainDict],
+#     list[SigmaPlainValue],
+# ]
+SigmaDetectionPlainTypes = Union[dict[str, Any], list[Any], str, int, float, bool, None]
 
 
 @dataclass
@@ -348,6 +348,16 @@ class SigmaDetection(ParentChainMixin):
         self,
     ) -> SigmaDetectionPlainTypes:
         """Returns a dictionary or list representation of the detection."""
+        self_detection_item_types = {
+            type(detection_item) for detection_item in self.detection_items
+        }
+
+        if len(self_detection_item_types) > 1:
+            raise sigma_exceptions.SigmaValueError(
+                "Can't convert detection into plain value because it contains detections and detection items",
+                source=self.source,
+            )
+
         detection_items = [  # first convert all detection items into a Python representation.
             detection_item.to_plain() for detection_item in self.detection_items
         ]
@@ -356,102 +366,108 @@ class SigmaDetection(ParentChainMixin):
         detection_items = [
             detection_item for detection_item in detection_items if detection_item is not None
         ]
-        detection_items_types = {  # create set of types for decision what has to be returned
-            type(detection_item) for detection_item in detection_items
-        }
 
-        if len(detection_items) == 0:  # pragma: no cover
-            raise sigma_exceptions.SigmaDetectionError(
-                "Detection is empty after conversion to plain data type", source=self.source
-            )
-        if len(detection_items) == 1:  # Only one detection item? Return it as result.
-            return detection_items[0]
-        else:  # More than one detection item, it depends now on the types
-            if dict in detection_items_types and len(detection_items_types) > 1:
-                # Merging dicts with other types isn't possibly, at least not in a simple way.
-                # This case can appear in a programmatically instantiated detection, but can't be
-                # expressed in a data structure, because there might be only a list or a map.
-                # In the future (if there's a need) a possibility would be to collect such items
-                # under null or empty keys, but for today I want to keep this simple and simply bail
-                # out.
-                raise sigma_exceptions.SigmaValueError(
-                    "Can't convert detection into plain value because it contains mixed detection item types.",
-                    source=self.source,
+        if self_detection_item_types == {
+            SigmaDetection
+        }:  # if the items are SigmaDetections, they originate from a list and therefore must not be merged.
+            return detection_items
+        else:  # SigmaDetectionItems must be merged into a dict, where they originally were created from.
+            detection_items_types = {  # create set of types for decision what has to be returned
+                type(detection_item) for detection_item in detection_items
+            }
+
+            if len(detection_items) == 0:  # pragma: no cover
+                raise sigma_exceptions.SigmaDetectionError(
+                    "Detection is empty after conversion to plain data type", source=self.source
                 )
-            elif detection_items_types == {dict}:  # only dict's, merge them together
-                merged_dict: SigmaDetectionPlainDict = dict()
-                # The following double loop (the second one is no real one, as it operates on a
-                # single element dict) merges keys (not fields!) into the merged dict.
-                for detection_item_converted in cast(
-                    list[SigmaDetectionPlainDict], detection_items
-                ):
-                    for k, v in detection_item_converted.items():
-                        if k not in merged_dict:  # key doesn't exists in merged dict: just add
-                            merged_dict[k] = v
-                        else:  # key collision, now things get complicated...
-                            if "|all" in k:  # key contains 'all' modifier
-                                mk = merged_dict[k]
-                                if not isinstance(
-                                    mk, list
-                                ):  # make list from existing all-modified value if it's a plain value
-                                    merged_dict[k] = [mk]
-                                mkl = cast(
-                                    SigmaDetectionPlainList, merged_dict[k]
-                                )  # existing value is a list
-
-                                if isinstance(v, list):  # merging two and-linked lists is possible
-                                    mkl.extend(v)
-                                else:
-                                    mkl.append(v)
-                            else:  # key collision without all modifier: trying to merge both keys into one and-linked key
-                                ev = merged_dict[k]  # already existing value
-
-                                # Value normalization: extract value from single-valued lists
-                                if isinstance(ev, list) and len(ev) == 1:
-                                    ev = ev[0]
-                                if isinstance(v, list) and len(v) == 1:
-                                    v = v[0]
-
-                                # Still lists? Merging lists is not allowed
-                                if isinstance(ev, list) or isinstance(v, list):
-                                    raise sigma_exceptions.SigmaValueError(
-                                        f"Can't merge value lists '{k}' into one item due to different logical linking.",
-                                        source=self.source,
-                                    )
-
-                                vs = [ev, v]  # The new merged value
-
-                                ak = k + "|all"
-                                if (
-                                    ak in merged_dict
-                                ):  # 'all' key already exist, append to this key if possible
-                                    mak = merged_dict[ak]
+            if len(detection_items) == 1:  # Only one detection item? Return it as result.
+                return detection_items[0]
+            else:  # More than one detection item, it depends now on the types
+                if dict in detection_items_types and len(detection_items_types) > 1:
+                    # Merging dicts with other types isn't possibly, at least not in a simple way.
+                    # This case can appear in a programmatically instantiated detection, but can't be
+                    # expressed in a data structure, because there might be only a list or a map.
+                    # In the future (if there's a need) a possibility would be to collect such items
+                    # under null or empty keys, but for today I want to keep this simple and simply bail
+                    # out.
+                    raise sigma_exceptions.SigmaValueError(
+                        "Can't convert detection into plain value because it contains mixed detection item types.",
+                        source=self.source,
+                    )
+                elif detection_items_types == {dict}:  # only dict's, merge them together
+                    merged_dict = dict()
+                    # The following double loop (the second one is no real one, as it operates on a
+                    # single element dict) merges keys (not fields!) into the merged dict.
+                    for detection_item_converted in cast(list[Any], detection_items):
+                        for k, v in detection_item_converted.items():
+                            if k not in merged_dict:  # key doesn't exists in merged dict: just add
+                                merged_dict[k] = v
+                            else:  # key collision, now things get complicated...
+                                if "|all" in k:  # key contains 'all' modifier
+                                    mk = merged_dict[k]
                                     if not isinstance(
-                                        mak, list
-                                    ):  # ensure that existing 'all' key is a list
-                                        merged_dict[ak] = [mak]
-                                    makl = cast(SigmaDetectionPlainList, merged_dict[ak])
-                                    makl.extend(vs)
-                                else:  # create new 'all' key from both existing keys
-                                    merged_dict[ak] = vs
-                                del merged_dict[k]
+                                        mk, list
+                                    ):  # make list from existing all-modified value if it's a plain value
+                                        merged_dict[k] = [mk]
+                                    mkl = cast(
+                                        list[Any], merged_dict[k]
+                                    )  # existing value is a list
 
-                return {
-                    k: (v[0] if isinstance(v, list) and len(v) == 1 else v)
-                    for k, v in merged_dict.items()
-                }
-            else:  # only lists and plain values, merge them into one list
-                merged_list: SigmaDetectionPlainList = list()
-                for detection_item_converted_list in cast(SigmaDetectionPlainList, detection_items):
-                    if isinstance(
-                        detection_item_converted_list, list
-                    ):  # if item is a list, extend result list with it.
-                        merged_list.extend(detection_item_converted_list)
-                    else:
-                        merged_list.append(
-                            detection_item_converted_list
-                        )  # if item is a plain value, append it to list
-                return merged_list
+                                    if isinstance(
+                                        v, list
+                                    ):  # merging two and-linked lists is possible
+                                        mkl.extend(v)
+                                    else:
+                                        mkl.append(v)
+                                else:  # key collision without all modifier: trying to merge both keys into one and-linked key
+                                    ev = merged_dict[k]  # already existing value
+
+                                    # Value normalization: extract value from single-valued lists
+                                    if isinstance(ev, list) and len(ev) == 1:
+                                        ev = ev[0]
+                                    if isinstance(v, list) and len(v) == 1:
+                                        v = v[0]
+
+                                    # Still lists? Merging lists is not allowed
+                                    if isinstance(ev, list) or isinstance(v, list):
+                                        raise sigma_exceptions.SigmaValueError(
+                                            f"Can't merge value lists '{k}' into one item due to different logical linking.",
+                                            source=self.source,
+                                        )
+
+                                    vs = [ev, v]  # The new merged value
+
+                                    ak = k + "|all"
+                                    if (
+                                        ak in merged_dict
+                                    ):  # 'all' key already exist, append to this key if possible
+                                        mak = merged_dict[ak]
+                                        if not isinstance(
+                                            mak, list
+                                        ):  # ensure that existing 'all' key is a list
+                                            merged_dict[ak] = [mak]
+                                        makl = cast(list[Any], merged_dict[ak])
+                                        makl.extend(vs)
+                                    else:  # create new 'all' key from both existing keys
+                                        merged_dict[ak] = vs
+                                    del merged_dict[k]
+
+                    return {
+                        k: (v[0] if isinstance(v, list) and len(v) == 1 else v)
+                        for k, v in merged_dict.items()
+                    }
+                else:  # only lists and plain values, merge them into one list
+                    merged_list: list[Any] = list()
+                    for detection_item_converted_list in cast(list[Any], detection_items):
+                        if isinstance(
+                            detection_item_converted_list, list
+                        ):  # if item is a list, extend result list with it.
+                            merged_list.extend(detection_item_converted_list)
+                        else:
+                            merged_list.append(
+                                detection_item_converted_list
+                            )  # if item is a plain value, append it to list
+                    return merged_list
 
     def postprocess(
         self,

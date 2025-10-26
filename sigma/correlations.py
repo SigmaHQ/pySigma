@@ -24,11 +24,22 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     VALUE_COUNT = auto()
     TEMPORAL = auto()
     TEMPORAL_ORDERED = auto()
+    VALUE_SUM = auto()
+    VALUE_AVG = auto()
+    VALUE_PERCENTILE = auto()
 
 
 # TODO: type supported from 3.12
 # type SigmaCorrelationTypeLiteral = Literal[
-SigmaCorrelationTypeLiteral = Literal["event_count", "value_count", "temporal", "temporal_ordered"]
+SigmaCorrelationTypeLiteral = Literal[
+    "event_count",
+    "value_count",
+    "temporal",
+    "temporal_ordered",
+    "value_sum",
+    "value_avg",
+    "value_percentile",
+]
 
 
 @dataclass(unsafe_hash=True)
@@ -246,9 +257,20 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             raise sigma_exceptions.SigmaCorrelationRuleError(
                 "Non-temporal Sigma correlation rule without condition", source=self.source
             )
-        if self.type == SigmaCorrelationType.VALUE_COUNT and self.condition.fieldref is None:
+        if self.type in {
+            SigmaCorrelationType.VALUE_COUNT,
+            SigmaCorrelationType.VALUE_SUM,
+            SigmaCorrelationType.VALUE_AVG,
+            SigmaCorrelationType.VALUE_PERCENTILE,
+        } and self.condition.fieldref is None:
+            # Format type name for error message (special case for VALUE_COUNT to match existing tests)
+            if self.type == SigmaCorrelationType.VALUE_COUNT:
+                type_name = "Value count"
+            else:
+                type_name = self.type.name.replace("_", " ").capitalize()
             raise sigma_exceptions.SigmaCorrelationRuleError(
-                "Value count correlation rule without field reference", source=self.source
+                f"{type_name} correlation rule without field reference",
+                source=self.source,
             )
 
     @classmethod

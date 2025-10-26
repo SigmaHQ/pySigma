@@ -146,6 +146,15 @@ class TextQueryTestBackend(TextQueryBackend):
     temporal_ordered_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| temporal ordered=true window={timespan} eventtypes={referenced_rules}{groupby}"
     }
+    value_sum_aggregation_expression: ClassVar[dict[str, str]] = {
+        "test": "| aggregate window={timespan} sum({field}) as value_sum{groupby}"
+    }
+    value_avg_aggregation_expression: ClassVar[dict[str, str]] = {
+        "test": "| aggregate window={timespan} avg({field}) as value_avg{groupby}"
+    }
+    value_percentile_aggregation_expression: ClassVar[dict[str, str]] = {
+        "test": "| aggregate window={timespan} percentile({field}) as value_percentile{groupby}"
+    }
 
     timespan_mapping: ClassVar[dict[str, str]] = {
         "m": "min",
@@ -168,6 +177,15 @@ class TextQueryTestBackend(TextQueryBackend):
     }
     temporal_ordered_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where eventtype_count {op} {count} and eventtype_order={referenced_rules}"
+    }
+    value_sum_condition_expression: ClassVar[dict[str, str]] = {
+        "test": "| where value_sum {op} {count}"
+    }
+    value_avg_condition_expression: ClassVar[dict[str, str]] = {
+        "test": "| where value_avg {op} {count}"
+    }
+    value_percentile_condition_expression: ClassVar[dict[str, str]] = {
+        "test": "| where value_percentile {op} {count}"
     }
 
     def __init__(

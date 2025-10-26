@@ -665,6 +665,9 @@ class Backend(ABC):
             SigmaCorrelationType.VALUE_COUNT: self.convert_correlation_value_count_rule,
             SigmaCorrelationType.TEMPORAL: self.convert_correlation_temporal_rule,
             SigmaCorrelationType.TEMPORAL_ORDERED: self.convert_correlation_temporal_ordered_rule,
+            SigmaCorrelationType.VALUE_SUM: self.convert_correlation_value_sum_rule,
+            SigmaCorrelationType.VALUE_AVG: self.convert_correlation_value_avg_rule,
+            SigmaCorrelationType.VALUE_PERCENTILE: self.convert_correlation_value_percentile_rule,
         }
         if rule.type not in correlation_methods:
             raise NotImplementedError(
@@ -764,6 +767,63 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The ordered temporal correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_value_sum_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[Any]:
+        """
+        Convert a value sum correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The value sum correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_value_avg_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[Any]:
+        """
+        Convert a value average correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The value average correlation rule to be converted.
+            output_format (Optional[str]): The output format for the conversion. Defaults to None.
+            method (Optional[str]): The correlation method to be used. Defaults to None.
+
+        Returns:
+            Any: The converted data structure.
+        """
+
+    @abstractmethod
+    def convert_correlation_value_percentile_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[Any]:
+        """
+        Convert a value percentile correlation rule into the target data structure (usually query).
+
+        Args:
+            rule (SigmaCorrelationRule): The value percentile correlation rule to be converted.
             output_format (Optional[str]): The output format for the conversion. Defaults to None.
             method (Optional[str]): The correlation method to be used. Defaults to None.
 
@@ -1074,6 +1134,9 @@ class TextQueryBackend(Backend):
     value_count_correlation_query: ClassVar[Optional[dict[str, str]]] = None
     temporal_correlation_query: ClassVar[Optional[dict[str, str]]] = None
     temporal_ordered_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    value_sum_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    value_avg_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    value_percentile_correlation_query: ClassVar[Optional[dict[str, str]]] = None
 
     ## Correlation query search phase
     # The first step of a correlation query is to match events described by the referred Sigma
@@ -1158,6 +1221,15 @@ class TextQueryBackend(Backend):
     temporal_ordered_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
         None  # Expression for ordered temporal correlation rules
     )
+    value_sum_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+        None  # Expression for value sum correlation rules
+    )
+    value_avg_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+        None  # Expression for value average correlation rules
+    )
+    value_percentile_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+        None  # Expression for value percentile correlation rules
+    )
 
     # Mapping from Sigma timespan to target format timespan specification. This can be:
     # * A dictionary mapping Sigma timespan specifications to target format timespan specifications,
@@ -1214,6 +1286,9 @@ class TextQueryBackend(Backend):
     value_count_condition_expression: ClassVar[Optional[dict[str, str]]] = None
     temporal_condition_expression: ClassVar[Optional[dict[str, str]]] = None
     temporal_ordered_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    value_sum_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    value_avg_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    value_percentile_condition_expression: ClassVar[Optional[dict[str, str]]] = None
     # The following mapping defines the mapping from Sigma correlation condition operators like
     # "lt", "gte" into the operatpors expected by the target query language.
     correlation_condition_mapping: ClassVar[
@@ -2137,6 +2212,30 @@ class TextQueryBackend(Backend):
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "temporal_ordered", method)
+
+    def convert_correlation_value_sum_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[str]:
+        return self.convert_correlation_rule_from_template(rule, "value_sum", method)
+
+    def convert_correlation_value_avg_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[str]:
+        return self.convert_correlation_rule_from_template(rule, "value_avg", method)
+
+    def convert_correlation_value_percentile_rule(
+        self,
+        rule: SigmaCorrelationRule,
+        output_format: Optional[str] = None,
+        method: str = "default",
+    ) -> list[str]:
+        return self.convert_correlation_rule_from_template(rule, "value_percentile", method)
 
     # Implementation of the search phase of the correlation query.
     def convert_correlation_search(

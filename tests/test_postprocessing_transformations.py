@@ -147,13 +147,13 @@ def test_nested_query_postprocessing_transformation(
 def test_query_template_transformation_with_vars(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
     """Test template transformation with custom vars from Python file."""
     transformation = QueryTemplateTransformation(
-        template="price = {{ format_price(19.99) }}\nquery = {{ query }}",
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
         vars="tests/files/template_vars.py"
     )
     transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(sigma_rule, 'field="value"')
-        == 'price = 19.99€\nquery = field="value"'
+        == 'value = value\nquery = field="value"'
     )
 
 
@@ -202,8 +202,8 @@ def test_query_template_transformation_with_nonexistent_vars_file(dummy_pipeline
 def test_query_template_transformation_from_dict_with_vars(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
     """Test that vars parameter works when loading from dict (YAML pipeline)."""
     transformation = QueryTemplateTransformation.from_dict({
-        "template": "price = {{ format_price(19.99) }}\nquery = {{ query }}",
+        "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
         "vars": "tests/files/template_vars.py"
     })
     transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(sigma_rule, 'field="value"') == 'price = 19.99€\nquery = field="value"'
+    assert transformation.apply(sigma_rule, 'field="value"') == 'value = value\nquery = field="value"'

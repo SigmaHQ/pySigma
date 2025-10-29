@@ -136,21 +136,21 @@ def test_nested_finalizer_apply(nested_finalizer):
 def test_template_finalizer_with_vars(dummy_pipeline):
     """Test finalizer with custom vars from Python file."""
     transformation = TemplateFinalizer(
-        template="price = {{ format_price(19.99) }}",
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}',
         vars="tests/files/template_vars.py"
     )
     transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(["query1", "query2"]) == "price = 19.99€"
+    assert transformation.apply(["query1", "query2"]) == "value = value"
 
 
 def test_template_finalizer_with_vars_and_queries(dummy_pipeline):
     """Test finalizer with custom vars and query iteration."""
     transformation = TemplateFinalizer(
-        template="{% for query in queries %}{{ format_price(loop.index * 10) }}{% if not loop.last %}, {% endif %}{% endfor %}",
+        template='{% for query in queries %}{{ parse_json(\'{"index": \' ~ loop.index ~ \'}\').index }}{% if not loop.last %}, {% endif %}{% endfor %}',
         vars="tests/files/template_vars.py"
     )
     transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(["query1", "query2", "query3"]) == "10.00€, 20.00€, 30.00€"
+    assert transformation.apply(["query1", "query2", "query3"]) == "1, 2, 3"
 
 
 def test_template_finalizer_with_json_helper(dummy_pipeline):
@@ -175,8 +175,8 @@ def test_template_finalizer_with_invalid_vars_file(dummy_pipeline):
 def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
     """Test that vars parameter works when loading from dict (YAML pipeline)."""
     transformation = TemplateFinalizer.from_dict({
-        "template": "price = {{ format_price(19.99) }}",
+        "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}',
         "vars": "tests/files/template_vars.py"
     })
     transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(["query1", "query2"]) == "price = 19.99€"
+    assert transformation.apply(["query1", "query2"]) == "value = value"

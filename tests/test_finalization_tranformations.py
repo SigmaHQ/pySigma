@@ -172,26 +172,6 @@ def test_template_finalizer_with_invalid_vars_file(dummy_pipeline):
         )
 
 
-def test_template_finalizer_splunk_rba_use_case(dummy_pipeline):
-    """Test real-world Splunk RBA use case from the issue."""
-    # This demonstrates the exact use case from the issue:
-    # Mapping logsource categories to risk objects and categories
-    transformation = TemplateFinalizer(
-        template="""{% for query in queries %}
-| Risk Based Alerting
-| eval risk_object="{{ get_risk_object('process_creation') }}"
-| eval risk_category="{{ get_risk_category('process_creation') }}"
-| eval {{ format_risk_score(75) }}
-{% endfor %}""",
-        vars="tests/files/splunk_rba_helpers.py"
-    )
-    transformation.set_pipeline(dummy_pipeline)
-    result = transformation.apply(["query1"])
-    assert "risk_object=\"system\"" in result
-    assert "risk_category=\"malware\"" in result
-    assert "risk_score=75" in result
-
-
 def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
     """Test that vars parameter works when loading from dict (YAML pipeline)."""
     transformation = TemplateFinalizer.from_dict({

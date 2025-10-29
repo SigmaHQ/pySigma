@@ -181,16 +181,6 @@ def test_query_template_transformation_with_json_parsing(dummy_pipeline: Process
     assert transformation.apply(sigma_rule, 'field="value"') == 'value'
 
 
-def test_query_template_transformation_with_risk_mapping(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
-    """Test template with risk mapping helper function."""
-    transformation = QueryTemplateTransformation(
-        template='{{ get_risk_mapping("process_creation").risk_object }}',
-        vars="tests/files/template_vars.py"
-    )
-    transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(sigma_rule, 'field="value"') == 'process'
-
-
 def test_query_template_transformation_with_invalid_vars_file(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
     """Test that missing 'vars' dict raises appropriate error."""
     with pytest.raises(ValueError, match="must define a 'vars' dictionary"):

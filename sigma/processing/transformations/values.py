@@ -275,7 +275,7 @@ class RegexTransformation(StringValueTransformation):
     method: Literal["plain", "ignore_case_flag", "ignore_case_brackets"] = "ignore_case_brackets"
 
     def __post_init__(self) -> None:
-        if self.method not in self.__annotations__["method"].__args__:
+        if self.method not in type(self).__annotations__["method"].__args__:
             raise SigmaConfigurationError(
                 f"Invalid method '{self.method}' for CaseInsensitiveRegexTransformation."
             )
@@ -407,7 +407,7 @@ class CaseTransformation(StringValueTransformation):
     method: Literal["lower", "upper", "snake_case"] = "lower"
 
     def __post_init__(self) -> None:
-        if self.method not in self.__annotations__["method"].__args__:
+        if self.method not in type(self).__annotations__["method"].__args__:
             raise SigmaConfigurationError(f"Invalid method '{self.method}' for CaseTransformation.")
         return super().__post_init__()
 

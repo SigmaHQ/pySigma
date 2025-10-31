@@ -209,7 +209,7 @@ def test_validator_windowsdash_combined_with_all_modifier():
         category: test
     detection:
         sel:
-            field|windowsdash|all: value
+            field|windash|all: value
         condition: sel
     """
     )

@@ -10,6 +10,7 @@ from sigma.modifiers import (
     SigmaAllModifier,
     SigmaBase64OffsetModifier,
     SigmaContainsModifier,
+    SigmaWindowsDashModifier,
 )
 
 from sigma.validators.core.modifiers import (
@@ -17,6 +18,7 @@ from sigma.validators.core.modifiers import (
     Base64OffsetWithoutContainsModifierIssue,
     InvalidModifierCombinationsValidator,
     ModifierAppliedMultipleIssue,
+    WindowsDashCombinedWithAllModifierIssue,
 )
 
 
@@ -195,3 +197,29 @@ def test_validator_multiple_base64_modifier():
     """
     )
     assert validator.validate(rule) == []
+
+
+def test_validator_windowsdash_combined_with_all_modifier():
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|windowsdash|all: value
+        condition: sel
+    """
+    )
+    assert validator.validate(rule) == [
+        WindowsDashCombinedWithAllModifierIssue(
+            [rule],
+            SigmaDetectionItem(
+                "field",
+                [SigmaWindowsDashModifier, SigmaAllModifier],
+                [SigmaString("value")],
+            ),
+        )
+    ]

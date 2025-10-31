@@ -209,7 +209,7 @@ def test_validator_windowsdash_combined_with_all_modifier():
         category: test
     detection:
         sel:
-            field|windash|all: value
+            field|contains|windash|all: value
         condition: sel
     """
     )
@@ -218,7 +218,7 @@ def test_validator_windowsdash_combined_with_all_modifier():
             [rule],
             SigmaDetectionItem(
                 "field",
-                [SigmaWindowsDashModifier, SigmaAllModifier],
+                [SigmaContainsModifier, SigmaWindowsDashModifier, SigmaAllModifier],
                 [SigmaString("value")],
             ),
         )

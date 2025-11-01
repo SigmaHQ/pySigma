@@ -12,5 +12,5 @@ def parse_json(json_str):
 
 # This dict must be defined and contains all functions/variables to export
 vars = {
-    'parse_json': parse_json,
+    "parse_json": parse_json,
 }

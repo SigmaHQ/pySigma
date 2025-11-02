@@ -13,6 +13,7 @@ from sigma.types import (
     SigmaString,
     SigmaType,
     SigmaFieldReference,
+    SpecialChars,
 )
 
 if TYPE_CHECKING:
@@ -144,6 +145,22 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         transformed result.
         """
 
+    def _add_wildcards_to_value(self, value: SigmaString) -> SigmaString:
+        """
+        Add wildcards around a SigmaString value if they're not already present.
+
+        This is used when mapping keyword searches (None field) to a specific field
+        to preserve the keyword search semantics (substring matching).
+
+        :param value: SigmaString value to wrap with wildcards
+        :return: SigmaString with wildcards added at start and end if not present
+        """
+        if not value.startswith(SpecialChars.WILDCARD_MULTI):
+            value = SpecialChars.WILDCARD_MULTI + value
+        if not value.endswith(SpecialChars.WILDCARD_MULTI):
+            value = value + SpecialChars.WILDCARD_MULTI
+        return value
+
     def _apply_field_name(self, field: str) -> list[str]:
         """
         Evaluate field name conditions and perform transformation with apply_field_name() method if
@@ -250,6 +267,16 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             self.processing_item is None or self.processing_item.match_field_name(field)
         ):
             field_match = True
+            # If mapping from None (keyword) to a field, add wildcards to preserve keyword semantics
+            if field is None and isinstance(mapping, (str, list)):
+                # Wrap string values with wildcards to maintain keyword search behavior
+                new_values = []
+                for value in detection_item.value:
+                    if isinstance(value, SigmaString):
+                        value = self._add_wildcards_to_value(value)
+                    new_values.append(value)
+                detection_item.value = new_values
+
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)

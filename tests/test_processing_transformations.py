@@ -418,6 +418,118 @@ def test_field_mapping_tracking(field_mapping_transformation_sigma_rule):
     }
 
 
+def test_field_mapping_none_to_field_adds_wildcards(dummy_pipeline):
+    """Test that mapping None (keyword) to a field adds wildcards to preserve keyword semantics."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "keywords": ["a", "b", "c"],
+                "condition": "keywords",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={None: "my_field"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    detection_item = rule.detection.detections["keywords"].detection_items[0]
+    assert detection_item.field == "my_field"
+
+    # Check that wildcards were added
+    for value in detection_item.value:
+        assert isinstance(value, SigmaString)
+        assert value.contains_special()
+        value_str = str(value)
+        assert value_str.startswith("*")
+        assert value_str.endswith("*")
+
+
+def test_field_mapping_none_to_multiple_fields_adds_wildcards(dummy_pipeline):
+    """Test that mapping None to multiple fields adds wildcards."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "keywords": ["test"],
+                "condition": "keywords",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={None: ["field1", "field2"]})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    # Should create a SigmaDetection with multiple SigmaDetectionItems
+    detection = rule.detection.detections["keywords"].detection_items[0]
+    assert isinstance(detection, SigmaDetection)
+
+    # Check each detection item has wildcards
+    for item in detection.detection_items:
+        assert isinstance(item, SigmaDetectionItem)
+        for value in item.value:
+            assert isinstance(value, SigmaString)
+            assert value.contains_special()
+            value_str = str(value)
+            assert value_str.startswith("*")
+            assert value_str.endswith("*")
+
+
+def test_field_mapping_field_to_field_no_wildcards(dummy_pipeline):
+    """Test that mapping a regular field to another field does NOT add wildcards."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"field1": "value"},
+                "condition": "selection",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={"field1": "field2"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    detection_item = rule.detection.detections["selection"].detection_items[0]
+    assert detection_item.field == "field2"
+
+    # Values should NOT have wildcards
+    for value in detection_item.value:
+        assert isinstance(value, SigmaString)
+        assert not value.contains_special()
+
+
+def test_field_mapping_none_preserves_existing_wildcards(dummy_pipeline):
+    """Test that mapping None to field doesn't duplicate existing wildcards."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "keywords": ["*already*", "*partial", "other*"],
+                "condition": "keywords",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={None: "my_field"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    detection_item = rule.detection.detections["keywords"].detection_items[0]
+    values_str = [str(v) for v in detection_item.value]
+
+    assert "*already*" in values_str
+    assert "*partial*" in values_str
+    assert "*other*" in values_str
+
+
 @pytest.fixture
 def field_function_transformation():
     return FieldFunctionTransformation(
@@ -506,15 +618,16 @@ def test_field_function_transformation_keyword_detection_with_none(
     monkeypatch.setattr(field_function_transformation, "apply_keyword", True)
     field_function_transformation.set_pipeline(dummy_pipeline)
     field_function_transformation.apply(keyword_sigma_rule)
+    # When mapping None (keyword) to a field, wildcards are added to preserve keyword semantics
     assert keyword_sigma_rule.detection.detections["test"] == SigmaDetection(
         [
             SigmaDetectionItem(
                 "transformed_None",
                 [],
                 [
-                    SigmaString("value1"),
-                    SigmaString("value2"),
-                    SigmaString("value3"),
+                    SigmaString("*value1*"),
+                    SigmaString("*value2*"),
+                    SigmaString("*value3*"),
                 ],
             ),
         ]

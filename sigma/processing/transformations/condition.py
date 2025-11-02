@@ -70,4 +70,9 @@ class AddConditionTransformation(ConditionTransformation):
             super().apply(rule)
 
     def apply_condition(self, cond: SigmaCondition) -> None:
-        cond.condition = ("not " if self.negated else "") + f"{self.name} and ({cond.condition})"
+        if cond.condition:  # If condition is not empty
+            cond.condition = (
+                "not " if self.negated else ""
+            ) + f"{self.name} and ({cond.condition})"
+        else:  # If condition is empty, just use the added condition name
+            cond.condition = ("not " if self.negated else "") + self.name

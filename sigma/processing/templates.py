@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import importlib.util
 import sys
-from typing import Optional
+from typing import Any, Dict, Optional
 
 from jinja2 import Environment, FileSystemLoader, Template
 
@@ -41,7 +41,7 @@ class TemplateBase:
             custom_vars = self._load_vars_from_file(self.vars)
             self.j2template.globals.update(custom_vars)
 
-    def _load_vars_from_file(self, vars_path: str) -> dict:
+    def _load_vars_from_file(self, vars_path: str) -> Any:
         """Load variables and functions from a Python file.
 
         The Python file should define a dictionary named 'vars' containing

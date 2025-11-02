@@ -216,3 +216,24 @@ def test_validator_windowsdash_combined_with_all_modifier():
     )
     # windash+all is now allowed because SigmaExpansion correctly preserves grouping
     assert validator.validate(rule) == []
+
+
+def test_validator_base64offset_combined_with_all_modifier():
+    """Test that base64offset combined with all modifier is allowed."""
+    validator = InvalidModifierCombinationsValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|base64offset|contains|all:
+                - value1
+                - value2
+        condition: sel
+    """
+    )
+    # base64offset+all is allowed because SigmaExpansion correctly preserves grouping
+    assert validator.validate(rule) == []

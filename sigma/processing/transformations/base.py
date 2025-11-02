@@ -145,6 +145,22 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         transformed result.
         """
 
+    def _add_wildcards_to_value(self, value: SigmaString) -> SigmaString:
+        """
+        Add wildcards around a SigmaString value if they're not already present.
+
+        This is used when mapping keyword searches (None field) to a specific field
+        to preserve the keyword search semantics (substring matching).
+
+        :param value: SigmaString value to wrap with wildcards
+        :return: SigmaString with wildcards added at start and end if not present
+        """
+        if not value.startswith(SpecialChars.WILDCARD_MULTI):
+            value = SpecialChars.WILDCARD_MULTI + value
+        if not value.endswith(SpecialChars.WILDCARD_MULTI):
+            value = value + SpecialChars.WILDCARD_MULTI
+        return value
+
     def _apply_field_name(self, field: str) -> list[str]:
         """
         Evaluate field name conditions and perform transformation with apply_field_name() method if
@@ -257,11 +273,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
                 new_values = []
                 for value in detection_item.value:
                     if isinstance(value, SigmaString):
-                        # Only add wildcards if they're not already present
-                        if not value.startswith(SpecialChars.WILDCARD_MULTI):
-                            value = SpecialChars.WILDCARD_MULTI + value
-                        if not value.endswith(SpecialChars.WILDCARD_MULTI):
-                            value = value + SpecialChars.WILDCARD_MULTI
+                        value = self._add_wildcards_to_value(value)
                     new_values.append(value)
                 detection_item.value = new_values
 

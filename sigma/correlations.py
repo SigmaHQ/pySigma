@@ -24,11 +24,24 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     VALUE_COUNT = auto()
     TEMPORAL = auto()
     TEMPORAL_ORDERED = auto()
+    VALUE_SUM = auto()
+    VALUE_AVG = auto()
+    VALUE_PERCENTILE = auto()
+    VALUE_MEDIAN = auto()
 
 
 # TODO: type supported from 3.12
 # type SigmaCorrelationTypeLiteral = Literal[
-SigmaCorrelationTypeLiteral = Literal["event_count", "value_count", "temporal", "temporal_ordered"]
+SigmaCorrelationTypeLiteral = Literal[
+    "event_count",
+    "value_count",
+    "temporal",
+    "temporal_ordered",
+    "value_sum",
+    "value_avg",
+    "value_percentile",
+    "value_median",
+]
 
 
 @dataclass(unsafe_hash=True)
@@ -69,6 +82,7 @@ class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
     count: int
     fieldref: str | list[str] | None = field(default=None)
+    percentile: int | None = field(default=None)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
 
     @classmethod
@@ -81,7 +95,7 @@ class SigmaCorrelationCondition:
             raise sigma_exceptions.SigmaCorrelationConditionError(
                 "Sigma correlation condition must have exactly one condition item", source=source
             )
-        unknown_keys = d_keys.difference(ops).difference({"field"})
+        unknown_keys = d_keys.difference(ops).difference({"field", "percentile"})
         if unknown_keys:
             raise sigma_exceptions.SigmaCorrelationConditionError(
                 "Sigma correlation condition contains invalid items: " + ", ".join(unknown_keys),
@@ -110,12 +124,32 @@ class SigmaCorrelationCondition:
         except KeyError:
             cond_field = None
 
-        return cls(op=cond_op, count=cond_count, fieldref=cond_field, source=source)
+        # Condition percentile (for value_percentile correlation type)
+        try:
+            cond_percentile = int(d["percentile"])
+        except KeyError:
+            cond_percentile = None
+        except ValueError:
+            raise sigma_exceptions.SigmaCorrelationConditionError(
+                f"'{ d['percentile'] }' is no valid Sigma correlation condition percentile",
+                source=source,
+            )
+
+        return cls(
+            op=cond_op,
+            count=cond_count,
+            fieldref=cond_field,
+            percentile=cond_percentile,
+            source=source,
+        )
 
     def to_dict(self) -> dict[str, Any]:
-        if not self.fieldref:
-            return {self.op.name.lower(): self.count}
-        return {self.op.name.lower(): self.count, "field": self.fieldref}
+        result: dict[str, Any] = {self.op.name.lower(): self.count}
+        if self.fieldref:
+            result["field"] = self.fieldref
+        if self.percentile is not None:
+            result["percentile"] = self.percentile
+        return result
 
 
 @dataclass
@@ -246,9 +280,25 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             raise sigma_exceptions.SigmaCorrelationRuleError(
                 "Non-temporal Sigma correlation rule without condition", source=self.source
             )
-        if self.type == SigmaCorrelationType.VALUE_COUNT and self.condition.fieldref is None:
+        if (
+            self.type
+            in {
+                SigmaCorrelationType.VALUE_COUNT,
+                SigmaCorrelationType.VALUE_SUM,
+                SigmaCorrelationType.VALUE_AVG,
+                SigmaCorrelationType.VALUE_PERCENTILE,
+                SigmaCorrelationType.VALUE_MEDIAN,
+            }
+            and self.condition.fieldref is None
+        ):
+            # Format type name for error message (special case for VALUE_COUNT to match existing tests)
+            if self.type == SigmaCorrelationType.VALUE_COUNT:
+                type_name = "Value count"
+            else:
+                type_name = self.type.name.replace("_", " ").capitalize()
             raise sigma_exceptions.SigmaCorrelationRuleError(
-                "Value count correlation rule without field reference", source=self.source
+                f"{type_name} correlation rule without field reference",
+                source=self.source,
             )
 
     @classmethod

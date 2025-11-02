@@ -545,3 +545,196 @@ def test_correlation_subqueries_finalization(monkeypatch, event_count_correlatio
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, fieldB
 | where event_count >= 10 ]"""
     ]
+
+
+# Tests for new correlation types: value_sum, value_avg, value_percentile
+@pytest.fixture
+def value_sum_correlation_rule():
+    return SigmaCollection.from_yaml(
+        """
+title: Transaction event
+name: transaction_event
+status: test
+logsource:
+    product: banking
+detection:
+    selection:
+        EventType: transaction
+    condition: selection
+---
+title: High value sum in short time (possible fraud)
+status: test
+correlation:
+    type: value_sum
+    rules:
+        - transaction_event
+    group-by:
+        - AccountID
+    timespan: 10m
+    condition:
+        gte: 10000
+        field: Amount
+            """
+    )
+
+
+def test_value_sum_correlation_single_rule_with_grouping(test_backend, value_sum_correlation_rule):
+    assert test_backend.convert(value_sum_correlation_rule) == [
+        """EventType="transaction"
+| aggregate window=10min sum(Amount) as value_sum by AccountID
+| where value_sum >= 10000"""
+    ]
+
+
+@pytest.fixture
+def value_avg_correlation_rule():
+    return SigmaCollection.from_yaml(
+        """
+title: API response event
+name: api_response
+status: test
+logsource:
+    product: api
+detection:
+    selection:
+        EventType: api_response
+    condition: selection
+---
+title: High average response time
+status: test
+correlation:
+    type: value_avg
+    rules:
+        - api_response
+    group-by:
+        - Endpoint
+    timespan: 5m
+    condition:
+        gte: 1000
+        field: ResponseTime
+            """
+    )
+
+
+def test_value_avg_correlation_single_rule_with_grouping(test_backend, value_avg_correlation_rule):
+    assert test_backend.convert(value_avg_correlation_rule) == [
+        """EventType="api_response"
+| aggregate window=5min avg(ResponseTime) as value_avg by Endpoint
+| where value_avg >= 1000"""
+    ]
+
+
+@pytest.fixture
+def value_percentile_correlation_rule():
+    return SigmaCollection.from_yaml(
+        """
+title: Network traffic event
+name: network_traffic
+status: test
+logsource:
+    product: network
+detection:
+    selection:
+        EventType: network_traffic
+    condition: selection
+---
+title: High percentile latency
+status: test
+correlation:
+    type: value_percentile
+    rules:
+        - network_traffic
+    group-by:
+        - SourceIP
+    timespan: 15m
+    condition:
+        gte: 500
+        field: Latency
+        percentile: 95
+            """
+    )
+
+
+def test_value_percentile_correlation_single_rule_with_grouping(
+    test_backend, value_percentile_correlation_rule
+):
+    assert test_backend.convert(value_percentile_correlation_rule) == [
+        """EventType="network_traffic"
+| aggregate window=15min percentile(Latency, 95) as value_percentile by SourceIP
+| where value_percentile >= 500"""
+    ]
+
+
+@pytest.fixture
+def value_median_correlation_rule():
+    return SigmaCollection.from_yaml(
+        """
+title: API response event
+name: api_response
+status: test
+logsource:
+    product: api
+detection:
+    selection:
+        EventType: api_response
+    condition: selection
+---
+title: High median response time
+status: test
+correlation:
+    type: value_median
+    rules:
+        - api_response
+    group-by:
+        - Endpoint
+    timespan: 5m
+    condition:
+        gte: 1000
+        field: ResponseTime
+            """
+    )
+
+
+def test_value_median_correlation_single_rule_with_grouping(
+    test_backend, value_median_correlation_rule
+):
+    assert test_backend.convert(value_median_correlation_rule) == [
+        """EventType="api_response"
+| aggregate window=5min median(ResponseTime) as value_median by Endpoint
+| where value_median >= 1000"""
+    ]
+
+
+def test_value_percentile_correlation_missing_percentile(test_backend):
+    """Test that missing percentile attribute raises SigmaConversionError for value_percentile correlation"""
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Network traffic event
+name: network_traffic
+status: test
+logsource:
+    product: network
+detection:
+    selection:
+        EventType: network_traffic
+    condition: selection
+---
+title: High percentile latency without percentile
+status: test
+correlation:
+    type: value_percentile
+    rules:
+        - network_traffic
+    group-by:
+        - SourceIP
+    timespan: 15m
+    condition:
+        gte: 500
+        field: Latency
+            """
+    )
+    with pytest.raises(
+        SigmaConversionError,
+        match="Percentile must be specified in condition for value_percentile correlation type",
+    ):
+        test_backend.convert(correlation_rule)

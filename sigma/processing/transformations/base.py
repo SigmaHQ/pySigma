@@ -13,6 +13,7 @@ from sigma.types import (
     SigmaString,
     SigmaType,
     SigmaFieldReference,
+    SpecialChars,
 )
 
 if TYPE_CHECKING:
@@ -250,6 +251,20 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
             self.processing_item is None or self.processing_item.match_field_name(field)
         ):
             field_match = True
+            # If mapping from None (keyword) to a field, add wildcards to preserve keyword semantics
+            if field is None and isinstance(mapping, (str, list)):
+                # Wrap string values with wildcards to maintain keyword search behavior
+                new_values = []
+                for value in detection_item.value:
+                    if isinstance(value, SigmaString):
+                        # Only add wildcards if they're not already present
+                        if not value.startswith(SpecialChars.WILDCARD_MULTI):
+                            value = SpecialChars.WILDCARD_MULTI + value
+                        if not value.endswith(SpecialChars.WILDCARD_MULTI):
+                            value = value + SpecialChars.WILDCARD_MULTI
+                    new_values.append(value)
+                detection_item.value = new_values
+            
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)

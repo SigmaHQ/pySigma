@@ -624,42 +624,48 @@ def test_value_sum_without_field_reference():
     with pytest.raises(
         SigmaCorrelationRuleError, match="Value sum correlation rule without field reference"
     ):
-        SigmaCorrelationRule.from_dict({
-            "title": "Test",
-            "correlation": {
-                "type": "value_sum",
-                "rules": "test_rule",
-                "timespan": "10m",
-                "condition": {"gte": 1000}  # Missing field
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Test",
+                "correlation": {
+                    "type": "value_sum",
+                    "rules": "test_rule",
+                    "timespan": "10m",
+                    "condition": {"gte": 1000},  # Missing field
+                },
             }
-        })
+        )
 
 
 def test_value_avg_without_field_reference():
     with pytest.raises(
         SigmaCorrelationRuleError, match="Value avg correlation rule without field reference"
     ):
-        SigmaCorrelationRule.from_dict({
-            "title": "Test",
-            "correlation": {
-                "type": "value_avg",
-                "rules": "test_rule",
-                "timespan": "10m",
-                "condition": {"gte": 100}  # Missing field
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Test",
+                "correlation": {
+                    "type": "value_avg",
+                    "rules": "test_rule",
+                    "timespan": "10m",
+                    "condition": {"gte": 100},  # Missing field
+                },
             }
-        })
+        )
 
 
 def test_value_percentile_without_field_reference():
     with pytest.raises(
         SigmaCorrelationRuleError, match="Value percentile correlation rule without field reference"
     ):
-        SigmaCorrelationRule.from_dict({
-            "title": "Test",
-            "correlation": {
-                "type": "value_percentile",
-                "rules": "test_rule",
-                "timespan": "10m",
-                "condition": {"gte": 95}  # Missing field
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Test",
+                "correlation": {
+                    "type": "value_percentile",
+                    "rules": "test_rule",
+                    "timespan": "10m",
+                    "condition": {"gte": 95},  # Missing field
+                },
             }
-        })
+        )

@@ -131,10 +131,17 @@ class SigmaCorrelationCondition:
             cond_percentile = None
         except ValueError:
             raise sigma_exceptions.SigmaCorrelationConditionError(
-                f"'{ d['percentile'] }' is no valid Sigma correlation condition percentile", source=source
+                f"'{ d['percentile'] }' is no valid Sigma correlation condition percentile",
+                source=source,
             )
 
-        return cls(op=cond_op, count=cond_count, fieldref=cond_field, percentile=cond_percentile, source=source)
+        return cls(
+            op=cond_op,
+            count=cond_count,
+            fieldref=cond_field,
+            percentile=cond_percentile,
+            source=source,
+        )
 
     def to_dict(self) -> dict[str, Any]:
         result = {self.op.name.lower(): self.count}
@@ -273,13 +280,17 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             raise sigma_exceptions.SigmaCorrelationRuleError(
                 "Non-temporal Sigma correlation rule without condition", source=self.source
             )
-        if self.type in {
-            SigmaCorrelationType.VALUE_COUNT,
-            SigmaCorrelationType.VALUE_SUM,
-            SigmaCorrelationType.VALUE_AVG,
-            SigmaCorrelationType.VALUE_PERCENTILE,
-            SigmaCorrelationType.VALUE_MEDIAN,
-        } and self.condition.fieldref is None:
+        if (
+            self.type
+            in {
+                SigmaCorrelationType.VALUE_COUNT,
+                SigmaCorrelationType.VALUE_SUM,
+                SigmaCorrelationType.VALUE_AVG,
+                SigmaCorrelationType.VALUE_PERCENTILE,
+                SigmaCorrelationType.VALUE_MEDIAN,
+            }
+            and self.condition.fieldref is None
+        ):
             # Format type name for error message (special case for VALUE_COUNT to match existing tests)
             if self.type == SigmaCorrelationType.VALUE_COUNT:
                 type_name = "Value count"

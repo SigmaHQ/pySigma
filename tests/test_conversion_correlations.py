@@ -578,9 +578,7 @@ correlation:
     )
 
 
-def test_value_sum_correlation_single_rule_with_grouping(
-    test_backend, value_sum_correlation_rule
-):
+def test_value_sum_correlation_single_rule_with_grouping(test_backend, value_sum_correlation_rule):
     assert test_backend.convert(value_sum_correlation_rule) == [
         """EventType="transaction"
 | aggregate window=10min sum(Amount) as value_sum by AccountID
@@ -618,9 +616,7 @@ correlation:
     )
 
 
-def test_value_avg_correlation_single_rule_with_grouping(
-    test_backend, value_avg_correlation_rule
-):
+def test_value_avg_correlation_single_rule_with_grouping(test_backend, value_avg_correlation_rule):
     assert test_backend.convert(value_avg_correlation_rule) == [
         """EventType="api_response"
 | aggregate window=5min avg(ResponseTime) as value_avg by Endpoint
@@ -739,6 +735,6 @@ correlation:
     )
     with pytest.raises(
         SigmaConversionError,
-        match="Percentile must be specified in condition for value_percentile correlation type"
+        match="Percentile must be specified in condition for value_percentile correlation type",
     ):
         test_backend.convert(correlation_rule)

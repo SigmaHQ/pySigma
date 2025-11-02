@@ -230,6 +230,9 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
         try:
             return bool(getattr(value, self.op_methods[self.op])(compare_value))
+        # bool(NotImplemented) used to return `True` with Python<3.14
+        except TypeError:
+            return True
         except AttributeError:  # operation not supported by value type
             return False
 

@@ -76,7 +76,7 @@ class SigmaType(ABC):
         Return plain Python value (str, int etc.) from SigmaType instance for usage in conversion of
         Sigma rules back to dicts. Uses the first annotated member as return value.
         """
-        return self.__getattribute__(list(self.__annotations__.keys())[0])
+        return self.__getattribute__(list(type(self).__annotations__.keys())[0])
 
 
 class NoPlainConversionMixin:

@@ -153,7 +153,7 @@ class TextQueryTestBackend(TextQueryBackend):
         "test": "| aggregate window={timespan} avg({field}) as value_avg{groupby}"
     }
     value_percentile_aggregation_expression: ClassVar[dict[str, str]] = {
-        "test": "| aggregate window={timespan} percentile({field}) as value_percentile{groupby}"
+        "test": "| aggregate window={timespan} percentile({field}, {percentile}) as value_percentile{groupby}"
     }
 
     timespan_mapping: ClassVar[dict[str, str]] = {

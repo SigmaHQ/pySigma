@@ -80,6 +80,7 @@ class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
     count: int
     fieldref: str | list[str] | None = field(default=None)
+    percentile: int | None = field(default=None)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
 
     @classmethod
@@ -92,7 +93,7 @@ class SigmaCorrelationCondition:
             raise sigma_exceptions.SigmaCorrelationConditionError(
                 "Sigma correlation condition must have exactly one condition item", source=source
             )
-        unknown_keys = d_keys.difference(ops).difference({"field"})
+        unknown_keys = d_keys.difference(ops).difference({"field", "percentile"})
         if unknown_keys:
             raise sigma_exceptions.SigmaCorrelationConditionError(
                 "Sigma correlation condition contains invalid items: " + ", ".join(unknown_keys),
@@ -121,12 +122,25 @@ class SigmaCorrelationCondition:
         except KeyError:
             cond_field = None
 
-        return cls(op=cond_op, count=cond_count, fieldref=cond_field, source=source)
+        # Condition percentile (for value_percentile correlation type)
+        try:
+            cond_percentile = int(d["percentile"])
+        except KeyError:
+            cond_percentile = None
+        except ValueError:
+            raise sigma_exceptions.SigmaCorrelationConditionError(
+                f"'{ d['percentile'] }' is no valid Sigma correlation condition percentile", source=source
+            )
+
+        return cls(op=cond_op, count=cond_count, fieldref=cond_field, percentile=cond_percentile, source=source)
 
     def to_dict(self) -> dict[str, Any]:
-        if not self.fieldref:
-            return {self.op.name.lower(): self.count}
-        return {self.op.name.lower(): self.count, "field": self.fieldref}
+        result = {self.op.name.lower(): self.count}
+        if self.fieldref:
+            result["field"] = self.fieldref
+        if self.percentile is not None:
+            result["percentile"] = self.percentile
+        return result
 
 
 @dataclass

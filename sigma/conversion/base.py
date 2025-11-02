@@ -2381,6 +2381,7 @@ class TextQueryBackend(Backend):
                 rule.group_by, method
             ),
             search=search,
+            percentile=rule.condition.percentile if rule.condition.percentile is not None else "",
         )
 
     def convert_correlation_aggregation_fields_from_template(

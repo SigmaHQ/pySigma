@@ -652,8 +652,9 @@ correlation:
         - SourceIP
     timespan: 15m
     condition:
-        gte: 95
+        gte: 500
         field: Latency
+        percentile: 95
             """
     )
 
@@ -663,6 +664,6 @@ def test_value_percentile_correlation_single_rule_with_grouping(
 ):
     assert test_backend.convert(value_percentile_correlation_rule) == [
         """EventType="network_traffic"
-| aggregate window=15min percentile(Latency) as value_percentile by SourceIP
-| where value_percentile >= 95"""
+| aggregate window=15min percentile(Latency, 95) as value_percentile by SourceIP
+| where value_percentile >= 500"""
     ]

@@ -2368,6 +2368,15 @@ class TextQueryBackend(Backend):
             raise NotImplementedError(
                 f"Correlation type '{correlation_type}' is not supported by backend."
             )
+        
+        # Validate that percentile is specified for value_percentile correlation type
+        if correlation_type == "value_percentile" and rule.condition.percentile is None:
+            raise SigmaConversionError(
+                rule,
+                rule.source,
+                "Percentile must be specified in condition for value_percentile correlation type"
+            )
+        
         template = templates[method]
         return template.format(
             rule=rule,

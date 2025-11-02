@@ -707,3 +707,38 @@ def test_value_median_correlation_single_rule_with_grouping(
 | aggregate window=5min median(ResponseTime) as value_median by Endpoint
 | where value_median >= 1000"""
     ]
+
+
+def test_value_percentile_correlation_missing_percentile(test_backend):
+    """Test that missing percentile attribute raises SigmaConversionError for value_percentile correlation"""
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Network traffic event
+name: network_traffic
+status: test
+logsource:
+    product: network
+detection:
+    selection:
+        EventType: network_traffic
+    condition: selection
+---
+title: High percentile latency without percentile
+status: test
+correlation:
+    type: value_percentile
+    rules:
+        - network_traffic
+    group-by:
+        - SourceIP
+    timespan: 15m
+    condition:
+        gte: 500
+        field: Latency
+            """
+    )
+    with pytest.raises(
+        SigmaConversionError,
+        match="Percentile must be specified in condition for value_percentile correlation type"
+    ):
+        test_backend.convert(correlation_rule)

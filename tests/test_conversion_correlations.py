@@ -667,3 +667,43 @@ def test_value_percentile_correlation_single_rule_with_grouping(
 | aggregate window=15min percentile(Latency, 95) as value_percentile by SourceIP
 | where value_percentile >= 500"""
     ]
+
+
+@pytest.fixture
+def value_median_correlation_rule():
+    return SigmaCollection.from_yaml(
+        """
+title: API response event
+name: api_response
+status: test
+logsource:
+    product: api
+detection:
+    selection:
+        EventType: api_response
+    condition: selection
+---
+title: High median response time
+status: test
+correlation:
+    type: value_median
+    rules:
+        - api_response
+    group-by:
+        - Endpoint
+    timespan: 5m
+    condition:
+        gte: 1000
+        field: ResponseTime
+            """
+    )
+
+
+def test_value_median_correlation_single_rule_with_grouping(
+    test_backend, value_median_correlation_rule
+):
+    assert test_backend.convert(value_median_correlation_rule) == [
+        """EventType="api_response"
+| aggregate window=5min median(ResponseTime) as value_median by Endpoint
+| where value_median >= 1000"""
+    ]

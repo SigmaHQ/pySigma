@@ -27,6 +27,7 @@ class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
     VALUE_SUM = auto()
     VALUE_AVG = auto()
     VALUE_PERCENTILE = auto()
+    VALUE_MEDIAN = auto()
 
 
 # TODO: type supported from 3.12
@@ -39,6 +40,7 @@ SigmaCorrelationTypeLiteral = Literal[
     "value_sum",
     "value_avg",
     "value_percentile",
+    "value_median",
 ]
 
 
@@ -276,6 +278,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             SigmaCorrelationType.VALUE_SUM,
             SigmaCorrelationType.VALUE_AVG,
             SigmaCorrelationType.VALUE_PERCENTILE,
+            SigmaCorrelationType.VALUE_MEDIAN,
         } and self.condition.fieldref is None:
             # Format type name for error message (special case for VALUE_COUNT to match existing tests)
             if self.type == SigmaCorrelationType.VALUE_COUNT:

@@ -155,6 +155,9 @@ class TextQueryTestBackend(TextQueryBackend):
     value_percentile_aggregation_expression: ClassVar[dict[str, str]] = {
         "test": "| aggregate window={timespan} percentile({field}, {percentile}) as value_percentile{groupby}"
     }
+    value_median_aggregation_expression: ClassVar[dict[str, str]] = {
+        "test": "| aggregate window={timespan} median({field}) as value_median{groupby}"
+    }
 
     timespan_mapping: ClassVar[dict[str, str]] = {
         "m": "min",
@@ -186,6 +189,9 @@ class TextQueryTestBackend(TextQueryBackend):
     }
     value_percentile_condition_expression: ClassVar[dict[str, str]] = {
         "test": "| where value_percentile {op} {count}"
+    }
+    value_median_condition_expression: ClassVar[dict[str, str]] = {
+        "test": "| where value_median {op} {count}"
     }
 
     def __init__(

@@ -67,7 +67,7 @@ poetry build
 - Changes should maintain backward compatibility when possible
 - All public APIs should be well-documented
 - Security implications of changes should be carefully considered
-- The project is in beta/pre-release status but is actively used
+- The project is in release candidate status but is actively used
 
 ## Testing Requirements
 

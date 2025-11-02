@@ -131,3 +131,51 @@ def test_nested_finalizer_apply(nested_finalizer):
         )
         == """allOf(('fieldA=val1', 'fieldB=val2', 'fieldC=val3'))"""
     )
+
+
+def test_template_finalizer_with_vars(dummy_pipeline):
+    """Test finalizer with custom vars from Python file."""
+    transformation = TemplateFinalizer(
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2"]) == "value = value"
+
+
+def test_template_finalizer_with_vars_and_queries(dummy_pipeline):
+    """Test finalizer with custom vars and query iteration."""
+    transformation = TemplateFinalizer(
+        template="{% for query in queries %}{{ parse_json('{\"index\": ' ~ loop.index ~ '}').index }}{% if not loop.last %}, {% endif %}{% endfor %}",
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2", "query3"]) == "1, 2, 3"
+
+
+def test_template_finalizer_with_json_helper(dummy_pipeline):
+    """Test finalizer with JSON parsing helper."""
+    transformation = TemplateFinalizer(
+        template='{{ parse_json(\'{"queries": ["q1", "q2"]}\').queries | join(", ") }}',
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2"]) == "q1, q2"
+
+
+def test_template_finalizer_with_invalid_vars_file(dummy_pipeline):
+    """Test that missing 'vars' dict raises appropriate error."""
+    with pytest.raises(ValueError, match="must define a 'vars' dictionary"):
+        TemplateFinalizer(template="test", vars="tests/files/invalid_template_vars.py")
+
+
+def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
+    """Test that vars parameter works when loading from dict (YAML pipeline)."""
+    transformation = TemplateFinalizer.from_dict(
+        {
+            "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}',
+            "vars": "tests/files/template_vars.py",
+        }
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2"]) == "value = value"

@@ -142,3 +142,74 @@ def test_nested_query_postprocessing_transformation(
     result = nested_query_postprocessing_transformation.apply(sigma_rule, 'field="foobar"')
     assert result == 'title = Test\nquery = [field="barbar"]'
     assert sigma_rule.was_processed_by("test")
+
+
+def test_query_template_transformation_with_vars(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test template transformation with custom vars from Python file."""
+    transformation = QueryTemplateTransformation(
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert (
+        transformation.apply(sigma_rule, 'field="value"') == 'value = value\nquery = field="value"'
+    )
+
+
+def test_query_template_transformation_with_vars_and_path(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test template transformation with custom vars from Python file and template from file."""
+    transformation = QueryTemplateTransformation(
+        template="finalize.j2", path="tests/files", vars="tests/files/template_vars.py"
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    dummy_pipeline.state["setting"] = "value"
+    result = transformation.apply(sigma_rule, 'field="value"')
+    assert "[config]" in result
+    assert "setting = value" in result
+
+
+def test_query_template_transformation_with_json_parsing(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test template with JSON parsing helper function."""
+    transformation = QueryTemplateTransformation(
+        template='{{ parse_json(\'{"key": "value"}\').key }}', vars="tests/files/template_vars.py"
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == "value"
+
+
+def test_query_template_transformation_with_invalid_vars_file(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that missing 'vars' dict raises appropriate error."""
+    with pytest.raises(ValueError, match="must define a 'vars' dictionary"):
+        QueryTemplateTransformation(template="test", vars="tests/files/invalid_template_vars.py")
+
+
+def test_query_template_transformation_with_nonexistent_vars_file(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that nonexistent vars file raises appropriate error."""
+    with pytest.raises(ValueError, match="Could not load vars file"):
+        QueryTemplateTransformation(template="test", vars="tests/files/nonexistent.py")
+
+
+def test_query_template_transformation_from_dict_with_vars(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars parameter works when loading from dict (YAML pipeline)."""
+    transformation = QueryTemplateTransformation.from_dict(
+        {
+            "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
+            "vars": "tests/files/template_vars.py",
+        }
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert (
+        transformation.apply(sigma_rule, 'field="value"') == 'value = value\nquery = field="value"'
+    )

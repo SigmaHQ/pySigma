@@ -83,6 +83,9 @@ class TemplateFinalizer(Finalizer, TemplateBase):
     if *path* is given, *template* is considered as a relative path to a template file below the
     specified path. If it is not provided, the template is specified as plain string. *autoescape*
     controls the Jinja2 HTML/XML auto-escaping.
+
+    if *vars* is given, it should point to a Python file containing helper functions and variables
+    to be made available in the Jinja2 template context. See TemplateBase for details on the format.
     """
 
     def apply(self, queries: list[Any]) -> str:

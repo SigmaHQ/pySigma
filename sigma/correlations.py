@@ -144,7 +144,7 @@ class SigmaCorrelationCondition:
         )
 
     def to_dict(self) -> dict[str, Any]:
-        result = {self.op.name.lower(): self.count}
+        result: dict[str, Any] = {self.op.name.lower(): self.count}
         if self.fieldref:
             result["field"] = self.fieldref
         if self.percentile is not None:

@@ -430,14 +430,14 @@ def test_field_mapping_none_to_field_adds_wildcards(dummy_pipeline):
             },
         }
     )
-    
+
     transformation = FieldMappingTransformation(mapping={None: "my_field"})
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(rule)
-    
+
     detection_item = rule.detection.detections["keywords"].detection_items[0]
     assert detection_item.field == "my_field"
-    
+
     # Check that wildcards were added
     for value in detection_item.value:
         assert isinstance(value, SigmaString)
@@ -459,15 +459,15 @@ def test_field_mapping_none_to_multiple_fields_adds_wildcards(dummy_pipeline):
             },
         }
     )
-    
+
     transformation = FieldMappingTransformation(mapping={None: ["field1", "field2"]})
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(rule)
-    
+
     # Should create a SigmaDetection with multiple SigmaDetectionItems
     detection = rule.detection.detections["keywords"].detection_items[0]
     assert isinstance(detection, SigmaDetection)
-    
+
     # Check each detection item has wildcards
     for item in detection.detection_items:
         assert isinstance(item, SigmaDetectionItem)
@@ -491,14 +491,14 @@ def test_field_mapping_field_to_field_no_wildcards(dummy_pipeline):
             },
         }
     )
-    
+
     transformation = FieldMappingTransformation(mapping={"field1": "field2"})
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(rule)
-    
+
     detection_item = rule.detection.detections["selection"].detection_items[0]
     assert detection_item.field == "field2"
-    
+
     # Values should NOT have wildcards
     for value in detection_item.value:
         assert isinstance(value, SigmaString)
@@ -517,14 +517,14 @@ def test_field_mapping_none_preserves_existing_wildcards(dummy_pipeline):
             },
         }
     )
-    
+
     transformation = FieldMappingTransformation(mapping={None: "my_field"})
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(rule)
-    
+
     detection_item = rule.detection.detections["keywords"].detection_items[0]
     values_str = [str(v) for v in detection_item.value]
-    
+
     assert "*already*" in values_str
     assert "*partial*" in values_str
     assert "*other*" in values_str

@@ -264,7 +264,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
                             value = value + SpecialChars.WILDCARD_MULTI
                     new_values.append(value)
                 detection_item.value = new_values
-            
+
             if isinstance(mapping, str):  # 1:1 mapping, map field name of detection item directly
                 detection_item.field = mapping
                 self.processing_item_applied(detection_item)

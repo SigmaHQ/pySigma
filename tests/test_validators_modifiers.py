@@ -10,7 +10,6 @@ from sigma.modifiers import (
     SigmaAllModifier,
     SigmaBase64OffsetModifier,
     SigmaContainsModifier,
-    SigmaWindowsDashModifier,
 )
 
 from sigma.validators.core.modifiers import (
@@ -18,7 +17,6 @@ from sigma.validators.core.modifiers import (
     Base64OffsetWithoutContainsModifierIssue,
     InvalidModifierCombinationsValidator,
     ModifierAppliedMultipleIssue,
-    WindowsDashCombinedWithAllModifierIssue,
 )
 
 
@@ -200,6 +198,7 @@ def test_validator_multiple_base64_modifier():
 
 
 def test_validator_windowsdash_combined_with_all_modifier():
+    """Test that windash combined with all modifier is allowed (no longer raises an error)."""
     validator = InvalidModifierCombinationsValidator()
     rule = SigmaRule.from_yaml(
         """
@@ -215,13 +214,5 @@ def test_validator_windowsdash_combined_with_all_modifier():
         condition: sel
     """
     )
-    assert validator.validate(rule) == [
-        WindowsDashCombinedWithAllModifierIssue(
-            [rule],
-            SigmaDetectionItem(
-                "field",
-                [SigmaContainsModifier, SigmaWindowsDashModifier, SigmaAllModifier],
-                [SigmaString("value1"), SigmaString("value2")],
-            ),
-        )
-    ]
+    # windash+all is now allowed because SigmaExpansion correctly preserves grouping
+    assert validator.validate(rule) == []

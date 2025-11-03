@@ -152,43 +152,53 @@ class MyMitreAttackData:
             return False
 
     def generate_attack_content(self) -> None:
+        """Generate Python module with MITRE ATT&CK data dictionaries."""
         with self.PY_PATH.open("w", encoding="UTF-8", newline="") as fileoutput:
-            print(f'mitre_attack_version: str = "{self.attack_version}"', file=fileoutput)
-            print(
-                "mitre_attack_tactics: dict[str, str] = "
-                + pformat(self.tactics, indent=4, sort_dicts=True),
-                file=fileoutput,
+            # Write version
+            fileoutput.write(f'mitre_attack_version: str = "{self.attack_version}"\n\n')
+            # Write dictionaries with proper Python formatting
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_tactics", self.tactics, "dict[str, str]"
             )
-            print(
-                "mitre_attack_techniques: dict[str, str] = "
-                + pformat(self.techniques, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_techniques", self.techniques, "dict[str, str]"
             )
-            print(
-                "mitre_attack_techniques_tactics_mapping: dict[str, list[str]] = "
-                + pformat(self.techniques_tactics_mapping, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput,
+                "mitre_attack_techniques_tactics_mapping",
+                self.techniques_tactics_mapping,
+                "dict[str, list[str]]",
             )
-            print(
-                "mitre_attack_intrusion_sets: dict[str, str] = "
-                + pformat(self.intrusion_sets, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_intrusion_sets", self.intrusion_sets, "dict[str, str]"
             )
-            print(
-                "mitre_attack_software: dict[str, str] = "
-                + pformat(self.software, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_software", self.software, "dict[str, str]"
             )
-            print(
-                "mitre_attack_datasources: dict[str, str] = "
-                + pformat(self.datasources, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_datasources", self.datasources, "dict[str, str]"
             )
-            print(
-                "mitre_attack_mitigations: dict[str, str] = "
-                + pformat(self.mitigations, indent=4, sort_dicts=True),
-                file=fileoutput,
+            self._write_dict_variable(
+                fileoutput, "mitre_attack_mitigations", self.mitigations, "dict[str, str]"
             )
+
+    def _write_dict_variable(self, file, var_name: str, data: dict, type_hint: str) -> None:
+        """Write a properly formatted dictionary variable to the file."""
+        file.write(f"{var_name}: {type_hint} = {{\n")
+
+        # Sort keys and write each key-value pair
+        for key in sorted(data.keys()):
+            value = data[key]
+            if isinstance(value, str):
+                file.write(f'    "{key}": "{value}",\n')
+            elif isinstance(value, list):
+                # Format list values
+                formatted_list = "[" + ", ".join(f'"{item}"' for item in value) + "]"
+                file.write(f'    "{key}": {formatted_list},\n')
+            else:
+                file.write(f'    "{key}": {repr(value)},\n')
+
+        file.write("}\n\n")
 
 
 if __name__ == "__main__":

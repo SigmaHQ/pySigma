@@ -176,9 +176,6 @@ class MyMitreAttackData:
                 fileoutput, "mitre_attack_software", self.software, "dict[str, str]"
             )
             self._write_dict_variable(
-                fileoutput, "mitre_attack_datasources", self.datasources, "dict[str, str]"
-            )
-            self._write_dict_variable(
                 fileoutput, "mitre_attack_mitigations", self.mitigations, "dict[str, str]"
             )
 

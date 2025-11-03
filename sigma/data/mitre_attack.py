@@ -2367,8 +2367,6 @@ mitre_attack_software: dict[str, str] = {
     "S1249": "HexEval Loader",
 }
 
-mitre_attack_datasources: dict[str, str] = {}
-
 mitre_attack_mitigations: dict[str, str] = {
     "M1013": "Application Developer Guidance",
     "M1015": "Active Directory Configuration",

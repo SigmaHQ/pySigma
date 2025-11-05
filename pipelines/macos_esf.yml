@@ -1,0 +1,242 @@
+name: macos-esf
+priority: 100
+transformations:
+  - type: field_name_mapping
+    mapping:
+      # Process fields - standard Sigma fields for process_creation
+      Image: Image
+      CommandLine: CommandLine
+      ProcessId: ProcessId
+      ParentProcessId: ParentProcessId
+      ParentImage: ParentImage
+      OriginalFileName: OriginalFileName
+      CurrentDirectory: CurrentDirectory
+      
+      # User fields
+      User: User
+      UserId: UserId
+      user.name: User
+      user.id: UserId
+      user.effective.id: user.effective.id
+      user.effective.name: user.effective.name
+      user.real.id: user.real.id
+      user.real.name: user.real.name
+      user.saved.id: user.saved.id
+      user.saved.name: user.saved.name
+      EffectiveUserId: EffectiveUserId
+      RealUserId: RealUserId
+      TargetUser: TargetUser
+      TargetUserId: TargetUserId
+      TargetGroup: TargetGroup
+      TargetGroupId: TargetGroupId
+      
+      # Group fields
+      group.effective.id: group.effective.id
+      group.effective.name: group.effective.name
+      group.real.id: group.real.id
+      group.real.name: group.real.name
+      group.saved.id: group.saved.id
+      group.saved.name: group.saved.name
+      EffectiveGroupId: EffectiveGroupId
+      RealGroupId: RealGroupId
+      
+      # File event fields - standard Sigma fields
+      TargetFilename: TargetFilename
+      SourceFilename: SourceFilename
+      DestinationFilename: DestinationFilename
+      file.path: TargetFilename
+      target.file.path: TargetFilename
+      source.file.path: SourceFilename
+      destination.file.path: DestinationFilename
+      target.path: TargetFilename
+      source.path: SourceFilename
+      destination.path: DestinationFilename
+      
+      # Network fields
+      DestinationIp: DestinationIp
+      DestinationPort: DestinationPort
+      SourceIp: SourceIp
+      SourcePort: SourcePort
+      destination.ip: DestinationIp
+      destination.port: DestinationPort
+      source.ip: SourceIp
+      source.port: SourcePort
+      
+      # Event metadata
+      event_type: event_type
+      event_name: event_name
+      
+      # Authentication fields
+      auth.username: User
+      auth.type: auth.type
+      auth.success: auth.success
+      
+      # Code signing fields
+      code_signature.team_id: code_signature.team_id
+      code_signature.status: code_signature.status
+      process.signing_id: code_signature.signing_id
+      
+      # TCC/Privacy fields
+      tcc.service: tcc.service
+      tcc.client: tcc.client
+      
+      # XProtect fields
+      xprotect.signature: xprotect.signature
+      
+      # Mount fields
+      mount.path: mount.path
+      mount.type: mount.type
+      
+      # Kernel extension fields
+      kext.identifier: kext.identifier
+      kext.path: kext.path
+      kext.team_id: kext.team_id
+      
+      # Signal fields
+      signal.number: signal.number
+      signal.target_pid: target.process.pid
+      target.process.pid: target.process.pid
+      target.process.path: target.process.path
+      
+      # XPC fields
+      xpc.service_name: xpc.service_name
+      xpc.pid: xpc.pid
+      
+      # Exit fields
+      exit.stat: exit.stat
+      
+      # Memory protection fields (mprotect)
+      mprotect.protection: mprotect.protection
+      mprotect.prot: mprotect.prot
+      mprotect.max_protection: mprotect.max_protection
+      event.mmap.protection: mprotect.protection
+      event.mmap.max_protection: mprotect.max_protection
+      event.mprotect.protection: mprotect.protection
+      event.mprotect.prot: mprotect.prot
+
+logsources:
+  # Main ESF log source
+  macos_esf:
+    product: macos
+    service: endpointsecurity
+    category: process_creation
+    
+  # Process creation - ES_EVENT_TYPE_NOTIFY_EXEC (9)
+  process_creation:
+    product: macos
+    service: endpointsecurity
+    category: process_creation
+    conditions:
+      event_type: 9
+      event_name: exec
+      
+  # File events
+  file_event:
+    product: macos
+    service: endpointsecurity
+    category: file_event
+    conditions:
+      event_type:
+        - 10  # OPEN
+        - 13  # CREATE
+        - 14  # WRITE
+        - 15  # CLOSE
+        - 21  # RENAME
+        - 20  # UNLINK
+        
+  # File creation
+  file_create:
+    product: macos
+    service: endpointsecurity
+    category: file_event
+    conditions:
+      event_type: 13
+      event_name: create
+      
+  # File deletion
+  file_delete:
+    product: macos
+    service: endpointsecurity
+    category: file_event
+    conditions:
+      event_type: 20
+      event_name: unlink
+      
+  # File rename
+  file_rename:
+    product: macos
+    service: endpointsecurity
+    category: file_event
+    conditions:
+      event_type: 21
+      event_name: rename
+      
+  # Authentication events
+  authentication:
+    product: macos
+    service: endpointsecurity
+    category: authentication
+    conditions:
+      event_type: 111
+      event_name: authentication
+      
+  # Privilege escalation
+  privilege_escalation:
+    product: macos
+    service: endpointsecurity
+    category: privilege_escalation
+    conditions:
+      event_type:
+        - 24  # SETUID
+        - 25  # SETGID
+        
+  # Process injection
+  process_injection:
+    product: macos
+    service: endpointsecurity
+    category: process_injection
+    conditions:
+      event_type: 64
+      event_name: ptrace
+      
+  # Kernel extension load
+  kernel_extension:
+    product: macos
+    service: endpointsecurity
+    category: kernel_extension
+    conditions:
+      event_type:
+        - 17  # KEXTLOAD
+        - 18  # KEXTUNLOAD
+        
+  # Code signature invalidation
+  codesigning:
+    product: macos
+    service: endpointsecurity
+    category: codesigning
+    conditions:
+      event_type:
+        - 62   # CS_INVALIDATED (old)
+        - 94   # CS_INVALIDATED (new)
+        
+  # Security policy events
+  security_policy:
+    product: macos
+    service: endpointsecurity
+    category: security_policy
+    conditions:
+      event_type:
+        - 112  # XP_MALWARE_DETECTED
+        - 113  # XP_MALWARE_REMEDIATED
+        - 146  # GATEKEEPER_USER_OVERRIDE
+        - 147  # TCC_MODIFY
+        
+  # Mount events
+  mount:
+    product: macos
+    service: endpointsecurity
+    category: mount
+    conditions:
+      event_type: 22
+      event_name: mount
+

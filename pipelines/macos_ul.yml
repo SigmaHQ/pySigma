@@ -1,0 +1,125 @@
+name: macos-ul
+priority: 100
+transformations:
+  - type: field_name_mapping
+    mapping:
+      # Unified Logging core fields
+      subsystem: subsystem
+      category: category
+      message: message
+      
+      # Process fields - map to standard Sigma
+      ProcessName: ProcessName
+      ProcessId: ProcessId
+      process: ProcessName
+      pid: ProcessId
+      
+      # Command line - extracted from message
+      CommandLine: CommandLine
+      message: CommandLine
+      
+      # User fields
+      User: User
+      Username: User
+      user.name: User
+      
+      # Network fields (extracted from message)
+      DestinationIp: DestinationIp
+      DestinationPort: DestinationPort
+      SourceIp: SourceIp
+      SourcePort: SourcePort
+      
+      # Host and system
+      hostname: host.name
+      host.name: host.name
+
+logsources:
+  # Main Unified Logging source
+  macos_ul:
+    product: macos
+    service: unifiedlog
+    
+  # TCC (Transparency, Consent, and Control) events
+  tcc:
+    product: macos
+    service: unifiedlog
+    category: tcc
+    conditions:
+      subsystem: com.apple.TCC
+      
+  # Gatekeeper events
+  gatekeeper:
+    product: macos
+    service: unifiedlog
+    category: gatekeeper
+    conditions:
+      subsystem:
+        - com.apple.security.assessment
+        - com.apple.gatekeeper
+        
+  # Sudo events
+  sudo:
+    product: macos
+    service: unifiedlog
+    category: sudo
+    conditions:
+      subsystem: com.apple.sudo
+      
+  # Authentication events
+  authentication:
+    product: macos
+    service: unifiedlog
+    category: authentication
+    conditions:
+      subsystem:
+        - com.apple.authorization
+        - com.apple.opendirectoryd
+        - com.apple.securityd
+        
+  # Code signing events
+  codesigning:
+    product: macos
+    service: unifiedlog
+    category: codesigning
+    conditions:
+      subsystem: com.apple.securityd
+      
+  # Security policy events
+  security_policy:
+    product: macos
+    service: unifiedlog
+    category: security_policy
+    conditions:
+      subsystem:
+        - com.apple.syspolicy
+        - com.apple.xprotect
+        - com.apple.MRT
+        
+  # Firewall events
+  firewall:
+    product: macos
+    service: unifiedlog
+    category: firewall
+    conditions:
+      subsystem:
+        - com.apple.alf
+        - com.apple.socketfilterfw
+        
+  # Network events
+  network:
+    product: macos
+    service: unifiedlog
+    category: network
+    conditions:
+      subsystem:
+        - com.apple.network
+        - com.apple.networking
+        
+  # Kernel events
+  kernel:
+    product: macos
+    service: unifiedlog
+    category: kernel
+    conditions:
+      subsystem: com.apple.kernel
+

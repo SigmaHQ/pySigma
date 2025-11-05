@@ -6,6 +6,8 @@ import string
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
+from typing_extensions import Self
+
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
 from sigma.rule import SigmaDetection, SigmaDetections, SigmaLogSource, SigmaRule, SigmaRuleBase
@@ -20,8 +22,8 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls, detections: dict[str, Any], source: SigmaRuleLocation | None = None
-    ) -> SigmaGlobalFilter:
+        cls: type[Self], detections: dict[str, Any], source: SigmaRuleLocation | None = None
+    ) -> Self:
         try:
             if isinstance(detections["condition"], str):
                 condition = [detections["condition"]]
@@ -64,7 +66,7 @@ class SigmaGlobalFilter(SigmaDetections):
             source=source,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self: Self) -> dict[str, Any]:
         d = super().to_dict()
         d.update(
             {
@@ -88,11 +90,11 @@ class SigmaFilter(SigmaRuleBase):
 
     @classmethod
     def from_dict(
-        cls,
+        cls: type[Self],
         sigma_filter: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
-    ) -> SigmaFilter:
+    ) -> Self:
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
@@ -144,7 +146,7 @@ class SigmaFilter(SigmaRuleBase):
             **kwargs,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self: Self) -> dict[str, Any]:
         """Convert filter object into dict."""
         d = super().to_dict()
         d.update(
@@ -156,7 +158,7 @@ class SigmaFilter(SigmaRuleBase):
 
         return d
 
-    def _should_apply_on_rule(self, rule: SigmaRule | SigmaCorrelationRule) -> bool:
+    def _should_apply_on_rule(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> bool:
         from sigma.collection import SigmaCollection
 
         if not self.filter.rules or isinstance(rule, SigmaCorrelationRule):
@@ -180,7 +182,7 @@ class SigmaFilter(SigmaRuleBase):
         return True
 
     def apply_on_rule(
-        self, rule: SigmaRule | SigmaCorrelationRule
+        self: Self, rule: SigmaRule | SigmaCorrelationRule
     ) -> SigmaRule | SigmaCorrelationRule:
         if not self._should_apply_on_rule(rule) or isinstance(rule, SigmaCorrelationRule):
             return rule
@@ -206,6 +208,6 @@ class SigmaFilter(SigmaRuleBase):
         return rule
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> SigmaFilter:
+    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaFilter object."""
         return cast("SigmaFilter", super().from_yaml(rule, collect_errors))

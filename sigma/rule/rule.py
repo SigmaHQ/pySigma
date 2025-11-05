@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, cast
 
+from typing_extensions import Self
+
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaError, SigmaRuleLocation
 from sigma.processing.tracking import ProcessingItemTrackingMixin
@@ -22,11 +24,11 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
 
     @classmethod
     def from_dict(
-        cls,
+        cls: type[Self],
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
-    ) -> SigmaRule:
+    ) -> Self:
         """
         Convert Sigma rule parsed in dict structure into SigmaRule object.
 
@@ -81,9 +83,9 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> SigmaRule:
+    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
-        return cast("SigmaRule", super().from_yaml(rule, collect_errors))
+        return super().from_yaml(rule, collect_errors)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert rule object into dict."""

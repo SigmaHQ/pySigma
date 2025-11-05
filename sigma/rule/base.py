@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import yaml
+from typing_extensions import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
@@ -68,7 +69,7 @@ class SigmaRuleBase:
     )
     _output: bool = field(init=False, default=True, repr=False, compare=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         for field in ("references", "tags", "fields", "falsepositives"):
             if self.__getattribute__(field) is None:
                 self.__setattr__(field, [])
@@ -82,7 +83,7 @@ class SigmaRuleBase:
 
     @classmethod
     def from_dict_common_params(
-        cls,
+        cls: type[Self],
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
@@ -370,19 +371,19 @@ class SigmaRuleBase:
 
     @classmethod
     @abstractmethod
-    def from_dict(cls, rule: dict[str, Any], collect_errors: bool = False) -> SigmaRuleBase:
+    def from_dict(cls: type[Self], rule: dict[str, Any], collect_errors: bool = False) -> Self:
         """Convert dict input into SigmaRule object."""
         raise NotImplementedError(
             "from_dict method must be implemented in the derived class of SigmaRuleBase"
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> SigmaRuleBase:
+    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         return cls.from_dict(parsed_rule, collect_errors)
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self: Self) -> dict[str, Any]:
         """Convert rule object into dict."""
         d: dict[str, Any] = {
             "title": self.title,
@@ -410,19 +411,19 @@ class SigmaRuleBase:
 
         return d
 
-    def add_backreference(self, rule: SigmaRuleBase) -> None:
+    def add_backreference(self: Self, rule: SigmaRuleBase) -> None:
         """Add backreference to another rule."""
         self._backreferences.append(rule)
 
-    def referenced_by(self, rule: SigmaRuleBase) -> bool:
+    def referenced_by(self: Self, rule: SigmaRuleBase) -> bool:
         """Check if rule is referenced by another rule."""
         return rule in self._backreferences
 
-    def set_conversion_result(self, result: list[Any]) -> None:
+    def set_conversion_result(self: Self, result: list[Any]) -> None:
         """Set conversion result."""
         self._conversion_result = result
 
-    def get_conversion_result(self) -> list[Any]:
+    def get_conversion_result(self: Self) -> list[Any]:
         """Get conversion result."""
         if self._conversion_result is None:
             raise sigma_exceptions.SigmaConversionError(
@@ -432,11 +433,11 @@ class SigmaRuleBase:
             )
         return self._conversion_result
 
-    def set_conversion_states(self, state: list[ConversionState]) -> None:
+    def set_conversion_states(self: Self, state: list[ConversionState]) -> None:
         """Set conversion state."""
         self._conversion_states = state
 
-    def get_conversion_states(self) -> list[ConversionState]:
+    def get_conversion_states(self: Self) -> list[ConversionState]:
         """Get conversion state."""
         if self._conversion_states is None:
             raise sigma_exceptions.SigmaConversionError(
@@ -446,10 +447,10 @@ class SigmaRuleBase:
             )
         return self._conversion_states
 
-    def disable_output(self) -> None:
+    def disable_output(self: Self) -> None:
         """Disable output of rule."""
         self._output = False
 
-    def __lt__(self, other: SigmaRuleBase) -> bool:
+    def __lt__(self: Self, other: SigmaRuleBase) -> bool:
         """Sort rules by backreference. A rule referenced by another rule is smaller."""
         return self.referenced_by(other)

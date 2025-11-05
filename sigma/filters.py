@@ -4,7 +4,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, cast
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
@@ -210,4 +210,4 @@ class SigmaFilter(SigmaRuleBase):
     @classmethod
     def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaFilter object."""
-        return cast("SigmaFilter", super().from_yaml(rule, collect_errors))
+        return super().from_yaml(rule, collect_errors)

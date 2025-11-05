@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import Enum, auto
-from typing import TYPE_CHECKING, Any, Literal, cast
+from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import Self
 
@@ -454,7 +454,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     @classmethod
     def from_yaml(cls, rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaCorrelationRule object."""
-        return cast("SigmaCorrelationRule", super().from_yaml(rule, collect_errors))
+        return super().from_yaml(rule, collect_errors)
 
     def to_dict(self: Self) -> dict[str, Any]:
         d = super().to_dict()

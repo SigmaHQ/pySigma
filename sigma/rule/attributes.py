@@ -25,8 +25,7 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
     def __eq__(self, other: Any) -> bool:
         if isinstance(other, SigmaStatus):
             return bool(self.value == other.value)
-
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
+        return False
 
     def __ge__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
@@ -43,8 +42,7 @@ class SigmaStatus(EnumLowercaseStringMixin, Enum):
     def __ne__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
             return bool(self.value != other.value)
-
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaStatus")
+        return True
 
     def __le__(self, other: object) -> bool:
         if isinstance(other, SigmaStatus):
@@ -89,8 +87,7 @@ class SigmaLevel(EnumLowercaseStringMixin, Enum):
     def __ne__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):
             return bool(self.value != other.value)
-
-        raise sigma_exceptions.SigmaTypeError("Must be a SigmaLevel")
+        return True
 
     def __le__(self, other: object) -> bool:
         if isinstance(other, SigmaLevel):

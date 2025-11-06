@@ -58,12 +58,18 @@ def test_sigmalevel_comparation():
 
 
 def test_sigmalevel_comparation_invalid():
+    # Equality and inequality comparisons should return False/True for incompatible types
+    assert (SigmaLevel.HIGH == "HIGH") is False
+    assert (SigmaLevel.HIGH != "LOW") is True
+
+    # Ordering comparisons should still raise exceptions for incompatible types
     with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel"):
-        SigmaLevel.HIGH == "HIGH"
         SigmaLevel.HIGH >= "LOW"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel"):
         SigmaLevel.HIGH > "LOW"
-        SigmaLevel.HIGH != "LOW"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel"):
         SigmaLevel.LOW <= "HIGH"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaLevel"):
         SigmaLevel.LOW < "HIGH"
 
 
@@ -81,13 +87,35 @@ def test_sigmastatus_comparation():
 
 
 def test_sigmastatus_comparation_invalid():
+    # Equality and inequality comparisons should return False/True for incompatible types
+    assert (SigmaStatus.STABLE == "STABLE") is False
+    assert (SigmaStatus.STABLE != "EXPERIMENTAL") is True
+
+    # Ordering comparisons should still raise exceptions for incompatible types
     with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus"):
-        assert SigmaStatus.STABLE == "STABLE"
-        assert SigmaStatus.STABLE >= "EXPERIMENTAL"
-        assert SigmaStatus.STABLE > "EXPERIMENTAL"
-        assert SigmaStatus.STABLE != "EXPERIMENTAL"
-        assert SigmaStatus.EXPERIMENTAL <= "STABLE"
-        assert SigmaStatus.EXPERIMENTAL < "STABLE"
+        SigmaStatus.STABLE >= "EXPERIMENTAL"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus"):
+        SigmaStatus.STABLE > "EXPERIMENTAL"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus"):
+        SigmaStatus.EXPERIMENTAL <= "STABLE"
+    with pytest.raises(sigma_exceptions.SigmaTypeError, match="Must be a SigmaStatus"):
+        SigmaStatus.EXPERIMENTAL < "STABLE"
+
+
+def test_sigmastatus_comparation_with_none():
+    """Test that SigmaStatus can be compared with None without raising exceptions."""
+    assert (None == SigmaStatus.STABLE) is False
+    assert (SigmaStatus.STABLE == None) is False
+    assert (None != SigmaStatus.STABLE) is True
+    assert (SigmaStatus.STABLE != None) is True
+
+
+def test_sigmalevel_comparation_with_none():
+    """Test that SigmaLevel can be compared with None without raising exceptions."""
+    assert (None == SigmaLevel.HIGH) is False
+    assert (SigmaLevel.HIGH == None) is False
+    assert (None != SigmaLevel.HIGH) is True
+    assert (SigmaLevel.HIGH != None) is True
 
 
 ### SigmaRuleTag tests ###

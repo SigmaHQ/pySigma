@@ -1516,6 +1516,66 @@ def test_addconditiontransformation_negated(dummy_pipeline, sigma_rule: SigmaRul
     )
 
 
+def test_addconditiontransformation_empty_condition(dummy_pipeline, sigma_rule: SigmaRule):
+    """Test that AddConditionTransformation correctly handles empty conditions (e.g., when all query terms are deferred)"""
+    # Manually set condition to empty string to simulate deferred query scenario
+    sigma_rule.detection.parsed_condition[0].condition = ""
+
+    transformation = AddConditionTransformation(
+        {
+            "newfield1": "test",
+        },
+        "additional",
+    )
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
+
+    # When condition is empty, should result in just "additional", not "additional and ()"
+    assert (
+        sigma_rule.detection.parsed_condition[0].condition == "additional"
+        and sigma_rule.detection.detections["additional"]
+        == SigmaDetection(
+            [
+                SigmaDetectionItem("newfield1", [], [SigmaString("test")]),
+            ]
+        )
+        and sigma_rule.was_processed_by("test")
+    )
+
+
+def test_addconditiontransformation_empty_condition_negated(dummy_pipeline, sigma_rule: SigmaRule):
+    """Test that AddConditionTransformation correctly handles empty conditions with negation"""
+    # Manually set condition to empty string to simulate deferred query scenario
+    sigma_rule.detection.parsed_condition[0].condition = ""
+
+    transformation = AddConditionTransformation(
+        {
+            "newfield1": "test",
+        },
+        "additional",
+        negated=True,
+    )
+    transformation.set_processing_item(
+        ProcessingItem(
+            transformation,
+            identifier="test",
+        )
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
+
+    # When condition is empty and negated, should result in just "not additional", not "not additional and ()"
+    assert sigma_rule.detection.parsed_condition[
+        0
+    ].condition == "not additional" and sigma_rule.was_processed_by("test")
+
+
 ### ChangeLogsourceTransformation ###
 def test_changelogsource(dummy_pipeline, sigma_rule: SigmaRule):
     processing_item = ProcessingItem(

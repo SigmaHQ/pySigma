@@ -6,7 +6,7 @@ the official D3FEND GitHub repository. Data is cached in memory to avoid repeate
 """
 
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Dict
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -19,10 +19,10 @@ MITRE_D3FEND_ONTOLOGY_URL = (
 MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
 
 # In-memory cache
-_cache: Optional[dict] = None
+_cache: Optional[Dict[str, Any]] = None
 
 
-def _load_mitre_d3fend_data() -> dict:
+def _load_mitre_d3fend_data() -> Dict[str, Any]:
     """
     Load MITRE D3FEND data from the D3FEND ontology.
 
@@ -114,7 +114,7 @@ def _load_mitre_d3fend_data() -> dict:
     }
 
 
-def _get_cached_data() -> dict:
+def _get_cached_data() -> Dict[str, Any]:
     """Get cached MITRE D3FEND data, loading it if necessary."""
     global _cache
     if _cache is None:

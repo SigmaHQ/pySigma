@@ -7,7 +7,7 @@ repeated downloads.
 """
 
 import json
-from typing import Any, Optional
+from typing import Any, Optional, Dict, List
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -18,18 +18,20 @@ MITRE_ATTACK_ENTERPRISE_URL = (
 )
 
 # In-memory cache
-_cache: Optional[dict] = None
+_cache: Optional[Dict[str, Any]] = None
 
 
-def _get_external_id(obj: dict) -> Optional[str]:
+def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
     """Extract the external ID from a STIX object's external references."""
     for ref in obj.get("external_references", []):
         if ref.get("source_name") == "mitre-attack":
-            return ref.get("external_id")
+            external_id = ref.get("external_id")
+            if external_id is not None:
+                return str(external_id)
     return None
 
 
-def _load_mitre_attack_data() -> dict:
+def _load_mitre_attack_data() -> Dict[str, Any]:
     """
     Load MITRE ATT&CK data from GitHub.
 
@@ -109,7 +111,7 @@ def _load_mitre_attack_data() -> dict:
     }
 
 
-def _get_cached_data() -> dict:
+def _get_cached_data() -> Dict[str, Any]:
     """Get cached MITRE ATT&CK data, loading it if necessary."""
     global _cache
     if _cache is None:

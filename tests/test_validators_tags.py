@@ -1,4 +1,5 @@
 from wsgiref.validate import validator
+from unittest.mock import patch
 
 import pytest
 from sigma.exceptions import SigmaValueError

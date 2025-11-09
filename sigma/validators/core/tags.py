@@ -9,19 +9,8 @@ from sigma.validators.base import (
     SigmaValidationIssue,
     SigmaValidationIssueSeverity,
 )
-from sigma.data.mitre_attack import (
-    mitre_attack_tactics,
-    mitre_attack_techniques,
-    mitre_attack_intrusion_sets,
-    mitre_attack_software,
-    mitre_attack_datasources,
-    mitre_attack_mitigations,
-)
-from sigma.data.mitre_d3fend import (
-    mitre_d3fend_tactics,
-    mitre_d3fend_techniques,
-    mitre_d3fend_artifacts,
-)
+from sigma.data import mitre_attack_data
+from sigma.data import mitre_d3fend_data
 import re
 
 
@@ -55,12 +44,34 @@ class ATTACKTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {tactic.lower() for tactic in mitre_attack_tactics.values()}
-            .union({technique.lower() for technique in mitre_attack_techniques.keys()})
-            .union({intrusion_set.lower() for intrusion_set in mitre_attack_intrusion_sets.keys()})
-            .union({software.lower() for software in mitre_attack_software.keys()})
-            .union({datasource.lower() for datasource in mitre_attack_datasources.keys()})
-            .union({mitigation.lower() for mitigation in mitre_attack_mitigations.keys()})
+            {tactic.lower() for tactic in mitre_attack_data.mitre_attack_tactics.values()}
+            .union(
+                {
+                    technique.lower()
+                    for technique in mitre_attack_data.mitre_attack_techniques.keys()
+                }
+            )
+            .union(
+                {
+                    intrusion_set.lower()
+                    for intrusion_set in mitre_attack_data.mitre_attack_intrusion_sets.keys()
+                }
+            )
+            .union(
+                {software.lower() for software in mitre_attack_data.mitre_attack_software.keys()}
+            )
+            .union(
+                {
+                    datasource.lower()
+                    for datasource in mitre_attack_data.mitre_attack_datasources.keys()
+                }
+            )
+            .union(
+                {
+                    mitigation.lower()
+                    for mitigation in mitre_attack_data.mitre_attack_mitigations.keys()
+                }
+            )
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
@@ -81,9 +92,14 @@ class D3FENDTagValidator(SigmaTagValidator):
 
     def __init__(self) -> None:
         self.allowed_tags = (
-            {tactic.lower() for tactic in mitre_d3fend_tactics.keys()}
-            .union({technique.lower() for technique in mitre_d3fend_techniques.keys()})
-            .union({artefact for artefact in mitre_d3fend_artifacts.keys()})
+            {tactic.lower() for tactic in mitre_d3fend_data.mitre_d3fend_tactics.keys()}
+            .union(
+                {
+                    technique.lower()
+                    for technique in mitre_d3fend_data.mitre_d3fend_techniques.keys()
+                }
+            )
+            .union({artefact for artefact in mitre_d3fend_data.mitre_d3fend_artifacts.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:

@@ -132,12 +132,13 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
     * strings (exact matches)
     * UUIDs (exact matches)
+    * lists (membership checks with eq/ne operations only)
     * numbers (relations: eq, ne, gte, ge, lte, le)
     * dates (relations: eq, ne, gte, ge, lte, le)
     * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
     * Rule statuses (relations: eq, ne, gte, ge, lte, le)
 
-    Fields that contain lists of values, maps or other complex data structures are not supported and
+    Fields that contain maps or other complex data structures are not supported and
     raise a SigmaConfigurationError. If the type of the value doesn't allows a particular relation, the
     condition also raises a SigmaConfigurationError on match.
     """
@@ -174,7 +175,16 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
         # Finally, value has some comparable type
         compare_value: Union[str, int, float, date, SigmaLevel, SigmaStatus]
-        if isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
+        if isinstance(value, list):  # list membership check
+            if self.op == "eq":
+                return self.value in value
+            elif self.op == "ne":
+                return self.value not in value
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}. Only 'eq' and 'ne' are supported."
+                )
+        elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":
                 return str(value) == self.value
             elif self.op == "ne":

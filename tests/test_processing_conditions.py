@@ -298,6 +298,57 @@ def test_rule_attribute_condition_invalid_rule_field_type(sigma_rule):
         RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(sigma_rule)
 
 
+@pytest.fixture
+def sigma_rule_with_list_attribute():
+    return SigmaRule.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            category: test_category
+        detection:
+            sel:
+                fieldA: value
+            condition: sel
+        level: low
+        _sourcetype:
+            - linux_secure
+            - windows_sysmon
+    """
+    )
+
+
+def test_rule_attribute_condition_list_eq_match(sigma_rule_with_list_attribute):
+    assert RuleAttributeCondition("_sourcetype", "linux_secure", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_eq_nomatch(sigma_rule_with_list_attribute):
+    assert not RuleAttributeCondition("_sourcetype", "other_value", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_match(sigma_rule_with_list_attribute):
+    assert RuleAttributeCondition("_sourcetype", "other_value", "ne").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_nomatch(sigma_rule_with_list_attribute):
+    assert not RuleAttributeCondition("_sourcetype", "linux_secure", "ne").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_invalid_op(sigma_rule_with_list_attribute):
+    with pytest.raises(SigmaConfigurationError, match="Invalid operation.*for list comparison"):
+        RuleAttributeCondition("_sourcetype", "linux_secure", "gte").match(
+            sigma_rule_with_list_attribute
+        )
+
+
 def test_rule_tag_condition_match(sigma_rule):
     assert RuleTagCondition("test.tag").match(sigma_rule)
 

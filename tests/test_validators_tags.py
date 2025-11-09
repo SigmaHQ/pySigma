@@ -1,5 +1,7 @@
 from wsgiref.validate import validator
 from unittest.mock import patch
+import tempfile
+import json
 
 import pytest
 from sigma.exceptions import SigmaValueError
@@ -28,6 +30,7 @@ from sigma.validators.core.tags import (
     TagFormatValidator,
     InvalidTagFormatIssue,
 )
+from sigma.data import mitre_attack_data, mitre_d3fend_data
 
 
 def test_validator_invalid_attack_tags():
@@ -271,3 +274,136 @@ def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, o
     assert validator.validate(rule) == [
         opt_issue_class([rule], SigmaRuleTag.from_str(tag)) for tag in opt_issue_tags
     ]
+
+
+def test_mitre_attack_set_url_with_file(monkeypatch):
+    """Test setting a custom file path for MITRE ATT&CK data."""
+    import os
+
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_attack_data._cache
+    original_url = mitre_attack_data._custom_url
+
+    # Create a temporary file with minimal MITRE ATT&CK data
+    attack_data = {
+        "objects": [
+            {
+                "type": "x-mitre-collection",
+                "x_mitre_version": "99.9",
+            },
+            {
+                "type": "attack-pattern",
+                "name": "Test Technique",
+                "external_references": [{"source_name": "mitre-attack", "external_id": "T9999"}],
+                "kill_chain_phases": [
+                    {"kill_chain_name": "mitre-attack", "phase_name": "test-tactic"}
+                ],
+            },
+        ]
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(attack_data, f)
+        temp_path = f.name
+
+    try:
+        # Use set_url which clears cache and sets custom URL
+        mitre_attack_data.set_url(temp_path)
+
+        # Access the data to trigger loading
+        techniques = mitre_attack_data.mitre_attack_techniques
+        assert "T9999" in techniques
+        assert techniques["T9999"] == "Test Technique"
+
+        # Verify it works with the validator
+        validator = ATTACKTagValidator()
+        rule = SigmaRule.from_yaml(
+            """
+        title: Test
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        tags:
+            - attack.t9999
+        """
+        )
+        assert validator.validate(rule) == []
+    finally:
+        # Clean up and restore original state
+        mitre_attack_data._cache = original_cache
+        mitre_attack_data._custom_url = original_url
+        os.unlink(temp_path)
+
+
+def test_mitre_d3fend_set_url_with_file(monkeypatch):
+    """Test setting a custom file path for MITRE D3FEND data."""
+    import os
+
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_d3fend_data._cache
+    original_url = mitre_d3fend_data._custom_url
+
+    # Create a temporary file with minimal D3FEND data
+    d3fend_data = {
+        "@graph": [
+            {
+                "@type": "owl:Ontology",
+                "owl:versionIRI": "http://d3fend.mitre.org/ontologies/d3fend/99.9",
+            },
+            {
+                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#D3-TEST",
+                "@type": "d3f:DefensiveTechnique",
+                "rdfs:label": "Test Technique",
+            },
+            {
+                "@type": "d3f:DefensiveTactic",
+                "rdfs:label": "test-tactic",
+            },
+        ]
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(d3fend_data, f)
+        temp_path = f.name
+
+    try:
+        # Use set_url which clears cache and sets custom URL
+        mitre_d3fend_data.set_url(temp_path)
+
+        # Access the data to trigger loading
+        techniques = mitre_d3fend_data.mitre_d3fend_techniques
+        assert "D3-TEST" in techniques
+        assert techniques["D3-TEST"] == "Test Technique"
+
+        # Verify it works with the validator
+        validator = D3FENDTagValidator()
+        rule = SigmaRule.from_yaml(
+            """
+        title: Test
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        tags:
+            - d3fend.d3-test
+        """
+        )
+        assert validator.validate(rule) == []
+    finally:
+        # Clean up and restore original state
+        mitre_d3fend_data._cache = original_cache
+        mitre_d3fend_data._custom_url = original_url
+        os.unlink(temp_path)

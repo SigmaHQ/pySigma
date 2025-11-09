@@ -19,6 +19,7 @@ MITRE_ATTACK_ENTERPRISE_URL = (
 
 # In-memory cache
 _cache: Optional[Dict[str, Any]] = None
+_custom_url: Optional[str] = None
 
 
 def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
@@ -33,7 +34,7 @@ def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
 
 def _load_mitre_attack_data() -> Dict[str, Any]:
     """
-    Load MITRE ATT&CK data from GitHub.
+    Load MITRE ATT&CK data from GitHub or a custom URL/file.
 
     Returns a dictionary with the following keys:
     - mitre_attack_version: MITRE ATT&CK version
@@ -45,10 +46,17 @@ def _load_mitre_attack_data() -> Dict[str, Any]:
     - mitre_attack_datasources: dict[str, str] mapping data source IDs to names
     - mitre_attack_mitigations: dict[str, str] mapping mitigation IDs to names
     """
+    url = _custom_url if _custom_url is not None else MITRE_ATTACK_ENTERPRISE_URL
+    
     try:
-        with urlopen(MITRE_ATTACK_ENTERPRISE_URL, timeout=30) as response:
-            stix_data = json.load(response)
-    except (URLError, json.JSONDecodeError) as e:
+        # Check if it's a file path (doesn't start with http:// or https://)
+        if not url.startswith(("http://", "https://")):
+            with open(url, "r", encoding="utf-8") as f:
+                stix_data = json.load(f)
+        else:
+            with urlopen(url, timeout=30) as response:
+                stix_data = json.load(response)
+    except (URLError, json.JSONDecodeError, OSError, IOError) as e:
         raise RuntimeError(f"Failed to load MITRE ATT&CK data: {e}") from e
 
     version = None
@@ -137,3 +145,33 @@ def clear_cache() -> None:
     """Clear the in-memory cache. Mainly useful for testing."""
     global _cache
     _cache = None
+
+
+def set_url(url: str) -> None:
+    """
+    Set a custom URL or file path for loading MITRE ATT&CK data.
+    
+    This function allows you to specify an alternative source for MITRE ATT&CK data,
+    which can be either:
+    - An HTTP/HTTPS URL pointing to a MITRE ATT&CK STIX JSON file
+    - A local file path to a downloaded MITRE ATT&CK STIX JSON file
+    
+    This is particularly useful in environments with restricted internet access,
+    where you can download the data separately and load it from a local file.
+    
+    Args:
+        url: URL or file path to the MITRE ATT&CK data source
+        
+    Example:
+        >>> from sigma.data import mitre_attack_data
+        >>> # Use a local file
+        >>> mitre_attack_data.set_url("/path/to/enterprise-attack.json")
+        >>> # Or use a custom URL
+        >>> mitre_attack_data.set_url("https://example.com/custom-attack-data.json")
+    
+    Note:
+        This will clear any cached data, so the next access will load from the new source.
+    """
+    global _custom_url
+    _custom_url = url
+    clear_cache()

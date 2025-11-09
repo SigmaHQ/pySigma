@@ -5,6 +5,8 @@ from dataclasses import dataclass, fields
 from enum import Enum, auto
 from typing import ClassVar
 
+from typing_extensions import Self
+
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag
 from sigma.types import SigmaString, SigmaType
@@ -40,12 +42,12 @@ class SigmaValidationIssue(ABC):
     severity: ClassVar[SigmaValidationIssueSeverity]
     rules: list[SigmaRule | SigmaCorrelationRule]
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         """Ensure that `self.rules` contains a list, even when a single rule was provided."""
         if isinstance(self.rules, SigmaRuleBase):
             self.rules = [self.rules]
 
-    def __str__(self) -> str:
+    def __str__(self: Self) -> str:
         rules = ", ".join(
             [
                 str(rule.source) if rule.source is not None else str(rule.id) or rule.title
@@ -72,7 +74,7 @@ class SigmaRuleValidator(ABC):
     """
 
     @abstractmethod
-    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
+    def validate(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         """Implementation of the rule validation.
 
         :param rule: Sigma rule that should be validated.
@@ -83,7 +85,7 @@ class SigmaRuleValidator(ABC):
         self.rule = rule
         return []
 
-    def finalize(self) -> list[SigmaValidationIssue]:
+    def finalize(self: Self) -> list[SigmaValidationIssue]:
         """
         Finalize a validation run and return validation issues that apply to multiple rules.
 
@@ -108,7 +110,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
     effects in implementations of them methods mentioned above.
     """
 
-    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
+    def validate(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         """
         Iterate over all detections and call validate_detection() for each.
         """
@@ -124,7 +126,7 @@ class SigmaDetectionValidator(SigmaRuleValidator):
 
     @abstractmethod
     def validate_detection(
-        self, name: str, detection: SigmaDetection
+        self: Self, name: str, detection: SigmaDetection
     ) -> list[SigmaValidationIssue]:
         """Implementation of the detection validation. It is invoked for each detection.
 
@@ -153,7 +155,7 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
     """
 
     def validate_detection(
-        self, name: str | None, detection: SigmaDetection
+        self: Self, name: str | None, detection: SigmaDetection
     ) -> list[SigmaValidationIssue]:
         """
         Iterate over all detection items of a detection definition and call
@@ -172,7 +174,7 @@ class SigmaDetectionItemValidator(SigmaDetectionValidator):
 
     @abstractmethod
     def validate_detection_item(
-        self, detection_item: SigmaDetectionItem
+        self: Self, detection_item: SigmaDetectionItem
     ) -> list[SigmaValidationIssue]:
         """Implementation of the detection item validation. It is invoked for each detection item.
 
@@ -199,7 +201,7 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
     """
 
     def validate_detection_item(
-        self, detection_item: SigmaDetectionItem
+        self: Self, detection_item: SigmaDetectionItem
     ) -> list[SigmaValidationIssue]:
         """
         Iterate over all values of a detection item and call validate_value() method for each of
@@ -208,7 +210,7 @@ class SigmaValueValidator(SigmaDetectionItemValidator):
         return [issue for value in detection_item.value for issue in self.validate_value(value)]
 
     @abstractmethod
-    def validate_value(self, value: SigmaType) -> list[SigmaValidationIssue]:
+    def validate_value(self: Self, value: SigmaType) -> list[SigmaValidationIssue]:
         """Implementation of the value validation. It is invoked for each value of a type.
 
         :param value: detection item that should be validated.
@@ -234,13 +236,13 @@ class SigmaStringValueValidator(SigmaValueValidator):
     effects in implementations of them methods mentioned above.
     """
 
-    def validate_value(self, value: SigmaType) -> list[SigmaValidationIssue]:
+    def validate_value(self: Self, value: SigmaType) -> list[SigmaValidationIssue]:
         if isinstance(value, SigmaString):
             return self.validate_string(value)
         return []
 
     @abstractmethod
-    def validate_string(self, value: SigmaString) -> list[SigmaValidationIssue]:
+    def validate_string(self: Self, value: SigmaString) -> list[SigmaValidationIssue]:
         """Implementation of the string value validation. It is invoked for each SigmaString value.
 
         :param value: detection item that should be validated.
@@ -256,10 +258,10 @@ class SigmaTagValidator(SigmaRuleValidator):
     each tag.
     """
 
-    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
+    def validate(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         super().validate(rule)
         return [issue for tag in rule.tags for issue in self.validate_tag(tag)]
 
     @abstractmethod
-    def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
+    def validate_tag(self: Self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
         """Validates a tag."""

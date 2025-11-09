@@ -5,6 +5,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, Union, cast
 
+from typing_extensions import Self
+
 import sigma.exceptions as sigma_exceptions
 from sigma.conditions import (
     ConditionAND,
@@ -71,7 +73,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     )  # Copy of original values for conversion back to data structures (and YAML/JSON)
     auto_modifiers: bool = dataclasses.field(default=True, compare=False, repr=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         if not isinstance(self.value, list) or not all(
             isinstance(val, SigmaType) for val in self.value
         ):
@@ -82,7 +84,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         if self.auto_modifiers:
             self.apply_modifiers()
 
-    def apply_modifiers(self) -> None:
+    def apply_modifiers(self: Self) -> None:
         """
         Applies modifiers to detection and values
         """
@@ -106,11 +108,11 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
 
     @classmethod
     def from_mapping(
-        cls,
+        cls: type[Self],
         key: str | None,
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
-    ) -> SigmaDetectionItem:
+    ) -> Self:
         """
         Constructs SigmaDetectionItem object from a mapping between field name containing
         modifiers and a value. This also supports keys containing only value modifiers
@@ -153,14 +155,14 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
 
     @classmethod
     def from_value(
-        cls,
+        cls: type[Self],
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
-    ) -> SigmaDetectionItem:
+    ) -> Self:
         """Convenience method for from_mapping(None, value)."""
         return cls.from_mapping(None, val, source=source)
 
-    def disable_conversion_to_plain(self) -> None:
+    def disable_conversion_to_plain(self: Self) -> None:
         """
         Mark detection item as not convertible to plain data type. This is required in cases where
         the value and original value get out of sync, e.g. because transformation are applied and
@@ -169,7 +171,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         self.original_value = None
 
     def to_plain(
-        self,
+        self: Self,
     ) -> SigmaDetectionPlainTypes:
         """
         Convert detection item into plain Python type, that can be:
@@ -220,7 +222,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             return {field_name + modifiers_prefix + "|".join(modifier_ids): value}
 
     def postprocess(
-        self,
+        self: Self,
         detections: SigmaDetections,
         parent: SigmaDetection | SigmaDetectionItem | ConditionItem | None = None,
         source: SigmaRuleLocation | None = None,
@@ -261,7 +263,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             cond.postprocess(detections, parent, self.source)
             return cond
 
-    def is_keyword(self) -> bool:
+    def is_keyword(self: Self) -> bool:
         """Returns True if detection item is a keyword detection without field reference."""
         return self.field is None
 
@@ -283,7 +285,7 @@ class SigmaDetection(ParentChainMixin):
     source: SigmaRuleLocation | None = field(default=None, compare=False)
     item_linking: type[ConditionAND | ConditionOR] | None = field(default=None)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         """Check detection validity."""
         if len(self.detection_items) == 0:
             raise sigma_exceptions.SigmaDetectionError("Detection is empty", source=self.source)
@@ -297,12 +299,12 @@ class SigmaDetection(ParentChainMixin):
 
     @classmethod
     def from_definition(
-        cls,
+        cls: type[Self],
         definition: (
             Mapping[str, Any] | list[int | float | str | bool | None] | float | str | bool | None
         ),
         source: SigmaRuleLocation | None = None,
-    ) -> SigmaDetection:
+    ) -> Self:
         """Instantiate an appropriate SigmaDetection object from a parsed Sigma detection definition."""
         if isinstance(definition, Mapping):  # key-value-definition (case 1)
             return cls(
@@ -341,7 +343,7 @@ class SigmaDetection(ParentChainMixin):
             )
 
     def to_plain(
-        self,
+        self: Self,
     ) -> SigmaDetectionPlainTypes:
         """Returns a dictionary or list representation of the detection."""
         self_detection_item_types = {
@@ -466,7 +468,7 @@ class SigmaDetection(ParentChainMixin):
                     return merged_list
 
     def postprocess(
-        self,
+        self: Self,
         detections: SigmaDetections,
         parent: SigmaDetection | SigmaDetectionItem | ConditionItem | None = None,
         source: SigmaRuleLocation | None = None,
@@ -502,7 +504,7 @@ class SigmaDetections:
     condition: list[str]
     source: SigmaRuleLocation | None = field(default=None, compare=False)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         """Detections sanity checks"""
         if self.detections == dict():
             raise sigma_exceptions.SigmaDetectionError(
@@ -516,8 +518,10 @@ class SigmaDetections:
 
     @classmethod
     def from_dict(
-        cls, detections: dict[str, Any], source: SigmaRuleLocation | None = None
-    ) -> SigmaDetections:
+        cls: type[Self],
+        detections: dict[str, Any],
+        source: SigmaRuleLocation | None = None,
+    ) -> Self:
         try:
             if isinstance(detections["condition"], list):
                 condition = detections["condition"]
@@ -538,7 +542,7 @@ class SigmaDetections:
             source=source,
         )
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self: Self) -> dict[str, Any]:
         detections = {
             identifier: detection.to_plain() for identifier, detection in self.detections.items()
         }
@@ -552,7 +556,7 @@ class SigmaDetections:
             "condition": condition,
         }
 
-    def __getitem__(self, key: str) -> SigmaDetection:
+    def __getitem__(self: Self, key: str) -> SigmaDetection:
         """Get detection by name"""
         return self.detections[key]
 
@@ -566,6 +570,6 @@ class EmptySigmaDetections(SigmaDetections):
     detections: dict[str, SigmaDetection] = field(default_factory=dict)
     condition: list[str] = field(default_factory=list)
 
-    def __post_init__(self) -> None:
+    def __post_init__(self: Self) -> None:
         # Skip all checks and initializations
         pass

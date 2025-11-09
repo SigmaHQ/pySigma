@@ -47,7 +47,7 @@ def _load_mitre_attack_data() -> Dict[str, Any]:
     - mitre_attack_mitigations: dict[str, str] mapping mitigation IDs to names
     """
     url = _custom_url if _custom_url is not None else MITRE_ATTACK_ENTERPRISE_URL
-    
+
     try:
         # Check if it's a file path (doesn't start with http:// or https://)
         if not url.startswith(("http://", "https://")):
@@ -150,25 +150,25 @@ def clear_cache() -> None:
 def set_url(url: str) -> None:
     """
     Set a custom URL or file path for loading MITRE ATT&CK data.
-    
+
     This function allows you to specify an alternative source for MITRE ATT&CK data,
     which can be either:
     - An HTTP/HTTPS URL pointing to a MITRE ATT&CK STIX JSON file
     - A local file path to a downloaded MITRE ATT&CK STIX JSON file
-    
+
     This is particularly useful in environments with restricted internet access,
     where you can download the data separately and load it from a local file.
-    
+
     Args:
         url: URL or file path to the MITRE ATT&CK data source
-        
+
     Example:
         >>> from sigma.data import mitre_attack_data
         >>> # Use a local file
         >>> mitre_attack_data.set_url("/path/to/enterprise-attack.json")
         >>> # Or use a custom URL
         >>> mitre_attack_data.set_url("https://example.com/custom-attack-data.json")
-    
+
     Note:
         This will clear any cached data, so the next access will load from the new source.
     """

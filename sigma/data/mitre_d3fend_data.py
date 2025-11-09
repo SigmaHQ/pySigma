@@ -160,25 +160,25 @@ def clear_cache() -> None:
 def set_url(url: str) -> None:
     """
     Set a custom URL or file path for loading MITRE D3FEND data.
-    
+
     This function allows you to specify an alternative source for MITRE D3FEND data,
     which can be either:
     - An HTTP/HTTPS URL pointing to a D3FEND ontology JSON file
     - A local file path to a downloaded D3FEND ontology JSON file
-    
+
     This is particularly useful in environments with restricted internet access,
     where you can download the data separately and load it from a local file.
-    
+
     Args:
         url: URL or file path to the MITRE D3FEND data source
-        
+
     Example:
         >>> from sigma.data import mitre_d3fend_data
         >>> # Use a local file
         >>> mitre_d3fend_data.set_url("/path/to/d3fend.json")
         >>> # Or use a custom URL
         >>> mitre_d3fend_data.set_url("https://example.com/custom-d3fend.json")
-    
+
     Note:
         This will clear any cached data, so the next access will load from the new source.
     """

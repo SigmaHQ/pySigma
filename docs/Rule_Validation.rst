@@ -107,6 +107,38 @@ applied to the rule. Example:
 This exclusion defines that the *wildcards_instead_of_modifiers* validator check is disabled for the
 rule with the identifier *5013332f-8a70-4e04-bcc1-06a98a2cca2e*.
 
+MITRE Data Sources
+------------------
+
+Some validator checks, such as ``ATTACKTagValidator`` and ``D3FENDTagValidator``, require access to
+MITRE ATT&CK and D3FEND data to validate tags. By default, this data is downloaded automatically
+from the official MITRE repositories when first accessed.
+
+In environments with restricted internet access, you can download the data separately and configure
+pySigma to load it from local files:
+
+.. code-block:: python
+
+    from sigma.data import mitre_attack_data, mitre_d3fend_data
+    
+    # Load MITRE ATT&CK data from a local file
+    mitre_attack_data.set_url("/path/to/enterprise-attack.json")
+    
+    # Load MITRE D3FEND data from a local file
+    mitre_d3fend_data.set_url("/path/to/d3fend.json")
+
+You can also use custom URLs if you maintain your own mirror of the MITRE data:
+
+.. code-block:: python
+
+    mitre_attack_data.set_url("https://your-mirror.example.com/enterprise-attack.json")
+    mitre_d3fend_data.set_url("https://your-mirror.example.com/d3fend.json")
+
+The data files can be obtained from:
+
+* MITRE ATT&CK: https://github.com/mitre-attack/attack-stix-data
+* MITRE D3FEND: https://github.com/d3fend/d3fend-ontology
+
 Configuration
 -------------
 

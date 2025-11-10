@@ -20,11 +20,12 @@ MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend
 
 # In-memory cache
 _cache: Optional[Dict[str, Any]] = None
+_custom_url: Optional[str] = None
 
 
 def _load_mitre_d3fend_data() -> Dict[str, Any]:
     """
-    Load MITRE D3FEND data from the D3FEND ontology.
+    Load MITRE D3FEND data from the D3FEND ontology or a custom URL/file.
 
     Returns a dictionary with the following keys:
     - mitre_d3fend_version: D3FEND version
@@ -35,15 +36,29 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
     ontology_data = None
     last_error = None
 
-    # Try primary URL first, then fallback
-    for url in [MITRE_D3FEND_ONTOLOGY_URL, MITRE_D3FEND_ONTOLOGY_FALLBACK_URL]:
+    # If custom URL is set, use it
+    if _custom_url is not None:
+        url = _custom_url
         try:
-            with urlopen(url, timeout=30) as response:
-                ontology_data = json.load(response)
-                break
-        except (URLError, json.JSONDecodeError) as e:
-            last_error = e
-            continue
+            # Check if it's a file path (doesn't start with http:// or https://)
+            if not url.startswith(("http://", "https://")):
+                with open(url, "r", encoding="utf-8") as f:
+                    ontology_data = json.load(f)
+            else:
+                with urlopen(url, timeout=30) as response:
+                    ontology_data = json.load(response)
+        except (URLError, json.JSONDecodeError, OSError, IOError) as e:
+            raise RuntimeError(f"Failed to load MITRE D3FEND data from custom URL: {e}") from e
+    else:
+        # Try primary URL first, then fallback
+        for url in [MITRE_D3FEND_ONTOLOGY_URL, MITRE_D3FEND_ONTOLOGY_FALLBACK_URL]:
+            try:
+                with urlopen(url, timeout=30) as response:
+                    ontology_data = json.load(response)
+                    break
+            except (URLError, json.JSONDecodeError) as e:
+                last_error = e
+                continue
 
     if ontology_data is None:
         raise RuntimeError(f"Failed to load MITRE D3FEND data: {last_error}") from last_error
@@ -140,3 +155,33 @@ def clear_cache() -> None:
     """Clear the in-memory cache. Mainly useful for testing."""
     global _cache
     _cache = None
+
+
+def set_url(url: str) -> None:
+    """
+    Set a custom URL or file path for loading MITRE D3FEND data.
+
+    This function allows you to specify an alternative source for MITRE D3FEND data,
+    which can be either:
+    - An HTTP/HTTPS URL pointing to a D3FEND ontology JSON file
+    - A local file path to a downloaded D3FEND ontology JSON file
+
+    This is particularly useful in environments with restricted internet access,
+    where you can download the data separately and load it from a local file.
+
+    Args:
+        url: URL or file path to the MITRE D3FEND data source
+
+    Example:
+        >>> from sigma.data import mitre_d3fend_data
+        >>> # Use a local file
+        >>> mitre_d3fend_data.set_url("/path/to/d3fend.json")
+        >>> # Or use a custom URL
+        >>> mitre_d3fend_data.set_url("https://example.com/custom-d3fend.json")
+
+    Note:
+        This will clear any cached data, so the next access will load from the new source.
+    """
+    global _custom_url
+    _custom_url = url
+    clear_cache()

@@ -24,3 +24,4 @@ Version 1.0
 - Query finalization in rule conversion was splitted into a ``finish`` step that is intended to amend the query, e.g. for handling deferred expressions or field selections and finalization for conversion into the target output format. The main difference is that the finalization step normally isn't executed for correlation rules while ``finish`` is.
 - Migrated to ``pyYAML`` ``CSafeLoader``.
 - ``SigmaCollection`` now resolves rule references by default on initialization. This behavior can be disabled with the optional ``resolve_references`` parameter.
+- MITRE ATT&CK and D3FEND data is now downloaded on-demand instead of being shipped with the library. In restricted environments, use ``mitre_attack_data.set_url()`` and ``mitre_d3fend_data.set_url()`` to load data from local files. Data files can be obtained from https://github.com/mitre-attack/attack-stix-data and https://github.com/d3fend/d3fend-ontology.

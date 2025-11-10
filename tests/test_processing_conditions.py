@@ -311,42 +311,38 @@ def sigma_rule_with_list_attribute():
                 fieldA: value
             condition: sel
         level: low
-        _sourcetype:
-            - linux_secure
-            - windows_sysmon
+        custom:
+            - valueA
+            - valueB
     """
     )
 
 
 def test_rule_attribute_condition_list_eq_match(sigma_rule_with_list_attribute):
-    assert RuleAttributeCondition("_sourcetype", "linux_secure", "eq").match(
-        sigma_rule_with_list_attribute
-    )
+    assert RuleAttributeCondition("custom", "valueA", "in").match(sigma_rule_with_list_attribute)
 
 
 def test_rule_attribute_condition_list_eq_nomatch(sigma_rule_with_list_attribute):
-    assert not RuleAttributeCondition("_sourcetype", "other_value", "eq").match(
+    assert not RuleAttributeCondition("custom", "valueC", "in").match(
         sigma_rule_with_list_attribute
     )
 
 
 def test_rule_attribute_condition_list_ne_match(sigma_rule_with_list_attribute):
-    assert RuleAttributeCondition("_sourcetype", "other_value", "ne").match(
+    assert RuleAttributeCondition("custom", "valueC", "not_in").match(
         sigma_rule_with_list_attribute
     )
 
 
 def test_rule_attribute_condition_list_ne_nomatch(sigma_rule_with_list_attribute):
-    assert not RuleAttributeCondition("_sourcetype", "linux_secure", "ne").match(
+    assert not RuleAttributeCondition("custom", "valueA", "not_in").match(
         sigma_rule_with_list_attribute
     )
 
 
 def test_rule_attribute_condition_list_invalid_op(sigma_rule_with_list_attribute):
     with pytest.raises(SigmaConfigurationError, match="Invalid operation.*for list comparison"):
-        RuleAttributeCondition("_sourcetype", "linux_secure", "gte").match(
-            sigma_rule_with_list_attribute
-        )
+        RuleAttributeCondition("custom", "valueA", "gte").match(sigma_rule_with_list_attribute)
 
 
 def test_rule_tag_condition_match(sigma_rule):

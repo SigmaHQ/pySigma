@@ -130,9 +130,9 @@ class RuleAttributeCondition(RuleProcessingCondition):
     """
     Generic match on rule attributes with supported types:
 
-    * strings (exact matches)
-    * UUIDs (exact matches)
-    * lists (membership checks with eq/ne operations only)
+    * strings (exact matches with eq/ne)
+    * UUIDs (exact matches with eq/ne)
+    * lists (membership checks with in/not_in operations only)
     * numbers (relations: eq, ne, gte, ge, lte, le)
     * dates (relations: eq, ne, gte, ge, lte, le)
     * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
@@ -145,7 +145,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
     attribute: str
     value: Union[str, int, float]
-    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt", "in", "not_in"] = field(default="eq")
     op_methods: ClassVar[dict[str, str]] = {
         "eq": "__eq__",
         "ne": "__ne__",
@@ -156,7 +156,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
     }
 
     def __post_init__(self) -> None:
-        if self.op not in self.op_methods:
+        if self.op not in self.op_methods and self.op not in ("in", "not_in"):
             raise SigmaConfigurationError(
                 f"Invalid operation '{self.op}' in rule attribute condition {str(self)}."
             )
@@ -176,13 +176,13 @@ class RuleAttributeCondition(RuleProcessingCondition):
         # Finally, value has some comparable type
         compare_value: Union[str, int, float, date, SigmaLevel, SigmaStatus]
         if isinstance(value, list):  # list membership check
-            if self.op == "eq":
+            if self.op == "in":
                 return self.value in value
-            elif self.op == "ne":
+            elif self.op == "not_in":
                 return self.value not in value
             else:
                 raise SigmaConfigurationError(
-                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}. Only 'eq' and 'ne' are supported."
+                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}. Only 'in' and 'not_in' are supported."
                 )
         elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":

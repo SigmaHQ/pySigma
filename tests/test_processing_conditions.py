@@ -345,6 +345,22 @@ def test_rule_attribute_condition_list_invalid_op(sigma_rule_with_list_attribute
         RuleAttributeCondition("custom", "valueA", "gte").match(sigma_rule_with_list_attribute)
 
 
+def test_rule_attribute_condition_list_eq_always_false(sigma_rule_with_list_attribute):
+    # eq operator on lists always returns False
+    assert not RuleAttributeCondition("custom", "valueA", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueC", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_always_true(sigma_rule_with_list_attribute):
+    # ne operator on lists always returns True
+    assert RuleAttributeCondition("custom", "valueA", "ne").match(sigma_rule_with_list_attribute)
+    assert RuleAttributeCondition("custom", "valueC", "ne").match(sigma_rule_with_list_attribute)
+
+
 def test_rule_tag_condition_match(sigma_rule):
     assert RuleTagCondition("test.tag").match(sigma_rule)
 

@@ -340,9 +340,20 @@ def test_rule_attribute_condition_list_ne_nomatch(sigma_rule_with_list_attribute
     )
 
 
-def test_rule_attribute_condition_list_invalid_op(sigma_rule_with_list_attribute):
-    with pytest.raises(SigmaConfigurationError, match="Invalid operation.*for list comparison"):
-        RuleAttributeCondition("custom", "valueA", "gte").match(sigma_rule_with_list_attribute)
+def test_rule_attribute_condition_list_numeric_ops_always_false(sigma_rule_with_list_attribute):
+    # Numeric comparison operators on lists always return False
+    assert not RuleAttributeCondition("custom", "valueA", "gte").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "gt").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "lte").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "lt").match(
+        sigma_rule_with_list_attribute
+    )
 
 
 def test_rule_attribute_condition_list_eq_always_false(sigma_rule_with_list_attribute):

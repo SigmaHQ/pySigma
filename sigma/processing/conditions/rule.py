@@ -132,7 +132,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
     * strings (exact matches with eq/ne)
     * UUIDs (exact matches with eq/ne)
-    * lists (membership checks with in/not_in; eq always returns False, ne always returns True)
+    * lists (membership checks with in/not_in; eq/gte/gt/lte/lt always return False, ne always returns True)
     * numbers (relations: eq, ne, gte, ge, lte, le)
     * dates (relations: eq, ne, gte, ge, lte, le)
     * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
@@ -184,9 +184,11 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 return False  # A list will never equal a single value
             elif self.op == "ne":
                 return True  # A list will never equal a single value
+            elif self.op in ("gte", "gt", "lte", "lt"):
+                return False  # A list cannot be compared numerically to a single value
             else:
                 raise SigmaConfigurationError(
-                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}. Only 'in', 'not_in', 'eq', and 'ne' are supported."
+                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}."
                 )
         elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":

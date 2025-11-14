@@ -298,6 +298,80 @@ def test_rule_attribute_condition_invalid_rule_field_type(sigma_rule):
         RuleAttributeCondition("related", "08fbc97d-0a2f-491c-ae21-8ffcfd3174e9").match(sigma_rule)
 
 
+@pytest.fixture
+def sigma_rule_with_list_attribute():
+    return SigmaRule.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            category: test_category
+        detection:
+            sel:
+                fieldA: value
+            condition: sel
+        level: low
+        custom:
+            - valueA
+            - valueB
+    """
+    )
+
+
+def test_rule_attribute_condition_list_eq_match(sigma_rule_with_list_attribute):
+    assert RuleAttributeCondition("custom", "valueA", "in").match(sigma_rule_with_list_attribute)
+
+
+def test_rule_attribute_condition_list_eq_nomatch(sigma_rule_with_list_attribute):
+    assert not RuleAttributeCondition("custom", "valueC", "in").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_match(sigma_rule_with_list_attribute):
+    assert RuleAttributeCondition("custom", "valueC", "not_in").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_nomatch(sigma_rule_with_list_attribute):
+    assert not RuleAttributeCondition("custom", "valueA", "not_in").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_numeric_ops_always_false(sigma_rule_with_list_attribute):
+    # Numeric comparison operators on lists always return False
+    assert not RuleAttributeCondition("custom", "valueA", "gte").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "gt").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "lte").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueA", "lt").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_eq_always_false(sigma_rule_with_list_attribute):
+    # eq operator on lists always returns False
+    assert not RuleAttributeCondition("custom", "valueA", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+    assert not RuleAttributeCondition("custom", "valueC", "eq").match(
+        sigma_rule_with_list_attribute
+    )
+
+
+def test_rule_attribute_condition_list_ne_always_true(sigma_rule_with_list_attribute):
+    # ne operator on lists always returns True
+    assert RuleAttributeCondition("custom", "valueA", "ne").match(sigma_rule_with_list_attribute)
+    assert RuleAttributeCondition("custom", "valueC", "ne").match(sigma_rule_with_list_attribute)
+
+
 def test_rule_tag_condition_match(sigma_rule):
     assert RuleTagCondition("test.tag").match(sigma_rule)
 

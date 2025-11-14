@@ -130,21 +130,22 @@ class RuleAttributeCondition(RuleProcessingCondition):
     """
     Generic match on rule attributes with supported types:
 
-    * strings (exact matches)
-    * UUIDs (exact matches)
+    * strings (exact matches with eq/ne)
+    * UUIDs (exact matches with eq/ne)
+    * lists (membership checks with in/not_in; eq/gte/gt/lte/lt always return False, ne always returns True)
     * numbers (relations: eq, ne, gte, ge, lte, le)
     * dates (relations: eq, ne, gte, ge, lte, le)
     * Rule severity levels (relations: eq, ne, gte, ge, lte, le)
     * Rule statuses (relations: eq, ne, gte, ge, lte, le)
 
-    Fields that contain lists of values, maps or other complex data structures are not supported and
+    Fields that contain maps or other complex data structures are not supported and
     raise a SigmaConfigurationError. If the type of the value doesn't allows a particular relation, the
     condition also raises a SigmaConfigurationError on match.
     """
 
     attribute: str
     value: Union[str, int, float]
-    op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
+    op: Literal["eq", "ne", "gte", "gt", "lte", "lt", "in", "not_in"] = field(default="eq")
     op_methods: ClassVar[dict[str, str]] = {
         "eq": "__eq__",
         "ne": "__ne__",
@@ -155,7 +156,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
     }
 
     def __post_init__(self) -> None:
-        if self.op not in self.op_methods:
+        if self.op not in self.op_methods and self.op not in ("in", "not_in"):
             raise SigmaConfigurationError(
                 f"Invalid operation '{self.op}' in rule attribute condition {str(self)}."
             )
@@ -174,7 +175,22 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
         # Finally, value has some comparable type
         compare_value: Union[str, int, float, date, SigmaLevel, SigmaStatus]
-        if isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
+        if isinstance(value, list):  # list membership check
+            if self.op == "in":
+                return self.value in value
+            elif self.op == "not_in":
+                return self.value not in value
+            elif self.op == "eq":
+                return False  # A list will never equal a single value
+            elif self.op == "ne":
+                return True  # A list will never equal a single value
+            elif self.op in ("gte", "gt", "lte", "lt"):
+                return False  # A list cannot be compared numerically to a single value
+            else:
+                raise SigmaConfigurationError(
+                    f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}."
+                )
+        elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":
                 return str(value) == self.value
             elif self.op == "ne":

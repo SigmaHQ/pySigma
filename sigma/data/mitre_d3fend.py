@@ -2,13 +2,18 @@
 MITRE D3FEND data loader for pySigma.
 
 This module provides on-demand access to MITRE D3FEND data by downloading it from
-the official D3FEND GitHub repository. Data is cached in memory to avoid repeated downloads.
+the official D3FEND GitHub repository. Data is cached on disk using diskcache
+to avoid repeated downloads across sessions.
 """
 
 import json
+import os
+from pathlib import Path
 from typing import Any, Optional, Dict
 from urllib.error import URLError
 from urllib.request import urlopen
+
+import diskcache
 
 # URLs for MITRE D3FEND data - using the GitHub repository
 MITRE_D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
@@ -16,9 +21,23 @@ MITRE_D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
 # Fallback URL if the main one is not available
 MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
 
-# In-memory cache
-_cache: Optional[Dict[str, Any]] = None
+# Cache directory (in user's cache directory)
+_DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pysigma" / "mitre_d3fend"
+
+# Disk cache instance
+_cache: Optional[diskcache.Cache] = None
 _custom_url: Optional[str] = None
+_custom_cache_dir: Optional[Path] = None
+
+
+def _get_cache() -> diskcache.Cache:
+    """Get or initialize the disk cache."""
+    global _cache
+    if _cache is None:
+        cache_dir = _custom_cache_dir if _custom_cache_dir is not None else _DEFAULT_CACHE_DIR
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        _cache = diskcache.Cache(str(cache_dir))
+    return _cache
 
 
 def _load_mitre_d3fend_data() -> Dict[str, Any]:
@@ -31,6 +50,14 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
     - mitre_d3fend_techniques: dict[str, str] mapping technique IDs to names
     - mitre_d3fend_artifacts: dict[str, str] mapping artifact IDs to names
     """
+    cache = _get_cache()
+    cache_key = f"mitre_d3fend_data_{_custom_url or 'default'}"
+
+    # Try to get from cache first
+    cached_data = cache.get(cache_key)
+    if cached_data is not None:
+        return cached_data
+
     ontology_data = None
     last_error = None
 
@@ -135,20 +162,22 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
             "Model": "Model",
         }
 
-    return {
+    result = {
         "mitre_d3fend_version": version,
         "mitre_d3fend_tactics": tactics,
         "mitre_d3fend_techniques": techniques,
         "mitre_d3fend_artifacts": artifacts,
     }
 
+    # Store in cache
+    cache.set(cache_key, result)
+
+    return result
+
 
 def _get_cached_data() -> Dict[str, Any]:
     """Get cached MITRE D3FEND data, loading it if necessary."""
-    global _cache
-    if _cache is None:
-        _cache = _load_mitre_d3fend_data()
-    return _cache
+    return _load_mitre_d3fend_data()
 
 
 def __getattr__(name: str) -> Any:
@@ -166,9 +195,9 @@ def __getattr__(name: str) -> Any:
 
 
 def clear_cache() -> None:
-    """Clear the in-memory cache. Mainly useful for testing."""
-    global _cache
-    _cache = None
+    """Clear the disk cache. Useful for testing or forcing a refresh."""
+    cache = _get_cache()
+    cache.clear()
 
 
 def set_url(url: str) -> None:
@@ -187,15 +216,36 @@ def set_url(url: str) -> None:
         url: URL or file path to the MITRE D3FEND data source
 
     Example:
-        >>> from sigma.data import mitre_d3fend_data
+        >>> from sigma.data import mitre_d3fend
         >>> # Use a local file
-        >>> mitre_d3fend_data.set_url("/path/to/d3fend.json")
+        >>> mitre_d3fend.set_url("/path/to/d3fend.json")
         >>> # Or use a custom URL
-        >>> mitre_d3fend_data.set_url("https://example.com/custom-d3fend.json")
+        >>> mitre_d3fend.set_url("https://example.com/custom-d3fend.json")
 
     Note:
-        This will clear any cached data, so the next access will load from the new source.
+        This will clear the cached data, so the next access will load from the new source.
     """
     global _custom_url
     _custom_url = url
     clear_cache()
+
+
+def set_cache_dir(cache_dir: str) -> None:
+    """
+    Set a custom cache directory for storing MITRE D3FEND data.
+
+    Args:
+        cache_dir: Path to the cache directory
+
+    Example:
+        >>> from sigma.data import mitre_d3fend
+        >>> mitre_d3fend.set_cache_dir("/custom/cache/path")
+
+    Note:
+        This will close the current cache and create a new one in the specified directory.
+    """
+    global _cache, _custom_cache_dir
+    _custom_cache_dir = Path(cache_dir)
+    if _cache is not None:
+        _cache.close()
+        _cache = None

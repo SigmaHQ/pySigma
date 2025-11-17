@@ -30,7 +30,7 @@ from sigma.validators.core.tags import (
     TagFormatValidator,
     InvalidTagFormatIssue,
 )
-from sigma.data import mitre_attack_data, mitre_d3fend_data
+from sigma.data import mitre_attack, mitre_d3fend
 
 
 def test_validator_invalid_attack_tags():
@@ -284,8 +284,8 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
     monkeypatch.undo()
 
     # Save the original state
-    original_cache = mitre_attack_data._cache
-    original_url = mitre_attack_data._custom_url
+    original_cache = mitre_attack._cache
+    original_url = mitre_attack._custom_url
 
     # Create a temporary file with minimal MITRE ATT&CK data
     attack_data = {
@@ -311,10 +311,10 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
 
     try:
         # Use set_url which clears cache and sets custom URL
-        mitre_attack_data.set_url(temp_path)
+        mitre_attack.set_url(temp_path)
 
         # Access the data to trigger loading
-        techniques = mitre_attack_data.mitre_attack_techniques
+        techniques = mitre_attack.mitre_attack_techniques
         assert "T9999" in techniques
         assert techniques["T9999"] == "Test Technique"
 
@@ -337,8 +337,8 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
-        mitre_attack_data._cache = original_cache
-        mitre_attack_data._custom_url = original_url
+        mitre_attack._cache = original_cache
+        mitre_attack._custom_url = original_url
         os.unlink(temp_path)
 
 
@@ -350,8 +350,8 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
     monkeypatch.undo()
 
     # Save the original state
-    original_cache = mitre_d3fend_data._cache
-    original_url = mitre_d3fend_data._custom_url
+    original_cache = mitre_d3fend._cache
+    original_url = mitre_d3fend._custom_url
 
     # Create a temporary file with minimal D3FEND data
     d3fend_data = {
@@ -378,10 +378,10 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
 
     try:
         # Use set_url which clears cache and sets custom URL
-        mitre_d3fend_data.set_url(temp_path)
+        mitre_d3fend.set_url(temp_path)
 
         # Access the data to trigger loading
-        techniques = mitre_d3fend_data.mitre_d3fend_techniques
+        techniques = mitre_d3fend.mitre_d3fend_techniques
         assert "D3-TEST" in techniques
         assert techniques["D3-TEST"] == "Test Technique"
 
@@ -404,6 +404,6 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
-        mitre_d3fend_data._cache = original_cache
-        mitre_d3fend_data._custom_url = original_url
+        mitre_d3fend._cache = original_cache
+        mitre_d3fend._custom_url = original_url
         os.unlink(temp_path)

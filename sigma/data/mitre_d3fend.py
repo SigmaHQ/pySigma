@@ -11,9 +11,7 @@ from urllib.error import URLError
 from urllib.request import urlopen
 
 # URLs for MITRE D3FEND data - using the GitHub repository
-MITRE_D3FEND_ONTOLOGY_URL = (
-    "https://raw.githubusercontent.com/d3fend/d3fend-ontology/master/d3fend.json"
-)
+MITRE_D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
 
 # Fallback URL if the main one is not available
 MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"

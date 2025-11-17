@@ -68,9 +68,13 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
             version_iri = item.get("owl:versionIRI", "")
             if version_iri:
                 # Extract version from IRI like "http://d3fend.mitre.org/ontologies/d3fend/0.16.0"
-                parts = version_iri.rstrip("/").split("/")
-                if parts:
-                    version = parts[-1]
+                # version_iri can be a string or a dict with @id
+                if isinstance(version_iri, dict):
+                    version_iri = version_iri.get("@id", "")
+                if isinstance(version_iri, str):
+                    parts = version_iri.rstrip("/").split("/")
+                    if parts:
+                        version = parts[-1]
             break
 
     tactics = {}
@@ -78,34 +82,46 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
     artifacts = {}
 
     # Parse the D3FEND ontology graph
+    # The ontology is a JSON-LD graph where each item represents an entity
+    # Tactics: have "@type" containing "d3f:DefensiveTactic" and "rdfs:label" (e.g., "Detect", "Isolate")
+    # Techniques: have "d3f:d3fend-id" field with IDs like "D3-AA", "D3-MFA" and "rdfs:label" for names
+    # Artifacts: have "@type" containing "d3f:DigitalArtifact" and "rdfs:label"
     for item in ontology_data.get("@graph", []):
         item_type = item.get("@type")
         item_id = item.get("@id", "")
         label = item.get("rdfs:label", "")
+        d3fend_id = item.get("d3f:d3fend-id", "")
 
-        # Convert item_type to string for checking if it's a list
+        # Convert item_type to string/list for checking
         if isinstance(item_type, list):
-            item_type_str = " ".join(str(t) for t in item_type)
+            item_type_list = [str(t) for t in item_type]
         else:
-            item_type_str = str(item_type)
+            item_type_list = [str(item_type)] if item_type else []
 
-        # Extract tactics (defensive tactics)
-        if "d3f:DefensiveTactic" in item_type_str or "DigitalTactic" in item_type_str:
+        # Extract tactics (defensive tactics) - has d3f:DefensiveTactic in @type
+        if "d3f:DefensiveTactic" in item_type_list:
             if label:
-                tactics[label] = label
+                # Handle label being a list or string
+                tactic_label = label[0] if isinstance(label, list) else label
+                if tactic_label:
+                    tactics[tactic_label] = tactic_label
 
-        # Extract techniques (defensive techniques) - look for D3- prefixed items
-        if "#D3-" in item_id or "/D3-" in item_id:
-            tech_id = item_id.split("#")[-1] if "#" in item_id else item_id.split("/")[-1]
-            if tech_id.startswith("D3-") and label:
-                techniques[tech_id] = label
+        # Extract techniques - items with d3f:d3fend-id field (like D3-AA, D3-DO, etc.)
+        if d3fend_id and d3fend_id.startswith("D3-"):
+            if label:
+                # Handle label being a list or string
+                tech_label = label[0] if isinstance(label, list) else label
+                if tech_label:
+                    techniques[d3fend_id] = tech_label
 
-        # Extract artifacts
-        elif "d3f:DigitalArtifact" in item_type_str:
-            if "#" in item_id:
+        # Extract artifacts - not currently used but kept for future compatibility
+        # Digital artifacts don't have d3fend-id but have d3f:DigitalArtifact type
+        if not d3fend_id and "d3f:DigitalArtifact" in " ".join(item_type_list):
+            if label and "#" in item_id:
                 artifact_id = item_id.split("#")[-1]
-                if label:
-                    artifacts[artifact_id] = label
+                artifact_label = label[0] if isinstance(label, list) else label
+                if artifact_label:
+                    artifacts[artifact_id] = artifact_label
 
     # Default tactics if none found (standard D3FEND tactics)
     if not tactics:

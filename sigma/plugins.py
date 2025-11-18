@@ -227,15 +227,6 @@ class InstalledSigmaPlugins:
         Returns:
             The identifier of the backend object in snake_case or the default identifier.
         """
-
-        def removesuffix(base: str, suffix: str) -> str:
-            """Removes the suffix from the string if it exists.
-            This is a backport of the Python 3.9 removesuffix method.
-            """
-            if base.endswith(suffix):
-                return base[: len(base) - len(suffix)]
-            return base
-
         try:
             # 1. Try to get the obj.identifier attribute.
             identifier = getattr(obj, "identifier", None)
@@ -250,9 +241,9 @@ class InstalledSigmaPlugins:
 
             # 4. Convert the name to snake_case.
             if isinstance(identifier, str):
-                identifier = removesuffix(identifier, "Backend")
-                identifier = removesuffix(identifier, "backend")
-                identifier = removesuffix(identifier, "_")
+                identifier = identifier.removesuffix("Backend")
+                identifier = identifier.removesuffix("backend")
+                identifier = identifier.removesuffix("_")
                 words = re.findall(r"[A-Z](?:[A-Z0-9]*(?![a-z0-9])|[a-z0-9]*)", identifier)
                 if len(words) == 0:
                     return identifier.lower()

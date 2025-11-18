@@ -6,7 +6,7 @@ pySigma is a Python library for parsing and converting Sigma rules into queries.
 
 ## Technology Stack
 
-- **Language**: Python 3.9+
+- **Language**: Python 3.10+
 - **Package Manager**: Poetry
 - **Testing**: pytest with pytest-cov for coverage
 - **Linting**: black (line length: 100), pylint

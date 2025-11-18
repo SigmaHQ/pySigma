@@ -11,7 +11,6 @@ classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "License :: OSI Approved :: GNU Lesser General Public License v2 (LGPLv2)",
-    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -29,7 +28,7 @@ packages = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = "^3.10"
 packaging = "^25.0"
 pyparsing = "^3.2"
 pyyaml = "^6.0.3"
@@ -49,7 +48,7 @@ pylint = "^3.3"
 pytest = "^8.4"
 pytest-cov = "^6.2"
 pytest-mypy = "^1.0"
-Sphinx = "^7.4" # 8.0 is not compatible with Python 3.9
+Sphinx = "^7.4"
 defusedxml = "^0.7"
 types-requests = "^2.32.0.20250306"
 

@@ -384,6 +384,21 @@ files = [
 ]
 
 [[package]]
+name = "diskcache-stubs"
+version = "5.6.3.6.20240818"
+description = "diskcache stubs"
+optional = false
+python-versions = ">=3"
+groups = ["main"]
+files = [
+    {file = "diskcache_stubs-5.6.3.6.20240818-py3-none-any.whl", hash = "sha256:e1db90940b344140730976abe79f57f5b43ca296cbb43fa95da0c69b12d5de4f"},
+    {file = "diskcache_stubs-5.6.3.6.20240818.tar.gz", hash = "sha256:b6eb43899e906b3167a20ac09a9a226f30267a306a96542ea720ebbfc3282796"},
+]
+
+[package.dependencies]
+typing-extensions = ">=4.4.0"
+
+[[package]]
 name = "distlib"
 version = "0.4.0"
 description = "Distribution utilities"
@@ -1339,4 +1354,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.9"
-content-hash = "077a9f690f3448dae41e7071b991ae15aac23b36eedbb792f11f871a47ed6a8b"
+content-hash = "c1b0f676a820f10677c58cfcc60746abd434a1b3f3ede1c6aaa98acc06548079"

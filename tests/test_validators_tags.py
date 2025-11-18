@@ -30,7 +30,7 @@ from sigma.validators.core.tags import (
     TagFormatValidator,
     InvalidTagFormatIssue,
 )
-from sigma.data import mitre_attack_data, mitre_d3fend_data
+from sigma.data import mitre_attack, mitre_d3fend
 
 
 def test_validator_invalid_attack_tags():
@@ -284,8 +284,8 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
     monkeypatch.undo()
 
     # Save the original state
-    original_cache = mitre_attack_data._cache
-    original_url = mitre_attack_data._custom_url
+    original_cache = mitre_attack._cache
+    original_url = mitre_attack._custom_url
 
     # Create a temporary file with minimal MITRE ATT&CK data
     attack_data = {
@@ -311,10 +311,10 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
 
     try:
         # Use set_url which clears cache and sets custom URL
-        mitre_attack_data.set_url(temp_path)
+        mitre_attack.set_url(temp_path)
 
         # Access the data to trigger loading
-        techniques = mitre_attack_data.mitre_attack_techniques
+        techniques = mitre_attack.mitre_attack_techniques
         assert "T9999" in techniques
         assert techniques["T9999"] == "Test Technique"
 
@@ -337,8 +337,8 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
-        mitre_attack_data._cache = original_cache
-        mitre_attack_data._custom_url = original_url
+        mitre_attack._cache = original_cache
+        mitre_attack._custom_url = original_url
         os.unlink(temp_path)
 
 
@@ -350,8 +350,8 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
     monkeypatch.undo()
 
     # Save the original state
-    original_cache = mitre_d3fend_data._cache
-    original_url = mitre_d3fend_data._custom_url
+    original_cache = mitre_d3fend._cache
+    original_url = mitre_d3fend._custom_url
 
     # Create a temporary file with minimal D3FEND data
     d3fend_data = {
@@ -361,13 +361,15 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
                 "owl:versionIRI": "http://d3fend.mitre.org/ontologies/d3fend/99.9",
             },
             {
-                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#D3-TEST",
-                "@type": "d3f:DefensiveTechnique",
+                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#TestTechnique",
+                "@type": ["owl:Class", "owl:NamedIndividual"],
+                "d3f:d3fend-id": "D3-TEST",
                 "rdfs:label": "Test Technique",
             },
             {
-                "@type": "d3f:DefensiveTactic",
-                "rdfs:label": "test-tactic",
+                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#TestTactic",
+                "@type": ["owl:Class", "owl:NamedIndividual", "d3f:DefensiveTactic"],
+                "rdfs:label": "TestTactic",
             },
         ]
     }
@@ -378,10 +380,10 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
 
     try:
         # Use set_url which clears cache and sets custom URL
-        mitre_d3fend_data.set_url(temp_path)
+        mitre_d3fend.set_url(temp_path)
 
         # Access the data to trigger loading
-        techniques = mitre_d3fend_data.mitre_d3fend_techniques
+        techniques = mitre_d3fend.mitre_d3fend_techniques
         assert "D3-TEST" in techniques
         assert techniques["D3-TEST"] == "Test Technique"
 
@@ -404,6 +406,91 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
-        mitre_d3fend_data._cache = original_cache
-        mitre_d3fend_data._custom_url = original_url
+        mitre_d3fend._cache = original_cache
+        mitre_d3fend._custom_url = original_url
         os.unlink(temp_path)
+
+
+@pytest.mark.online
+def test_validator_valid_attack_tags_online(monkeypatch):
+    """Test ATT&CK tag validator with real data downloaded from the internet."""
+    # Remove the monkeypatch to use real data
+    monkeypatch.undo()
+
+    # Clear cache to force fresh download
+    mitre_attack.clear_cache()
+
+    validator = ATTACKTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    tags:
+        - attack.command-and-control
+        - attack.t1001.001
+        - attack.g0001
+        - attack.s0001
+    """
+    )
+    issues = validator.validate(rule)
+
+    # Print debug info if test fails
+    if issues:
+        print(f"\nValidation issues: {[str(i.tag) for i in issues]}")
+        print(f"Sample tactics: {list(mitre_attack.mitre_attack_tactics.values())[:5]}")
+        print(f"Sample techniques: {list(mitre_attack.mitre_attack_techniques.keys())[:10]}")
+        print(f"Sample groups: {list(mitre_attack.mitre_attack_intrusion_sets.keys())[:5]}")
+        print(f"Sample software: {list(mitre_attack.mitre_attack_software.keys())[:5]}")
+
+    assert issues == []
+
+
+@pytest.mark.online
+def test_validator_valid_d3fend_tags_online(monkeypatch):
+    """Test D3FEND tag validator with real data downloaded from the internet."""
+    # Remove the monkeypatch to use real data
+    monkeypatch.undo()
+
+    # Clear cache to force fresh download
+    mitre_d3fend.clear_cache()
+
+    validator = D3FENDTagValidator()
+    rule = SigmaRule.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        tags:
+            - d3fend.isolate
+            - d3fend.d3-mfa
+        """
+    )
+
+    # Get the validation result
+    issues = validator.validate(rule)
+
+    # Print the allowed tags for debugging if test fails
+    if issues:
+        print(f"Validation issues: {issues}")
+        print(
+            f"Allowed tactics: {sorted([t for t in mitre_d3fend.mitre_d3fend_tactics.keys()])[:10]}"
+        )
+        print(
+            f"Allowed techniques: {sorted([t for t in mitre_d3fend.mitre_d3fend_techniques.keys()])[:10]}"
+        )
+        print(
+            f"Allowed artifacts: {sorted([t for t in mitre_d3fend.mitre_d3fend_artifacts.keys()])[:10]}"
+        )
+
+    assert issues == []

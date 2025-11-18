@@ -4,6 +4,8 @@ Pytest configuration and fixtures for pySigma tests.
 
 import pytest
 
+from sigma.data import mitre_attack
+
 
 # Mock MITRE ATT&CK data for testing
 MOCK_ATTACK_DATA = {
@@ -56,7 +58,7 @@ MOCK_D3FEND_DATA = {
 @pytest.fixture(autouse=True)
 def mock_mitre_data(monkeypatch):
     """Mock MITRE ATT&CK and D3FEND data to avoid network calls in tests."""
-    from sigma.data import mitre_attack_data, mitre_d3fend_data
+    from sigma.data import mitre_d3fend
 
     # Mock the _get_cached_data functions to return our mock data
     def mock_attack_cached_data():
@@ -65,9 +67,9 @@ def mock_mitre_data(monkeypatch):
     def mock_d3fend_cached_data():
         return MOCK_D3FEND_DATA
 
-    monkeypatch.setattr(mitre_attack_data, "_get_cached_data", mock_attack_cached_data)
-    monkeypatch.setattr(mitre_d3fend_data, "_get_cached_data", mock_d3fend_cached_data)
+    monkeypatch.setattr(mitre_attack, "_get_cached_data", mock_attack_cached_data)
+    monkeypatch.setattr(mitre_d3fend, "_get_cached_data", mock_d3fend_cached_data)
 
     # Clear any existing cache
-    mitre_attack_data.clear_cache()
-    mitre_d3fend_data.clear_cache()
+    mitre_attack.clear_cache()
+    mitre_d3fend.clear_cache()

@@ -12,7 +12,7 @@ vendor-agnostic. See the *Related Projects* section below to get an overview.
 
 ## Getting Started
 
-To start using `pySigma`, install it using your python package manager of choice. Examples:
+To start using `pySigma`, you need Python 3.10 or later. Install it using your python package manager of choice. Examples:
 
 ```
 pip install pysigma

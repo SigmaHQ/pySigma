@@ -5,6 +5,11 @@ This page documents breaking changes in pySigma. Normally, we try to avoid break
 versions and generally try to keep pySigma backwards compatible, but sometimes they are necessary to
 improve the library.
 
+Version 1.1
+-----------
+
+- **Python 3.10+ required**: The minimum required Python version has been updated from 3.9 to 3.10. Python 3.9 reached end-of-life and is no longer supported. Users must upgrade to Python 3.10 or later to use this version of pySigma.
+
 Version 1.0
 -----------
 

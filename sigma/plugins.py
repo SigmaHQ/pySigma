@@ -13,7 +13,8 @@ from typing import Callable, Any, Optional, Union, get_type_hints
 from uuid import UUID
 import requests
 from packaging.version import Version
-from packaging.specifiers import Specifier
+from packaging.specifiers import Specifier, SpecifierSet
+from packaging.requirements import Requirement
 import warnings
 
 from sigma.conversion.base import Backend
@@ -395,6 +396,114 @@ class SigmaPlugin:
     def uninstall(self) -> None:
         """Uninstall plugin with pip."""
         subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
+
+    @staticmethod
+    def _get_pypi_json(package: str, version: Optional[str] = None) -> dict[str, Any]:
+        """Fetch package metadata from PyPI.
+
+        Args:
+            package: The package name.
+            version: Optional version to fetch metadata for. If None, fetches latest version.
+
+        Returns:
+            The JSON response from PyPI as a dictionary.
+
+        Raises:
+            requests.HTTPError: If the request fails.
+        """
+        if version:
+            url = f"https://pypi.org/pypi/{package}/{version}/json"
+        else:
+            url = f"https://pypi.org/pypi/{package}/json"
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+
+    @staticmethod
+    def _extract_pysigma_specifier(
+        requires_dist: Optional[list[str]],
+    ) -> Optional[SpecifierSet]:
+        """Extract pySigma version specifier from requires_dist metadata.
+
+        Args:
+            requires_dist: List of dependency strings from PyPI metadata.
+
+        Returns:
+            SpecifierSet for pySigma dependency, or None if not found.
+        """
+        if not requires_dist:
+            return None
+
+        for req_str in requires_dist:
+            try:
+                req = Requirement(req_str)
+                if req.name.lower() == "pysigma":
+                    return req.specifier
+            except Exception:
+                continue
+        return None
+
+    def pysigma_version_from_pypi(
+        self, plugin_version: Optional[str] = None
+    ) -> Optional[SpecifierSet]:
+        """Get the pySigma version specifier from PyPI package metadata.
+
+        Fetches the package metadata from PyPI and extracts the pySigma dependency
+        version specifier from the requires_dist field.
+
+        Args:
+            plugin_version: Optional specific plugin version to check. If None, uses latest.
+
+        Returns:
+            SpecifierSet for the pySigma dependency, or None if not found or package
+            doesn't exist on PyPI.
+        """
+        try:
+            data = self._get_pypi_json(self.package, plugin_version)
+            requires_dist = data.get("info", {}).get("requires_dist")
+            return self._extract_pysigma_specifier(requires_dist)
+        except requests.HTTPError:
+            return None
+
+    def find_compatible_version(self) -> Optional[str]:
+        """Find a plugin version compatible with the current pySigma version.
+
+        Checks all available versions of the plugin on PyPI and returns the latest
+        version that is compatible with the currently installed pySigma version.
+
+        Returns:
+            The version string of a compatible plugin version, or None if no compatible
+            version is found or if the current pySigma version cannot be determined.
+        """
+        try:
+            pysigma_version = Version(importlib.metadata.version("pysigma"))
+        except importlib.metadata.PackageNotFoundError:
+            return None
+
+        try:
+            data = self._get_pypi_json(self.package)
+        except requests.HTTPError:
+            return None
+
+        releases = data.get("releases", {})
+        # Sort versions in descending order (newest first)
+        sorted_versions = sorted(
+            [v for v in releases.keys() if releases[v]],  # Only include non-empty releases
+            key=lambda x: Version(x),
+            reverse=True,
+        )
+
+        for version in sorted_versions:
+            try:
+                version_data = self._get_pypi_json(self.package, version)
+                requires_dist = version_data.get("info", {}).get("requires_dist")
+                specifier = self._extract_pysigma_specifier(requires_dist)
+                if specifier is None or pysigma_version in specifier:
+                    return version
+            except (requests.HTTPError, Exception):
+                continue
+
+        return None
 
 
 @dataclass

@@ -186,6 +186,112 @@ def test_sigma_plugin_installation():
     assert not check_module("sigma.backends.splunk")
 
 
+@pytest.mark.online
+def test_sigma_plugin_pysigma_version_from_pypi(sigma_plugin):
+    """Test fetching pySigma version specifier from PyPI."""
+    sigma_plugin.package = "pysigma-backend-splunk"
+    specifier = sigma_plugin.pysigma_version_from_pypi()
+    assert specifier is not None
+    # The specifier should be a valid SpecifierSet
+    from packaging.specifiers import SpecifierSet
+
+    assert isinstance(specifier, SpecifierSet)
+
+
+@pytest.mark.online
+def test_sigma_plugin_pysigma_version_from_pypi_specific_version(sigma_plugin):
+    """Test fetching pySigma version specifier from PyPI for a specific version."""
+    sigma_plugin.package = "pysigma-backend-splunk"
+    specifier = sigma_plugin.pysigma_version_from_pypi("1.1.3")
+    assert specifier is not None
+    from packaging.version import Version
+
+    # Version 1.1.3 requires pySigma >=0.11.18,<0.12.0
+    assert Version("0.11.18") in specifier
+    assert Version("0.12.0") not in specifier
+
+
+@pytest.mark.online
+def test_sigma_plugin_pysigma_version_from_pypi_nonexistent_package(sigma_plugin):
+    """Test fetching pySigma version for a non-existent package returns None."""
+    sigma_plugin.package = "nonexistent-pysigma-package-xyz"
+    specifier = sigma_plugin.pysigma_version_from_pypi()
+    assert specifier is None
+
+
+@pytest.mark.online
+def test_sigma_plugin_find_compatible_version(sigma_plugin):
+    """Test finding a compatible plugin version."""
+    sigma_plugin.package = "pysigma-backend-splunk"
+    compatible_version = sigma_plugin.find_compatible_version()
+    # Since pySigma is installed, we should find a compatible version
+    assert compatible_version is not None
+    from packaging.version import Version
+
+    # Should be a valid version string
+    Version(compatible_version)
+
+
+@pytest.mark.online
+def test_sigma_plugin_find_compatible_version_nonexistent_package(sigma_plugin):
+    """Test finding compatible version for non-existent package returns None."""
+    sigma_plugin.package = "nonexistent-pysigma-package-xyz"
+    compatible_version = sigma_plugin.find_compatible_version()
+    assert compatible_version is None
+
+
+def test_sigma_plugin_find_compatible_version_pysigma_not_found(sigma_plugin, monkeypatch):
+    """Test finding compatible version when pySigma is not installed."""
+
+    def version_replacement(m):
+        raise importlib.metadata.PackageNotFoundError
+
+    monkeypatch.setattr("importlib.metadata.version", version_replacement)
+    compatible_version = sigma_plugin.find_compatible_version()
+    assert compatible_version is None
+
+
+def test_sigma_plugin_extract_pysigma_specifier():
+    """Test extraction of pySigma specifier from requires_dist."""
+    from sigma.plugins import SigmaPlugin
+    from packaging.specifiers import SpecifierSet
+
+    # Test with valid pySigma dependency
+    requires_dist = ["pysigma>=1.0.0,<2.0.0", "requests>=2.0.0"]
+    specifier = SigmaPlugin._extract_pysigma_specifier(requires_dist)
+    assert specifier is not None
+    assert isinstance(specifier, SpecifierSet)
+    from packaging.version import Version
+
+    assert Version("1.5.0") in specifier
+    assert Version("2.0.0") not in specifier
+
+
+def test_sigma_plugin_extract_pysigma_specifier_no_pysigma():
+    """Test extraction when pySigma is not in requires_dist."""
+    from sigma.plugins import SigmaPlugin
+
+    requires_dist = ["requests>=2.0.0", "packaging>=21.0"]
+    specifier = SigmaPlugin._extract_pysigma_specifier(requires_dist)
+    assert specifier is None
+
+
+def test_sigma_plugin_extract_pysigma_specifier_none_input():
+    """Test extraction with None input."""
+    from sigma.plugins import SigmaPlugin
+
+    specifier = SigmaPlugin._extract_pysigma_specifier(None)
+    assert specifier is None
+
+
+def test_sigma_plugin_extract_pysigma_specifier_empty_list():
+    """Test extraction with empty list."""
+    from sigma.plugins import SigmaPlugin
+
+    specifier = SigmaPlugin._extract_pysigma_specifier([])
+    assert specifier is None
+
+
 def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     sigma_plugin_dict_uuid = sigma_plugin_dict.pop("uuid")
     assert SigmaPluginDirectory.from_dict(

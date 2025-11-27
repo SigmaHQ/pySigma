@@ -12,9 +12,9 @@ from types import ModuleType
 from typing import Callable, Any, Optional, Union, get_type_hints
 from uuid import UUID
 import requests
-from packaging.version import Version
+from packaging.version import Version, InvalidVersion
 from packaging.specifiers import Specifier, SpecifierSet
-from packaging.requirements import Requirement
+from packaging.requirements import Requirement, InvalidRequirement
 import warnings
 
 from sigma.conversion.base import Backend
@@ -439,7 +439,7 @@ class SigmaPlugin:
                 req = Requirement(req_str)
                 if req.name.lower() == "pysigma":
                     return req.specifier
-            except Exception:
+            except InvalidRequirement:
                 continue
         return None
 
@@ -487,8 +487,18 @@ class SigmaPlugin:
 
         releases = data.get("releases", {})
         # Sort versions in descending order (newest first)
+        # Filter out versions that are not valid according to PEP 440
+        valid_versions = []
+        for v in releases.keys():
+            if releases[v]:  # Only include non-empty releases
+                try:
+                    Version(v)
+                    valid_versions.append(v)
+                except InvalidVersion:
+                    continue
+
         sorted_versions = sorted(
-            [v for v in releases.keys() if releases[v]],  # Only include non-empty releases
+            valid_versions,
             key=lambda x: Version(x),
             reverse=True,
         )
@@ -500,7 +510,7 @@ class SigmaPlugin:
                 specifier = self._extract_pysigma_specifier(requires_dist)
                 if specifier is None or pysigma_version in specifier:
                     return version
-            except (requests.HTTPError, Exception):
+            except requests.HTTPError:
                 continue
 
         return None

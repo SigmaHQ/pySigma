@@ -187,6 +187,18 @@ def test_sigma_plugin_installation():
 
 
 @pytest.mark.online
+def test_sigma_plugin_installation_compatible_false():
+    """Test plugin installation with compatible=False to get latest version."""
+    plugin_dir = SigmaPluginDirectory.default_plugin_directory()
+    plugin = plugin_dir.get_plugin_by_uuid("4af37b53-f1ec-4567-8017-2fb9315397a1")  # Splunk backend
+    assert not check_module("sigma.backends.splunk")  # ensure it's not already installed
+    plugin.install(compatible=False)
+    assert check_module("sigma.backends.splunk")
+    plugin.uninstall()
+    assert not check_module("sigma.backends.splunk")
+
+
+@pytest.mark.online
 def test_sigma_plugin_pysigma_version_from_pypi(sigma_plugin):
     """Test fetching pySigma version specifier from PyPI."""
     sigma_plugin.package = "pysigma-backend-splunk"

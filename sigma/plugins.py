@@ -335,8 +335,19 @@ class SigmaPlugin:
         """Checks if the plugin has the specified capability."""
         return capability in self.capabilities
 
-    def install(self) -> None:
-        """Install plugin with pip."""
+    def install(self, compatible: bool = True) -> None:
+        """Install plugin with pip.
+
+        Args:
+            compatible: If True (default), installs the latest version compatible with
+                the current pySigma version. If False, installs the absolute latest version.
+        """
+        package_spec = self.package
+        if compatible:
+            compatible_version = self.find_compatible_version()
+            if compatible_version:
+                package_spec = f"{self.package}=={compatible_version}"
+
         if sys.prefix == sys.base_prefix:  # not in a virtual environment
             subprocess.check_call(
                 [
@@ -346,7 +357,7 @@ class SigmaPlugin:
                     "-q",
                     "--disable-pip-version-check",
                     "install",
-                    self.package,
+                    package_spec,
                 ]
             )
         else:
@@ -359,7 +370,7 @@ class SigmaPlugin:
                     "--disable-pip-version-check",
                     "install",
                     "--no-user",
-                    self.package,
+                    package_spec,
                 ]
             )
 

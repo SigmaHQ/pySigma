@@ -409,7 +409,7 @@ class SigmaPlugin:
         subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
 
     @staticmethod
-    def _get_pypi_json(package: str, version: Optional[str] = None) -> dict[str, Any]:
+    def _get_pypi_json(package: str, version: Optional[str] = None) -> Any:
         """Fetch package metadata from PyPI.
 
         Args:
@@ -520,7 +520,7 @@ class SigmaPlugin:
                 requires_dist = version_data.get("info", {}).get("requires_dist")
                 specifier = self._extract_pysigma_specifier(requires_dist)
                 if specifier is None or pysigma_version in specifier:
-                    return version
+                    return str(version)
             except requests.HTTPError:
                 continue
 

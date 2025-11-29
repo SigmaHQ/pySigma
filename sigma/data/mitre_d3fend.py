@@ -101,7 +101,13 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
                 if isinstance(version_iri, str):
                     parts = version_iri.rstrip("/").split("/")
                     if parts:
-                        version = parts[-1]
+                        last_part = parts[-1]
+                        # Skip "d3fend.owl" and similar file names, use the version number
+                        if last_part and not last_part.endswith((".owl", ".json", ".rdf")):
+                            version = last_part
+                        elif len(parts) > 1:
+                            # Try the second-to-last part if last part is a filename
+                            version = parts[-2]
             break
 
     tactics = {}

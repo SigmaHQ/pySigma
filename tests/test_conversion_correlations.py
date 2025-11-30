@@ -738,3 +738,91 @@ correlation:
         match="Percentile must be specified in condition for value_percentile correlation type",
     ):
         test_backend.convert(correlation_rule)
+
+
+def test_correlation_rule_callback(test_backend):
+    """Test that callback is invoked for correlation rules"""
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Test event
+name: test_event
+status: test
+logsource:
+    product: test
+detection:
+    selection:
+        EventID: 100
+    condition: selection
+---
+title: Event count correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_event
+    group-by:
+        - User
+    timespan: 5m
+    condition:
+        gte: 5
+            """
+    )
+
+    callback_invocations = []
+
+    def test_callback(rule, output_format, index, query, result):
+        callback_invocations.append(
+            {
+                "rule": rule,
+                "output_format": output_format,
+                "index": index,
+                "query": query,
+                "result": result,
+            }
+        )
+        return result + " /* modified by callback */"
+
+    result = test_backend.convert(correlation_rule, callback=test_callback)
+
+    # Verify callback was invoked - once for the rule conversion and once for the correlation
+    assert len(callback_invocations) == 2
+    # The second invocation should be for the correlation rule
+    assert "aggregate window" in str(callback_invocations[1]["result"])
+    assert "modified by callback" in result[-1]
+
+
+def test_correlation_rule_callback_skip_result(test_backend):
+    """Test that callback can skip results by returning None"""
+    correlation_rule = SigmaCollection.from_yaml(
+        """
+title: Test event
+name: test_event
+status: test
+logsource:
+    product: test
+detection:
+    selection:
+        EventID: 100
+    condition: selection
+---
+title: Event count correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_event
+    group-by:
+        - User
+    timespan: 5m
+    condition:
+        gte: 5
+            """
+    )
+
+    def skip_callback(rule, output_format, index, query, result):
+        return None  # Skip all results
+
+    result = test_backend.convert(correlation_rule, callback=skip_callback)
+
+    # Verify no results were returned (both rule and correlation skipped)
+    assert len(result) == 0

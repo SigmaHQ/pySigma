@@ -89,9 +89,9 @@ def sigma_plugin_dict():
         "type": "backend",
         "id": "test",
         "description": "Test plugin",
-        "package": "pySigma-backend-test",
-        "project_url": "https://github.com/SigmaHQ/pySigma-backend-test",
-        "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
+        "package": "pySigma-backend-splunk",
+        "project_url": "https://github.com/SigmaHQ/pySigma-backend-splunk",
+        "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         "state": "testing",
         "pysigma_version": ">=1.0.0",
         "capabilities": [
@@ -108,9 +108,9 @@ def sigma_plugin():
         type=SigmaPluginType.BACKEND,
         id="test",
         description="Test plugin",
-        package="pySigma-backend-test",
-        project_url="https://github.com/SigmaHQ/pySigma-backend-test",
-        report_issue_url="https://github.com/SigmaHQ/pySigma-backend-test/issues/new",
+        package="pySigma-backend-splunk",  # using Splunk backend instead of pure test backend because new dynamic check needs existing PyPI package
+        project_url="https://github.com/SigmaHQ/pySigma-backend-splunk",
+        report_issue_url="https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         state=SigmaPluginState.TESTING,
         pysigma_version=Specifier(">=1.0.0"),
         capabilities={
@@ -144,7 +144,7 @@ def test_sigma_plugin_version_compatible(sigma_plugin):
 
 def test_sigma_plugin_version_incompatible(sigma_plugin):
     sigma_plugin.pysigma_version = Specifier("<=0.1.0")
-    assert not sigma_plugin.is_compatible()
+    assert not sigma_plugin.is_compatible(directory_version=True)
 
 
 def test_sigma_plugin_version_unknown(sigma_plugin, monkeypatch):
@@ -397,6 +397,7 @@ def test_sigma_plugin_directory_get_plugins_compatible(
     sigma_plugin_dict_incompatible = sigma_plugin_dict.copy()
     sigma_plugin_dict_incompatible["uuid"] = "a350e4dd-6813-4549-a76d-b2c0d4925e62"
     sigma_plugin_dict_incompatible["id"] = "incompatible"
+    sigma_plugin_dict_incompatible["package"] = "pySigma-backend-test"
     sigma_plugin_dict_incompatible["description"] = "Incompatible plugin"
     sigma_plugin_dict_incompatible["pysigma_version"] = "<0.1.0"
 

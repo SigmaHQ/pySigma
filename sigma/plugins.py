@@ -296,7 +296,7 @@ class SigmaPlugin:
     project_url: str
     report_issue_url: str
     state: SigmaPluginState
-    pysigma_version: Specifier
+    pysigma_version: Specifier  # TODO: deprecated, should be removed in future major release.
     capabilities: set[SigmaPluginCapability] = field(default_factory=set)
 
     @classmethod
@@ -314,15 +314,39 @@ class SigmaPlugin:
 
         return cls(**kwargs)
 
-    def is_compatible(self) -> Optional[bool]:
-        """Checks if the pySigma version specifier of the plugin matches the used pySigma
-        version. Returns None if current version can't be determined, e.g. if pySigma was not
-        installed as package."""
-        try:
-            pysigma_version = Version(importlib.metadata.version("pysigma"))
-            return pysigma_version in self.pysigma_version
-        except importlib.metadata.PackageNotFoundError:
-            return None
+    def is_compatible(self, directory_version: bool = False) -> Optional[bool]:
+        """Checks if the plugin is compatible with the current pySigma version.
+
+        By default, this method checks PyPI to find if any compatible plugin version exists
+        for the current pySigma version. If directory_version is True, it falls back to
+        checking the pySigma version specifier from the plugin directory.
+
+        Args:
+            directory_version: If True, uses the pySigma version specifier from the plugin
+                directory instead of checking PyPI for compatible versions. Because the static
+                pySigma version information in the plugin directory is deprecated, this argument
+                only exists for backwards compatibility and will be removed in future major release.
+
+        Returns:
+            True if compatible, False if incompatible, None if current version can't be
+            determined (e.g. if pySigma was not installed as package).
+        """
+        if directory_version:
+            # Old behavior: check against directory's pysigma_version specifier
+            try:
+                pysigma_version = Version(importlib.metadata.version("pysigma"))
+                return pysigma_version in self.pysigma_version
+            except importlib.metadata.PackageNotFoundError:
+                return None
+        else:
+            # New behavior: check if a compatible version exists on PyPI
+            try:
+                Version(importlib.metadata.version("pysigma"))
+            except importlib.metadata.PackageNotFoundError:
+                return None
+
+            compatible_version = self.find_compatible_version()
+            return compatible_version is not None
 
     def is_installed(self) -> bool:
         try:

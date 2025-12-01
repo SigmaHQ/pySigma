@@ -1,6 +1,6 @@
 [project]
 name = "pySigma"
-version = "1.0.1"
+version = "1.0.2"
 license = "LGPL-2.1-only"
 description = "Sigma rule processing and conversion tools"
 authors = [

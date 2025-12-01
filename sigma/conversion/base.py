@@ -197,7 +197,9 @@ class Backend(ABC):
         rule_collection: SigmaCollection,
         output_format: Optional[str] = None,
         correlation_method: Optional[str] = None,
-        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], Any]] = None,
+        callback: Optional[
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
+        ] = None,
     ) -> Any:
         """
         Convert a Sigma ruleset into the target data structure. Usually the result are one or
@@ -226,7 +228,7 @@ class Backend(ABC):
                 self.convert_rule(rule, output_format or self.default_format, callback)
                 if isinstance(rule, SigmaRule)
                 else self.convert_correlation_rule(
-                    rule, output_format or self.default_format, correlation_method
+                    rule, output_format or self.default_format, correlation_method, callback
                 )
             )
         ]
@@ -236,7 +238,9 @@ class Backend(ABC):
         self,
         rule: SigmaRule,
         output_format: Optional[str] = None,
-        callback: Optional[Callable[[SigmaRule, Optional[str], int, Any, Any], Any]] = None,
+        callback: Optional[
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
+        ] = None,
     ) -> list[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
@@ -635,6 +639,9 @@ class Backend(ABC):
         rule: SigmaCorrelationRule,
         output_format: Optional[str] = None,
         method: Optional[str] = None,
+        callback: Optional[
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
+        ] = None,
     ) -> list[Any]:
         """
         Convert a correlation rule into the target data structure (usually query).
@@ -643,6 +650,11 @@ class Backend(ABC):
             rule (SigmaCorrelationRule): The correlation rule to be converted.
             output_format (Optional[str]): The desired output format. Defaults to None.
             method (Optional[str]): The correlation method to be used. Defaults to None.
+            callback: Optional callback function called for each query conversion.
+                     Receives (rule, output_format, index, query, result) parameters and
+                     returns a potentially modified result. The returned value replaces
+                     the original conversion result. Return None to skip the result.
+                     Called for every iteration, even when result is None.
 
         Returns:
             Any: The converted data structure.
@@ -676,12 +688,24 @@ class Backend(ABC):
             )
 
         # Convert the correlation rule depending on its type
-        queries = correlation_methods[rule.type](rule, output_format, method)
+        raw_queries = correlation_methods[rule.type](rule, output_format, method)
 
         states = [
             ConversionState(processing_state=dict(self.last_processing_pipeline.state))
-            for _ in queries
+            for _ in raw_queries
         ]
+
+        # Finish queries and apply callback
+        queries = []
+        for index, query in enumerate(raw_queries):
+            state = states[index]
+            result = query
+            if result is not None:
+                result = self.finish_query(rule, result, state)
+            if callback is not None:
+                result = callback(rule, output_format, index, query, result)
+            if result is not None:
+                queries.append(result)
 
         # Apply the finalization step
         finalized_queries = [

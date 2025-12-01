@@ -3572,3 +3572,56 @@ def test_convert_timestamp_part_modifiers(test_backend, monkeypatch):
             'strftime(timestamp, "%M")=1 and strftime(timestamp, "%H")=2 and strftime(timestamp, "%d")=3 and strftime(timestamp, "%V")=4 and strftime(timestamp, "%m")=5 and strftime(timestamp, "%Y")=6 and strftime(timestamp, "%M")>7 and strftime(timestamp, "%H")>=8 and strftime(timestamp, "%d")<9 and strftime(timestamp, "%V")<=10 and strftime(timestamp, "%m")>11 and strftime(timestamp, "%Y")>=12'
         ]
     )
+
+
+def test_finish_query_regular_rule():
+    """Test that finish_query can wrap regular rule queries in search() expression."""
+
+    class SearchWrapperBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            return f"search({query})"
+
+    backend = SearchWrapperBackend()
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel:
+                    field1: value1
+                    field2: value2
+                condition: sel
+        """
+    )
+    assert backend.convert(rule) == ['search(field1="value1" and field2="value2")']
+
+
+def test_finish_query_regular_rule_with_multiple_conditions():
+    """Test that finish_query wraps each query from multi-condition rules."""
+
+    class SearchWrapperBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            return f"search({query})"
+
+    backend = SearchWrapperBackend()
+    rule = SigmaCollection.from_yaml(
+        """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    field1: value1
+                sel2:
+                    field2: value2
+                condition:
+                    - sel1
+                    - sel2
+        """
+    )
+    assert backend.convert(rule) == ['search(field1="value1")', 'search(field2="value2")']

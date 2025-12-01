@@ -198,9 +198,7 @@ class Backend(ABC):
         output_format: Optional[str] = None,
         correlation_method: Optional[str] = None,
         callback: Optional[
-            Callable[
-                [Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any
-            ]
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
         ] = None,
     ) -> Any:
         """
@@ -241,9 +239,7 @@ class Backend(ABC):
         rule: SigmaRule,
         output_format: Optional[str] = None,
         callback: Optional[
-            Callable[
-                [Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any
-            ]
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
         ] = None,
     ) -> list[Any]:
         """
@@ -644,9 +640,7 @@ class Backend(ABC):
         output_format: Optional[str] = None,
         method: Optional[str] = None,
         callback: Optional[
-            Callable[
-                [Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any
-            ]
+            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
         ] = None,
     ) -> list[Any]:
         """

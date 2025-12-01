@@ -792,6 +792,254 @@ correlation:
 
 
 def test_correlation_rule_callback_skip_result(test_backend):
+    """Test that callback can skip results by returning None for correlation rules"""
+    callback_calls = []
+
+    def test_callback(rule, output_format, index, query, result):
+        callback_calls.append((rule, output_format, index, query, result))
+        # Skip the result
+        return None
+
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Failed logon
+name: failed_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons for a single user (possible brute force attack)
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+
+    result = test_backend.convert(rule_collection, callback=test_callback)
+    assert result == []
+    assert len(callback_calls) == 2
+
+
+def test_finish_query_correlation_rule_only(test_backend):
+    """Test that finish_query can wrap correlation queries without affecting subqueries."""
+    from sigma.correlations import SigmaCorrelationRule
+
+    class SearchWrapperCorrelationBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            # Only wrap correlation rules, not regular rules
+            if isinstance(rule, SigmaCorrelationRule):
+                return f"search({query})"
+            return query
+
+    backend = SearchWrapperCorrelationBackend()
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Failed logon
+name: failed_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    generate: true
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+    result = backend.convert(rule_collection)
+    # First query is regular rule (not wrapped)
+    assert result[0] == "EventID=4625"
+    # Second query is correlation rule (wrapped)
+    assert (
+        result[1]
+        == "search(EventID=4625\n| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName\n| where event_count >= 10)"
+    )
+
+
+def test_finish_query_regular_rule_only():
+    """Test that finish_query can wrap regular rule queries without affecting correlation."""
+    from sigma.correlations import SigmaCorrelationRule
+
+    class SearchWrapperRegularBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            # Only wrap regular rules, not correlation rules
+            if not isinstance(rule, SigmaCorrelationRule):
+                return f"search({query})"
+            return query
+
+    backend = SearchWrapperRegularBackend()
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Failed logon
+name: failed_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    generate: true
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+    result = backend.convert(rule_collection)
+    # First query is regular rule (wrapped)
+    assert result[0] == "search(EventID=4625)"
+    # Second query is correlation rule (not wrapped, but contains wrapped subquery)
+    assert (
+        result[1]
+        == "search(EventID=4625)\n| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName\n| where event_count >= 10"
+    )
+
+
+def test_finish_query_both_correlation_and_subqueries():
+    """Test that finish_query can wrap both correlation queries and their subqueries."""
+    from sigma.correlations import SigmaCorrelationRule
+
+    class SearchWrapperAllBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            return f"search({query})"
+
+    backend = SearchWrapperAllBackend()
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Failed logon
+name: failed_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    generate: true
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+    timespan: 5m
+    condition:
+        gte: 10
+        """
+    )
+    result = backend.convert(rule_collection)
+    # First query is regular rule (wrapped)
+    assert result[0] == "search(EventID=4625)"
+    # Second query is correlation rule (wrapped, and contains wrapped subquery)
+    assert (
+        result[1]
+        == "search(search(EventID=4625)\n| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName\n| where event_count >= 10)"
+    )
+
+
+def test_finish_query_temporal_correlation_with_subqueries():
+    """Test that finish_query wraps temporal correlation queries and their subqueries."""
+    from sigma.correlations import SigmaCorrelationRule
+
+    class SearchWrapperAllBackend(TextQueryTestBackend):
+        def finish_query(self, rule, query, state):
+            return f"search({query})"
+
+    backend = SearchWrapperAllBackend()
+    rule_collection = SigmaCollection.from_yaml(
+        """
+title: Failed logon
+name: failed_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Successful logon
+name: successful_logon
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4624
+    condition: selection
+---
+title: Failed then successful logon
+status: test
+correlation:
+    type: temporal
+    rules:
+        - failed_logon
+        - successful_logon
+    generate: true
+    group-by:
+        - TargetUserName
+        - TargetDomainName
+    timespan: 5m
+        """
+    )
+    result = backend.convert(rule_collection)
+    # First two queries are regular rules (wrapped)
+    assert result[0] == "search(EventID=4625)"
+    assert result[1] == "search(EventID=4624)"
+    # Third query is temporal correlation (wrapped, with wrapped subqueries)
+    # The correlation should contain the wrapped subqueries
+    assert "subsearch { search(EventID=4625)" in result[2]
+    assert "subsearch { search(EventID=4624)" in result[2]
+    # And the entire correlation should be wrapped too
+    assert result[2].startswith("search(")
+
+
+def test_correlation_rule_callback_skip_result(test_backend):
     """Test that callback can skip results by returning None"""
     correlation_rule = SigmaCollection.from_yaml(
         """

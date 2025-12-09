@@ -409,6 +409,27 @@ def test_convert_value_str_startswith_further_wildcard_allowed(test_backend, mon
     )
 
 
+def test_convert_value_str_startswith_trailing_backslash(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "foobar\\\\"
+                        condition: sel
+                """
+            )
+        )
+        == ['mappedA startswith "foobar\\"']
+    )
+
+
 def test_convert_value_str_startswith_cased_further_wildcard(test_backend):
     assert (
         test_backend.convert(
@@ -712,6 +733,27 @@ def test_convert_value_str_contains_further_wildcard_allowed(test_backend, monke
             )
         )
         == ['mappedA contains "va*lue"']
+    )
+
+
+def test_convert_value_str_contains_trailing_backslash(test_backend):
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "foobar\\\\"
+                        condition: sel
+                """
+            )
+        )
+        == ['mappedA contains "foobar\\"']
     )
 
 

@@ -143,6 +143,14 @@ def test_contains_leading_and_trailing_wildcard(dummy_detection_item):
     ]
 
 
+def test_contains_trailing_backslash(dummy_detection_item):
+    assert SigmaContainsModifier(dummy_detection_item, []).apply(SigmaString(r"foobar\\"))[0].s == [
+        SpecialChars.WILDCARD_MULTI,
+        "foobar\\",
+        SpecialChars.WILDCARD_MULTI,
+    ]
+
+
 def test_startswith_nowildcards(dummy_detection_item):
     assert SigmaStartswithModifier(dummy_detection_item, []).apply(SigmaString("foobar")) == [
         SigmaString("foobar*")
@@ -152,6 +160,15 @@ def test_startswith_nowildcards(dummy_detection_item):
 def test_startswith_trailing_wildcard(dummy_detection_item):
     assert SigmaStartswithModifier(dummy_detection_item, []).apply(SigmaString("foobar*")) == [
         SigmaString("foobar*")
+    ]
+
+
+def test_startswith_trailing_backslash(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).apply(SigmaString(r"foobar\\"))[
+        0
+    ].s == [
+        "foobar\\",
+        SpecialChars.WILDCARD_MULTI,
     ]
 
 

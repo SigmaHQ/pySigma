@@ -181,7 +181,7 @@ class SigmaFilter(SigmaRuleBase):
             except sigma_exceptions.SigmaRuleNotFoundError:
                 pass
 
-        if all([match is None for match in matches]):
+        if not matches:
             return False
 
         return True

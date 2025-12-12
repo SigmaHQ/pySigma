@@ -111,7 +111,7 @@ class SigmaModifier(ABC, Generic[T, R]):
                 )
             r = self.modify(val)
             if isinstance(r, list):
-                return cast(list[T], r)
+                return [cast(T, item) for item in r]
             else:
                 return [cast(T, r)]
 

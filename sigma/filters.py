@@ -37,6 +37,7 @@ class SigmaGlobalFilter(SigmaDetections):
             )
 
         try:
+            rules: list[SigmaRuleReference] | str
             if isinstance(detections["rules"], str):
                 # Check if it's "any" or "all" keyword
                 if detections["rules"].lower() in ("any", "all"):
@@ -187,6 +188,9 @@ class SigmaFilter(SigmaRuleBase):
         # If rules is "any" or "all", apply to all rules matching the logsource
         if isinstance(self.filter.rules, str) and self.filter.rules.lower() in ("any", "all"):
             return True
+
+        # At this point, rules must be a list (not a string)
+        assert isinstance(self.filter.rules, list)
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
         # then filter each reference to see if the rule is in the reference

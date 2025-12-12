@@ -81,7 +81,7 @@ class SigmaGlobalFilter(SigmaDetections):
         d = super().to_dict()
         d.update(
             {
-                "rules": self.rules if isinstance(self.rules, str) else self.rules,
+                "rules": self.rules if isinstance(self.rules, str) else [ref.reference for ref in self.rules],
             }
         )
 

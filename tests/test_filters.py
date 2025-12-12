@@ -467,7 +467,7 @@ correlation:
     assert len(result) == 1
     assert 'EventID=4625 and not User="admin"' in result[0]
     # Verify correlation logic is present
-    assert 'aggregate window=5min' in result[0]
+    assert "aggregate window=5min" in result[0]
 
 
 def test_filter_with_empty_rules_list_behaves_like_no_rules_field(test_backend):

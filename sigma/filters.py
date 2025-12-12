@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class SigmaGlobalFilter(SigmaDetections):
-    rules: list[SigmaRuleReference] = field(default_factory=list)
+    rules: list[SigmaRuleReference] | str = field(default_factory=list)
 
     @classmethod
     def from_dict(
@@ -37,18 +37,30 @@ class SigmaGlobalFilter(SigmaDetections):
             )
 
         try:
-            if isinstance(detections["rules"], list):
-                rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
-            elif isinstance(detections["rules"], str):
-                rules = [SigmaRuleReference(detections["rules"])]
+            if isinstance(detections["rules"], str):
+                # Check if it's "any" or "all" keyword
+                if detections["rules"].lower() in ("any", "all"):
+                    rules = detections["rules"].lower()
+                else:
+                    # Single rule reference
+                    rules = [SigmaRuleReference(detections["rules"])]
+            elif isinstance(detections["rules"], list):
+                # Empty list is treated as "any"/"all"
+                if not detections["rules"]:
+                    rules = "any"
+                else:
+                    rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
             else:
                 raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                    "Sigma filter rules field must be a list of Sigma rule IDs or rule names",
+                    "Sigma filter rules field must be 'any', 'all', a rule ID/name, or a list of rule IDs/names",
                     source=source,
                 )
         except KeyError:
-            # Rules field is optional - if not specified, filter applies to all rules matching the logsource
-            rules = []
+            # Rules field is required - must explicitly specify "any"/"all" or specific rule references
+            raise sigma_exceptions.SigmaFilterRuleReferenceError(
+                "Sigma filter must have a 'rules' field (use 'any' or 'all' to apply to all rules matching the logsource)",
+                source=source,
+            )
 
         return cls(
             detections={
@@ -69,7 +81,7 @@ class SigmaGlobalFilter(SigmaDetections):
         d = super().to_dict()
         d.update(
             {
-                "rules": self.rules,
+                "rules": self.rules if isinstance(self.rules, str) else self.rules,
             }
         )
 
@@ -168,8 +180,8 @@ class SigmaFilter(SigmaRuleBase):
         if rule.logsource not in self.logsource:
             return False
 
-        # If no rules are specified, apply to all rules matching the logsource
-        if not self.filter.rules:
+        # If rules is "any" or "all", apply to all rules matching the logsource
+        if isinstance(self.filter.rules, str) and self.filter.rules.lower() in ("any", "all"):
             return True
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,

@@ -239,8 +239,8 @@ def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
 
 
 def test_no_rules_section(sigma_filter, test_backend, rule_collection):
-    # When rules field is None or empty, filter should apply to all rules matching the logsource
-    sigma_filter.filter.rules = None
+    # When rules field is "any" or "all", filter should apply to all rules matching the logsource
+    sigma_filter.filter.rules = "any"
     rule_collection.apply_filters([sigma_filter])
 
     assert test_backend.convert(rule_collection) == [
@@ -249,7 +249,7 @@ def test_no_rules_section(sigma_filter, test_backend, rule_collection):
 
 
 def test_filter_without_rules_field_applies_to_all_matching_logsource(test_backend):
-    # Test that a filter without a rules field applies to all rules with matching logsource
+    # Test that a filter with rules: any applies to all rules with matching logsource
     filter_yaml = """
 title: Filter Administrator account
 description: Filters all process creation events
@@ -257,6 +257,7 @@ logsource:
     category: process_creation
     product: windows
 filter:
+  rules: any
   selection:
       User|startswith: 'adm_'
   condition: not selection
@@ -315,6 +316,7 @@ description: Filters all windows events regardless of category
 logsource:
     product: windows
 filter:
+  rules: all
   selection:
       User|startswith: 'SYSTEM'
   condition: not selection
@@ -375,6 +377,7 @@ logsource:
     product: windows
     service: security
 filter:
+  rules: any
   selection:
       User|startswith: 'admin'
   condition: not selection
@@ -416,7 +419,7 @@ detection:
 
 
 def test_filter_without_rules_field_excludes_correlation_rules(test_backend):
-    # Test that filters without rules field do not apply to correlation rules
+    # Test that filters with rules: any do not apply to correlation rules
     # This test uses the event_count_correlation_rule pattern but with matching logsource
     filter_yaml = """
 title: Filter test events
@@ -425,6 +428,7 @@ logsource:
     category: process_creation
     product: windows
 filter:
+  rules: any
   selection:
       User: admin
   condition: not selection
@@ -471,7 +475,7 @@ correlation:
 
 
 def test_filter_with_empty_rules_list_behaves_like_no_rules_field(test_backend):
-    # Test that explicitly setting rules=[] behaves the same as omitting rules field
+    # Test that explicitly setting rules=[] is converted to "any"
     filter_yaml = """
 title: Filter with empty rules list
 description: Empty rules list should match all rules with matching logsource
@@ -502,8 +506,27 @@ detection:
 
     result = test_backend.convert(rule_collection)
 
-    # Filter should apply since rules=[] should behave like no rules field
+    # Filter should apply since rules=[] is converted to "any"
     assert result[0] == 'EventID=1 and not User="admin"'
+
+
+def test_filter_missing_rules_field_raises_error():
+    # Test that a filter without a rules field raises an error
+    filter_yaml = """
+title: Filter without rules field
+description: This should raise an error
+logsource:
+    product: windows
+filter:
+  selection:
+      User: admin
+  condition: not selection
+"""
+
+    from sigma.exceptions import SigmaFilterRuleReferenceError
+
+    with pytest.raises(SigmaFilterRuleReferenceError, match="must have a 'rules' field"):
+        SigmaFilter.from_yaml(filter_yaml)
 
 
 # Validation Errors

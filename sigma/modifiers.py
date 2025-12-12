@@ -64,7 +64,7 @@ class SigmaModifier(ABC, Generic[T, R]):
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(self, val: T, explicit_type: Optional[Type[T]] = None) -> bool:
+    def type_check(self, val: Any, explicit_type: Optional[Type[Any]] = None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
@@ -111,7 +111,7 @@ class SigmaModifier(ABC, Generic[T, R]):
                 )
             r = self.modify(val)
             if isinstance(r, list):
-                return r
+                return cast(list[T], r)
             else:
                 return [cast(T, r)]
 

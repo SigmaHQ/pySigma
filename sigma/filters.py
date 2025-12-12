@@ -47,9 +47,8 @@ class SigmaGlobalFilter(SigmaDetections):
                     source=source,
                 )
         except KeyError:
-            raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                "Sigma filter must contain at least a rules section", source=source
-            )
+            # Rules field is optional - if not specified, filter applies to all rules matching the logsource
+            rules = []
 
         return cls(
             detections={
@@ -161,8 +160,17 @@ class SigmaFilter(SigmaRuleBase):
     def _should_apply_on_rule(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> bool:
         from sigma.collection import SigmaCollection
 
-        if not self.filter.rules or isinstance(rule, SigmaCorrelationRule):
+        # Don't apply filters to correlation rules
+        if isinstance(rule, SigmaCorrelationRule):
             return False
+
+        # Check if logsource matches
+        if rule.logsource not in self.logsource:
+            return False
+
+        # If no rules are specified, apply to all rules matching the logsource
+        if not self.filter.rules:
+            return True
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
         # then filter each reference to see if the rule is in the reference
@@ -174,9 +182,6 @@ class SigmaFilter(SigmaRuleBase):
                 pass
 
         if all([match is None for match in matches]):
-            return False
-
-        if rule.logsource not in self.logsource:
             return False
 
         return True

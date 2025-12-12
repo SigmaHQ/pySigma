@@ -304,7 +304,7 @@ detection:
     assert result[0] == 'EventID=4688 and not User startswith "adm_"'
     assert result[1] == 'CommandLine contains "test" and not User startswith "adm_"'
     # Third rule should not have filter applied (different logsource)
-    assert result[2] == 'DestinationPort=443'
+    assert result[2] == "DestinationPort=443"
 
 
 # Validation Errors

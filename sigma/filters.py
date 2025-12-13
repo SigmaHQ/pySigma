@@ -39,27 +39,27 @@ class SigmaGlobalFilter(SigmaDetections):
         try:
             rules: list[SigmaRuleReference] | str
             if isinstance(detections["rules"], str):
-                # Check if it's "any" or "all" keyword
-                if detections["rules"].lower() in ("any", "all"):
+                # Check if it's "any" keyword
+                if detections["rules"].lower() == "any":
                     rules = detections["rules"].lower()
                 else:
                     # Single rule reference
                     rules = [SigmaRuleReference(detections["rules"])]
             elif isinstance(detections["rules"], list):
-                # Empty list is treated as "any"/"all"
+                # Empty list is treated as "any"
                 if not detections["rules"]:
                     rules = "any"
                 else:
                     rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
             else:
                 raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                    "Sigma filter rules field must be 'any', 'all', a rule ID/name, or a list of rule IDs/names",
+                    "Sigma filter rules field must be 'any', a rule ID/name, or a list of rule IDs/names",
                     source=source,
                 )
         except KeyError:
-            # Rules field is required - must explicitly specify "any"/"all" or specific rule references
+            # Rules field is required - must explicitly specify "any" or specific rule references
             raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                "Sigma filter must have a 'rules' field (use 'any' or 'all' to apply to all rules matching the logsource)",
+                "Sigma filter must have a 'rules' field (use 'any' to apply to all rules matching the logsource)",
                 source=source,
             )
 
@@ -185,8 +185,8 @@ class SigmaFilter(SigmaRuleBase):
         if rule.logsource not in self.logsource:
             return False
 
-        # If rules is "any" or "all", apply to all rules matching the logsource
-        if isinstance(self.filter.rules, str) and self.filter.rules.lower() in ("any", "all"):
+        # If rules is "any", apply to all rules matching the logsource
+        if isinstance(self.filter.rules, str) and self.filter.rules.lower() == "any":
             return True
 
         # At this point, rules must be a list (not a string)

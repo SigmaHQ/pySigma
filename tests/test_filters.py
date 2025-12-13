@@ -239,7 +239,7 @@ def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
 
 
 def test_no_rules_section(sigma_filter, test_backend, rule_collection):
-    # When rules field is "any" or "all", filter should apply to all rules matching the logsource
+    # When rules field is "any", filter should apply to all rules matching the logsource
     sigma_filter.filter.rules = "any"
     rule_collection.apply_filters([sigma_filter])
 
@@ -316,7 +316,7 @@ description: Filters all windows events regardless of category
 logsource:
     product: windows
 filter:
-  rules: all
+  rules: any
   selection:
       User|startswith: 'SYSTEM'
   condition: not selection

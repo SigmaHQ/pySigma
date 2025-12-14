@@ -426,7 +426,31 @@ def test_convert_value_str_startswith_trailing_backslash(test_backend):
                 """
             )
         )
-        == ['mappedA startswith "foobar\\"']
+        == ['mappedA startswith "foobar\\\\"']
+    )
+
+
+def test_convert_value_str_startswith_trailing_backslash_no_startswith_expression(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(test_backend, "startswith_expression", None)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|startswith: "foobar\\\\"
+                        condition: sel
+                """
+            )
+        )
+        == ['mappedA match "foobar\\\\*"']
     )
 
 
@@ -753,7 +777,31 @@ def test_convert_value_str_contains_trailing_backslash(test_backend):
                 """
             )
         )
-        == ['mappedA contains "foobar\\"']
+        == ['mappedA contains "foobar\\\\"']
+    )
+
+
+def test_convert_value_str_contains_trailing_backslash_no_contains_expression(
+    test_backend, monkeypatch
+):
+    monkeypatch.setattr(test_backend, "contains_expression", None)
+    assert (
+        test_backend.convert(
+            SigmaCollection.from_yaml(
+                """
+                    title: Test
+                    status: test
+                    logsource:
+                        category: test_category
+                        product: test_product
+                    detection:
+                        sel:
+                            fieldA|contains: "foobar\\\\"
+                        condition: sel
+                """
+            )
+        )
+        == ['mappedA match "*foobar\\\\*"']
     )
 
 

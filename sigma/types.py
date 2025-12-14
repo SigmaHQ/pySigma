@@ -572,7 +572,9 @@ class SigmaString(SigmaType):
         of these characters in a string will raise a SigmaValueError.
         """
         s = ""
-        escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
+        escaped_chars = frozenset(
+            (wildcard_multi or "") + (wildcard_single or "") + escape_char + add_escaped
+        )
 
         for c in iter(self):
             if isinstance(c, str):  # c is plain character

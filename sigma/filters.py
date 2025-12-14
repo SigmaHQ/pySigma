@@ -18,7 +18,7 @@ if TYPE_CHECKING:
 
 @dataclass
 class SigmaGlobalFilter(SigmaDetections):
-    rules: list[SigmaRuleReference] = field(default_factory=list)
+    rules: list[SigmaRuleReference] | str = field(default_factory=list)
 
     @classmethod
     def from_dict(
@@ -37,18 +37,30 @@ class SigmaGlobalFilter(SigmaDetections):
             )
 
         try:
-            if isinstance(detections["rules"], list):
-                rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
-            elif isinstance(detections["rules"], str):
-                rules = [SigmaRuleReference(detections["rules"])]
+            rules: list[SigmaRuleReference] | str
+            if isinstance(detections["rules"], str):
+                # Check if it's "any" keyword
+                if detections["rules"].lower() == "any":
+                    rules = detections["rules"].lower()
+                else:
+                    # Single rule reference
+                    rules = [SigmaRuleReference(detections["rules"])]
+            elif isinstance(detections["rules"], list):
+                # Empty list is treated as "any"
+                if not detections["rules"]:
+                    rules = "any"
+                else:
+                    rules = [SigmaRuleReference(detection) for detection in detections["rules"]]
             else:
                 raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                    "Sigma filter rules field must be a list of Sigma rule IDs or rule names",
+                    "Sigma filter rules field must be 'any', a rule ID/name, or a list of rule IDs/names",
                     source=source,
                 )
         except KeyError:
+            # Rules field is required - must explicitly specify "any" or specific rule references
             raise sigma_exceptions.SigmaFilterRuleReferenceError(
-                "Sigma filter must contain at least a rules section", source=source
+                "Sigma filter must have a 'rules' field (use 'any' to apply to all rules matching the logsource)",
+                source=source,
             )
 
         return cls(
@@ -70,7 +82,11 @@ class SigmaGlobalFilter(SigmaDetections):
         d = super().to_dict()
         d.update(
             {
-                "rules": self.rules,
+                "rules": (
+                    self.rules
+                    if isinstance(self.rules, str)
+                    else [ref.reference for ref in self.rules]
+                ),
             }
         )
 
@@ -161,8 +177,20 @@ class SigmaFilter(SigmaRuleBase):
     def _should_apply_on_rule(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> bool:
         from sigma.collection import SigmaCollection
 
-        if not self.filter.rules or isinstance(rule, SigmaCorrelationRule):
+        # Don't apply filters to correlation rules
+        if isinstance(rule, SigmaCorrelationRule):
             return False
+
+        # Check if logsource matches
+        if rule.logsource not in self.logsource:
+            return False
+
+        # If rules is "any", apply to all rules matching the logsource
+        if isinstance(self.filter.rules, str) and self.filter.rules.lower() == "any":
+            return True
+
+        # At this point, rules must be a list (not a string)
+        assert isinstance(self.filter.rules, list)
 
         # For each rule ID/title in the filter.rules, add the rule to the reference using the resolve method,
         # then filter each reference to see if the rule is in the reference
@@ -173,10 +201,7 @@ class SigmaFilter(SigmaRuleBase):
             except sigma_exceptions.SigmaRuleNotFoundError:
                 pass
 
-        if all([match is None for match in matches]):
-            return False
-
-        if rule.logsource not in self.logsource:
+        if not matches:
             return False
 
         return True

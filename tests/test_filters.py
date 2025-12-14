@@ -13,9 +13,10 @@ from sigma.exceptions import (
     SigmaTitleError,
     SigmaFilterConditionError,
     SigmaFilterError,
-    SigmaFilterRuleReferenceError,
     SigmaConditionError,
+    SigmaFilterRuleReferenceError,
 )
+
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingItem
@@ -239,11 +240,293 @@ def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
     assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
 
 
-def test_no_rules_section(sigma_filter, test_backend, rule_collection):
-    sigma_filter.filter.rules = None
+def test_filter_with_rules_any(sigma_filter, test_backend, rule_collection):
+    # When rules field is "any", filter should apply to all rules matching the logsource
+    sigma_filter.filter.rules = "any"
     rule_collection.apply_filters([sigma_filter])
 
-    assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
+    assert test_backend.convert(rule_collection) == [
+        '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
+    ]
+
+
+def test_filter_with_rules_any_applies_to_all_matching_logsource(test_backend):
+    # Test that a filter with rules: any applies to all rules with matching logsource
+    filter_yaml = """
+title: Filter Administrator account
+description: Filters all process creation events
+logsource:
+    category: process_creation
+    product: windows
+filter:
+  rules: any
+  selection:
+      User|startswith: 'adm_'
+  condition: not selection
+"""
+
+    rules_yaml = """
+title: Rule 1
+id: 11111111-1111-1111-1111-111111111111
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        EventID: 4688
+    condition: selection
+---
+title: Rule 2
+id: 22222222-2222-2222-2222-222222222222
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine|contains: 'test'
+    condition: selection
+---
+title: Rule 3 - Different logsource
+id: 33333333-3333-3333-3333-333333333333
+logsource:
+    category: network_connection
+    product: windows
+detection:
+    selection:
+        DestinationPort: 443
+    condition: selection
+"""
+
+    sigma_filter = SigmaFilter.from_yaml(filter_yaml)
+    rule_collection = SigmaCollection.from_yaml(rules_yaml)
+    rule_collection.apply_filters([sigma_filter])
+
+    result = test_backend.convert(rule_collection)
+
+    # First two rules should have filter applied (matching logsource)
+    assert result[0] == 'EventID=4688 and not User startswith "adm_"'
+    assert result[1] == 'CommandLine contains "test" and not User startswith "adm_"'
+    # Third rule should not have filter applied (different logsource)
+    assert result[2] == "DestinationPort=443"
+
+
+def test_filter_with_rules_any_partial_logsource_matching(test_backend):
+    # Test partial logsource matching - filter with fewer attributes matches rules with more attributes
+    filter_yaml = """
+title: Filter all Windows events
+description: Filters all windows events regardless of category
+logsource:
+    product: windows
+filter:
+  rules: any
+  selection:
+      User|startswith: 'SYSTEM'
+  condition: not selection
+"""
+
+    rules_yaml = """
+title: Process Creation Rule
+id: aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        EventID: 4688
+    condition: selection
+---
+title: Network Connection Rule
+id: bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb
+logsource:
+    category: network_connection
+    product: windows
+detection:
+    selection:
+        DestinationPort: 443
+    condition: selection
+---
+title: Linux Process Rule - Different product
+id: cccccccc-cccc-cccc-cccc-cccccccccccc
+logsource:
+    category: process_creation
+    product: linux
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+"""
+
+    sigma_filter = SigmaFilter.from_yaml(filter_yaml)
+    rule_collection = SigmaCollection.from_yaml(rules_yaml)
+    rule_collection.apply_filters([sigma_filter])
+
+    result = test_backend.convert(rule_collection)
+
+    # First two rules should have filter applied (both have product: windows)
+    assert result[0] == 'EventID=4688 and not User startswith "SYSTEM"'
+    assert result[1] == 'DestinationPort=443 and not User startswith "SYSTEM"'
+    # Third rule should not have filter applied (different product)
+    assert result[2] == "EventID=1"
+
+
+def test_filter_with_rules_any_field_more_specific_logsource_no_match(test_backend):
+    # Test that filter with MORE specific logsource does NOT match rules with less specific logsource
+    filter_yaml = """
+title: Filter specific process creation
+description: Only applies to process_creation category with security service
+logsource:
+    category: process_creation
+    product: windows
+    service: security
+filter:
+  rules: any
+  selection:
+      User|startswith: 'admin'
+  condition: not selection
+"""
+
+    rules_yaml = """
+title: Rule with matching logsource
+id: dddddddd-dddd-dddd-dddd-dddddddddddd
+logsource:
+    category: process_creation
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 4688
+    condition: selection
+---
+title: Rule with less specific logsource - no service
+id: eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        CommandLine: test.exe
+    condition: selection
+"""
+
+    sigma_filter = SigmaFilter.from_yaml(filter_yaml)
+    rule_collection = SigmaCollection.from_yaml(rules_yaml)
+    rule_collection.apply_filters([sigma_filter])
+
+    result = test_backend.convert(rule_collection)
+
+    # First rule should have filter applied (exact match)
+    assert result[0] == 'EventID=4688 and not User startswith "admin"'
+    # Second rule should NOT have filter applied (filter is more specific)
+    assert result[1] == 'CommandLine="test.exe"'
+
+
+def test_filter_with_rules_any_field_excludes_correlation_rules(test_backend):
+    # Test that filters with rules: any do not apply to correlation rules
+    # This test uses the event_count_correlation_rule pattern but with matching logsource
+    filter_yaml = """
+title: Filter test events
+description: Should not apply to correlation rules but should apply to base rules
+logsource:
+    category: process_creation
+    product: windows
+filter:
+  rules: any
+  selection:
+      User: admin
+  condition: not selection
+"""
+
+    rules_yaml = """
+title: Failed logon
+name: failed_logon
+id: ffffffff-ffff-ffff-ffff-ffffffffffff
+status: test
+logsource:
+    product: windows
+    category: process_creation
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+---
+title: Multiple failed logons for a single user
+status: test
+correlation:
+    type: event_count
+    rules:
+        - failed_logon
+    group-by:
+        - User
+    timespan: 5m
+    condition:
+        gte: 10
+"""
+
+    sigma_filter = SigmaFilter.from_yaml(filter_yaml)
+    rule_collection = SigmaCollection.from_yaml(rules_yaml)
+    rule_collection.apply_filters([sigma_filter])
+
+    result = test_backend.convert(rule_collection)
+
+    # Should return correlation rule output which includes the base rule with filter applied
+    # The correlation rule itself shouldn't have the filter applied to its correlation logic
+    assert len(result) == 1
+    assert 'EventID=4625 and not User="admin"' in result[0]
+    # Verify correlation logic is present
+    assert "aggregate window=5min" in result[0]
+
+
+def test_filter_with_empty_rules_list_converts_to_any(test_backend):
+    # Test that explicitly setting rules=[] is converted to "any"
+    filter_yaml = """
+title: Filter with empty rules list
+description: Empty rules list should match all rules with matching logsource
+logsource:
+    product: windows
+filter:
+  rules: []
+  selection:
+      User: admin
+  condition: not selection
+"""
+
+    rules_yaml = """
+title: Test Rule
+id: 12345678-1234-1234-1234-123456789012
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+"""
+
+    sigma_filter = SigmaFilter.from_yaml(filter_yaml)
+    rule_collection = SigmaCollection.from_yaml(rules_yaml)
+    rule_collection.apply_filters([sigma_filter])
+
+    result = test_backend.convert(rule_collection)
+
+    # Filter should apply since rules=[] is converted to "any"
+    assert result[0] == 'EventID=1 and not User="admin"'
+
+
+def test_filter_missing_rules_field_raises_error():
+    # Test that a filter without a rules field raises an error
+    filter_yaml = """
+title: Filter without rules field
+description: This should raise an error
+logsource:
+    product: windows
+filter:
+  selection:
+      User: admin
+  condition: not selection
+"""
+
+    with pytest.raises(SigmaFilterRuleReferenceError, match="must have a 'rules' field"):
+        SigmaFilter.from_yaml(filter_yaml)
 
 
 # Validation Errors
@@ -255,13 +538,11 @@ def test_no_rules_section(sigma_filter, test_backend, rule_collection):
         [lambda sf: sf.pop("title", None), SigmaTitleError],
         [lambda sf: sf["filter"].pop("condition", None), SigmaFilterConditionError],
         [lambda sf: sf["filter"].pop("selection", None), SigmaDetectionError],
-        [lambda sf: sf["filter"].pop("rules", None), SigmaFilterRuleReferenceError],
         # Set the value to None
         [lambda sf: sf.update({"logsource": None}), SigmaLogsourceError],
         [lambda sf: sf.update({"filter": None}), SigmaFilterError],
         [lambda sf: sf.update({"title": None}), SigmaTitleError],
         [lambda sf: sf["filter"].update({"condition": None}), SigmaFilterConditionError],
-        [lambda sf: sf["filter"].update({"rules": None}), SigmaFilterRuleReferenceError],
     ],
 )
 def test_filter_validation_errors(transformation: Callable, error, sigma_filter):

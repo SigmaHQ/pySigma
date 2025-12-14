@@ -14,7 +14,9 @@ from sigma.exceptions import (
     SigmaFilterConditionError,
     SigmaFilterError,
     SigmaConditionError,
+    SigmaFilterRuleReferenceError,
 )
+
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
 from sigma.processing.pipeline import ProcessingItem
@@ -238,7 +240,7 @@ def test_invalid_rule_id_matching(sigma_filter, test_backend, rule_collection):
     assert test_backend.convert(rule_collection) == ["EventID=4625 or EventID2=4624"]
 
 
-def test_no_rules_section(sigma_filter, test_backend, rule_collection):
+def test_filter_with_rules_any(sigma_filter, test_backend, rule_collection):
     # When rules field is "any", filter should apply to all rules matching the logsource
     sigma_filter.filter.rules = "any"
     rule_collection.apply_filters([sigma_filter])
@@ -248,7 +250,7 @@ def test_no_rules_section(sigma_filter, test_backend, rule_collection):
     ]
 
 
-def test_filter_without_rules_field_applies_to_all_matching_logsource(test_backend):
+def test_filter_with_rules_any_applies_to_all_matching_logsource(test_backend):
     # Test that a filter with rules: any applies to all rules with matching logsource
     filter_yaml = """
 title: Filter Administrator account
@@ -308,7 +310,7 @@ detection:
     assert result[2] == "DestinationPort=443"
 
 
-def test_filter_without_rules_field_partial_logsource_matching(test_backend):
+def test_filter_with_rules_any_partial_logsource_matching(test_backend):
     # Test partial logsource matching - filter with fewer attributes matches rules with more attributes
     filter_yaml = """
 title: Filter all Windows events
@@ -367,7 +369,7 @@ detection:
     assert result[2] == "EventID=1"
 
 
-def test_filter_without_rules_field_more_specific_logsource_no_match(test_backend):
+def test_filter_with_rules_any_field_more_specific_logsource_no_match(test_backend):
     # Test that filter with MORE specific logsource does NOT match rules with less specific logsource
     filter_yaml = """
 title: Filter specific process creation
@@ -418,7 +420,7 @@ detection:
     assert result[1] == 'CommandLine="test.exe"'
 
 
-def test_filter_without_rules_field_excludes_correlation_rules(test_backend):
+def test_filter_with_rules_any_field_excludes_correlation_rules(test_backend):
     # Test that filters with rules: any do not apply to correlation rules
     # This test uses the event_count_correlation_rule pattern but with matching logsource
     filter_yaml = """
@@ -474,7 +476,7 @@ correlation:
     assert "aggregate window=5min" in result[0]
 
 
-def test_filter_with_empty_rules_list_behaves_like_no_rules_field(test_backend):
+def test_filter_with_empty_rules_list_converts_to_any(test_backend):
     # Test that explicitly setting rules=[] is converted to "any"
     filter_yaml = """
 title: Filter with empty rules list
@@ -522,8 +524,6 @@ filter:
       User: admin
   condition: not selection
 """
-
-    from sigma.exceptions import SigmaFilterRuleReferenceError
 
     with pytest.raises(SigmaFilterRuleReferenceError, match="must have a 'rules' field"):
         SigmaFilter.from_yaml(filter_yaml)

@@ -356,7 +356,7 @@ class SigmaCondition(ProcessingItemTrackingMixin):
                 "The pipe syntax in Sigma conditions has been deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax."
             )
         try:
-            parsed = cast(ConditionItem, condition.parseString(self.condition, parse_all=True)[0])
+            parsed = cast(ConditionItem, condition.parse_string(self.condition, parse_all=True)[0])
             if postprocess:
                 return parsed.postprocess(self.detections, source=self.source)
             else:

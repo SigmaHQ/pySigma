@@ -2149,6 +2149,13 @@ def test_convert_type_transformation_str_to_str():
     assert detection_item.value[0] == SigmaString("123")
 
 
+def test_convert_type_transformation_str_to_str_backslash():
+    transformation = ConvertTypeTransformation("str")
+    detection_item = SigmaDetectionItem("field", [], [SigmaString(r"value\\*")])
+    transformation.apply_detection_item(detection_item)
+    assert detection_item.value[0] == SigmaString(r"value\\*")
+
+
 def test_convert_type_transformation_str_to_num():
     transformation = ConvertTypeTransformation("num")
     detection_item = SigmaDetectionItem("field", [], [SigmaString("123")])

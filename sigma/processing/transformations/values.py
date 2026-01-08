@@ -380,8 +380,14 @@ class ConvertTypeTransformation(ValueTransformation):
         if self.target_type == "str":
             if isinstance(val, SigmaExpansion):
                 for i, entry in enumerate(val.values):
-                    val.values[i] = SigmaString(str(entry))
+                    # avoid re-parsing entries that are already SigmaString
+                    if not isinstance(entry, SigmaString):
+                        val.values[i] = SigmaString(str(entry))
 
+                return val
+
+            # confirming correct structure, avoiding re-parsing
+            if isinstance(val, SigmaString):
                 return val
 
             return SigmaString(str(val))

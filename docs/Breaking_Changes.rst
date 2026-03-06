@@ -25,7 +25,7 @@ Version 1.0
 - Migrated to ``pyYAML`` ``CSafeLoader``.
 - ``SigmaCollection`` now resolves rule references by default on initialization. This behavior can be disabled with the optional ``resolve_references`` parameter.
 - MITRE ATT&CK and D3FEND data is now downloaded on-demand instead of being shipped with the
-  library. In restricted environments, use ``mitre_attack_data.set_url()`` and
-  ``mitre_d3fend_data.set_url()`` to load data from local files. The content should be accessed only
+  library. In restricted environments, use ``mitre_attack.set_url()`` and
+  ``mitre_d3fend.set_url()`` to load data from local files. The content should be accessed only
   if really used to avoid performance hit by unwanted downloads.
 - **Python 3.10+ required**: The minimum required Python version has been updated from 3.9 to 3.10. Python 3.9 reached end-of-life and is no longer supported. Users must upgrade to Python 3.10 or later to use this version of pySigma.

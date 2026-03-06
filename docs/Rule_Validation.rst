@@ -119,20 +119,20 @@ pySigma to load it from local files:
 
 .. code-block:: python
 
-    from sigma.data import mitre_attack_data, mitre_d3fend_data
+    from sigma.data import mitre_attack, mitre_d3fend
     
     # Load MITRE ATT&CK data from a local file
-    mitre_attack_data.set_url("/path/to/enterprise-attack.json")
+    mitre_attack.set_url("/path/to/enterprise-attack.json")
     
     # Load MITRE D3FEND data from a local file
-    mitre_d3fend_data.set_url("/path/to/d3fend.json")
+    mitre_d3fend.set_url("/path/to/d3fend.json")
 
 You can also use custom URLs if you maintain your own mirror of the MITRE data:
 
 .. code-block:: python
 
-    mitre_attack_data.set_url("https://your-mirror.example.com/enterprise-attack.json")
-    mitre_d3fend_data.set_url("https://your-mirror.example.com/d3fend.json")
+    mitre_attack.set_url("https://your-mirror.example.com/enterprise-attack.json")
+    mitre_d3fend.set_url("https://your-mirror.example.com/d3fend.json")
 
 The data files can be obtained from:
 

@@ -121,6 +121,81 @@ def test_pipeline_condition_expression_match_field_name(detection_item):
     assert result.match_field_name("test")
 
 
+def test_pipeline_condition_expression_chained_or(sigma_rule):
+    conditions = {
+        "cond1": RuleConditionFalse(dummy="test-false"),
+        "cond2": RuleConditionFalse(dummy="test-false"),
+        "cond3": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1 or cond2 or cond3"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    assert result == ConditionOR(
+        0,
+        ConditionOR(0, ConditionIdentifier(0, "cond1"), ConditionIdentifier(9, "cond2")),
+        ConditionIdentifier(18, "cond3"),
+    )
+    assert result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_chained_and(sigma_rule):
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+        "cond2": RuleConditionTrue(dummy="test-true"),
+        "cond3": RuleConditionFalse(dummy="test-false"),
+    }
+    condition_expression = "cond1 and cond2 and cond3"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    assert result == ConditionAND(
+        0,
+        ConditionAND(0, ConditionIdentifier(0, "cond1"), ConditionIdentifier(10, "cond2")),
+        ConditionIdentifier(20, "cond3"),
+    )
+    assert not result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_chained_or_four(sigma_rule):
+    conditions = {
+        "cond1": RuleConditionFalse(dummy="test-false"),
+        "cond2": RuleConditionFalse(dummy="test-false"),
+        "cond3": RuleConditionFalse(dummy="test-false"),
+        "cond4": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1 or cond2 or cond3 or cond4"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    assert result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_and_not_chained_or(sigma_rule):
+    """Test the exact pattern from issue #422: A and not (B or C or D)"""
+    conditions = {
+        "logsource_cond": RuleConditionTrue(dummy="test-true"),
+        "filter1": RuleConditionFalse(dummy="test-false"),
+        "filter2": RuleConditionFalse(dummy="test-false"),
+        "filter3": RuleConditionFalse(dummy="test-false"),
+    }
+    condition_expression = "logsource_cond and not (filter1 or filter2 or filter3)"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    assert result.match(sigma_rule)
+
+
+def test_pipeline_condition_expression_and_not_chained_or_filtered(sigma_rule):
+    """Ensure a matching filter correctly excludes via chained or."""
+    conditions = {
+        "logsource_cond": RuleConditionTrue(dummy="test-true"),
+        "filter1": RuleConditionFalse(dummy="test-false"),
+        "filter2": RuleConditionTrue(dummy="test-true"),
+        "filter3": RuleConditionFalse(dummy="test-false"),
+    }
+    condition_expression = "logsource_cond and not (filter1 or filter2 or filter3)"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+    assert not result.match(sigma_rule)
+
+
 def test_pipeline_condition_expression_invalid():
     with pytest.raises(SigmaPipelineConditionError, match="Error parsing"):
         parse_condition_expression("cond1 and")

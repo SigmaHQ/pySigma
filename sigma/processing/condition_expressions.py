@@ -189,9 +189,14 @@ class BinaryConditionOp(ConditionExpression):
 
     @classmethod
     def from_parsed(cls, s: str, l: int, t: Union[ParseResults, list[Any]]) -> "BinaryConditionOp":
-        expr = cls(l, t[0][0], t[0][2])
-        expr.set_expression(s)
-        return expr
+        operands = t[0][0::2]  # extract operands, skipping operators
+        # Build left-associative binary tree: A op B op C -> cls(cls(A, B), C)
+        result = cls(l, operands[0], operands[1])
+        result.set_expression(s)
+        for operand in operands[2:]:
+            result = cls(l, result, operand)
+            result.set_expression(s)
+        return result
 
     def resolve(self, conditions: dict[str, ProcessingCondition]) -> set[str]:
         """

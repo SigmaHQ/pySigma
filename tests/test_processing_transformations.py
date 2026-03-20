@@ -1838,11 +1838,31 @@ def test_replace_string_specials(dummy_pipeline):
             SigmaDetection(
                 [
                     SigmaDetectionItem("field1", [], [SigmaString("/value")]),
-                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                    SigmaDetectionItem("field2", [], [SigmaString("123")]),
                 ]
             )
         ]
     )
+
+
+def test_replace_string_number(dummy_pipeline):
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {
+                    "field": 123,
+                },
+                "condition": "test",
+            },
+        }
+    )
+    transformation = ReplaceStringTransformation("12", "99")
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(sigma_rule)
+    s = sigma_rule.detection.detections["test"].detection_items[0].value[0]
+    assert s == SigmaString("993")
 
 
 def test_replace_string_placeholder(dummy_pipeline):
@@ -1915,7 +1935,7 @@ def test_replace_string_skip_specials(dummy_pipeline):
             SigmaDetection(
                 [
                     SigmaDetectionItem("field1", [], [SigmaString("*/\\?/value")]),
-                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                    SigmaDetectionItem("field2", [], [SigmaString("123")]),
                 ]
             )
         ]
@@ -1946,7 +1966,7 @@ def test_replace_string_skip_specials_with_interpret_specials(dummy_pipeline):
             SigmaDetection(
                 [
                     SigmaDetectionItem("field1", [], [SigmaString("*/?/value")]),
-                    SigmaDetectionItem("field2", [], [SigmaNumber(123)]),
+                    SigmaDetectionItem("field2", [], [SigmaString("123")]),
                 ]
             )
         ]

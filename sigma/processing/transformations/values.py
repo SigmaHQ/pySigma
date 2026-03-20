@@ -216,6 +216,13 @@ class ReplaceStringTransformation(StringValueTransformation):
                 f"Regular expression '{self.regex}' is invalid: {str(e)}"
             ) from e
 
+    def apply_value(
+        self, field: Optional[str], val: SigmaType
+    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
+        if isinstance(val, SigmaNumber):
+            return self.apply_string_value(field, SigmaString(str(val)))
+        return super().apply_value(field, val)
+
     def apply_string_value(self, field: Optional[str], val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             if self.skip_special:

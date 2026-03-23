@@ -287,13 +287,14 @@ class SigmaCollection:
             if result_path is not None:  # Skip if path is None
                 # Load per-file collections without resolving references yet. The
                 # final resolution will be done after merging all collections below.
-                sigma_collection = SigmaCollection.from_yaml(
-                    result_path.open(encoding="utf-8"),
-                    collect_errors,
-                    source=SigmaRuleLocation(result_path),
-                    collect_filters=True,
-                    resolve_references=False,
-                )
+                with result_path.open(encoding="utf-8") as fd:
+                    sigma_collection = SigmaCollection.from_yaml(
+                        fd,
+                        collect_errors,
+                        source=SigmaRuleLocation(result_path),
+                        collect_filters=True,
+                        resolve_references=False,
+                    )
                 if (
                     on_load is not None
                 ):  # replace SigmaCollection generated from file content with the return value from on_load function if provided

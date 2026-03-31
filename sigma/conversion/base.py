@@ -1,13 +1,28 @@
+import re
 from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
-import re
+from typing import Any, Callable, ClassVar, Iterator, Pattern, cast
 
+from typing_extensions import Self
+
+from sigma.collection import SigmaCollection
+from sigma.conditions import (
+    ConditionAND,
+    ConditionFieldEqualsValueExpression,
+    ConditionIdentifier,
+    ConditionItem,
+    ConditionNOT,
+    ConditionOR,
+    ConditionValueExpression,
+)
+from sigma.conversion.deferred import DeferredQueryExpression
+from sigma.conversion.state import ConversionState
 from sigma.correlations import (
-    CorrelationConditionItem,
     CorrelationConditionAND,
-    CorrelationConditionOR,
+    CorrelationConditionItem,
     CorrelationConditionNOT,
+    CorrelationConditionOR,
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
     SigmaCorrelationFieldAliases,
@@ -18,7 +33,6 @@ from sigma.correlations import (
     SigmaExtendedCorrelationCondition,
     SigmaRuleReference,
 )
-
 from sigma.exceptions import (
     ExceptionOnUsage,
     SigmaBackendError,
@@ -26,51 +40,28 @@ from sigma.exceptions import (
     SigmaError,
     SigmaValueError,
 )
-from sigma.conversion.deferred import DeferredQueryExpression
-from typing import (
-    Iterator,
-    Pattern,
-    Union,
-    ClassVar,
-    Optional,
-    Any,
-    Type,
-    cast,
-    Callable,
-)
 from sigma.processing.pipeline import ProcessingPipeline
-from sigma.collection import SigmaCollection
 from sigma.rule import SigmaRule
-from sigma.conditions import (
-    ConditionIdentifier,
-    ConditionItem,
-    ConditionOR,
-    ConditionAND,
-    ConditionNOT,
-    ConditionFieldEqualsValueExpression,
-    ConditionValueExpression,
-)
 from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
 from sigma.types import (
     CompareOperators,
     SigmaBool,
     SigmaCasedString,
+    SigmaCIDRExpression,
+    SigmaCompareExpression,
     SigmaExists,
     SigmaExpansion,
     SigmaFieldReference,
+    SigmaNull,
+    SigmaNumber,
+    SigmaQueryExpression,
+    SigmaRegularExpression,
     SigmaRegularExpressionFlag,
     SigmaString,
-    SigmaNumber,
-    SigmaRegularExpression,
-    SigmaCompareExpression,
-    SigmaNull,
-    SigmaQueryExpression,
-    SigmaCIDRExpression,
-    SpecialChars,
     SigmaTimestampPart,
+    SpecialChars,
     TimestampPart,
 )
-from sigma.conversion.state import ConversionState
 
 
 class Backend(ABC):
@@ -133,11 +124,11 @@ class Backend(ABC):
 
     # Backends can offer different methods of correlation query generation. That are described by
     # correlation_methods:
-    correlation_methods: ClassVar[Optional[dict[str, str]]] = None
+    correlation_methods: ClassVar[dict[str, str | None]] = None
     # The following class variable defines the default method that should be chosen if none is provided.
     default_correlation_method: ClassVar[str] = "default"
 
-    processing_pipeline: Optional[ProcessingPipeline]
+    processing_pipeline: ProcessingPipeline | None
     last_processing_pipeline: ProcessingPipeline
     backend_processing_pipeline: ClassVar[ProcessingPipeline] = ProcessingPipeline()
     output_format_processing_pipeline: ClassVar[dict[str, ProcessingPipeline]] = defaultdict(
@@ -164,25 +155,25 @@ class Backend(ABC):
     convert_not_as_not_eq: ClassVar[bool] = False
 
     # Return value for empty AND and OR expressions
-    empty_or_expression: ClassVar[Optional[str]] = (
+    empty_or_expression: ClassVar[str | None] = (
         None  # Value returned when OR expression has no arguments
     )
-    empty_and_expression: ClassVar[Optional[str]] = (
+    empty_and_expression: ClassVar[str | None] = (
         None  # Value returned when AND expression has no arguments
     )
 
     def __init__(
         self,
-        processing_pipeline: Optional[ProcessingPipeline] = None,
+        processing_pipeline: ProcessingPipeline | None = None,
         collect_errors: bool = False,
         **backend_options: dict[str, Any],
     ):
-        self.processing_pipeline = processing_pipeline
-        self.errors = list()
-        self.collect_errors = collect_errors
-        self.backend_options = backend_options
+        self.processing_pipeline: ProcessingPipeline | None = processing_pipeline
+        self.errors = []
+        self.collect_errors: bool = collect_errors
+        self.backend_options: dict[str, dict[str, Any]] = backend_options
 
-    def init_processing_pipeline(self, output_format: Optional[str] = None) -> None:
+    def init_processing_pipeline(self, output_format: str | None = None) -> None:
         """
         Initialize the processing pipeline by combining backend, processing, and output format pipelines.
         """
@@ -200,11 +191,11 @@ class Backend(ABC):
     def convert(
         self,
         rule_collection: SigmaCollection,
-        output_format: Optional[str] = None,
-        correlation_method: Optional[str] = None,
-        callback: Optional[
-            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
-        ] = None,
+        output_format: str | None = None,
+        correlation_method: str | None = None,
+        callback: (
+            Callable[[SigmaRule | SigmaCorrelationRule, str | None, int, Any, Any], Any] | None
+        ) = None,
     ) -> Any:
         """
         Convert a Sigma ruleset into the target data structure. Usually the result are one or
@@ -242,10 +233,10 @@ class Backend(ABC):
     def convert_rule(
         self,
         rule: SigmaRule,
-        output_format: Optional[str] = None,
-        callback: Optional[
-            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
-        ] = None,
+        output_format: str | None = None,
+        callback: (
+            Callable[[SigmaRule | SigmaCorrelationRule, str | None, int, Any, Any], Any] | None
+        ) = None,
     ) -> list[Any]:
         """
         Convert a single Sigma rule into the target data structure (usually query, see above).
@@ -275,7 +266,7 @@ class Backend(ABC):
 
             # 2. Convert conditions
             error_state = "converting"
-            states = [
+            states: list[ConversionState] = [
                 ConversionState(processing_state=dict(self.last_processing_pipeline.state))
                 for _ in rule.detection.parsed_condition
             ]
@@ -329,7 +320,7 @@ class Backend(ABC):
             raise
 
     def decide_convert_condition_as_in_expression(
-        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
+        self, cond: ConditionOR | ConditionAND, state: ConversionState
     ) -> bool:
         """
         Decide if an OR or AND expression should be converted as "field in (value list)" or as plain expression.
@@ -599,12 +590,7 @@ class Backend(ABC):
 
     def convert_condition(
         self,
-        cond: Union[
-            ConditionItem,
-            ConditionFieldEqualsValueExpression,
-            ConditionValueExpression,
-            None,
-        ],
+        cond: ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression | None,
         state: ConversionState,
     ) -> Any:
         """
@@ -642,19 +628,19 @@ class Backend(ABC):
     def convert_correlation_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
-        method: Optional[str] = None,
-        callback: Optional[
-            Callable[[Union[SigmaRule, SigmaCorrelationRule], Optional[str], int, Any, Any], Any]
-        ] = None,
+        output_format: str | None = None,
+        method: str | None = None,
+        callback: (
+            Callable[[SigmaRule | SigmaCorrelationRule, str | None, int, Any, Any], Any] | None
+        ) = None,
     ) -> list[Any]:
         """
         Convert a correlation rule into the target data structure (usually query).
 
         Args:
             rule (SigmaCorrelationRule): The correlation rule to be converted.
-            output_format (Optional[str]): The desired output format. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The desired output format. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
             callback: Optional callback function called for each query conversion.
                      Receives (rule, output_format, index, query, result) parameters and
                      returns a potentially modified result. The returned value replaces
@@ -755,7 +741,7 @@ class Backend(ABC):
     def convert_correlation_event_count_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -763,8 +749,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The event count correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -774,7 +760,7 @@ class Backend(ABC):
     def convert_correlation_value_count_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -782,8 +768,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The value count correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -793,7 +779,7 @@ class Backend(ABC):
     def convert_correlation_temporal_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -801,8 +787,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The temporal correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -812,7 +798,7 @@ class Backend(ABC):
     def convert_correlation_temporal_ordered_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -820,8 +806,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The ordered temporal correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -831,7 +817,7 @@ class Backend(ABC):
     def convert_correlation_extended_temporal_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -841,8 +827,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The extended temporal correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -852,7 +838,7 @@ class Backend(ABC):
     def convert_correlation_extended_temporal_ordered_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -862,8 +848,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The extended ordered temporal correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -873,7 +859,7 @@ class Backend(ABC):
     def convert_correlation_value_sum_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -881,8 +867,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The value sum correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -892,7 +878,7 @@ class Backend(ABC):
     def convert_correlation_value_avg_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -900,8 +886,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The value average correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -911,7 +897,7 @@ class Backend(ABC):
     def convert_correlation_value_percentile_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -919,8 +905,8 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The value percentile correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
@@ -930,7 +916,7 @@ class Backend(ABC):
     def convert_correlation_value_median_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[Any]:
         """
@@ -938,15 +924,15 @@ class Backend(ABC):
 
         Args:
             rule (SigmaCorrelationRule): The value median correlation rule to be converted.
-            output_format (Optional[str]): The output format for the conversion. Defaults to None.
-            method (Optional[str]): The correlation method to be used. Defaults to None.
+            output_format (str | None): The output format for the conversion. Defaults to None.
+            method (str | None): The correlation method to be used. Defaults to None.
 
         Returns:
             Any: The converted data structure.
         """
 
     def finish_query(
-        self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any, state: ConversionState
+        self, rule: SigmaRule | SigmaCorrelationRule, query: Any, state: ConversionState
     ) -> Any:
         """
         Finish the query. This is the place where final not format-specific adjustments to the query
@@ -1014,12 +1000,12 @@ class TextQueryBackend(Backend):
 
     # Operator precedence: tuple of Condition{AND,OR,NOT} in order of precedence.
     # The backend generates grouping if required
-    precedence: ClassVar[tuple[Type[ConditionItem], Type[ConditionItem], Type[ConditionItem]]] = (
+    precedence: ClassVar[tuple[type[ConditionItem], type[ConditionItem], type[ConditionItem]]] = (
         ConditionNOT,
         ConditionAND,
         ConditionOR,
     )
-    group_expression: ClassVar[Optional[str]] = (
+    group_expression: ClassVar[str | None] = (
         None  # Expression for precedence override grouping as format string with {expr} placeholder
     )
     parenthesize: bool = (
@@ -1032,7 +1018,7 @@ class TextQueryBackend(Backend):
     and_token: ClassVar[str]
     not_token: ClassVar[str]
     eq_token: ClassVar[str]  # Token inserted between field and value (without separator)
-    not_eq_token: ClassVar[Optional[str]] = (
+    not_eq_token: ClassVar[str | None] = (
         None  # Token inserted between field and value (without separator) if using not_eq_expression over not_token
     )
     eq_expression: ClassVar[str] = (
@@ -1059,10 +1045,10 @@ class TextQueryBackend(Backend):
     # String output
     ## Fields
     ### Quoting
-    field_quote: ClassVar[Optional[str]] = (
+    field_quote: ClassVar[str | None] = (
         None  # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
     )
-    field_quote_pattern: ClassVar[Optional[Pattern[str]]] = (
+    field_quote_pattern: ClassVar[Pattern[str | None]] = (
         None  # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
     )
     field_quote_pattern_negation: ClassVar[bool] = (
@@ -1070,11 +1056,11 @@ class TextQueryBackend(Backend):
     )
 
     ### Escaping
-    field_escape: ClassVar[Optional[str]] = (
+    field_escape: ClassVar[str | None] = (
         None  # Character to escape particular parts defined in field_escape_pattern.
     )
     field_escape_quote: ClassVar[bool] = True  # Escape quote string defined in field_quote
-    field_escape_pattern: ClassVar[Optional[Pattern[str]]] = (
+    field_escape_pattern: ClassVar[Pattern[str | None]] = (
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
@@ -1085,37 +1071,35 @@ class TextQueryBackend(Backend):
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
-    str_quote_pattern: ClassVar[Optional[Pattern[str]]] = (
+    str_quote_pattern: ClassVar[Pattern[str | None]] = (
         None  # Quote string values that match (or don't match) this pattern
     )
     str_quote_pattern_negation: ClassVar[bool] = True  # Negate str_quote_pattern result
     ### String escaping and filtering
-    escape_char: ClassVar[Optional[str]] = (
+    escape_char: ClassVar[str | None] = (
         None  # Escaping character for special characters inside string
     )
-    wildcard_multi: ClassVar[Optional[str]] = None  # Character used as multi-character wildcard
-    wildcard_single: ClassVar[Optional[str]] = None  # Character used as single-character wildcard
+    wildcard_multi: ClassVar[str | None] = None  # Character used as multi-character wildcard
+    wildcard_single: ClassVar[str | None] = None  # Character used as single-character wildcard
     add_escaped: ClassVar[str] = ""  # Characters quoted in addition to wildcards and string quote
     filter_chars: ClassVar[str] = ""  # Characters filtered
     ### Booleans
-    bool_values: ClassVar[dict[bool, Optional[str]]] = (
-        {  # Values to which boolean values are mapped.
-            True: None,
-            False: None,
-        }
-    )
+    bool_values: ClassVar[dict[bool, str | None]] = {  # Values to which boolean values are mapped.
+        True: None,
+        False: None,
+    }
 
     # String matching operators. if none is appropriate eq_token (or not_eq_token) is used.
-    startswith_expression: ClassVar[Optional[str]] = None
-    not_startswith_expression: ClassVar[Optional[str]] = None
+    startswith_expression: ClassVar[str | None] = None
+    not_startswith_expression: ClassVar[str | None] = None
     startswith_expression_allow_special: ClassVar[bool] = False
-    endswith_expression: ClassVar[Optional[str]] = None
-    not_endswith_expression: ClassVar[Optional[str]] = None
+    endswith_expression: ClassVar[str | None] = None
+    not_endswith_expression: ClassVar[str | None] = None
     endswith_expression_allow_special: ClassVar[bool] = False
-    contains_expression: ClassVar[Optional[str]] = None
-    not_contains_expression: ClassVar[Optional[str]] = None
+    contains_expression: ClassVar[str | None] = None
+    not_contains_expression: ClassVar[str | None] = None
     contains_expression_allow_special: ClassVar[bool] = False
-    wildcard_match_expression: ClassVar[Optional[str]] = (
+    wildcard_match_expression: ClassVar[str | None] = (
         None  # Special expression if wildcards can't be matched with the eq_token operator.
     )
 
@@ -1123,8 +1107,8 @@ class TextQueryBackend(Backend):
     # Regular expression query as format string with placeholders {field}, {regex}, {flag_x} where x
     # is one of the flags shortcuts supported by Sigma (currently i, m and s) and refers to the
     # token stored in the class variable re_flags.
-    re_expression: ClassVar[Optional[str]] = None
-    not_re_expression: ClassVar[Optional[str]] = None
+    re_expression: ClassVar[str | None] = None
+    not_re_expression: ClassVar[str | None] = None
     re_escape_char: ClassVar[str] = "\\"  # Character used for escaping in regular expressions
     re_escape: ClassVar[list[str]] = []  # List of strings that are escaped
     re_escape_escape_char: bool = True  # If True, the escape character is also escaped
@@ -1140,45 +1124,45 @@ class TextQueryBackend(Backend):
     # Case sensitive string matching expression. String is quoted/escaped like a normal string.
     # Placeholders {field} and {value} are replaced with field name and quoted/escaped string.
     # {regex} contains the value expressed as regular expression.
-    case_sensitive_match_expression: ClassVar[Optional[str]] = None
+    case_sensitive_match_expression: ClassVar[str | None] = None
     # Case sensitive string matching operators similar to standard string matching. If not provided,
     # case_sensitive_match_expression is used.
-    case_sensitive_startswith_expression: ClassVar[Optional[str]] = None
-    case_sensitive_not_startswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_startswith_expression: ClassVar[str | None] = None
+    case_sensitive_not_startswith_expression: ClassVar[str | None] = None
     case_sensitive_startswith_expression_allow_special: ClassVar[bool] = False
-    case_sensitive_endswith_expression: ClassVar[Optional[str]] = None
-    case_sensitive_not_endswith_expression: ClassVar[Optional[str]] = None
+    case_sensitive_endswith_expression: ClassVar[str | None] = None
+    case_sensitive_not_endswith_expression: ClassVar[str | None] = None
     case_sensitive_endswith_expression_allow_special: ClassVar[bool] = False
-    case_sensitive_contains_expression: ClassVar[Optional[str]] = None
-    case_sensitive_not_contains_expression: ClassVar[Optional[str]] = None
+    case_sensitive_contains_expression: ClassVar[str | None] = None
+    case_sensitive_not_contains_expression: ClassVar[str | None] = None
     case_sensitive_contains_expression_allow_special: ClassVar[bool] = False
 
     # CIDR expressions: define CIDR matching if backend has native support. Else pySigma expands
     # CIDR values into string wildcard matches.
-    cidr_expression: ClassVar[Optional[str]] = (
+    cidr_expression: ClassVar[str | None] = (
         None  # CIDR expression query as format string with placeholders {field}, {value} (the whole CIDR value), {network} (network part only), {prefixlen} (length of network mask prefix) and {netmask} (CIDR network mask only)
     )
-    not_cidr_expression: ClassVar[Optional[str]] = None
+    not_cidr_expression: ClassVar[str | None] = None
 
     # Numeric comparison operators
-    compare_op_expression: ClassVar[Optional[str]] = (
+    compare_op_expression: ClassVar[str | None] = (
         None  # Compare operation query as format string with placeholders {field}, {operator} and {value}
     )
-    compare_operators: ClassVar[Optional[dict[CompareOperators, str]]] = (
+    compare_operators: ClassVar[dict[CompareOperators, str | None]] = (
         None  # Mapping between CompareOperators elements and strings used as replacement for {operator} in compare_op_expression
     )
 
     # Expression for comparing two event fields
     # Field comparison expression with the placeholders {field1} and {field2} corresponding to left field and right value side of Sigma detection item
-    field_equals_field_expression: ClassVar[Optional[str]] = None
-    field_equals_field_startswith_expression: ClassVar[Optional[str]] = None
-    field_equals_field_endswith_expression: ClassVar[Optional[str]] = None
-    field_equals_field_contains_expression: ClassVar[Optional[str]] = None
+    field_equals_field_expression: ClassVar[str | None] = None
+    field_equals_field_startswith_expression: ClassVar[str | None] = None
+    field_equals_field_endswith_expression: ClassVar[str | None] = None
+    field_equals_field_contains_expression: ClassVar[str | None] = None
 
-    field_timestamp_part_expression: ClassVar[Optional[str]] = None
+    field_timestamp_part_expression: ClassVar[str | None] = None
     """Expression for timestamp part modifiers like |minute, |day, etc."""
 
-    timestamp_part_mapping: ClassVar[Optional[dict[TimestampPart, str]]] = None
+    timestamp_part_mapping: ClassVar[dict[TimestampPart, str | None]] = None
     """Mapping to map a TimestampPart enum value to it's string representation of the target SIEM. Example value: '%M' for minute."""
 
     field_equals_field_escaping_quoting: tuple[bool, bool] = (
@@ -1187,46 +1171,46 @@ class TextQueryBackend(Backend):
     )  # If regular field-escaping/quoting is applied to field1 and field2. A custom escaping/quoting can be implemented in the convert_condition_field_eq_field_escape_and_quote method.
 
     # Null/None expressions
-    field_null_expression: ClassVar[Optional[str]] = (
+    field_null_expression: ClassVar[str | None] = (
         None  # Expression for field has null value as format string with {field} placeholder for field name
     )
 
     # Field existence condition expressions.
-    field_exists_expression: ClassVar[Optional[str]] = (
+    field_exists_expression: ClassVar[str | None] = (
         None  # Expression for field existence as format string with {field} placeholder for field name
     )
-    field_not_exists_expression: ClassVar[Optional[str]] = (
+    field_not_exists_expression: ClassVar[str | None] = (
         None  # Expression for field non-existence as format string with {field} placeholder for field name. If not set, field_exists_expression is negated with boolean NOT.
     )
 
     # Field value in list, e.g. "field in (value list)" or "field containsall (value list)"
-    field_in_list_expression: ClassVar[Optional[str]] = (
+    field_in_list_expression: ClassVar[str | None] = (
         None  # Expression for field in list of values as format string with placeholders {field}, {op} and {list}
     )
-    or_in_operator: ClassVar[Optional[str]] = (
+    or_in_operator: ClassVar[str | None] = (
         None  # Operator used to convert OR into in-expressions. Must be set if convert_or_as_in is set
     )
-    and_in_operator: ClassVar[Optional[str]] = (
+    and_in_operator: ClassVar[str | None] = (
         None  # Operator used to convert AND into in-expressions. Must be set if convert_and_as_in is set
     )
-    list_separator: ClassVar[Optional[str]] = None  # List element separator
+    list_separator: ClassVar[str | None] = None  # List element separator
 
     # Value not bound to a field
-    unbound_value_str_expression: ClassVar[Optional[str]] = (
+    unbound_value_str_expression: ClassVar[str | None] = (
         None  # Expression for string value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
-    unbound_value_num_expression: ClassVar[Optional[str]] = (
+    unbound_value_num_expression: ClassVar[str | None] = (
         None  # Expression for number value not bound to a field as format string with placeholder {value} and {regex} (value as regular expression)
     )
-    unbound_value_re_expression: ClassVar[Optional[str]] = (
+    unbound_value_re_expression: ClassVar[str | None] = (
         None  # Expression for regular expression not bound to a field as format string with placeholder {value} and {flag_x} as described for re_expression
     )
 
     # Query finalization: appending and concatenating deferred query part
-    deferred_start: ClassVar[Optional[str]] = (
+    deferred_start: ClassVar[str | None] = (
         None  # String used as separator between main query and deferred parts
     )
-    deferred_separator: ClassVar[Optional[str]] = (
+    deferred_separator: ClassVar[str | None] = (
         None  # String used to join multiple deferred query parts
     )
     deferred_only_query: ClassVar[str] = (
@@ -1243,17 +1227,17 @@ class TextQueryBackend(Backend):
     #   phase.
     # * {condition} is the condition expression generated by the correlation query condition phase.
     # If a correlation query template for a specific correlation type is not defined, the default correlation query template is used.
-    default_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    event_count_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    value_count_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    temporal_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    temporal_ordered_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    temporal_extended_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    temporal_ordered_extended_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    value_sum_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    value_avg_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    value_percentile_correlation_query: ClassVar[Optional[dict[str, str]]] = None
-    value_median_correlation_query: ClassVar[Optional[dict[str, str]]] = None
+    default_correlation_query: ClassVar[dict[str, str | None]] = None
+    event_count_correlation_query: ClassVar[dict[str, str | None]] = None
+    value_count_correlation_query: ClassVar[dict[str, str | None]] = None
+    temporal_correlation_query: ClassVar[dict[str, str | None]] = None
+    temporal_ordered_correlation_query: ClassVar[dict[str, str | None]] = None
+    temporal_extended_correlation_query: ClassVar[dict[str, str | None]] = None
+    temporal_ordered_extended_correlation_query: ClassVar[dict[str, str | None]] = None
+    value_sum_correlation_query: ClassVar[dict[str, str | None]] = None
+    value_avg_correlation_query: ClassVar[dict[str, str | None]] = None
+    value_percentile_correlation_query: ClassVar[dict[str, str | None]] = None
+    value_median_correlation_query: ClassVar[dict[str, str | None]] = None
 
     ## Correlation query search phase
     # The first step of a correlation query is to match events described by the referred Sigma
@@ -1266,22 +1250,22 @@ class TextQueryBackend(Backend):
     # * {normalization} is the expression that normalizes the rule field names to unified alias
     #   field names that can be later used for aggregation. The expression is defined by
     #   correlation_search_field_normalization_expression defined below.
-    correlation_search_single_rule_expression: ClassVar[Optional[str]] = None
+    correlation_search_single_rule_expression: ClassVar[str | None] = None
     # If no single rule query expression is defined, the multi query template expressions below are
     # used and must be suitable for this purpose.
 
     # A multiple rule search expression defines the search expression emitted if multiple rules are
     # referred by the correlation rule. This is split into the expression for the query itself:
-    correlation_search_multi_rule_expression: ClassVar[Optional[str]] = None
+    correlation_search_multi_rule_expression: ClassVar[str | None] = None
     # This template contains only one placeholder {queries} which contains the queries generated
     # from single queries joined with a query separator:
     # * A query template for each query generated from the referred Sigma rules similar to the
     #   search_single_rule_expression defined above:
-    correlation_search_multi_rule_query_expression: ClassVar[Optional[str]] = None
+    correlation_search_multi_rule_query_expression: ClassVar[str | None] = None
     #   Usually the expression must contain some an expression that marks the matched event type as
     #   such, e.g. by using the rule name or uuid.
     # * A joiner string that is put between each search_multi_rule_query_expression:
-    correlation_search_multi_rule_query_expression_joiner: ClassVar[Optional[str]] = None
+    correlation_search_multi_rule_query_expression_joiner: ClassVar[str | None] = None
 
     ## Correlation query typing phase (optional)
     # Event typing expression. In some query languages the initial search query only allows basic
@@ -1291,16 +1275,16 @@ class TextQueryBackend(Backend):
     # This is the template for the event typing expression that is used to mark the matched events.
     # It contains only a {queries} placeholder that is replaced by the result of joining
     # typing_rule_query_expression with typing_rule_query_expression_joiner defined afterwards.
-    typing_expression: ClassVar[Optional[str]] = None
+    typing_expression: ClassVar[str | None] = None
     # This is the template for the event typing expression for each query generated from the
     # referred Sigma rules. It contains the following placeholders:
     # * {rule} is the referred Sigma rule.
     # * {ruleid} is the rule name or if not available the id of the rule.
     # * {query} is the query generated from the referred Sigma rule.
-    typing_rule_query_expression: ClassVar[Optional[str]] = None
+    typing_rule_query_expression: ClassVar[str | None] = None
     # String that is used to join the event typing expressions for each rule query referred by the
     # correlation rule:
-    typing_rule_query_expression_joiner: ClassVar[Optional[str]] = None
+    typing_rule_query_expression_joiner: ClassVar[str | None] = None
 
     # Event field normalization expression. This is used to normalize field names in events matched
     # by the Sigma rules referred by the correlation rule. This is a dictionary mapping from
@@ -1313,8 +1297,8 @@ class TextQueryBackend(Backend):
     # normalization expression is generated. All such generated expressions are joined with the
     # correlation_search_field_normalization_expression_joiner and the result is passed as
     # {normalization} to the correlation_search_*_rule_expression.
-    correlation_search_field_normalization_expression: ClassVar[Optional[str]] = None
-    correlation_search_field_normalization_expression_joiner: ClassVar[Optional[str]] = None
+    correlation_search_field_normalization_expression: ClassVar[str | None] = None
+    correlation_search_field_normalization_expression_joiner: ClassVar[str | None] = None
 
     ## Correlation query aggregation phase
     # All of the following class variables are dictionaries of mappings from
@@ -1326,34 +1310,34 @@ class TextQueryBackend(Backend):
     #   method.
     # * {groupby} contains the group by expression generated by the groupby_* templates below.
     # * {search} contains the search expression generated by the correlation query search phase.
-    event_count_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    event_count_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for event count correlation rules
     )
-    value_count_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    value_count_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for value count correlation rules
     )
-    temporal_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    temporal_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for temporal correlation rules
     )
-    temporal_ordered_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    temporal_ordered_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for ordered temporal correlation rules
     )
-    temporal_extended_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    temporal_extended_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for extended temporal correlation rules
     )
-    temporal_ordered_extended_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    temporal_ordered_extended_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for extended ordered temporal correlation rules
     )
-    value_sum_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    value_sum_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for value sum correlation rules
     )
-    value_avg_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    value_avg_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for value average correlation rules
     )
-    value_percentile_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    value_percentile_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for value percentile correlation rules
     )
-    value_median_aggregation_expression: ClassVar[Optional[dict[str, str]]] = (
+    value_median_aggregation_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for value median correlation rules
     )
 
@@ -1365,37 +1349,37 @@ class TextQueryBackend(Backend):
     #   convert_timespan.
     # The mapping can be incomplete. Non-existent timespan specifiers will be passed as-is if no
     # mapping is defined for them.
-    timespan_mapping: ClassVar[Optional[dict[str, str]]] = None
+    timespan_mapping: ClassVar[dict[str, str | None]] = None
     timespan_seconds: ClassVar[bool] = (
         False  # If True, timespan is converted to seconds instead of using a more readable timespan specification like 5m.
     )
 
     # Expression for a referenced rule as format string with {ruleid} placeholder that is replaced
     # with the rule name or id similar to the search query expression.
-    referenced_rules_expression: ClassVar[Optional[dict[str, str]]] = None
+    referenced_rules_expression: ClassVar[dict[str, str | None]] = None
     # All referenced rules expressions are joined with the following joiner:
-    referenced_rules_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
+    referenced_rules_expression_joiner: ClassVar[dict[str, str | None]] = None
 
     # The following class variables defined the templates for the group by expression.
     # First an expression frame is definied:
-    groupby_expression: ClassVar[Optional[dict[str, str]]] = None
+    groupby_expression: ClassVar[dict[str, str | None]] = None
     # This expression only contains the {fields} placeholder that is replaced by the result of
     # groupby_field_expression for each group by field joined by groupby_field_expression_joiner. The expression template
     # itself can only contain a {field} placeholder for a single field name.
-    groupby_field_expression: ClassVar[Optional[dict[str, str]]] = None
-    groupby_field_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
+    groupby_field_expression: ClassVar[dict[str, str | None]] = None
+    groupby_field_expression_joiner: ClassVar[dict[str, str | None]] = None
     # Groupy by expression in the case that no fields were provided in the correlation rule:
-    groupby_expression_nofield: ClassVar[Optional[dict[str, str]]] = None
+    groupby_expression_nofield: ClassVar[dict[str, str | None]] = None
 
     # The following class variables defined the templates for the correlation fields expression, which are collecetd from
     # referenced rules and then appended to the correlation rule.
     # First an expression frame is definied:
-    correlation_fields_expression: ClassVar[Optional[dict[str, str]]] = None
+    correlation_fields_expression: ClassVar[dict[str, str | None]] = None
     # This expression only contains the {fields} placeholder that is replaced by the result of
     # correlation_fields_field_expression for each group by field joined by correlation_fields_field_expression_joiner. The expression template
     # itself can only contain a {field} placeholder for a single field name.
-    correlation_fields_field_expression: ClassVar[Optional[dict[str, str]]] = None
-    correlation_fields_field_expression_joiner: ClassVar[Optional[dict[str, str]]] = None
+    correlation_fields_field_expression: ClassVar[dict[str, str | None]] = None
+    correlation_fields_field_expression_joiner: ClassVar[dict[str, str | None]] = None
 
     ## Correlation query condition phase
     # The final correlation query phase adds a final filter that filters the aggregated events
@@ -1411,21 +1395,19 @@ class TextQueryBackend(Backend):
     # For extended conditions, the template also gets:
     # * {extended_condition} is the parsed extended condition expression with rule references
     #   replaced by appropriate query fragments.
-    event_count_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    value_count_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    temporal_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    temporal_ordered_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    temporal_extended_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    temporal_ordered_extended_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    value_sum_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    value_avg_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    value_percentile_condition_expression: ClassVar[Optional[dict[str, str]]] = None
-    value_median_condition_expression: ClassVar[Optional[dict[str, str]]] = None
+    event_count_condition_expression: ClassVar[dict[str, str | None]] = None
+    value_count_condition_expression: ClassVar[dict[str, str | None]] = None
+    temporal_condition_expression: ClassVar[dict[str, str | None]] = None
+    temporal_ordered_condition_expression: ClassVar[dict[str, str | None]] = None
+    temporal_extended_condition_expression: ClassVar[dict[str, str | None]] = None
+    temporal_ordered_extended_condition_expression: ClassVar[dict[str, str | None]] = None
+    value_sum_condition_expression: ClassVar[dict[str, str | None]] = None
+    value_avg_condition_expression: ClassVar[dict[str, str | None]] = None
+    value_percentile_condition_expression: ClassVar[dict[str, str | None]] = None
+    value_median_condition_expression: ClassVar[dict[str, str | None]] = None
     # The following mapping defines the mapping from Sigma correlation condition operators like
     # "lt", "gte" into the operatpors expected by the target query language.
-    correlation_condition_mapping: ClassVar[
-        Optional[dict[SigmaCorrelationConditionOperator, str]]
-    ] = {
+    correlation_condition_mapping: ClassVar[dict[SigmaCorrelationConditionOperator, str | None]] = {
         SigmaCorrelationConditionOperator.LT: "<",
         SigmaCorrelationConditionOperator.LTE: "<=",
         SigmaCorrelationConditionOperator.GT: ">",
@@ -1434,7 +1416,7 @@ class TextQueryBackend(Backend):
         SigmaCorrelationConditionOperator.NEQ: "!=",
     }
 
-    def __new__(cls, *args: Any, **kwargs: dict[str, Any]) -> "TextQueryBackend":
+    def __new__(cls: type[Self], *args: Any, **kwargs: dict[str, Any]) -> Self:
         c = super().__new__(cls)
         cls.explicit_not_exists_expression = cls.field_not_exists_expression is not None
         return c
@@ -1497,15 +1479,15 @@ class TextQueryBackend(Backend):
 
     def compare_precedence(
         self,
-        outer: Union[ConditionItem, CorrelationConditionItem],
-        inner: Union[
-            ConditionItem,
-            ConditionFieldEqualsValueExpression,
-            ConditionValueExpression,
-            CorrelationConditionItem,
-            SigmaRuleReference,
-            None,
-        ],
+        outer: ConditionItem | CorrelationConditionItem,
+        inner: (
+            ConditionItem
+            | ConditionFieldEqualsValueExpression
+            | ConditionValueExpression
+            | CorrelationConditionItem
+            | SigmaRuleReference
+            | None
+        ),
     ) -> bool:
         """
         Compare precedence of outer and inner condition items. Return True if precedence of
@@ -1539,7 +1521,7 @@ class TextQueryBackend(Backend):
             inner, (ConditionFieldEqualsValueExpression, ConditionValueExpression)
         ) and isinstance(inner.value, SigmaExpansion):
             # Special case: Conditions containing a SigmaExpansion value convert into OR conditions
-            inner_class: Type[
+            inner_class: type[
                 ConditionItem
                 | CorrelationConditionItem
                 | ConditionFieldEqualsValueExpression
@@ -1561,11 +1543,9 @@ class TextQueryBackend(Backend):
 
     def convert_condition_group(
         self,
-        cond: Union[
-            ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None
-        ],
+        cond: ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression | None,
         state: ConversionState,
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Group condition item."""
         expr = self.convert_condition(cond, state)
         if isinstance(expr, DeferredQueryExpression):
@@ -1578,7 +1558,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_or(
         self, cond: ConditionOR, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression, None]:
+    ) -> str | DeferredQueryExpression | None:
         """Conversion of OR conditions."""
         try:
             if (
@@ -1609,8 +1589,8 @@ class TextQueryBackend(Backend):
             raise NotImplementedError("Operator 'or' not supported by the backend")
 
     def convert_condition_as_in_expression(
-        self, cond: Union[ConditionOR, ConditionAND], state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+        self, cond: ConditionOR | ConditionAND, state: ConversionState
+    ) -> str | DeferredQueryExpression:
         """Conversion of field in value list conditions."""
         if self.field_in_list_expression is None or self.list_separator is None:
             raise NotImplementedError("Field in list expressions are not supported by the backend")
@@ -1647,7 +1627,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_and(
         self, cond: ConditionAND, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression, None]:
+    ) -> str | DeferredQueryExpression | None:
         """Conversion of AND conditions."""
         try:
             if (
@@ -1799,7 +1779,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Uses context manager with parent class method to swap expressions with their negated versions
         if convert_not_as_not_eq is set and the parent of the condition is a ConditionNOT.
         """
@@ -1826,13 +1806,13 @@ class TextQueryBackend(Backend):
         # Use context manager to handle negation
         with self.not_equals_context_manager(use_negated_expressions=negation):
             return cast(
-                Union[str, DeferredQueryExpression],
+                str | DeferredQueryExpression,
                 super().convert_condition_field_eq_val(cond, state),
             )
 
     def convert_condition_field_eq_val_str(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field = string value expressions"""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaString):
@@ -1892,7 +1872,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_str_case_sensitive(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of case-sensitive field = string value expressions"""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaString):
@@ -1951,7 +1931,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_num(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field = number value expressions"""
         try:
             return self.escape_and_quote_field(cond.field) + self.eq_token + str(cond.value)
@@ -1962,7 +1942,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_timestamp_part(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field = timestamp part value expressions"""
         if isinstance(self.field_timestamp_part_expression, str) and isinstance(
             self.timestamp_part_mapping, dict
@@ -1987,7 +1967,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_bool(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field = bool value expressions"""
         if not isinstance(cond.value, SigmaBool):
             raise TypeError("Expected SigmaBool for cond.value, got {type(cond.value)}")
@@ -2001,7 +1981,7 @@ class TextQueryBackend(Backend):
 
     def convert_value_re(
         self, r: SigmaRegularExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Convert regular expression into string representation used in query."""
         return r.escape(
             self.re_escape,
@@ -2026,7 +2006,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_re(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field matches regular expression value expressions."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaRegularExpression):
@@ -2046,7 +2026,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_re_contains(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of value-only regular expressions."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaRegularExpression):
@@ -2066,7 +2046,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_cidr(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field matches CIDR value expressions."""
         cidr = cond.value
         if not isinstance(cidr, SigmaCIDRExpression):
@@ -2095,7 +2075,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_compare_op_val(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of numeric comparison operations into queries."""
         if not isinstance(self.compare_op_expression, str) or not isinstance(
             self.compare_operators, dict
@@ -2149,7 +2129,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_field(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of comparision of two fields."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaFieldReference):
@@ -2194,7 +2174,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_val_null(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field is null expression value expressions"""
         if self.field_null_expression is not None:
             return self.field_null_expression.format(field=self.escape_and_quote_field(cond.field))
@@ -2203,7 +2183,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_exists(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field exists expressions"""
         if self.field_exists_expression is not None:
             return self.field_exists_expression.format(
@@ -2214,7 +2194,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_not_exists(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field not exists expressions"""
         if self.field_not_exists_expression is not None:
             return self.field_not_exists_expression.format(
@@ -2227,7 +2207,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_field_eq_query_expr(
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of field is null expression value expressions"""
         if isinstance(cond.value, SigmaQueryExpression):
             return cond.value.finalize(field=self.escape_and_quote_field(cond.field))
@@ -2236,7 +2216,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_val_str(
         self, cond: ConditionValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of value-only strings."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaString):
@@ -2250,7 +2230,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_val_num(
         self, cond: ConditionValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of value-only numbers."""
         if self.unbound_value_num_expression is not None:
             return self.unbound_value_num_expression.format(value=cond.value)
@@ -2259,7 +2239,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_val_re(
         self, cond: ConditionValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of value-only regular expressions."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaRegularExpression):
@@ -2277,7 +2257,7 @@ class TextQueryBackend(Backend):
 
     def convert_condition_query_expr(
         self, cond: ConditionValueExpression, state: ConversionState
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """Conversion of value-only plain query expressions."""
         cond_value = cond.value
         if not isinstance(cond_value, SigmaQueryExpression):
@@ -2286,12 +2266,10 @@ class TextQueryBackend(Backend):
 
     def convert_condition(
         self,
-        cond: Union[
-            ConditionItem, ConditionFieldEqualsValueExpression, ConditionValueExpression, None
-        ],
+        cond:ConditionItem| ConditionFieldEqualsValueExpression| ConditionValueExpression| None,
         state: ConversionState,
-    ) -> Union[str, DeferredQueryExpression]:
-        return cast(Union[str, DeferredQueryExpression], super().convert_condition(cond, state))
+    ) -> str | DeferredQueryExpression:
+        return cast(str | DeferredQueryExpression, super().convert_condition(cond, state))
 
     # Correlation query conversion
     # The following methods are used to convert Sigma correlation rules into queries. The conversion
@@ -2340,7 +2318,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_event_count_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "event_count", method)
@@ -2348,7 +2326,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_value_count_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_count", method)
@@ -2356,7 +2334,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_temporal_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "temporal", method)
@@ -2364,7 +2342,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_temporal_ordered_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "temporal_ordered", method)
@@ -2372,7 +2350,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_extended_temporal_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         # Use temporal_extended templates for extended temporal rules
@@ -2381,7 +2359,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_extended_temporal_ordered_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         # Use temporal_ordered_extended templates for extended temporal ordered rules
@@ -2392,7 +2370,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_value_sum_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_sum", method)
@@ -2400,7 +2378,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_value_avg_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_avg", method)
@@ -2408,7 +2386,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_value_percentile_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_percentile", method)
@@ -2416,7 +2394,7 @@ class TextQueryBackend(Backend):
     def convert_correlation_value_median_rule(
         self,
         rule: SigmaCorrelationRule,
-        output_format: Optional[str] = None,
+        output_format: str | None = None,
         method: str = "default",
     ) -> list[str]:
         return self.convert_correlation_rule_from_template(rule, "value_median", method)
@@ -2600,7 +2578,7 @@ class TextQueryBackend(Backend):
         self,
         correlation_rule_fields: list[str],
         referenced_rules: list[SigmaRuleReference],
-        group_by: Optional[list[str]],
+        group_by: list[str | None],
         method: str,
     ) -> str:
         if self.correlation_fields_expression is None:
@@ -2635,7 +2613,7 @@ class TextQueryBackend(Backend):
             )
 
     def convert_correlation_aggregation_groupby_from_template(
-        self, group_by: Optional[list[str]], method: str
+        self, group_by: list[str | None], method: str
     ) -> str:
         if group_by is None:
             if self.groupby_expression_nofield is None:
@@ -2716,7 +2694,7 @@ class TextQueryBackend(Backend):
     # Extended correlation condition conversion
     # The following methods convert the parse tree of extended correlation conditions into
     # the target query language. They use the same precedence rules as regular conditions.
-    extended_correlation_condition_rule_reference_expression: ClassVar[Optional[dict[str, str]]] = (
+    extended_correlation_condition_rule_reference_expression: ClassVar[dict[str, str | None]] = (
         None  # Expression for a rule reference in extended correlation conditions with {ruleid} placeholder
     )
 
@@ -2849,8 +2827,8 @@ class TextQueryBackend(Backend):
     def convert_timespan(
         self,
         timespan: SigmaCorrelationTimespan,
-        output_format: Optional[str] = None,
-        method: Optional[str] = None,
+        output_format: str | None = None,
+        method: str | None = None,
     ) -> str:
         if self.timespan_seconds:  # return timespan in seconds
             return str(timespan.seconds)
@@ -2901,16 +2879,16 @@ class TextQueryBackend(Backend):
     def finalize_query(
         self,
         rule: Union[SigmaRule, SigmaCorrelationRule],
-        query: Union[str, DeferredQueryExpression],
+        query: str | DeferredQueryExpression:,
         index: int,
         state: ConversionState,
         output_format: str,
-    ) -> Union[str, DeferredQueryExpression]:
+    ) -> str | DeferredQueryExpression:
         """
         Finalize query by calling the parent implementation. Deferred query processing
         is now handled in finish_query method.
         """
         return cast(
-            Union[str, DeferredQueryExpression],
+            str | DeferredQueryExpression:,
             super().finalize_query(rule, query, index, state, output_format),
         )

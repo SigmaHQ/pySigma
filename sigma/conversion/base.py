@@ -10,7 +10,6 @@ from sigma.collection import SigmaCollection
 from sigma.conditions import (
     ConditionAND,
     ConditionFieldEqualsValueExpression,
-    ConditionIdentifier,
     ConditionItem,
     ConditionNOT,
     ConditionOR,

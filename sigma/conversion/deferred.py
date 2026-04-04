@@ -1,9 +1,14 @@
-from dataclasses import dataclass, field
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Any, ClassVar, Optional, TYPE_CHECKING
+from dataclasses import dataclass, field
+from typing import Any, TYPE_CHECKING, ClassVar
+
 from sigma.conditions import ParentChainMixin
 
 if TYPE_CHECKING:
+    from typing_extensions import Self
+
     from sigma.conversion.state import ConversionState
 
 
@@ -34,14 +39,14 @@ class DeferredQueryExpression(ParentChainMixin, ABC):
     The method finalize_expression must implement the generation of the query expression.
     """
 
-    conversion_state: "ConversionState"
+    conversion_state: ConversionState
     negated: bool = field(init=False, default=False)
 
     def __post_init__(self) -> None:
         """Deferred expression automatically adds itself to conversion state."""
         self.conversion_state.add_deferred_expression(self)
 
-    def negate(self) -> "DeferredQueryExpression":
+    def negate(self) -> Self:
         """Toggle negation state of deferred expression."""
         self.negated = not self.negated
         return self
@@ -65,11 +70,11 @@ class DeferredTextQueryExpression(DeferredQueryExpression):
       generated queries.
     """
 
-    field: Optional[str]
+    field: str | None
     value: str
     template: ClassVar[str]
     operators: ClassVar[dict[bool, str]]
-    default_field: ClassVar[Optional[str]]
+    default_field: ClassVar[str | None]
 
     def __post_init__(self) -> None:
         super().__post_init__()

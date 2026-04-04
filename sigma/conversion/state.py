@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Mapping, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Mapping
 
 if TYPE_CHECKING:
     from sigma.conversion.deferred import DeferredQueryExpression
@@ -21,10 +23,10 @@ class ConversionState:
     down or up the parse tree.
     """
 
-    deferred: list["DeferredQueryExpression"] = field(default_factory=list)
+    deferred: list[DeferredQueryExpression] = field(default_factory=list)
     processing_state: Mapping[str, Any] = field(default_factory=dict)
 
-    def add_deferred_expression(self, deferred: "DeferredQueryExpression") -> None:
+    def add_deferred_expression(self, deferred: DeferredQueryExpression) -> None:
         self.deferred.append(deferred)
 
     def has_deferred(self) -> bool:

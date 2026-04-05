@@ -1459,3 +1459,48 @@ def test_processingpipeline_all_empty_lists():
     assert pipeline.items == []
     assert pipeline.postprocessing_items == []
     assert pipeline.finalizers == []
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_processingpipeline_fromdict_missing_finalizer_type():
+    """Test that finalizer missing 'type' attribute raises SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Finalizer type must be specified"):
+        ProcessingPipeline.from_dict(
+            {
+                "finalizers": [{"prefix": "test"}],
+            }
+        )
+
+
+def test_processingpipeline_fromdict_unknown_finalizer_type():
+    """Test that unknown finalizer type raises SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Finalizer.*is unknown"):
+        ProcessingPipeline.from_dict(
+            {
+                "finalizers": [{"type": "nonexistent_type"}],
+            }
+        )
+
+
+def test_processingpipeline_fromdict_postprocessing_error():
+    """Test that error in postprocessing item is wrapped with context."""
+    with pytest.raises(SigmaConfigurationError, match="Error in processing rule 1"):
+        ProcessingPipeline.from_dict(
+            {
+                "postprocessing": [{"type": "unknown_postprocessing"}],
+            }
+        )
+
+
+def test_processingitem_set_pipeline_twice():
+    """Test that setting pipeline twice on a ProcessingItem raises error."""
+    from sigma.processing.transformations import FieldMappingTransformation
+    from sigma.exceptions import SigmaProcessingItemError
+
+    item = ProcessingItem(FieldMappingTransformation({"fieldA": "mappedA"}))
+    pipeline = ProcessingPipeline()
+    item.set_pipeline(pipeline)
+    with pytest.raises(SigmaProcessingItemError, match="Pipeline.*already set"):
+        item.set_pipeline(pipeline)

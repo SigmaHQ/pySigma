@@ -1313,3 +1313,44 @@ def test_extended_condition_parse_deeply_nested():
         "rule_e",
         "rule_f",
     }
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_correlation_condition_invalid_percentile():
+    """Test that invalid percentile value raises error."""
+    with pytest.raises(SigmaCorrelationConditionError, match="no valid.*percentile"):
+        SigmaCorrelationCondition.from_dict(
+            {"gte": 10, "field": "testfield", "percentile": "not_a_number"}
+        )
+
+
+def test_correlation_condition_to_dict_with_percentile():
+    """Test condition to_dict includes percentile when set."""
+    cond = SigmaCorrelationCondition(
+        op=SigmaCorrelationConditionOperator.GTE, count=10, fieldref="field1", percentile=95
+    )
+    d = cond.to_dict()
+    assert d["percentile"] == 95
+    assert d["field"] == "field1"
+    assert d["gte"] == 10
+
+
+def test_correlation_condition_non_dict_non_string():
+    """Test that correlation with non-dict/non-string condition raises error."""
+    with pytest.raises(SigmaCorrelationRuleError, match="must be a dict or string"):
+        SigmaCorrelationRule.from_yaml(
+            """
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition:
+        - invalid
+        - list_condition
+        """
+        )

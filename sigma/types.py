@@ -335,20 +335,14 @@ class SigmaString(SigmaType):
 
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
-        src = list(reversed(self.s))
-        res: list[SigmaStringPartType] = []
-        while src:
-            item = src.pop()
-            try:
-                if isinstance(res[-1], str) and isinstance(
-                    item, str
-                ):  # append current item to last result element if both are strings
-                    res[-1] += item
-                else:
-                    res.append(item)
-            except IndexError:  # first element
+        if not self.s:
+            return self
+        res: list[SigmaStringPartType] = [self.s[0]]
+        for item in self.s[1:]:
+            if isinstance(res[-1], str) and isinstance(item, str):
+                res[-1] += item
+            else:
                 res.append(item)
-
         self.s = res
         return self
 
@@ -450,7 +444,7 @@ class SigmaString(SigmaType):
 
     def contains_special(self) -> bool:
         """Check if string contains special characters."""
-        return any([isinstance(item, SpecialChars) for item in self.s])
+        return any(isinstance(item, SpecialChars) for item in self.s)
 
     def contains_placeholder(
         self, include: Optional[list[str]] = None, exclude: Optional[list[str]] = None
@@ -572,40 +566,56 @@ class SigmaString(SigmaType):
         Setting one of the wildcard or multiple parameters to None indicates that this feature is not supported. Appearance
         of these characters in a string will raise a SigmaValueError.
         """
-        s = ""
+        result = []
         escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
+        filter_set = frozenset(filter_chars) if filter_chars else frozenset()
 
-        for c in iter(self):
-            if isinstance(c, str):  # c is plain character
-                if c in filter_chars:  # Skip filtered characters
-                    continue
-                if c in escaped_chars:
-                    s += escape_char
-                s += c
-            elif isinstance(c, SpecialChars):  # special handling for special characters
-                if c == SpecialChars.WILDCARD_MULTI:
+        for part in self.s:
+            if isinstance(part, str):  # part is a plain string segment
+                if not filter_set and not escaped_chars:
+                    # Fast path: no escaping or filtering needed
+                    result.append(part)
+                elif not filter_set and escaped_chars:
+                    # Only escaping needed, process character-by-character only if necessary
+                    if any(c in escaped_chars for c in part):
+                        for c in part:
+                            if c in escaped_chars:
+                                result.append(escape_char)
+                            result.append(c)
+                    else:
+                        result.append(part)
+                else:
+                    # Both filtering and escaping
+                    for c in part:
+                        if c in filter_set:
+                            continue
+                        if c in escaped_chars:
+                            result.append(escape_char)
+                        result.append(c)
+            elif isinstance(part, SpecialChars):  # special handling for special characters
+                if part == SpecialChars.WILDCARD_MULTI:
                     if wildcard_multi is not None:
-                        s += wildcard_multi
+                        result.append(wildcard_multi)
                     else:
                         raise SigmaValueError(
                             "Multi-character wildcard not specified for conversion"
                         )
-                elif c == SpecialChars.WILDCARD_SINGLE:
+                elif part == SpecialChars.WILDCARD_SINGLE:
                     if wildcard_single is not None:
-                        s += wildcard_single
+                        result.append(wildcard_single)
                     else:
                         raise SigmaValueError(
                             "Single-character wildcard not specified for conversion"
                         )
-            elif isinstance(c, Placeholder):
+            elif isinstance(part, Placeholder):
                 raise SigmaPlaceholderError(
-                    f"Attempt to convert unhandled placeholder '{c.name}' into query."
+                    f"Attempt to convert unhandled placeholder '{part.name}' into query."
                 )
             else:
                 raise SigmaValueError(
-                    f"Trying to convert SigmaString containing part of type '{type(c).__name__}'"
+                    f"Trying to convert SigmaString containing part of type '{type(part).__name__}'"
                 )
-        return s
+        return "".join(result)
 
     def to_regex(self, custom_escaped: str = "") -> "SigmaRegularExpression":
         """Convert SigmaString into a regular expression."""
@@ -1011,6 +1021,14 @@ type_map: dict[type, Type[SigmaType]] = {
 
 def sigma_type(v: Optional[Union[int, float, str, bool]]) -> SigmaType:
     """Return Sigma type from Python value"""
+    # Check bool before int since bool is a subclass of int in Python
+    t = type(v)
+    if t is bool:
+        return SigmaBool(v)
+    st = type_map.get(t)
+    if st is not None:
+        return st(v)
+    # Fallback to isinstance checks for subclasses
     for t, st in type_map.items():
         if isinstance(v, t):
             return st(v)

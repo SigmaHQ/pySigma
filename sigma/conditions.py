@@ -1,5 +1,7 @@
 from dataclasses import dataclass, field
 from abc import ABC
+import copy
+from functools import lru_cache
 import re
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from pyparsing import (
@@ -10,10 +12,14 @@ from pyparsing import (
     opAssoc,
     ParseResults,
     ParseException,
+    ParserElement,
 )
 from typing import ClassVar, Optional, Union, Type, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
+
+# Enable packrat parsing for faster parsing of complex condition expressions
+ParserElement.enable_packrat(cache_size_limit=128)
 
 if TYPE_CHECKING:
     from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
@@ -334,6 +340,17 @@ condition = infix_notation(
 )
 
 
+@lru_cache(maxsize=256)
+def _parse_condition_string(
+    condition_str: str,
+) -> ConditionItem:
+    """Parse a condition string using pyparsing, with caching for repeated strings.
+
+    Results are deep-copied on retrieval since postprocessing mutates the parse tree.
+    """
+    return cast(ConditionItem, condition.parse_string(condition_str, parse_all=True)[0])
+
+
 @dataclass
 class SigmaCondition(ProcessingItemTrackingMixin):
     condition: str
@@ -356,7 +373,8 @@ class SigmaCondition(ProcessingItemTrackingMixin):
                 "The pipe syntax in Sigma conditions has been deprecated and replaced by Sigma correlations. pySigma doesn't supports this syntax."
             )
         try:
-            parsed = cast(ConditionItem, condition.parse_string(self.condition, parse_all=True)[0])
+            # Use cached parse result, deep-copied since postprocessing mutates the tree
+            parsed = copy.deepcopy(_parse_condition_string(self.condition))
             if postprocess:
                 return parsed.postprocess(self.detections, source=self.source)
             else:

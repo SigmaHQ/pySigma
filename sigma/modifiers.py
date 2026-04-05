@@ -64,9 +64,22 @@ class SigmaModifier(ABC, Generic[T, R]):
         self.applied_modifiers = applied_modifiers
         self.source = source
 
+    # Cache for type hints resolved from modify() method, keyed by class
+    _type_hint_cache: ClassVar[dict[type, Any]] = {}
+
+    def _get_modify_type_hint(self) -> Any:
+        """Get the type hint for the 'val' parameter of the modify method, with caching per class."""
+        cls = type(self)
+        try:
+            return SigmaModifier._type_hint_cache[cls]
+        except KeyError:
+            th = get_type_hints(self.modify)["val"]
+            SigmaModifier._type_hint_cache[cls] = th
+            return th
+
     def type_check(self, val: Any, explicit_type: Optional[Type[Any]] = None) -> bool:
         th = (
-            explicit_type or get_type_hints(self.modify)["val"]
+            explicit_type or self._get_modify_type_hint()
         )  # get type annotation from val parameter of apply method or explicit_type parameter
         if th is Any:
             return True

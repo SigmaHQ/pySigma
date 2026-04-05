@@ -568,7 +568,7 @@ class SigmaString(SigmaType):
         """
         result = []
         escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
-        filter_set = frozenset(filter_chars) if filter_chars else frozenset()
+        filter_set = frozenset(filter_chars)
 
         for part in self.s:
             if isinstance(part, str):  # part is a plain string segment
@@ -1022,12 +1022,12 @@ type_map: dict[type, Type[SigmaType]] = {
 def sigma_type(v: Optional[Union[int, float, str, bool]]) -> SigmaType:
     """Return Sigma type from Python value"""
     # Check bool before int since bool is a subclass of int in Python
-    t = type(v)
-    if t is bool:
+    vtype = type(v)
+    if vtype is bool:
         return SigmaBool(v)
-    st = type_map.get(t)
-    if st is not None:
-        return st(v)
+    matched = type_map.get(vtype)
+    if matched is not None:
+        return matched(v)
     # Fallback to isinstance checks for subclasses
     for t, st in type_map.items():
         if isinstance(v, t):

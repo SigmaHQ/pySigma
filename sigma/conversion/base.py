@@ -1668,11 +1668,13 @@ class TextQueryBackend(Backend):
                 converted_group: str | DeferredQueryExpression | None = (
                     self.convert_condition_group(arg, state)
                 )
-                if self.convert_not_as_not_eq or isinstance(
-                    converted_group, DeferredQueryExpression
+                if (
+                    self.convert_not_as_not_eq
+                    or isinstance(converted_group, DeferredQueryExpression)
+                    or converted_group is None
                 ):
                     return converted_group
-                return self.not_token + self.token_separator
+                return self.not_token + self.token_separator + converted_group
             else:
                 expr = self.convert_condition(arg, state)
                 if isinstance(

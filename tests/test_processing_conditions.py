@@ -766,3 +766,75 @@ def test_field_name_processing_item_applied_no_pipeline():
         SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
     ):
         condition.match_field_name("fieldA")
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_include_field_condition_re_exception_single_arg():
+    """Test that exceptions during regex matching are enriched with field context (single arg)."""
+    # Use a regex that compiles fine but causes an exception at match time
+    # We can't easily trigger a runtime error from re.match, so we monkeypatch
+    import unittest.mock as mock
+
+    condition = IncludeFieldCondition(["valid.*"], "re")
+    # Replace the compiled pattern with a mock that raises
+    mock_pattern = mock.MagicMock()
+    mock_pattern.match.side_effect = RuntimeError("test error")
+    condition.patterns = [mock_pattern]
+
+    with pytest.raises(RuntimeError, match="test error.*while processing field 'testfield'"):
+        condition.match_field_name("testfield")
+
+
+def test_include_field_condition_re_exception_multi_arg():
+    """Test that exceptions during regex matching are enriched with field context (multi arg)."""
+    import unittest.mock as mock
+
+    condition = IncludeFieldCondition(["valid.*"], "re")
+    mock_pattern = mock.MagicMock()
+    error = RuntimeError("test error", "extra arg")
+    mock_pattern.match.side_effect = error
+    condition.patterns = [mock_pattern]
+
+    with pytest.raises(RuntimeError, match="test error.*while processing field 'testfield'"):
+        condition.match_field_name("testfield")
+
+
+def test_rule_processing_state_condition_key_not_found(sigma_rule, dummy_processing_pipeline):
+    """Test that state condition returns False when key is not present."""
+    condition = RuleProcessingStateCondition("nonexistent_key", "value")
+    condition.set_pipeline(dummy_processing_pipeline)
+    assert not condition.match(sigma_rule)
+
+
+def test_rule_attribute_condition_nonexistent_attribute(sigma_rule):
+    """Test that RuleAttributeCondition returns False for nonexistent attributes."""
+    assert not RuleAttributeCondition("nonexistent_attribute", "value").match(sigma_rule)
+
+
+def test_rule_attribute_condition_str_ne(sigma_rule):
+    """Test ne operation for string comparison."""
+    assert RuleAttributeCondition("taxonomy", "other", "ne").match(sigma_rule)
+    assert not RuleAttributeCondition("taxonomy", "test", "ne").match(sigma_rule)
+
+
+def test_rule_attribute_condition_uuid_ne(sigma_rule):
+    """Test ne operation for UUID comparison."""
+    assert RuleAttributeCondition("id", "00000000-0000-0000-0000-000000000000", "ne").match(
+        sigma_rule
+    )
+
+
+def test_rule_contains_field_condition_invalid_type():
+    """Test TypeError for invalid detection type in RuleContainsFieldCondition."""
+    condition = RuleContainsFieldCondition(field="fieldA")
+    with pytest.raises(TypeError, match="SigmaDetection or SigmaDetectionItem expected"):
+        condition.find_detection_item("not a detection")
+
+
+def test_rule_contains_detection_item_condition_invalid_type():
+    """Test TypeError for invalid detection type in RuleContainsDetectionItemCondition."""
+    condition = RuleContainsDetectionItemCondition(field="fieldA", value="value")
+    with pytest.raises(TypeError, match="SigmaDetection or SigmaDetectionItem expected"):
+        condition.find_detection_item("not a detection")

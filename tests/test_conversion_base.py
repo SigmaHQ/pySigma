@@ -3667,3 +3667,98 @@ def test_finish_query_regular_rule_with_multiple_conditions():
         """
     )
     assert backend.convert(rule) == ['search(field1="value1")', 'search(field2="value2")']
+
+
+# --- Tests for uncovered backend output formats ---
+
+
+def test_backend_output_format_list_of_dict(test_backend):
+    """Test list_of_dict output format."""
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: valueA
+                    condition: sel
+            """
+        ),
+        output_format="list_of_dict",
+    )
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert isinstance(result[0], dict)
+    assert "query" in result[0]
+
+
+def test_backend_output_format_list_of_dict_with_testparam():
+    """Test list_of_dict output format with testparam."""
+    backend = TextQueryTestBackend(testparam="test_value")
+    result = backend.convert(
+        SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: valueA
+                    condition: sel
+            """
+        ),
+        output_format="list_of_dict",
+    )
+    assert isinstance(result, list)
+    assert len(result) == 1
+    assert result[0]["test"] == "test_value"
+
+
+def test_backend_output_format_bytes(test_backend):
+    """Test bytes output format."""
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: valueA
+                    condition: sel
+            """
+        ),
+        output_format="bytes",
+    )
+    assert isinstance(result, bytes)
+    assert b"mappedA" in result
+
+
+def test_backend_output_format_str(test_backend):
+    """Test str output format."""
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: valueA
+                    condition: sel
+            """
+        ),
+        output_format="str",
+    )
+    assert isinstance(result, str)
+    assert "mappedA" in result

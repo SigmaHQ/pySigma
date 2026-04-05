@@ -2851,3 +2851,65 @@ def test_strict_mapped_fields_correlation_rule(dummy_pipeline, sigma_correlation
     transformation = StrictFieldMappingFailure()
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(sigma_correlation_rule)
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_strict_mapped_fields_nested_detection():
+    """Test StrictFieldMappingFailure with nested detections (OR groups)."""
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedOne",
+                            "fieldTwo": "mappedTwo",
+                        }
+                    )
+                ),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    # This rule uses OR-grouped detections which create nested SigmaDetection structures
+    result = test_backend.convert(
+        SigmaCollection.from_yaml(
+            """
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldOne: value1
+                sel2:
+                    fieldTwo: value2
+                condition: sel1 or sel2
+            """
+        )
+    )
+    assert len(result) == 1
+
+
+def test_strict_mapped_fields_no_pipeline():
+    """Test StrictFieldMappingFailure raises error when pipeline is not set."""
+    transformation = StrictFieldMappingFailure()
+    rule = SigmaRule.from_yaml(
+        """
+        title: Test
+        status: test
+        logsource:
+            category: test_category
+            product: test_product
+        detection:
+            sel:
+                fieldA: value
+            condition: sel
+        """
+    )
+    with pytest.raises(SigmaTransformationError, match="Pipeline is not set"):
+        transformation.apply(rule)

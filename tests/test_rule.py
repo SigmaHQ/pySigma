@@ -1871,3 +1871,78 @@ def test_sigmarule_timestamp_modifiers_greater_than():
     assert detection_items[3].value[0].number == SigmaTimestampPart(TimestampPart.WEEK, 4)
     assert detection_items[4].value[0].number == SigmaTimestampPart(TimestampPart.MONTH, 5)
     assert detection_items[5].value[0].number == SigmaTimestampPart(TimestampPart.YEAR, 6)
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_sigmarule_bad_taxonomy_type():
+    """Test that non-string taxonomy raises SigmaTaxonomyError."""
+    with pytest.raises(sigma_exceptions.SigmaTaxonomyError, match="must be a string.*test.yml"):
+        SigmaRule.from_dict(
+            {"title": "test", "taxonomy": 123},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_empty_taxonomy():
+    """Test that empty taxonomy string raises SigmaTaxonomyError."""
+    with pytest.raises(sigma_exceptions.SigmaTaxonomyError, match="must not be empty.*test.yml"):
+        SigmaRule.from_dict(
+            {"title": "test", "taxonomy": ""},
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_date_with_exception_in_parsing():
+    """Test that date values causing exceptions during parsing (e.g., invalid month) are handled."""
+    with pytest.raises(sigma_exceptions.SigmaDateError, match="is invalid"):
+        SigmaRule.from_yaml(
+            """
+            title: Test
+            date: '2024-13-01'
+            logsource:
+                product: test
+            detection:
+                sel:
+                    field: value
+                condition: sel
+            """
+        )
+
+
+def test_sigma_rule_conversion_states(sigma_rule):
+    """Test conversion state setting and getting."""
+    from sigma.conversion.state import ConversionState
+
+    states = [ConversionState()]
+    sigma_rule.set_conversion_states(states)
+    assert sigma_rule.get_conversion_states() == states
+
+
+def test_sigma_rule_conversion_states_not_available(sigma_rule):
+    """Test that accessing conversion states before setting raises error."""
+    with pytest.raises(
+        sigma_exceptions.SigmaConversionError, match="Conversion state not available.*Test"
+    ):
+        sigma_rule.get_conversion_states()
+
+
+def test_sigma_rule_to_dict_with_modified():
+    """Test rule to_dict when modified date is set."""
+    rule = SigmaRule.from_yaml(
+        """
+        title: Test
+        status: test
+        date: 2024-01-01
+        modified: 2024-06-01
+        logsource:
+            category: test
+        detection:
+            sel:
+                field: value
+            condition: sel
+        """
+    )
+    d = rule.to_dict()
+    assert d["modified"] == "2024-06-01"

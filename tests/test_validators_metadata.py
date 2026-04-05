@@ -264,3 +264,28 @@ def test_validator_custom_attributes_valid():
     """
     )
     assert validator.validate(rule) == []
+
+
+# --- Tests for uncovered code paths ---
+
+
+def test_is_uuid_v4_valid():
+    """Test is_uuid_v4 with a valid UUID v4."""
+    from sigma.validators.core.metadata import is_uuid_v4
+
+    assert is_uuid_v4("19855ce4-00b3-4d07-8e57-f6c6955ce4e7")
+
+
+def test_is_uuid_v4_non_v4():
+    """Test is_uuid_v4 with a valid UUID but not version 4."""
+    from sigma.validators.core.metadata import is_uuid_v4
+
+    # UUID v1
+    assert not is_uuid_v4("550e8400-e29b-11d4-a716-446655440000")
+
+
+def test_is_uuid_v4_invalid_string():
+    """Test is_uuid_v4 with an invalid UUID string."""
+    from sigma.validators.core.metadata import is_uuid_v4
+
+    assert not is_uuid_v4("not-a-uuid")

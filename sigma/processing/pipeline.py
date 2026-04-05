@@ -12,7 +12,6 @@ from typing import (
     Optional,
     Type,
     Union,
-    cast,
     TYPE_CHECKING,
 )
 
@@ -70,13 +69,7 @@ class ProcessingItemBase:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
         rule_conds = cls._parse_conditions(
-            cast(
-                dict[
-                    str,
-                    Type[ProcessingCondition],
-                ],
-                rule_conditions,
-            ),
+            rule_conditions,
             d.get("rule_conditions", list()),
         )
         rule_cond_expr_str = d.get("rule_cond_expr", None)
@@ -152,7 +145,7 @@ class ProcessingItemBase:
         )  # set processing item in transformation object after it is instantiated
         self._resolve_condition_expression(
             self.rule_condition_expression,
-            cast(dict[str, ProcessingCondition], self.rule_conditions),
+            self.rule_conditions,  # type: ignore[arg-type]  # RuleProcessingCondition is a subtype of ProcessingCondition
             "Rule condition",
         )
         if self.identifier is None or self.identifier == "":
@@ -408,7 +401,7 @@ class ProcessingItem(ProcessingItemBase):
         kwargs = super()._base_args_from_dict(d, transformations)
 
         detection_item_conds = cls._parse_conditions(
-            cast(Mapping[str, Type[ProcessingCondition]], detection_item_conditions),
+            detection_item_conditions,
             d.get("detection_item_conditions", list()),
         )
         detection_item_cond_expr_str = d.get("detection_item_cond_expr", None)
@@ -456,10 +449,7 @@ class ProcessingItem(ProcessingItemBase):
         )
         self._resolve_condition_expression(
             self.detection_item_condition_expression,
-            cast(
-                Union[dict[str, ProcessingCondition], list[ProcessingCondition]],
-                self.detection_item_conditions,
-            ),
+            self.detection_item_conditions,  # type: ignore[arg-type]  # subtype of ProcessingCondition
             "Detection item condition",
         )
         self._check_conditions(
@@ -471,10 +461,7 @@ class ProcessingItem(ProcessingItemBase):
         )
         self._resolve_condition_expression(
             self.field_name_condition_expression,
-            cast(
-                Union[dict[str, ProcessingCondition], list[ProcessingCondition]],
-                self.field_name_conditions,
-            ),
+            self.field_name_conditions,  # type: ignore[arg-type]  # subtype of ProcessingCondition
             "Field name condition",
         )
 
@@ -632,7 +619,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
     def from_dict(cls, d: dict[str, Any]) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(
-            d, cast(dict[str, Type[Transformation]], query_postprocessing_transformations)
+            d, query_postprocessing_transformations  # type: ignore[arg-type]  # subtype of Transformation
         )
         return cls(**kwargs)
 

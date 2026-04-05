@@ -347,8 +347,10 @@ class Backend(ABC):
         # All arguments of the given condition must reference a field
         if not all((isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args)):
             return False
-        # After the check it can be assumed that all arguments are of type ConditionFieldEqualsValueExpression
-        args = cast(list[ConditionFieldEqualsValueExpression], cond.args)
+        # After the check above, all arguments are ConditionFieldEqualsValueExpression
+        args = [
+            arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)
+        ]
 
         # Build a set of all fields appearing in condition arguments
         fields = {arg.field for arg in args}
@@ -496,9 +498,12 @@ class Backend(ABC):
         all converted subconditions.
         """
         # This method is only called with a SigmaExpansion as value
-        expansion = cast(SigmaExpansion, cond.value)
+        if not isinstance(cond.value, SigmaExpansion):
+            raise TypeError(
+                f"Expected SigmaExpansion for cond.value, got {type(cond.value).__name__}"
+            )
         or_cond = ConditionOR(
-            [ConditionFieldEqualsValueExpression(cond.field, value) for value in expansion.values],
+            [ConditionFieldEqualsValueExpression(cond.field, value) for value in cond.value.values],
             cond.source,
         )
         return self.convert_condition_or(or_cond, state)
@@ -1428,17 +1433,15 @@ class TextQueryBackend(Backend):
             return
 
         # Store original expressions
-        original_expressions = {
-            "eq_expression": self.eq_expression,
-            "re_expression": self.re_expression,
-            "cidr_expression": self.cidr_expression,
-            "startswith_expression": self.startswith_expression,
-            "case_sensitive_startswith_expression": self.case_sensitive_startswith_expression,
-            "endswith_expression": self.endswith_expression,
-            "case_sensitive_endswith_expression": self.case_sensitive_endswith_expression,
-            "contains_expression": self.contains_expression,
-            "case_sensitive_contains_expression": self.case_sensitive_contains_expression,
-        }
+        original_eq_expression = self.eq_expression
+        original_re_expression = self.re_expression
+        original_cidr_expression = self.cidr_expression
+        original_startswith_expression = self.startswith_expression
+        original_case_sensitive_startswith_expression = self.case_sensitive_startswith_expression
+        original_endswith_expression = self.endswith_expression
+        original_case_sensitive_endswith_expression = self.case_sensitive_endswith_expression
+        original_contains_expression = self.contains_expression
+        original_case_sensitive_contains_expression = self.case_sensitive_contains_expression
 
         # Swap to negated versions
         try:
@@ -1460,21 +1463,21 @@ class TextQueryBackend(Backend):
             yield
         finally:
             # Restore original expressions
-            self.__class__.eq_expression = cast(str, original_expressions["eq_expression"])
-            self.__class__.re_expression = original_expressions["re_expression"]
-            self.__class__.cidr_expression = original_expressions["cidr_expression"]
-            self.__class__.startswith_expression = original_expressions["startswith_expression"]
-            self.__class__.case_sensitive_startswith_expression = original_expressions[
-                "case_sensitive_startswith_expression"
-            ]
-            self.__class__.endswith_expression = original_expressions["endswith_expression"]
-            self.__class__.case_sensitive_endswith_expression = original_expressions[
-                "case_sensitive_endswith_expression"
-            ]
-            self.__class__.contains_expression = original_expressions["contains_expression"]
-            self.__class__.case_sensitive_contains_expression = original_expressions[
-                "case_sensitive_contains_expression"
-            ]
+            self.__class__.eq_expression = original_eq_expression
+            self.__class__.re_expression = original_re_expression
+            self.__class__.cidr_expression = original_cidr_expression
+            self.__class__.startswith_expression = original_startswith_expression
+            self.__class__.case_sensitive_startswith_expression = (
+                original_case_sensitive_startswith_expression
+            )
+            self.__class__.endswith_expression = original_endswith_expression
+            self.__class__.case_sensitive_endswith_expression = (
+                original_case_sensitive_endswith_expression
+            )
+            self.__class__.contains_expression = original_contains_expression
+            self.__class__.case_sensitive_contains_expression = (
+                original_case_sensitive_contains_expression
+            )
 
     def compare_precedence(
         self,
@@ -1595,14 +1598,16 @@ class TextQueryBackend(Backend):
             raise NotImplementedError("Field in list expressions are not supported by the backend")
         if not all(
             isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args
-        ):  # All arguments must be field equals value expressions, legitimates casts below
+        ):
             raise TypeError(
                 "Field in list expression requires all arguments to be ConditionFieldEqualsValueExpression"
             )
-        field_name = cast(ConditionFieldEqualsValueExpression, cond.args[0]).field
-        if {cast(ConditionFieldEqualsValueExpression, arg).field for arg in cond.args} != {
-            field_name
-        }:
+        # After the isinstance check above, all args are ConditionFieldEqualsValueExpression
+        args = [
+            arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)
+        ]
+        field_name = args[0].field
+        if {arg.field for arg in args} != {field_name}:
             raise ValueError("Field in list expression requires all fields to be the same")
 
         return self.field_in_list_expression.format(
@@ -1614,12 +1619,10 @@ class TextQueryBackend(Backend):
                 [
                     (
                         self.convert_value_str(val, state)
-                        if isinstance(
-                            val := cast(ConditionFieldEqualsValueExpression, arg).value, SigmaString
-                        )  # string escaping and qouting
+                        if isinstance(val := arg.value, SigmaString)  # string escaping and quoting
                         else str(val)
                     )  # value is number
-                    for arg in cond.args
+                    for arg in args
                 ]
             ),
         )

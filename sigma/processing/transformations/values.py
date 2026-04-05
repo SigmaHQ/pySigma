@@ -6,7 +6,6 @@ from typing import (
     Optional,
     Tuple,
     Union,
-    cast,
 )
 from dataclasses import InitVar, dataclass, field
 import re
@@ -30,6 +29,7 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaRegularExpressionFlag,
     SigmaString,
+    SigmaStringPartType,
     SigmaType,
     SpecialChars,
 )
@@ -89,7 +89,9 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             values = detection_item.value
             if not isinstance(values, list):
                 values = [values]
-            algo_dict = self._parse_hash_values(cast(list[SigmaString], values))
+            algo_dict = self._parse_hash_values(
+                [v for v in values if isinstance(v, SigmaString)]
+            )
 
             if not algo_dict:
                 raise Exception(
@@ -226,10 +228,15 @@ class ReplaceStringTransformation(StringValueTransformation):
     def apply_string_value(self, field: Optional[str], val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             if self.skip_special:
+
+                def _apply_replacement(
+                    s: SigmaStringPartType,
+                ) -> Optional[SigmaStringPartType]:
+                    assert isinstance(s, str)  # ensured by filter function below
+                    return self.re.sub(self.replacement, s)
+
                 return val.map_parts(
-                    lambda s: self.re.sub(
-                        self.replacement, cast(str, s)
-                    ),  # filter function in second parameter ensures str type.
+                    _apply_replacement,
                     lambda p: isinstance(p, str),
                     self.interpret_special,
                 )

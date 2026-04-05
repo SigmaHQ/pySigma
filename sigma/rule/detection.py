@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, Union
 
 from typing_extensions import Self
 
@@ -143,7 +143,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         sigma_val = [
             (
                 SigmaString.from_str(
-                    cast("str", v),
+                    str(v),
                 )  # The string type is ensured previously by the 're' modifier.
                 if SigmaRegularExpressionModifier in modifiers
                 else sigma_type(v)
@@ -396,8 +396,8 @@ class SigmaDetection(ParentChainMixin):
                     merged_dict = dict()
                     # The following double loop (the second one is no real one, as it operates on a
                     # single element dict) merges keys (not fields!) into the merged dict.
-                    for detection_item_converted in cast(list[Any], detection_items):
-                        for k, v in detection_item_converted.items():
+                    for detection_item_converted in detection_items:
+                        for k, v in detection_item_converted.items():  # type: ignore[union-attr]  # type checked above
                             if k not in merged_dict:  # key doesn't exists in merged dict: just add
                                 merged_dict[k] = v
                             else:  # key collision, now things get complicated...
@@ -407,9 +407,7 @@ class SigmaDetection(ParentChainMixin):
                                         mk, list
                                     ):  # make list from existing all-modified value if it's a plain value
                                         merged_dict[k] = [mk]
-                                    mkl = cast(
-                                        list[Any], merged_dict[k]
-                                    )  # existing value is a list
+                                    mkl: list[Any] = merged_dict[k]  # existing value is a list
 
                                     if isinstance(
                                         v, list
@@ -444,7 +442,7 @@ class SigmaDetection(ParentChainMixin):
                                             mak, list
                                         ):  # ensure that existing 'all' key is a list
                                             merged_dict[ak] = [mak]
-                                        makl = cast(list[Any], merged_dict[ak])
+                                        makl: list[Any] = merged_dict[ak]
                                         makl.extend(vs)
                                     else:  # create new 'all' key from both existing keys
                                         merged_dict[ak] = vs
@@ -456,7 +454,7 @@ class SigmaDetection(ParentChainMixin):
                     }
                 else:  # only lists and plain values, merge them into one list
                     merged_list: list[Any] = list()
-                    for detection_item_converted_list in cast(list[Any], detection_items):
+                    for detection_item_converted_list in detection_items:
                         if isinstance(
                             detection_item_converted_list, list
                         ):  # if item is a list, extend result list with it.
@@ -482,9 +480,8 @@ class SigmaDetection(ParentChainMixin):
         if len(items) == 1:  # no boolean linking required, directly return single element
             return items[0]
         elif len(items) > 1:
-            condition = cast("type[ConditionAND | ConditionOR]", self.item_linking)(
-                items
-            )  # case legitimate because post-init ensures that it's not None anymore.
+            assert self.item_linking is not None  # ensured by __post_init__
+            condition = self.item_linking(items)
             condition.postprocess(detections, parent, self.source)
             return condition
         else:  # Detection is empty, e.g. because DropDetectionItem transformation dropped everything.

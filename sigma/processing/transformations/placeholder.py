@@ -52,7 +52,15 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
         self.check_exclusivity()
         return super().__post_init__()
 
-    def apply_value(self, field: str | None, val: SigmaType) -> None | SigmaString | Iterable[SigmaString] | SigmaRegularExpression | Iterable[SigmaRegularExpression]:
+    def apply_value(
+        self, field: str | None, val: SigmaType
+    ) -> (
+        None
+        | SigmaString
+        | Iterable[SigmaString]
+        | SigmaRegularExpression
+        | Iterable[SigmaRegularExpression]
+    ):
         if isinstance(val, SigmaString | SigmaRegularExpression) and val.contains_placeholder(
             self.include, self.exclude
         ):

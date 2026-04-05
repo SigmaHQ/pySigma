@@ -19,9 +19,7 @@ class DropDetectionItemTransformation(DetectionItemTransformation):
     """Deletes detection items. This should only used in combination with a detection item
     condition."""
 
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> SigmaDetectionItem | None:
+    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> SigmaDetectionItem | None:
         """This function only marks detection items for deletion."""
         return DeleteSigmaDetectionItem.create()
 

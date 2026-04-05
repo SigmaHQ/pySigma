@@ -1520,7 +1520,8 @@ class TextQueryBackend(Backend):
             # Rule references have highest precedence (like field expressions)
             idx_inner = -1
         elif isinstance(
-            inner, ConditionFieldEqualsValueExpression | ConditionValueExpression) and isinstance(inner.value, SigmaExpansion):
+            inner, ConditionFieldEqualsValueExpression | ConditionValueExpression
+        ) and isinstance(inner.value, SigmaExpansion):
             # Special case: Conditions containing a SigmaExpansion value convert into OR conditions
             inner_class: type[
                 ConditionItem

@@ -32,9 +32,7 @@ class ParentChainMixin:
 
     def parent_chain(
         self,
-    ) -> list[
-        "ConditionType" | "SigmaDetectionItem" | "SigmaDetection"
-    ]:
+    ) -> list["ConditionType" | "SigmaDetectionItem" | "SigmaDetection"]:
         """Return complete parent chain of condition object."""
         if self.parent is None:  # root of chain, return empty list
             return []
@@ -43,17 +41,13 @@ class ParentChainMixin:
 
     def parent_chain_classes(
         self,
-    ) -> list[
-        Type["ConditionType"] | Type["SigmaDetectionItem"] | Type["SigmaDetection"]
-    ]:
+    ) -> list[Type["ConditionType"] | Type["SigmaDetectionItem"] | Type["SigmaDetection"]]:
         """Return classes of parent chain."""
         return [item.__class__ for item in self.parent_chain()]
 
     def parent_chain_condition_classes(
         self,
-    ) -> list[
-        Type["ConditionType"] | Type["SigmaDetectionItem"] | Type["SigmaDetection"]
-    ]:
+    ) -> list[Type["ConditionType"] | Type["SigmaDetectionItem"] | Type["SigmaDetection"]]:
         """Only return list of parent chain condition classes which are boolean operators."""
         return [item for item in self.parent_chain_classes() if item.operator]
 
@@ -66,7 +60,9 @@ class ParentChainMixin:
         detections: "SigmaDetections",
         parent: ("SigmaDetection" | "SigmaDetectionItem" | "ConditionItem") | None = None,
         source: SigmaRuleLocation | None = None,
-    ) -> "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None:
+    ) -> (
+        "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None
+    ):
         """
         Minimal default postprocessing implementation for classes which don't bring their own postprocess method.
         Just sets the parent and source property.
@@ -86,7 +82,11 @@ class ConditionItem(ParentChainMixin, ABC):
         False  # determines if the value passed as tokenized is a ParseResult or a simple list object
     )
     args: list[
-        "ConditionIdentifier" | "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None
+        "ConditionIdentifier"
+        | "ConditionItem"
+        | "ConditionFieldEqualsValueExpression"
+        | "ConditionValueExpression"
+        | None
     ]
     source: SigmaRuleLocation | None = field(default=None, compare=False)
 
@@ -114,7 +114,9 @@ class ConditionItem(ParentChainMixin, ABC):
         detections: "SigmaDetections",
         parent: ("SigmaDetection" | "SigmaDetectionItem" | "ConditionItem") | None = None,
         source: SigmaRuleLocation | None = None,
-    ) -> "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None:
+    ) -> (
+        "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None
+    ):
         """
         Postprocess condition parse tree after initial parsing. In this stage the detections
         are available, this allows to resolve references to detections into concrete conditions.
@@ -172,7 +174,9 @@ class ConditionIdentifier(ConditionItem):
         detections: "SigmaDetections",
         parent: ("SigmaDetection" | "SigmaDetectionItem" | "ConditionItem") | None = None,
         source: SigmaRuleLocation | None = None,
-    ) -> "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None:
+    ) -> (
+        "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None
+    ):
         """Converts an identifier into a condition with SigmaDetectionItems at its leaf nodes."""
         self.parent = parent
         try:
@@ -232,7 +236,11 @@ class ConditionSelector(ConditionItem):
         cond = self.cond_class(
             cast(
                 list[
-                    ConditionIdentifier | ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression | None
+                    ConditionIdentifier
+                    | ConditionItem
+                    | ConditionFieldEqualsValueExpression
+                    | ConditionValueExpression
+                    | None
                 ],
                 ids,
             )
@@ -319,4 +327,11 @@ class SigmaCondition(ProcessingItemTrackingMixin):
         return self.parse(True)
 
 
-ConditionType = ConditionOR | ConditionAND | ConditionNOT | ConditionFieldEqualsValueExpression | ConditionValueExpression | ConditionItem
+ConditionType = (
+    ConditionOR
+    | ConditionAND
+    | ConditionNOT
+    | ConditionFieldEqualsValueExpression
+    | ConditionValueExpression
+    | ConditionItem
+)

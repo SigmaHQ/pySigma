@@ -57,7 +57,13 @@ class Transformation(ABC):
 
     def processing_item_applied(
         self,
-        d: SigmaRule | SigmaDetection | SigmaDetectionItem | "SigmaCondition" | SigmaCorrelationRule,
+        d: (
+            SigmaRule
+            | SigmaDetection
+            | SigmaDetectionItem
+            | "SigmaCondition"
+            | SigmaCorrelationRule
+        ),
     ) -> None:
         """Mark detection item or detection as applied."""
         if self.processing_item is not None:
@@ -313,7 +319,8 @@ class ValueTransformation(DetectionItemTransformation):
         try:  # try to extract type annotation of first argument and derive accepted types
             argtype = argtypes[1]
             if (
-                hasattr(argtype, "__origin__") and argtype.__origin__ is Union
+                hasattr(argtype, "__origin__")
+                and argtype.__origin__ is Union
                 or isinstance(argtype, types.UnionType)
             ):  # if annotation is an union the list of types is contained in __args__
                 self.value_types = argtype.__args__
@@ -322,9 +329,7 @@ class ValueTransformation(DetectionItemTransformation):
         except IndexError:  # No type annotation found
             self.value_types = None
 
-    def apply_detection_item(
-        self, detection_item: SigmaDetectionItem
-    ) -> SigmaDetectionItem | None:
+    def apply_detection_item(self, detection_item: SigmaDetectionItem) -> SigmaDetectionItem | None:
         """Call apply_value for each value and integrate results into value list."""
         results = []
         modified = False

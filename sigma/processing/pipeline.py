@@ -55,8 +55,8 @@ class ProcessingItemBase:
     transformation: Transformation
     rule_condition_linking: Callable[[Iterable[bool]], bool] | None = None  # any or all
     rule_condition_negation: bool = False
-    rule_conditions: list[RuleProcessingCondition] | dict[str, RuleProcessingCondition] = (
-        field(default_factory=list)
+    rule_conditions: list[RuleProcessingCondition] | dict[str, RuleProcessingCondition] = field(
+        default_factory=list
     )
     rule_condition_expression: ConditionExpression | None = (
         None  # Full rule condition expression mutually exclusive to linking
@@ -386,15 +386,17 @@ class ProcessingItem(ProcessingItemBase):
 
     transformation: PreprocessingTransformation
 
-    detection_item_condition_linking: Callable[[Iterable[bool]], bool] | None = (
-        None  # any or all
-    )
+    detection_item_condition_linking: Callable[[Iterable[bool]], bool] | None = None  # any or all
     detection_item_condition_negation: bool = False
-    detection_item_conditions: list[DetectionItemProcessingCondition] | dict[str, DetectionItemProcessingCondition] = field(default_factory=list)
+    detection_item_conditions: (
+        list[DetectionItemProcessingCondition] | dict[str, DetectionItemProcessingCondition]
+    ) = field(default_factory=list)
     detection_item_condition_expression: ConditionExpression | None = None
     field_name_condition_linking: Callable[[Iterable[bool]], bool] | None = None  # any or all
     field_name_condition_negation: bool = False
-    field_name_conditions: list[FieldNameProcessingCondition] | dict[str, FieldNameProcessingCondition] = field(default_factory=list)
+    field_name_conditions: (
+        list[FieldNameProcessingCondition] | dict[str, FieldNameProcessingCondition]
+    ) = field(default_factory=list)
     field_name_condition_expression: ConditionExpression | None = None
 
     @classmethod
@@ -804,9 +806,7 @@ class ProcessingPipeline:
             raise SigmaPipelineParsingError("Error in parsing of a Sigma processing pipeline")
         return cls.from_dict(parsed_pipeline)
 
-    def apply(
-        self, rule: SigmaRule | SigmaCorrelationRule
-    ) -> SigmaRule | SigmaCorrelationRule:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> SigmaRule | SigmaCorrelationRule:
         """Apply processing pipeline on Sigma rule."""
         self.applied = list()
         self.applied_ids = set()

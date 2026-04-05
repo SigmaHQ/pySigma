@@ -34,7 +34,13 @@ class DanglingDetectionValidator(SigmaRuleValidator):
 
     def condition_referenced_ids(
         self,
-        cond: "ConditionIdentifier" | "ConditionItem" | "ConditionFieldEqualsValueExpression" | "ConditionValueExpression" | None,
+        cond: (
+            "ConditionIdentifier"
+            | "ConditionItem"
+            | "ConditionFieldEqualsValueExpression"
+            | "ConditionValueExpression"
+            | None
+        ),
         detections: SigmaDetections,
     ) -> set[str]:
         """
@@ -88,7 +94,13 @@ class DanglingConditionValidator(SigmaRuleValidator):
 
     def condition_unknown_referenced_ids(
         self,
-        cond: ConditionIdentifier | ConditionItem | ConditionFieldEqualsValueExpression | ConditionValueExpression | None,
+        cond: (
+            ConditionIdentifier
+            | ConditionItem
+            | ConditionFieldEqualsValueExpression
+            | ConditionValueExpression
+            | None
+        ),
         detections: SigmaDetections,
     ) -> set[str]:
         """

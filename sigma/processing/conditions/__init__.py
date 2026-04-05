@@ -31,7 +31,6 @@ from sigma.processing.conditions.values import (
     MatchValueCondition,
 )
 
-
 rule_conditions: Mapping[str, Type[RuleProcessingCondition]] = {
     "logsource": LogsourceCondition,
     "contains_detection_item": RuleContainsDetectionItemCondition,

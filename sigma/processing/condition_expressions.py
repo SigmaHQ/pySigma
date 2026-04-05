@@ -48,9 +48,7 @@ class ConditionExpression(ABC):
 
     @classmethod
     @abstractmethod
-    def from_parsed(
-        cls, s: str, l: int, t: ParseResults | list[Any]
-    ) -> "ConditionExpression":
+    def from_parsed(cls, s: str, l: int, t: ParseResults | list[Any]) -> "ConditionExpression":
         """Create condition object from parse result"""
         pass
 
@@ -121,9 +119,7 @@ class ConditionIdentifier(ConditionExpression):
     """
 
     @classmethod
-    def from_parsed(
-        cls, s: str, l: int, t: ParseResults | list[Any]
-    ) -> "ConditionIdentifier":
+    def from_parsed(cls, s: str, l: int, t: ParseResults | list[Any]) -> "ConditionIdentifier":
         expr = cls(l, t[0])
         expr.set_expression(s)
         return expr
@@ -146,7 +142,8 @@ class ConditionIdentifier(ConditionExpression):
 
     def match(self, item: SigmaRule | SigmaCorrelationRule | SigmaDetectionItem) -> bool:
         if isinstance(self._condition, RuleProcessingCondition) and isinstance(
-            item, SigmaRule | SigmaCorrelationRule):
+            item, SigmaRule | SigmaCorrelationRule
+        ):
             return self._condition.match(item)
         elif isinstance(self._condition, DetectionItemProcessingCondition) and isinstance(
             item, SigmaDetectionItem

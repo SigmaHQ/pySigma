@@ -67,9 +67,7 @@ class ProcessingPipelineResolver:
             except OSError as e:
                 raise SigmaPipelineNotFoundError(spec)
 
-    def resolve(
-        self, pipeline_specs: list[str], target: str | None = None
-    ) -> ProcessingPipeline:
+    def resolve(self, pipeline_specs: list[str], target: str | None = None) -> ProcessingPipeline:
         """
         Resolve a list of
 

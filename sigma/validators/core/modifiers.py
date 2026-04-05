@@ -49,9 +49,7 @@ class ModifierAppliedMultipleIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Modifiers shouldn't be applied multiple times"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     detection_item: SigmaDetectionItem
-    modifiers: set[
-        Type[SigmaModifier[SigmaType | list[SigmaType], SigmaType | list[SigmaType]]]
-    ]
+    modifiers: set[Type[SigmaModifier[SigmaType | list[SigmaType], SigmaType | list[SigmaType]]]]
 
 
 class InvalidModifierCombinationsValidator(SigmaDetectionItemValidator):

@@ -478,9 +478,7 @@ class SigmaPlugin:
                 continue
         return None
 
-    def pysigma_version_from_pypi(
-        self, plugin_version: str | None = None
-    ) -> SpecifierSet | None:
+    def pysigma_version_from_pypi(self, plugin_version: str | None = None) -> SpecifierSet | None:
         """Get the pySigma version specifier from PyPI package metadata.
 
         Fetches the package metadata from PyPI and extracts the pySigma dependency

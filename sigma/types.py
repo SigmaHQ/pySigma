@@ -297,7 +297,9 @@ class SigmaString(SigmaType):
 
         return self
 
-    def replace_with_placeholder(self, regex: re.Pattern[str], placeholder_name: str) -> "SigmaString":
+    def replace_with_placeholder(
+        self, regex: re.Pattern[str], placeholder_name: str
+    ) -> "SigmaString":
         """
         Replace all occurrences of string part matching regular expression with placeholder.
 

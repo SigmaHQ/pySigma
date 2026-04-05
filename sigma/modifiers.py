@@ -75,7 +75,9 @@ class SigmaModifier(ABC, Generic[T, R]):
         to = get_origin(th)  # get possible generic type of type hint
         if to is None:  # Plain type in annotation
             return isinstance(val, th)
-        elif to is Union or to is types.UnionType:  # type hint is Union of multiple types, check if val is one of them
+        elif (
+            to is Union or to is types.UnionType
+        ):  # type hint is Union of multiple types, check if val is one of them
             for t in get_args(th):
                 if isinstance(val, t):
                     return True
@@ -435,9 +437,7 @@ class SigmaExistsModifier(SigmaValueModifier[SigmaBool, SigmaExists]):
 
 
 class SigmaExpandModifier(
-    SigmaValueModifier[
-        SigmaString | SigmaRegularExpression, SigmaString | SigmaRegularExpression
-    ]
+    SigmaValueModifier[SigmaString | SigmaRegularExpression, SigmaString | SigmaRegularExpression]
 ):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)

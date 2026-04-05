@@ -190,8 +190,8 @@ def test_finalizer_from_dict_invalid_params():
         ConcatenateQueriesFinalizer.from_dict({"invalid_param": "value"})
 
 
-def test_yaml_finalizer(dummy_pipeline):
-    """Test YAMLFinalizer with indent parameter."""
+def test_yaml_finalizer_custom_indent(dummy_pipeline):
+    """Test YAMLFinalizer with custom indent parameter."""
     from sigma.processing.finalization import YAMLFinalizer
 
     finalizer = YAMLFinalizer(indent=4)
@@ -211,8 +211,8 @@ def test_yaml_finalizer_default_indent(dummy_pipeline):
     assert "query1" in result
 
 
-def test_json_finalizer(dummy_pipeline):
-    """Test JSONFinalizer with indent parameter."""
+def test_json_finalizer_custom_indent(dummy_pipeline):
+    """Test JSONFinalizer with custom indent parameter."""
     from sigma.processing.finalization import JSONFinalizer
 
     finalizer = JSONFinalizer(indent=2)

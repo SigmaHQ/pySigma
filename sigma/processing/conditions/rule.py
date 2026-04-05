@@ -8,7 +8,7 @@ from sigma.processing.conditions.base import (
     RuleProcessingCondition,
 )
 from sigma.types import sigma_type
-from typing import ClassVar, Literal, Optional, Union
+from typing import ClassVar, Literal
 from sigma.rule import (
     SigmaDetection,
     SigmaLevel,
@@ -44,7 +44,7 @@ class LogsourceCondition(RuleProcessingCondition):
         elif isinstance(rule, SigmaCorrelationRule):
             # Will only return true if the rules have been resolved in advance
             for ref in rule.referenced_rules:
-                if hasattr(ref, "rule") and isinstance(ref.rule, (SigmaRule, SigmaCorrelationRule)):
+                if hasattr(ref, "rule") and isinstance(ref.rule, SigmaRule | SigmaCorrelationRule):
                     if self.match(ref.rule):
                         return True
             return False
@@ -190,7 +190,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 raise SigmaConfigurationError(
                     f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}."
                 )
-        elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
+        elif isinstance(value, str | UUID):  # exact match of strings and UUIDs
             if self.op == "eq":
                 return str(value) == self.value
             elif self.op == "ne":
@@ -199,7 +199,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 raise SigmaConfigurationError(
                     f"Invalid operation '{self.op}' for string comparison in rule attribute condition {str(self)}."
                 )
-        elif isinstance(value, (int, float)):  # numeric comparison
+        elif isinstance(value, int | float):  # numeric comparison
             try:
                 compare_value = float(self.value)
             except ValueError:

@@ -1,6 +1,6 @@
 from collections import Counter
 from dataclasses import dataclass
-from typing import ClassVar, Set, Union, Pattern
+from typing import ClassVar
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaRule, SigmaRuleTag
 from sigma.validators.base import (
@@ -191,7 +191,7 @@ class TagPatternValidatorBase(SigmaTagValidator):
     """Base class for tag pattern validation"""
 
     namespace: ClassVar[str] = ""
-    pattern: ClassVar[Pattern[str]] = re.compile("")
+    pattern: ClassVar[re.Pattern[str]] = re.compile("")
 
     def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
         if tag.namespace == self.namespace and self.pattern.match(tag.name) is None:
@@ -203,25 +203,25 @@ class CARTagValidator(TagPatternValidatorBase):
     """Validate rule CAR tag"""
 
     namespace: ClassVar[str] = "car"
-    pattern: ClassVar[Pattern[str]] = re.compile(r"\d{4}-\d{2}-\d{3}$")
+    pattern: ClassVar[re.Pattern[str]] = re.compile(r"\d{4}-\d{2}-\d{3}$")
 
 
 class CVETagValidator(TagPatternValidatorBase):
     """Validate rule CVE tag"""
 
     namespace: ClassVar[str] = "cve"
-    pattern: ClassVar[Pattern[str]] = re.compile(r"^\d+-\d+$")
+    pattern: ClassVar[re.Pattern[str]] = re.compile(r"^\d+-\d+$")
 
 
 class DetectionTagValidator(TagPatternValidatorBase):
     """Validate rule detection tag"""
 
     namespace: ClassVar[str] = "detection"
-    pattern: ClassVar[Pattern[str]] = re.compile(r"dfir|emerging-threats|threat-hunting")
+    pattern: ClassVar[re.Pattern[str]] = re.compile(r"dfir|emerging-threats|threat-hunting")
 
 
 class STPTagValidator(TagPatternValidatorBase):
     """Validate rule STP tag"""
 
     namespace: ClassVar[str] = "stp"
-    pattern: ClassVar[Pattern[str]] = re.compile(r"^[1-5]{1}[auk]{0,1}$")
+    pattern: ClassVar[re.Pattern[str]] = re.compile(r"^[1-5]{1}[auk]{0,1}$")

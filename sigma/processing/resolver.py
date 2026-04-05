@@ -6,7 +6,7 @@ from sigma.exceptions import (
     SigmaPipelineNotFoundError,
 )
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Iterable, Optional, Tuple, Union, cast, Callable
+from typing import Iterable, cast, Callable
 from collections import namedtuple
 
 

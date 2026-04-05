@@ -4,7 +4,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Optional, Type, Union, TYPE_CHECKING
+from typing import Any, Type, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing

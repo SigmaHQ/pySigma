@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import UserDict, defaultdict
 from dataclasses import dataclass, field
-from typing import Any, Optional, Set, Union, TYPE_CHECKING
+from typing import Any, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase

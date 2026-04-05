@@ -340,7 +340,7 @@ class SetValueTransformation(ValueTransformation):
                 self.sigma_value = SigmaString(value)
             elif isinstance(value, bool):
                 self.sigma_value = SigmaBool(value)
-            elif isinstance(value, (int, float)):
+            elif isinstance(value, int | float):
                 self.sigma_value = SigmaNumber(value)
             elif value is None:
                 self.sigma_value = SigmaNull()
@@ -349,7 +349,7 @@ class SetValueTransformation(ValueTransformation):
                     f"Unsupported value type '{type(value)}' for SetValueTransformation"
                 )
         else:  # forced type
-            if not isinstance(value, (str, int, float)):  # only allowed for certain types
+            if not isinstance(value, str | int | float):  # only allowed for certain types
                 raise SigmaConfigurationError(
                     f"force_type '{self.force_type}' is only allowed for string and numeric values"
                 )

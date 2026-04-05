@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 from types import ModuleType
-from typing import Callable, Any, Optional, Union, get_type_hints
+from typing import Callable, Any, Optional, get_type_hints
 from uuid import UUID
 import requests
 from packaging.version import Version, InvalidVersion

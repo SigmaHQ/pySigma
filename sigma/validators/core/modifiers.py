@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar, Counter, Set, Type, Union
+from typing import ClassVar, Counter, Type
 from sigma.modifiers import (
     SigmaAllModifier,
     SigmaBase64Modifier,

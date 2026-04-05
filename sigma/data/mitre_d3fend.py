@@ -9,7 +9,7 @@ to avoid repeated downloads across sessions.
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional, Dict, cast
+from typing import Any, cast
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -40,7 +40,7 @@ def _get_cache() -> diskcache.Cache:
     return _cache
 
 
-def _load_mitre_d3fend_data() -> Dict[str, Any]:
+def _load_mitre_d3fend_data() -> dict[str, Any]:
     """
     Load MITRE D3FEND data from the D3FEND ontology or a custom URL/file.
 
@@ -181,7 +181,7 @@ def _load_mitre_d3fend_data() -> Dict[str, Any]:
     return result
 
 
-def _get_cached_data() -> Dict[str, Any]:
+def _get_cached_data() -> dict[str, Any]:
     """Get cached MITRE D3FEND data, loading it if necessary."""
     return _load_mitre_d3fend_data()
 

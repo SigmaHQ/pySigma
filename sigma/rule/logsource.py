@@ -1,6 +1,6 @@
 from dataclasses import dataclass, field
 import dataclasses
-from typing import Any, Optional
+from typing import Any
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaRuleLocation, SigmaTypeError
 

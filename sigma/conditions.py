@@ -13,7 +13,7 @@ from pyparsing import (
     ParseResults,
     ParseException,
 )
-from typing import ClassVar, Optional, Union, Type, cast, TYPE_CHECKING
+from typing import ClassVar, Type, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 

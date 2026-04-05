@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Set, Union
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaTransformationError
 from sigma.processing.transformations.base import (

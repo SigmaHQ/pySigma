@@ -8,7 +8,6 @@ from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
 from typing import (
     ClassVar,
-    Pattern,
     Type,
     Union,
     Optional,
@@ -298,7 +297,7 @@ class SigmaString(SigmaType):
 
         return self
 
-    def replace_with_placeholder(self, regex: Pattern[str], placeholder_name: str) -> "SigmaString":
+    def replace_with_placeholder(self, regex: re.Pattern[str], placeholder_name: str) -> "SigmaString":
         """
         Replace all occurrences of string part matching regular expression with placeholder.
 
@@ -358,14 +357,14 @@ class SigmaString(SigmaType):
         s = self.__class__()
         if isinstance(other, self.__class__):
             s.s = self.s + other.s
-        elif isinstance(other, (str, SpecialChars, Placeholder)):
+        elif isinstance(other, str | SpecialChars | Placeholder):
             s.s = self.s + [other]
         else:
             return NotImplemented
         return s._merge_strs()
 
     def __radd__(self, other: str | SpecialChars | Placeholder) -> "SigmaString":
-        if isinstance(other, (str, SpecialChars, Placeholder)):
+        if isinstance(other, str | SpecialChars | Placeholder):
             s = self.__class__()
             s.s = [other] + self.s
             return s._merge_strs()
@@ -671,7 +670,7 @@ class SigmaNumber(SigmaType):
         return str(self.number)
 
     def __eq__(self, other: object) -> bool:
-        if isinstance(other, (int, float)):
+        if isinstance(other, int | float):
             return self.number == other
         elif isinstance(other, SigmaNumber):
             return bool(self.number == other.number)

@@ -1,5 +1,5 @@
 from dataclasses import dataclass, field
-from typing import ClassVar, Union
+from typing import ClassVar
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.types import SigmaNumber

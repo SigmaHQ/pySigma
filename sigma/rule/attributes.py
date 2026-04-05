@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any, Optional, List
+from typing import Any
 from uuid import UUID
 from enum import Enum, auto
 import sigma.exceptions as sigma_exceptions

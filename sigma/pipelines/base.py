@@ -1,5 +1,5 @@
 from abc import abstractmethod
-from typing import Any, Optional, Callable
+from typing import Any, Callable
 
 from sigma.processing.pipeline import ProcessingPipeline
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from re import Pattern
 import re
-from typing import ClassVar, Set, Union
+from typing import ClassVar, Set
 from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
     ConditionIdentifier,
@@ -166,7 +166,7 @@ class AllOfThemConditionIssue(SigmaValidationIssue):
 class AllOfThemConditionValidator(SigmaRuleValidator):
     """Find occurrences of discouraged 'all of them' conditions."""
 
-    re_all_of_them: ClassVar[Pattern[str]] = re.compile("all\\s+of\\s+them")
+    re_all_of_them: ClassVar[re.Pattern[str]] = re.compile("all\\s+of\\s+them")
 
     def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):

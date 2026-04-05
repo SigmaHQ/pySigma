@@ -269,7 +269,7 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         ):
             field_match = True
             # If mapping from None (keyword) to a field, add wildcards to preserve keyword semantics
-            if field is None and isinstance(mapping, (str, list)):
+            if field is None and isinstance(mapping, str | list):
                 # Wrap string values with wildcards to maintain keyword search behavior
                 new_values = []
                 for value in detection_item.value:

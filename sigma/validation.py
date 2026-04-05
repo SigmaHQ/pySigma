@@ -1,5 +1,5 @@
 from collections import defaultdict
-from typing import Any, DefaultDict, Iterable, Iterator, Optional, Set, Type, Union
+from typing import Any, DefaultDict, Iterable, Iterator, Type
 from uuid import UUID
 from sigma.exceptions import SigmaConfigurationError, SigmaValidatorConfigurationParsingError
 from sigma.rule import SigmaRule

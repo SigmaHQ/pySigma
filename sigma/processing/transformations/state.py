@@ -1,4 +1,4 @@
-from typing import Any, Union
+from typing import Any
 from dataclasses import dataclass
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation

@@ -1,6 +1,6 @@
 from collections import defaultdict
 import re
-from typing import Any, ClassVar, Optional, Pattern, cast
+from typing import Any, ClassVar, cast
 
 from sigma.conversion.base import TextQueryBackend
 from sigma.conversion.state import ConversionState
@@ -30,7 +30,7 @@ class TextQueryTestBackend(TextQueryBackend):
     eq_token: ClassVar[str] = "="
 
     field_quote: ClassVar[str] = "'"
-    field_quote_pattern: ClassVar[Pattern[str]] = re.compile("^\\w+$")
+    field_quote_pattern: ClassVar[re.Pattern[str]] = re.compile("^\\w+$")
 
     str_quote: ClassVar[str] = '"'
     escape_char: ClassVar[str] = "\\"

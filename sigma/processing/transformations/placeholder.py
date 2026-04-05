@@ -53,7 +53,7 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
         return super().__post_init__()
 
     def apply_value(self, field: str | None, val: SigmaType) -> None | SigmaString | Iterable[SigmaString] | SigmaRegularExpression | Iterable[SigmaRegularExpression]:
-        if isinstance(val, (SigmaString, SigmaRegularExpression)) and val.contains_placeholder(
+        if isinstance(val, SigmaString | SigmaRegularExpression) and val.contains_placeholder(
             self.include, self.exclude
         ):
             return val.replace_placeholders(self.placeholder_replacements_base)
@@ -118,7 +118,7 @@ class ValueListPlaceholderTransformation(BasePlaceholderTransformation):
         if not isinstance(values, list):
             values = [values]
 
-        if {isinstance(item, (str, int, float)) for item in values} != {True}:
+        if {isinstance(item, str | int | float) for item in values} != {True}:
             raise SigmaValueError(
                 f"Replacement variable '{ p.name }' contains value which is not a string or number."
             )

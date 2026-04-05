@@ -6,7 +6,7 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Literal, Optional, Union, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,

@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Union, cast
+from typing import TYPE_CHECKING, Any, cast
 
 from typing_extensions import Self
 
@@ -308,7 +308,7 @@ class SigmaDetection(ParentChainMixin):
                 ],
                 source=source,
             )
-        elif isinstance(definition, (str, int, float, bool, type(None))):  # plain value (case 2)
+        elif isinstance(definition, str | int | float | bool | type(None)):  # plain value (case 2)
             return cls(
                 detection_items=[SigmaDetectionItem.from_value(definition, source)],
                 source=source,

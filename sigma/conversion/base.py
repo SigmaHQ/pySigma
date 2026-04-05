@@ -2,7 +2,7 @@ import re
 from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
-from typing import Any, Callable, ClassVar, Iterator, Pattern, cast
+from typing import Any, Callable, ClassVar, Iterator, cast
 
 from typing_extensions import Self
 
@@ -357,7 +357,7 @@ class Backend(ABC):
             return False
 
         # All argument values must be strings or numbers
-        if not all([isinstance(arg.value, (SigmaString, SigmaNumber)) for arg in args]):
+        if not all([isinstance(arg.value, SigmaString | SigmaNumber) for arg in args]):
             return False
 
         # Check for plain strings if wildcards are not allowed for string expressions.
@@ -1047,7 +1047,7 @@ class TextQueryBackend(Backend):
     field_quote: ClassVar[str | None] = (
         None  # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
     )
-    field_quote_pattern: ClassVar[Pattern[str] | None] = (
+    field_quote_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
     )
     field_quote_pattern_negation: ClassVar[bool] = (
@@ -1059,7 +1059,7 @@ class TextQueryBackend(Backend):
         None  # Character to escape particular parts defined in field_escape_pattern.
     )
     field_escape_quote: ClassVar[bool] = True  # Escape quote string defined in field_quote
-    field_escape_pattern: ClassVar[Pattern[str] | None] = (
+    field_escape_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
@@ -1070,7 +1070,7 @@ class TextQueryBackend(Backend):
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
-    str_quote_pattern: ClassVar[Pattern[str] | None] = (
+    str_quote_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # Quote string values that match (or don't match) this pattern
     )
     str_quote_pattern_negation: ClassVar[bool] = True  # Negate str_quote_pattern result
@@ -1517,8 +1517,7 @@ class TextQueryBackend(Backend):
             # Rule references have highest precedence (like field expressions)
             idx_inner = -1
         elif isinstance(
-            inner, (ConditionFieldEqualsValueExpression, ConditionValueExpression)
-        ) and isinstance(inner.value, SigmaExpansion):
+            inner, ConditionFieldEqualsValueExpression | ConditionValueExpression) and isinstance(inner.value, SigmaExpansion):
             # Special case: Conditions containing a SigmaExpansion value convert into OR conditions
             inner_class: type[
                 ConditionItem

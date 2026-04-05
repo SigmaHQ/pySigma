@@ -6,7 +6,7 @@ from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Literal
 
 from typing_extensions import Self
-from typing import Union, ClassVar, cast
+from typing import ClassVar, cast
 from pyparsing import (
     Word,
     alphas,

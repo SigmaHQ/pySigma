@@ -3,7 +3,7 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-from typing import Any, Optional, Type, TYPE_CHECKING
+from typing import Any, Type, TYPE_CHECKING
 
 import yaml
 from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError

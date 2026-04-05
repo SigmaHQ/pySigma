@@ -22,7 +22,7 @@ class DropDetectionItemTransformation(DetectionItemTransformation):
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> Optional[SigmaDetectionItem]:
+    ) -> SigmaDetectionItem | None:
         """This function only marks detection items for deletion."""
         return DeleteSigmaDetectionItem.create()
 

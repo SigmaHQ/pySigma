@@ -33,7 +33,7 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
 
     def match_field_name(
         self,
-        field: Optional[str],
+        field: str | None,
     ) -> bool:
         if field is None:
             return False
@@ -57,6 +57,6 @@ class ExcludeFieldCondition(IncludeFieldCondition):
 
     def match_field_name(
         self,
-        field: Optional[str],
+        field: str | None,
     ) -> bool:
         return not super().match_field_name(field)

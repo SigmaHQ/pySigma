@@ -67,7 +67,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
-    ) -> Optional[Union[SigmaDetection, SigmaDetectionItem]]:
+    ) -> (SigmaDetection | SigmaDetectionItem) | None:
         """
         Applies the transformation to a single detection item.
 
@@ -75,7 +75,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             detection_item (SigmaDetectionItem): The detection item to transform.
 
         Returns:
-            Optional[Union[SigmaDetection, SigmaDetectionItem]]: A new SigmaDetection object containing
+            (SigmaDetection | SigmaDetectionItem) | None: A new SigmaDetection object containing
             the transformed detection items, or None if no valid hashes were found.
 
         Raises:
@@ -105,7 +105,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         Parses the hash values from the detection item.
 
         Args:
-            values (Union[SigmaString, list[SigmaString]]): The hash values to parse.
+            values (SigmaString | list[SigmaString]): The hash values to parse.
 
         Returns:
             dict[str, list[str]]: A dictionary mapping field names to lists of hash values.
@@ -217,13 +217,13 @@ class ReplaceStringTransformation(StringValueTransformation):
             ) from e
 
     def apply_value(
-        self, field: Optional[str], val: SigmaType
-    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
+        self, field: str | None, val: SigmaType
+    ) -> (SigmaType | list[SigmaType]) | None:
         if isinstance(val, SigmaNumber):
             return self.apply_string_value(field, SigmaString(str(val)))
         return super().apply_value(field, val)
 
-    def apply_string_value(self, field: Optional[str], val: SigmaString) -> SigmaString:
+    def apply_string_value(self, field: str | None, val: SigmaString) -> SigmaString:
         if isinstance(val, SigmaString):
             if self.skip_special:
                 return val.map_parts(
@@ -249,11 +249,11 @@ class MapStringTransformation(StringValueTransformation):
     Map static string value to one or multiple other strings.
     """
 
-    mapping: dict[str, Union[str, list[str]]]
+    mapping: dict[str, str | list[str]]
 
     def apply_string_value(
-        self, field: Optional[str], val: SigmaString
-    ) -> Optional[Union[SigmaType, list[SigmaType]]]:
+        self, field: str | None, val: SigmaString
+    ) -> (SigmaType | list[SigmaType]) | None:
         mapped = self.mapping.get(str(val), None)
         if isinstance(mapped, str):
             return SigmaString(mapped)
@@ -288,7 +288,7 @@ class RegexTransformation(StringValueTransformation):
             )
         return super().__post_init__()
 
-    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaType]:
+    def apply_string_value(self, field: str | None, val: SigmaString) -> SigmaType | None:
         regex = ""
 
         # empty string can not be convert into a simple regex
@@ -330,11 +330,11 @@ class SetValueTransformation(ValueTransformation):
     force_type parameter.
     """
 
-    value: InitVar[Optional[Union[str, int, float, bool]]]
-    force_type: Optional[Literal["str", "num"]] = None
+    value: InitVar[(str | int | float | bool) | None]
+    force_type: Literal["str", "num"] | None = None
     sigma_value: SigmaType = field(init=False)
 
-    def __post_init__(self, value: Optional[Union[str, int, float, bool]]) -> None:
+    def __post_init__(self, value: (str | int | float | bool) | None) -> None:
         if self.force_type is None:  # no type forced, use type of value
             if isinstance(value, str):
                 self.sigma_value = SigmaString(value)
@@ -369,7 +369,7 @@ class SetValueTransformation(ValueTransformation):
 
         super().__post_init__()
 
-    def apply_value(self, field: Optional[str], val: SigmaType) -> SigmaType:
+    def apply_value(self, field: str | None, val: SigmaType) -> SigmaType:
         return self.sigma_value
 
 
@@ -382,8 +382,8 @@ class ConvertTypeTransformation(ValueTransformation):
     target_type: Literal["str", "num"]
 
     def apply_value(
-        self, field: Optional[str], val: SigmaType
-    ) -> Optional[Union[SigmaString, SigmaNumber, SigmaExpansion]]:
+        self, field: str | None, val: SigmaType
+    ) -> (SigmaString | SigmaNumber | SigmaExpansion) | None:
         if self.target_type == "str":
             # Preserve SigmaNull values - they should not be converted to strings
             if isinstance(val, SigmaNull):
@@ -435,7 +435,7 @@ class CaseTransformation(StringValueTransformation):
             raise SigmaConfigurationError(f"Invalid method '{self.method}' for CaseTransformation.")
         return super().__post_init__()
 
-    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaString]:
+    def apply_string_value(self, field: str | None, val: SigmaString) -> SigmaString | None:
 
         if self.method == "snake_case":
             return val.snake_case()

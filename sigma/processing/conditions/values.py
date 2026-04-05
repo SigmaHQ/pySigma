@@ -47,7 +47,7 @@ class MatchValueCondition(ValueProcessingCondition):
     Exact match of a value with an arbitrary Sigma type.
     """
 
-    value: Union[str, int, float, bool]
+    value: str | int | float | bool
 
     def match_value(self, value: SigmaType) -> bool:
         try:

@@ -314,7 +314,7 @@ class SigmaPlugin:
 
         return cls(**kwargs)
 
-    def is_compatible(self, directory_version: bool = False) -> Optional[bool]:
+    def is_compatible(self, directory_version: bool = False) -> bool | None:
         """Checks if the plugin is compatible with the current pySigma version.
 
         By default, this method checks PyPI to find if any compatible plugin version exists
@@ -433,7 +433,7 @@ class SigmaPlugin:
         subprocess.check_call([sys.executable, "-m", "pip", "-q", "uninstall", "-y", self.package])
 
     @staticmethod
-    def _get_pypi_json(package: str, version: Optional[str] = None) -> Any:
+    def _get_pypi_json(package: str, version: str | None = None) -> Any:
         """Fetch package metadata from PyPI.
 
         Args:
@@ -456,8 +456,8 @@ class SigmaPlugin:
 
     @staticmethod
     def _extract_pysigma_specifier(
-        requires_dist: Optional[list[str]],
-    ) -> Optional[SpecifierSet]:
+        requires_dist: list[str] | None,
+    ) -> SpecifierSet | None:
         """Extract pySigma version specifier from requires_dist metadata.
 
         Args:
@@ -479,8 +479,8 @@ class SigmaPlugin:
         return None
 
     def pysigma_version_from_pypi(
-        self, plugin_version: Optional[str] = None
-    ) -> Optional[SpecifierSet]:
+        self, plugin_version: str | None = None
+    ) -> SpecifierSet | None:
         """Get the pySigma version specifier from PyPI package metadata.
 
         Fetches the package metadata from PyPI and extracts the pySigma dependency
@@ -500,7 +500,7 @@ class SigmaPlugin:
         except requests.HTTPError:
             return None
 
-    def find_compatible_version(self) -> Optional[str]:
+    def find_compatible_version(self) -> str | None:
         """Find a plugin version compatible with the current pySigma version.
 
         Checks all available versions of the plugin on PyPI and returns the latest
@@ -557,7 +557,7 @@ class SigmaPluginDirectory:
     repository or an arbitrary location."""
 
     plugins: dict[UUID, SigmaPlugin] = field(default_factory=dict)
-    note: Optional[str] = None
+    note: str | None = None
 
     def register_plugin(self, plugin: SigmaPlugin) -> None:
         self.plugins[plugin.uuid] = plugin
@@ -608,7 +608,7 @@ class SigmaPluginDirectory:
             and (not compatible_only or bool(plugin.is_compatible()))
         ]
 
-    def get_plugin_by_uuid(self, uuid: Union[str, UUID]) -> SigmaPlugin:
+    def get_plugin_by_uuid(self, uuid: str | UUID) -> SigmaPlugin:
         if isinstance(uuid, str):
             uuid = UUID(uuid)
         try:

@@ -12,7 +12,7 @@ class SetStateTransformation(PreprocessingTransformation):
     key: str
     val: Any
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         if self._pipeline is not None:
             self._pipeline.state[self.key] = self.val

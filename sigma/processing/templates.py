@@ -24,9 +24,9 @@ class TemplateBase:
     """
 
     template: str
-    path: Optional[str] = None
+    path: str | None = None
     autoescape: bool = False
-    vars: Optional[str] = None
+    vars: str | None = None
 
     def __post_init__(self) -> None:
         if self.path is None:

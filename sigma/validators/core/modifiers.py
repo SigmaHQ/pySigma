@@ -50,7 +50,7 @@ class ModifierAppliedMultipleIssue(SigmaValidationIssue):
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     detection_item: SigmaDetectionItem
     modifiers: set[
-        Type[SigmaModifier[Union[SigmaType, list[SigmaType]], Union[SigmaType, list[SigmaType]]]]
+        Type[SigmaModifier[SigmaType | list[SigmaType], SigmaType | list[SigmaType]]]
     ]
 
 

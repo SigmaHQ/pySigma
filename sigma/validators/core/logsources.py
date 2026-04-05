@@ -67,7 +67,7 @@ class SpecificInsteadOfGenericLogsourceIssue(SigmaValidationIssue):
 class SpecificInsteadOfGenericLogsourceValidator(SigmaDetectionItemValidator):
     """Identify usage of specific Windows event identifiers where corresponding generic log sources exist."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaCorrelationRule):
             return []  # Correlation rules do not have detections
 
@@ -111,7 +111,7 @@ class FieldnameLogsourceIssue(SigmaValidationIssue):
 class FieldnameLogsourceValidator(SigmaRuleValidator):
     """Identify usage of invalid field names in the log source."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         if isinstance(rule, SigmaRule) and rule.logsource.custom_attributes:
             return [
                 FieldnameLogsourceIssue(rules=[rule], fieldname=name)

@@ -25,9 +25,9 @@ MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pysigma" / "mitre_d3fend"
 
 # Disk cache instance
-_cache: Optional[diskcache.Cache] = None
-_custom_url: Optional[str] = None
-_custom_cache_dir: Optional[Path] = None
+_cache: diskcache.Cache | None = None
+_custom_url: str | None = None
+_custom_cache_dir: Path | None = None
 
 
 def _get_cache() -> diskcache.Cache:

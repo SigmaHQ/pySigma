@@ -25,9 +25,9 @@ MITRE_ATTACK_ENTERPRISE_URL = (
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pysigma" / "mitre_attack"
 
 # Disk cache instance
-_cache: Optional[diskcache.Cache] = None
-_custom_url: Optional[str] = None
-_custom_cache_dir: Optional[Path] = None
+_cache: diskcache.Cache | None = None
+_custom_url: str | None = None
+_custom_cache_dir: Path | None = None
 
 
 def _get_cache() -> diskcache.Cache:
@@ -40,7 +40,7 @@ def _get_cache() -> diskcache.Cache:
     return _cache
 
 
-def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
+def _get_external_id(obj: Dict[str, Any]) -> str | None:
     """Extract the external ID from a STIX object's external references."""
     for ref in obj.get("external_references", []):
         if ref.get("source_name") == "mitre-attack":

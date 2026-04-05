@@ -38,7 +38,7 @@ class TextQueryTestBackend(TextQueryBackend):
     wildcard_single: ClassVar[str] = "?"
     add_escaped: ClassVar[str] = ":"
     filter_chars: ClassVar[str] = "&"
-    bool_values: ClassVar[dict[bool, Optional[str]]] = {
+    bool_values: ClassVar[dict[bool, str | None]] = {
         True: "1",
         False: "0",
     }
@@ -84,8 +84,8 @@ class TextQueryTestBackend(TextQueryBackend):
     convert_and_as_in: ClassVar[bool] = True
     in_expressions_allow_wildcards: ClassVar[bool] = True
     field_in_list_expression: ClassVar[str] = "{field} {op} ({list})"
-    or_in_operator: ClassVar[Optional[str]] = "in"
-    and_in_operator: ClassVar[Optional[str]] = "contains-all"
+    or_in_operator: ClassVar[str | None] = "in"
+    and_in_operator: ClassVar[str | None] = "contains-all"
     list_separator: ClassVar[str] = ", "
 
     unbound_value_str_expression: ClassVar[str] = "_={value}"
@@ -218,9 +218,9 @@ class TextQueryTestBackend(TextQueryBackend):
 
     def __init__(
         self,
-        processing_pipeline: Optional[ProcessingPipeline] = None,
+        processing_pipeline: ProcessingPipeline | None = None,
         collect_errors: bool = False,
-        testparam: Optional[str] = None,
+        testparam: str | None = None,
         **kwargs: dict[str, Any],
     ):
         super().__init__(processing_pipeline, collect_errors, **kwargs)
@@ -253,7 +253,7 @@ class TextQueryTestBackend(TextQueryBackend):
     ) -> str:
         return cast(str, self.finalize_query_default(rule, query, index, state))
 
-    def finalize_output_list_of_dict(self, queries: list[str]) -> list[dict[str, Optional[str]]]:
+    def finalize_output_list_of_dict(self, queries: list[str]) -> list[dict[str, str | None]]:
         return [
             (
                 {"query": query, "test": self.testparam}

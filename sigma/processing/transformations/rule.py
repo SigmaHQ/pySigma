@@ -15,11 +15,11 @@ from sigma.rule import SigmaLogSource, SigmaRule
 class ChangeLogsourceTransformation(PreprocessingTransformation):
     """Replace log source as defined in transformation parameters."""
 
-    category: Optional[str] = field(default=None)
-    product: Optional[str] = field(default=None)
-    service: Optional[str] = field(default=None)
+    category: str | None = field(default=None)
+    product: str | None = field(default=None)
+    service: str | None = field(default=None)
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         if isinstance(rule, SigmaRule):
             logsource = SigmaLogSource(self.category, self.product, self.service)
@@ -35,6 +35,6 @@ class SetCustomAttributeTransformation(PreprocessingTransformation):
     attribute: str
     value: Any
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         rule.custom_attributes[self.attribute] = self.value

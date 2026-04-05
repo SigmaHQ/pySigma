@@ -23,8 +23,8 @@ from sigma.types import (
 
 @dataclass
 class PlaceholderIncludeExcludeMixin:
-    include: Optional[list[str]] = field(default=None)
-    exclude: Optional[list[str]] = field(default=None)
+    include: list[str] | None = field(default=None)
+    exclude: list[str] | None = field(default=None)
 
     def check_exclusivity(self) -> None:
         if self.include is not None and self.exclude is not None:
@@ -52,13 +52,7 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
         self.check_exclusivity()
         return super().__post_init__()
 
-    def apply_value(self, field: Optional[str], val: SigmaType) -> Union[
-        None,
-        SigmaString,
-        Iterable[SigmaString],
-        SigmaRegularExpression,
-        Iterable[SigmaRegularExpression],
-    ]:
+    def apply_value(self, field: str | None, val: SigmaType) -> None | SigmaString | Iterable[SigmaString] | SigmaRegularExpression | Iterable[SigmaRegularExpression]:
         if isinstance(val, (SigmaString, SigmaRegularExpression)) and val.contains_placeholder(
             self.include, self.exclude
         ):
@@ -68,7 +62,7 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
 
     def placeholder_replacements_base(
         self, p: Placeholder
-    ) -> Iterator[Union[str, SpecialChars, Placeholder, SigmaString]]:
+    ) -> Iterator[str | SpecialChars | Placeholder | SigmaString]:
         """
         Base placeholder replacement callback. Calls real callback if placeholder is included or not excluded,
         else it passes the placeholder back to caller.
@@ -81,7 +75,7 @@ class BasePlaceholderTransformation(ValueTransformation, PlaceholderIncludeExclu
     @abstractmethod
     def placeholder_replacements(
         self, p: Placeholder
-    ) -> Iterable[Union[str, SpecialChars, Placeholder, SigmaString]]:
+    ) -> Iterable[str | SpecialChars | Placeholder | SigmaString]:
         """
         Placeholder replacement callback used by SigmaString.replace_placeholders(). This must return one
         of the following object types:
@@ -155,7 +149,7 @@ class QueryExpressionPlaceholderTransformation(
         self.check_exclusivity()
         return super().__post_init__()
 
-    def apply_string_value(self, field: Optional[str], val: SigmaString) -> Optional[SigmaType]:
+    def apply_string_value(self, field: str | None, val: SigmaString) -> SigmaType | None:
         if val.contains_placeholder():
             if len(val.s) == 1 and isinstance(
                 val.s[0], Placeholder

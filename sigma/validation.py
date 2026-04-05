@@ -20,13 +20,13 @@ class SigmaValidator:
     """
 
     validators: set[SigmaRuleValidator]
-    exclusions: DefaultDict[Optional[UUID], set[Type[SigmaRuleValidator]]]
+    exclusions: DefaultDict[UUID | None, set[Type[SigmaRuleValidator]]]
 
     def __init__(
         self,
         validators: Iterable[Type[SigmaRuleValidator]],
-        exclusions: dict[Optional[UUID], set[Type[SigmaRuleValidator]]] = dict(),
-        config: dict[str, dict[str, Union[str, int, float, bool]]] = dict(),
+        exclusions: dict[UUID | None, set[Type[SigmaRuleValidator]]] = dict(),
+        config: dict[str, dict[str, str | int | float | bool]] = dict(),
     ):
         self.validators = {
             validator(**config.get(validator_classname_to_identifier(validator.__name__), {}))

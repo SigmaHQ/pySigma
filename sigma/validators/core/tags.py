@@ -149,7 +149,7 @@ class DuplicateTagIssue(SigmaValidationIssue):
 class DuplicateTagValidator(SigmaRuleValidator):
     """Validate rule tag uniqueness."""
 
-    def validate(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> list[SigmaValidationIssue]:
+    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
         tags = Counter(rule.tags)
         return [DuplicateTagIssue([rule], tag) for tag, count in tags.items() if count > 1]
 

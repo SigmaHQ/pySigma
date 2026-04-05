@@ -182,14 +182,14 @@ class CorrelationConditionItem(ABC):
     """Base class for correlation condition parse tree items."""
 
     arg_count: ClassVar[int]
-    args: list[Union[SigmaRuleReference, "CorrelationConditionItem"]]
+    args: list[SigmaRuleReference | "CorrelationConditionItem"]
 
     @classmethod
     def from_parsed(
         cls,
         s: str,
         l: int,
-        t: Union[ParseResults, list[Union[SigmaRuleReference, "CorrelationConditionItem"]]],
+        t: ParseResults | list[SigmaRuleReference | "CorrelationConditionItem"],
     ) -> list["CorrelationConditionItem"]:
         """Create condition object from parse result."""
         if cls.arg_count == 1:
@@ -239,7 +239,7 @@ class SigmaExtendedCorrelationCondition:
 
     expression: str
     source: SigmaRuleLocation | None = field(default=None, compare=False)
-    _parsed: Union[CorrelationConditionItem, SigmaRuleReference] = field(
+    _parsed: CorrelationConditionItem | SigmaRuleReference = field(
         init=False, repr=False, compare=False
     )
 
@@ -254,7 +254,7 @@ class SigmaExtendedCorrelationCondition:
             )
 
     @classmethod
-    def parse(cls, expression: str) -> Union[CorrelationConditionItem, SigmaRuleReference]:
+    def parse(cls, expression: str) -> CorrelationConditionItem | SigmaRuleReference:
         """
         Parse an extended correlation condition expression.
 
@@ -284,10 +284,10 @@ class SigmaExtendedCorrelationCondition:
         )
 
         result = expr.parse_string(expression, parse_all=True)
-        return cast(Union[CorrelationConditionItem, SigmaRuleReference], result[0])
+        return cast(CorrelationConditionItem | SigmaRuleReference, result[0])
 
     @property
-    def parsed(self) -> Union[CorrelationConditionItem, SigmaRuleReference]:
+    def parsed(self) -> CorrelationConditionItem | SigmaRuleReference:
         """Return the parsed correlation condition tree."""
         return self._parsed
 
@@ -302,7 +302,7 @@ class SigmaExtendedCorrelationCondition:
         seen = set()
         referenced = []
 
-        def traverse(node: Union[CorrelationConditionItem, SigmaRuleReference]) -> None:
+        def traverse(node: CorrelationConditionItem | SigmaRuleReference) -> None:
             """Recursively traverse the parse tree to find rule references."""
             if isinstance(node, SigmaRuleReference):
                 # Leaf node - extract the rule reference

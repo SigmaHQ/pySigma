@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
@@ -16,7 +18,7 @@ if TYPE_CHECKING:
 class Finalizer:
     """Conversion output transformation base class."""
 
-    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
+    _pipeline: "ProcessingPipeline" | None = field(init=False, compare=False, default=None)
 
     @classmethod
     def from_dict(cls, d: dict[str, Any]) -> "Finalizer":
@@ -57,7 +59,7 @@ class ConcatenateQueriesFinalizer(Finalizer):
 
 @dataclass
 class JSONFinalizer(Finalizer):
-    indent: Optional[int] = None
+    indent: int | None = None
 
     def apply(self, queries: list[Any]) -> str:
         return json.dumps(queries, indent=self.indent)
@@ -65,7 +67,7 @@ class JSONFinalizer(Finalizer):
 
 @dataclass
 class YAMLFinalizer(Finalizer):
-    indent: Optional[int] = None
+    indent: int | None = None
 
     def apply(self, queries: list[Any]) -> str:
         return yaml.safe_dump(queries, indent=self.indent)

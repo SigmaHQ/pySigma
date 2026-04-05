@@ -140,16 +140,14 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             val_list = val
 
         # Map Python types to Sigma typing classes
-        sigma_val = [
-            (
-                SigmaString.from_str(
-                    str(v),
-                )  # The string type is ensured previously by the 're' modifier.
-                if SigmaRegularExpressionModifier in modifiers
-                else sigma_type(v)
-            )
-            for v in val_list
-        ]
+        if SigmaRegularExpressionModifier in modifiers:
+            # The 're' modifier ensures all values are strings
+            sigma_val = [
+                SigmaString.from_str(v)  # type: ignore[arg-type]  # string type ensured by 're' modifier
+                for v in val_list
+            ]
+        else:
+            sigma_val = [sigma_type(v) for v in val_list]
 
         return cls(field, modifiers, sigma_val, source=source)
 

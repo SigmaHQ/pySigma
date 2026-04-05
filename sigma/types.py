@@ -229,7 +229,8 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return self.__class__(e[start : int(end)])
+                        assert isinstance(end, int)  # finite end guaranteed by condition above
+                        return self.__class__(e[start : end])
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -248,7 +249,8 @@ class SigmaString(SigmaType):
             if isinstance(e, str):  # Current SigmaString part is string
                 e_len = len(e)
                 if end < e_len:  # end lies within this string part
-                    result.append(e[: int(end)])
+                    assert isinstance(end, int)  # finite end guaranteed by condition above
+                    result.append(e[: end])
                 else:
                     result.append(e)
                 end -= e_len
@@ -499,7 +501,8 @@ class SigmaString(SigmaType):
             if isinstance(s[i], Placeholder):  # Placeholder instance at index, do replacement
                 prefix = SigmaString()
                 prefix.s = s[:i]
-                placeholder: Placeholder = s[i]  # type: ignore[assignment]  # narrowed by isinstance above
+                placeholder = s[i]
+                assert isinstance(placeholder, Placeholder)  # narrowed by isinstance check above
                 suffix = SigmaString()
                 suffix.s = s[i + 1 :]
                 return [

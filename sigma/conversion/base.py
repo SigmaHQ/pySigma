@@ -498,10 +498,7 @@ class Backend(ABC):
         all converted subconditions.
         """
         # This method is only called with a SigmaExpansion as value
-        if not isinstance(cond.value, SigmaExpansion):
-            raise TypeError(
-                f"Expected SigmaExpansion for cond.value, got {type(cond.value).__name__}"
-            )
+        assert isinstance(cond.value, SigmaExpansion)
         or_cond = ConditionOR(
             [ConditionFieldEqualsValueExpression(cond.field, value) for value in cond.value.values],
             cond.source,

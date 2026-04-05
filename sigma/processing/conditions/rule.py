@@ -190,7 +190,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 raise SigmaConfigurationError(
                     f"Invalid operation '{self.op}' for list comparison in rule attribute condition {str(self)}."
                 )
-        elif isinstance(value, str | UUID):  # exact match of strings and UUIDs
+        elif isinstance(value, (str, UUID)):  # exact match of strings and UUIDs
             if self.op == "eq":
                 return str(value) == self.value
             elif self.op == "ne":
@@ -199,7 +199,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 raise SigmaConfigurationError(
                     f"Invalid operation '{self.op}' for string comparison in rule attribute condition {str(self)}."
                 )
-        elif isinstance(value, int | float):  # numeric comparison
+        elif isinstance(value, (int, float)):  # numeric comparison
             try:
                 compare_value = float(self.value)
             except ValueError:

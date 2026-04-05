@@ -44,7 +44,7 @@ class LogsourceCondition(RuleProcessingCondition):
         elif isinstance(rule, SigmaCorrelationRule):
             # Will only return true if the rules have been resolved in advance
             for ref in rule.referenced_rules:
-                if hasattr(ref, "rule") and isinstance(ref.rule, SigmaRule | SigmaCorrelationRule):
+                if hasattr(ref, "rule") and isinstance(ref.rule, (SigmaRule, SigmaCorrelationRule)):
                     if self.match(ref.rule):
                         return True
             return False

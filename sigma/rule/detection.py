@@ -36,7 +36,13 @@ if TYPE_CHECKING:
 # SigmaPlainValue = str | int | float | bool | None
 # SigmaDetectionPlainList = list[SigmaPlainValue]
 # SigmaDetectionPlainDict = dict[str, SigmaPlainValue | SigmaDetectionPlainList]
-# SigmaDetectionPlainTypes = #     SigmaDetectionPlainDict | #     SigmaDetectionPlainList | #     SigmaPlainValue | #     list[SigmaDetectionPlainDict] | #     list[SigmaPlainValue] | #
+# SigmaDetectionPlainTypes = (
+#     SigmaDetectionPlainDict
+#     | SigmaDetectionPlainList
+#     | SigmaPlainValue
+#     | list[SigmaDetectionPlainDict]
+#     | list[SigmaPlainValue]
+# )
 SigmaDetectionPlainTypes = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 
@@ -308,7 +314,7 @@ class SigmaDetection(ParentChainMixin):
                 ],
                 source=source,
             )
-        elif isinstance(definition, str | int | float | bool | type(None)):  # plain value (case 2)
+        elif isinstance(definition, (str, int, float, bool, type(None))):  # plain value (case 2)
             return cls(
                 detection_items=[SigmaDetectionItem.from_value(definition, source)],
                 source=source,

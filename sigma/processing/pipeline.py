@@ -129,7 +129,7 @@ class ProcessingItemBase:
             if isinstance(conditions, dict):
                 self.__setattr__(conditions_attr, list(conditions.values()))
 
-        if not isinstance(conditions, list | dict):
+        if not isinstance(conditions, (list, dict)):
             raise SigmaTypeError(f"{name}s must be provided as list or dict")
         if isinstance(conditions, dict):
             conditions_list = list(conditions.values())

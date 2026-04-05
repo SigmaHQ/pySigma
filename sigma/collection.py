@@ -52,7 +52,7 @@ class SigmaCollection:
         self.ids_to_rules = {}
         self.names_to_rules = {}
         for rule in init_rules:
-            if isinstance(rule, SigmaRule | SigmaCorrelationRule):
+            if isinstance(rule, (SigmaRule, SigmaCorrelationRule)):
                 self.rules.append(rule)
                 if rule.id is not None:
                     self.ids_to_rules[rule.id] = rule

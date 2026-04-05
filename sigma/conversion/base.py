@@ -357,7 +357,7 @@ class Backend(ABC):
             return False
 
         # All argument values must be strings or numbers
-        if not all([isinstance(arg.value, SigmaString | SigmaNumber) for arg in args]):
+        if not all([isinstance(arg.value, (SigmaString, SigmaNumber)) for arg in args]):
             return False
 
         # Check for plain strings if wildcards are not allowed for string expressions.
@@ -1520,7 +1520,7 @@ class TextQueryBackend(Backend):
             # Rule references have highest precedence (like field expressions)
             idx_inner = -1
         elif isinstance(
-            inner, ConditionFieldEqualsValueExpression | ConditionValueExpression
+            inner, (ConditionFieldEqualsValueExpression, ConditionValueExpression)
         ) and isinstance(inner.value, SigmaExpansion):
             # Special case: Conditions containing a SigmaExpansion value convert into OR conditions
             inner_class: type[

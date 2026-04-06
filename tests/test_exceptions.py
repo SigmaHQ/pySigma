@@ -1,7 +1,9 @@
-from pathlib import Path
 import re
+from pathlib import Path
+
 import pytest
-from sigma.exceptions import SigmaDetectionError, SigmaRuleLocation, SigmaError
+
+from sigma.exceptions import ExceptionOnUsage, SigmaDetectionError, SigmaError, SigmaRuleLocation
 
 
 @pytest.fixture
@@ -67,3 +69,13 @@ def test_exception_unequalness_different_type():
 
 def test_exception_unequalness_incompatible_type():
     assert SigmaDetectionError("A") != ValueError("A")
+
+
+def test_exception_on_usage() -> None:
+    test_exception_message: str = "some message"
+    test_exception: ValueError = ValueError(test_exception_message)
+    e: ExceptionOnUsage = ExceptionOnUsage(test_exception)
+    with pytest.deprecated_call(
+        match=r"\w+ is deprecated and will be removed in a future release."
+    ), pytest.raises(ValueError, match=test_exception_message):
+        e.test

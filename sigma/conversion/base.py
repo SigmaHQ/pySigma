@@ -2644,7 +2644,7 @@ class TextQueryBackend(Backend):
             or self.referenced_rules_expression_joiner is None
         ):
             raise SigmaBackendError(
-                "Backend doesn't defines referenced rule expression but uses it in correlation query template"
+                "Backend doesn't define referenced rule expression but uses it in correlation query template"
             )
         else:
             return self.referenced_rules_expression_joiner[method].join(

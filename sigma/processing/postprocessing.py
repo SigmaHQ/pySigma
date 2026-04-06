@@ -1,8 +1,10 @@
+from __future__ import annotations
+
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
 import re
-from typing import Any, Optional, Type, Union, TYPE_CHECKING
+from typing import Any, Type, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
@@ -18,12 +20,12 @@ if TYPE_CHECKING:
 class QueryPostprocessingTransformation(Transformation):
     """Query post processing transformation base class."""
 
-    processing_item: Optional["QueryPostprocessingItem"] = field(
+    processing_item: "QueryPostprocessingItem" | None = field(
         init=False, compare=False, default=None
     )
 
     @abstractmethod
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
 
         :param pipeline: Processing pipeline this transformation was contained.
@@ -45,7 +47,7 @@ class EmbedQueryTransformation(QueryPostprocessingTransformation):
     prefix: str = ""
     suffix: str = ""
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
         if isinstance(query, str):
             return self.prefix + query + self.suffix
@@ -67,7 +69,7 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
 
     template: str
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         return self.template.format(
             query=query,
             rule=rule,
@@ -93,7 +95,7 @@ class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBas
     to be made available in the Jinja2 template context. See TemplateBase for details on the format.
     """
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         return self.j2template.render(query=query, rule=rule, pipeline=self._pipeline)
 
 
@@ -105,8 +107,8 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
     json_template: str
 
     def _replace_placeholder(
-        self, v: Union[dict[str, Any], list[Any], str, int, float], query: str
-    ) -> Union[dict[str, Any], list[Any], str, int, float]:
+        self, v: dict[str, Any] | list[Any] | str | int | float, query: str
+    ) -> dict[str, Any] | list[Any] | str | int | float:
         if isinstance(v, dict):
             return {k: self._replace_placeholder(v, query) for k, v in v.items()}
         elif isinstance(v, list):
@@ -119,7 +121,7 @@ class EmbedQueryInJSONTransformation(QueryPostprocessingTransformation):
     def __post_init__(self) -> None:
         self.parsed_json = json.loads(self.json_template)
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
         return json.dumps(self._replace_placeholder(self.parsed_json, query))
 
@@ -134,7 +136,7 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     def __post_init__(self) -> None:
         self.re = re.compile(self.pattern)
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
         return self.re.sub(self.replacement, query)
 
@@ -166,7 +168,7 @@ class NestedQueryPostprocessingTransformation(QueryPostprocessingTransformation)
                 "Nested post-processing transformation requires an 'items' key."
             )
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule], query: Any) -> Any:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
         query = self._nested_pipeline.postprocess_query(rule, query)
         if self._pipeline is not None:

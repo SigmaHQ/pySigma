@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 import importlib.util
 import sys
-from typing import Any, Dict, Optional
+from typing import Any, Dict
 
 from jinja2 import Environment, FileSystemLoader, Template
 
@@ -24,9 +24,9 @@ class TemplateBase:
     """
 
     template: str
-    path: Optional[str] = None
+    path: str | None = None
     autoescape: bool = False
-    vars: Optional[str] = None
+    vars: str | None = None
 
     def __post_init__(self) -> None:
         if self.path is None:

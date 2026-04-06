@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import Set, Union
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaTransformationError
 from sigma.processing.transformations.base import (
@@ -22,7 +21,7 @@ class RuleFailureTransformation(PreprocessingTransformation):
 
     message: str
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         raise SigmaTransformationError(self.message, source=rule.source)
 
 
@@ -72,7 +71,7 @@ class StrictFieldMappingFailure(PreprocessingTransformation):
 
         return field_names
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         if isinstance(rule, SigmaRule):
             pipeline = self._pipeline

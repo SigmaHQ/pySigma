@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from dataclasses import dataclass, field
-from typing import Any, Optional, List
+from typing import Any
 from uuid import UUID
 from enum import Enum, auto
 import sigma.exceptions as sigma_exceptions
@@ -164,10 +166,10 @@ class SigmaRelated:
 class SigmaRuleTag:
     namespace: str
     name: str
-    source: Optional[SigmaRuleLocation] = field(default=None, compare=False)
+    source: SigmaRuleLocation | None = field(default=None, compare=False)
 
     @classmethod
-    def from_str(cls, tag: str, source: Optional[SigmaRuleLocation] = None) -> "SigmaRuleTag":
+    def from_str(cls, tag: str, source: SigmaRuleLocation | None = None) -> "SigmaRuleTag":
         """Build SigmaRuleTag class from plain text tag string."""
         try:
             ns, n = tag.split(".", maxsplit=1)

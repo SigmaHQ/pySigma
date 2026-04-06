@@ -1,11 +1,13 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 import re
+import types
 from typing import (
     Any,
     ClassVar,
     Generator,
     Iterator,
-    Optional,
     Union,
     Type,
     cast,
@@ -43,8 +45,8 @@ from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
 if TYPE_CHECKING:
     from .rule import SigmaDetectionItem
 
-T = TypeVar("T", bound=Union[SigmaType, list[SigmaType]])
-R = TypeVar("R", bound=Union[SigmaType, list[SigmaType]])
+T = TypeVar("T", bound=SigmaType | list[SigmaType])
+R = TypeVar("R", bound=SigmaType | list[SigmaType])
 
 
 ### Base Classes ###
@@ -58,13 +60,13 @@ class SigmaModifier(ABC, Generic[T, R]):
         self,
         detection_item: "SigmaDetectionItem",
         applied_modifiers: list[Type["SigmaModifier[T, R]"]],
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
     ):
         self.detection_item = detection_item
         self.applied_modifiers = applied_modifiers
         self.source = source
 
-    def type_check(self, val: Any, explicit_type: Optional[Type[Any]] = None) -> bool:
+    def type_check(self, val: Any, explicit_type: Type[Any] | None = None) -> bool:
         th = (
             explicit_type or get_type_hints(self.modify)["val"]
         )  # get type annotation from val parameter of apply method or explicit_type parameter
@@ -73,7 +75,9 @@ class SigmaModifier(ABC, Generic[T, R]):
         to = get_origin(th)  # get possible generic type of type hint
         if to is None:  # Plain type in annotation
             return isinstance(val, th)
-        elif to is Union:  # type hint is Union of multiple types, check if val is one of them
+        elif (
+            to is Union or to is types.UnionType
+        ):  # type hint is Union of multiple types, check if val is one of them
             for t in get_args(th):
                 if isinstance(val, t):
                     return True
@@ -135,15 +139,15 @@ class SigmaListModifier(SigmaModifier[T, R]):
 ### Modifier Implementations ###
 class SigmaContainsModifier(
     SigmaValueModifier[
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
     ]
 ):
     """Puts wildcards around a string to match it somewhere inside another string instead of as a whole."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
-    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
+        self, val: SigmaString | SigmaRegularExpression | SigmaFieldReference
+    ) -> SigmaString | SigmaRegularExpression | SigmaFieldReference:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
@@ -164,15 +168,15 @@ class SigmaContainsModifier(
 
 class SigmaStartswithModifier(
     SigmaValueModifier[
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
     ]
 ):
     """Puts a wildcard at the end of a string to match arbitrary values after the given prefix."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
-    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
+        self, val: SigmaString | SigmaRegularExpression | SigmaFieldReference
+    ) -> SigmaString | SigmaRegularExpression | SigmaFieldReference:
         if isinstance(val, SigmaString):
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
@@ -188,15 +192,15 @@ class SigmaStartswithModifier(
 
 class SigmaEndswithModifier(
     SigmaValueModifier[
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
-        Union[SigmaString, SigmaRegularExpression, SigmaFieldReference],
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
+        SigmaString | SigmaRegularExpression | SigmaFieldReference,
     ]
 ):
     """Puts a wildcard before a string to match arbitrary values before it."""
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]
-    ) -> Union[SigmaString, SigmaRegularExpression, SigmaFieldReference]:
+        self, val: SigmaString | SigmaRegularExpression | SigmaFieldReference
+    ) -> SigmaString | SigmaRegularExpression | SigmaFieldReference:
         if isinstance(val, SigmaString):
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
@@ -285,7 +289,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     horizontal_bar = chr(int("2015", 16))
 
     def modify(self, val: SigmaString) -> SigmaExpansion:
-        def callback(p: Placeholder) -> Iterator[Union[str, Placeholder]]:
+        def callback(p: Placeholder) -> Iterator[str | Placeholder]:
             if p.name == "_windash":
                 yield from ("-", "/", self.en_dash, self.em_dash, self.horizontal_bar)
             else:
@@ -433,9 +437,7 @@ class SigmaExistsModifier(SigmaValueModifier[SigmaBool, SigmaExists]):
 
 
 class SigmaExpandModifier(
-    SigmaValueModifier[
-        Union[SigmaString, SigmaRegularExpression], Union[SigmaString, SigmaRegularExpression]
-    ]
+    SigmaValueModifier[SigmaString | SigmaRegularExpression, SigmaString | SigmaRegularExpression]
 ):
     """
     Modifier for expansion of placeholders in values. It replaces placeholder strings (%something%)
@@ -444,8 +446,8 @@ class SigmaExpandModifier(
     """
 
     def modify(
-        self, val: Union[SigmaString, SigmaRegularExpression]
-    ) -> Union[SigmaString, SigmaRegularExpression]:
+        self, val: SigmaString | SigmaRegularExpression
+    ) -> SigmaString | SigmaRegularExpression:
         return val.insert_placeholders()
 
 

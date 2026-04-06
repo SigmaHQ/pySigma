@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 from typing import (
     Any,
     Union,
@@ -19,10 +21,10 @@ class NestedProcessingTransformation(PreprocessingTransformation):
     whole set of transformations that match the given conditions of the enclosng processing item.
     """
 
-    items: InitVar[list[Union[dict[str, Any], "ProcessingItem"]]]
+    items: InitVar[list[dict[str, Any] | "ProcessingItem"]]
     _nested_pipeline: "ProcessingPipeline" = field(init=False, compare=False, repr=False)
 
-    def __post_init__(self, items: list[Union[dict[str, Any], "ProcessingItem"]]) -> None:
+    def __post_init__(self, items: list[dict[str, Any] | "ProcessingItem"]) -> None:
         from sigma.processing.pipeline import (
             ProcessingPipeline,
             ProcessingItem,
@@ -46,7 +48,7 @@ class NestedProcessingTransformation(PreprocessingTransformation):
                 "Nested processing transformation requires an 'items' key."
             )
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         self._nested_pipeline.apply(rule)
         if self._pipeline is None:

@@ -6,7 +6,7 @@ from sigma.processing.conditions.base import (
     FieldNameProcessingCondition,
     RuleProcessingCondition,
 )
-from typing import Literal, Optional, Union, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 from sigma.rule import (
     SigmaRule,
     SigmaDetectionItem,
@@ -27,7 +27,7 @@ class RuleProcessingItemAppliedCondition(RuleProcessingCondition):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         return rule.was_processed_by(self.processing_item_id)
 
@@ -40,7 +40,7 @@ class ProcessingStateConditionBase:
     """
 
     key: str
-    val: Union[str, int, float, bool]
+    val: str | int | float | bool
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt"] = field(default="eq")
 
     def match_state(self, processing_pipeline: "ProcessingPipeline") -> bool:
@@ -75,7 +75,7 @@ class RuleProcessingStateCondition(RuleProcessingCondition, ProcessingStateCondi
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         if self._pipeline is None:
             raise SigmaProcessingItemError(
@@ -92,7 +92,7 @@ class FieldNameProcessingStateCondition(FieldNameProcessingCondition, Processing
 
     def match_field_name(
         self,
-        field: Optional[str],
+        field: str | None,
     ) -> bool:
         if self._pipeline is None:
             raise SigmaProcessingItemError(
@@ -143,7 +143,7 @@ class FieldNameProcessingItemAppliedCondition(FieldNameProcessingCondition):
 
     processing_item_id: str
 
-    def match_field_name(self, field: Optional[str]) -> bool:
+    def match_field_name(self, field: str | None) -> bool:
         if self._pipeline is None:
             raise SigmaProcessingItemError(
                 f"Processing pipeline must be set before matching condition {str(self)}."

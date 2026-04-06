@@ -923,8 +923,7 @@ def test_processingpipeline_fromyaml(
     processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
 ):
     assert (
-        ProcessingPipeline.from_yaml(
-            """
+        ProcessingPipeline.from_yaml("""
         name: Test
         priority: 10
         allowed_backends:
@@ -971,8 +970,7 @@ def test_processingpipeline_fromyaml(
         vars:
             test_string: abc
             test_number: 123
-    """
-        )
+    """)
         == ProcessingPipeline(
             name="Test",
             priority=10,
@@ -991,27 +989,23 @@ def test_processingpipeline_fromyaml_invalid(
     with pytest.raises(
         SigmaPipelineParsingError, match="Error in parsing of a Sigma processing pipeline"
     ):
-        ProcessingPipeline.from_yaml(
-            """
+        ProcessingPipeline.from_yaml("""
                 {not a yaml
-            """
-        )
+            """)
 
 
 def test_processingpipeline_fromyaml_unknown(
     processing_item_dict, processing_item, postprocessing_item, processing_pipeline_vars
 ):
     with pytest.raises(SigmaConfigurationError, match="Unkown keys \['transformation'\]"):
-        ProcessingPipeline.from_yaml(
-            """
+        ProcessingPipeline.from_yaml("""
         name: unknown
         priority: 10
         transformation:
         - id: test
           type: test
           method: test
-            """
-        )
+            """)
 
 
 def test_processingpipeline_fromdict_error(processing_item_dict_with_error):
@@ -1186,9 +1180,7 @@ def processing_pipeline_with_field_name_condition():
 def test_processingpipeline_field_name_condition_tracking_in_field_list(
     processing_pipeline_with_field_name_condition,
 ):
-    rule = processing_pipeline_with_field_name_condition.apply(
-        SigmaRule.from_yaml(
-            f"""
+    rule = processing_pipeline_with_field_name_condition.apply(SigmaRule.from_yaml(f"""
             title: Test
             status: test
             logsource:
@@ -1201,18 +1193,14 @@ def test_processingpipeline_field_name_condition_tracking_in_field_list(
             fields:
                 - fieldA
                 - fieldB
-        """
-        )
-    )
+        """))
     assert rule.fields == ["mappedA", "prefix.fieldB"]
 
 
 def test_processingpipeline_field_name_condition_tracking_in_detection_item(
     processing_pipeline_with_field_name_condition,
 ):
-    rule = processing_pipeline_with_field_name_condition.apply(
-        SigmaRule.from_yaml(
-            f"""
+    rule = processing_pipeline_with_field_name_condition.apply(SigmaRule.from_yaml(f"""
             title: Test
             status: test
             logsource:
@@ -1222,9 +1210,7 @@ def test_processingpipeline_field_name_condition_tracking_in_detection_item(
                     fieldA: valueA
                     fieldB: valueB
                 condition: sel
-        """
-        )
-    )
+        """))
     detection_items = rule.detection.detections["sel"].detection_items
     detection_item_fields = [detection_item.field for detection_item in detection_items]
     assert detection_item_fields == ["mappedA", "prefix.fieldB"]
@@ -1459,3 +1445,45 @@ def test_processingpipeline_all_empty_lists():
     assert pipeline.items == []
     assert pipeline.postprocessing_items == []
     assert pipeline.finalizers == []
+
+
+def test_processingpipeline_fromdict_missing_finalizer_type():
+    """Test that finalizer missing 'type' attribute raises SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Finalizer type must be specified"):
+        ProcessingPipeline.from_dict(
+            {
+                "finalizers": [{"prefix": "test"}],
+            }
+        )
+
+
+def test_processingpipeline_fromdict_unknown_finalizer_type():
+    """Test that unknown finalizer type raises SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Finalizer.*is unknown"):
+        ProcessingPipeline.from_dict(
+            {
+                "finalizers": [{"type": "nonexistent_type"}],
+            }
+        )
+
+
+def test_processingpipeline_fromdict_postprocessing_error():
+    """Test that error in postprocessing item is wrapped with context."""
+    with pytest.raises(SigmaConfigurationError, match="Error in processing rule 1"):
+        ProcessingPipeline.from_dict(
+            {
+                "postprocessing": [{"type": "unknown_postprocessing"}],
+            }
+        )
+
+
+def test_processingitem_set_pipeline_twice():
+    """Test that setting pipeline twice on a ProcessingItem raises error."""
+    from sigma.processing.transformations import FieldMappingTransformation
+    from sigma.exceptions import SigmaProcessingItemError
+
+    item = ProcessingItem(FieldMappingTransformation({"fieldA": "mappedA"}))
+    pipeline = ProcessingPipeline()
+    item.set_pipeline(pipeline)
+    with pytest.raises(SigmaProcessingItemError, match="Pipeline.*already set"):
+        item.set_pipeline(pipeline)

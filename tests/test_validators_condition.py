@@ -15,8 +15,7 @@ from .test_correlations import correlation_rule
 
 def test_validator_dangling_condition():
     validator = DanglingConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -29,15 +28,13 @@ def test_validator_dangling_condition():
         filter_main_optional_1:
             field2: val2
         condition: selection and not 1 of filter_main_* and not 1 of filter_optional_*
-    """
-    )
+    """)
     assert validator.validate(rule) == [DanglingConditionIssue([rule], "filter_optional_*")]
 
 
 def test_validator_dangling_detection():
     validator = DanglingDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -52,8 +49,7 @@ def test_validator_dangling_detection():
         unreferenced:
             field4: val4
         condition: (referenced1 or referenced2) and referenced3
-    """
-    )
+    """)
     assert validator.validate(rule) == [DanglingDetectionIssue([rule], "unreferenced")]
 
 
@@ -64,8 +60,7 @@ def test_validator_dangling_detection_correlation_rule(correlation_rule):
 
 def test_validator_dangling_detection_valid():
     validator = DanglingDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -78,15 +73,13 @@ def test_validator_dangling_detection_valid():
         referenced3:
             field3: val3
         condition: (referenced1 or referenced2) and referenced3
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_dangling_condition_valid():
     validator = DanglingConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -99,15 +92,13 @@ def test_validator_dangling_condition_valid():
         referenced3:
             field3: val3
         condition: (referenced1 or referenced2) and referenced3
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_dangling_detection_valid_x_of_wildcard():
     validator = DanglingDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -120,15 +111,13 @@ def test_validator_dangling_detection_valid_x_of_wildcard():
         referenced3:
             field3: val3
         condition: 1 of referenced*
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_dangling_condition_valid_x_of_wildcard():
     validator = DanglingConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -141,15 +130,13 @@ def test_validator_dangling_condition_valid_x_of_wildcard():
         referenced3:
             field3: val3
         condition: 1 of referenced*
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_dangling_detection_valid_x_of_them():
     validator = DanglingDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -162,15 +149,13 @@ def test_validator_dangling_detection_valid_x_of_them():
         referenced3:
             field3: val3
         condition: 1 of them
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_dangling_condition_valid_x_of_them():
     validator = DanglingConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -183,15 +168,13 @@ def test_validator_dangling_condition_valid_x_of_them():
         referenced3:
             field3: val3
         condition: 1 of them
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_them_condition_with_single_detection():
     validator = ThemConditionWithSingleDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -200,15 +183,13 @@ def test_validator_them_condition_with_single_detection():
         selection:
             field1: val1
         condition: 1 of them
-    """
-    )
+    """)
     assert validator.validate(rule) == [ThemConditionWithSingleDetectionIssue([rule])]
 
 
 def test_validator_them_condition_with_multiple_detection():
     validator = ThemConditionWithSingleDetectionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -219,8 +200,7 @@ def test_validator_them_condition_with_multiple_detection():
         selection2:
             field2: val2
         condition: 1 of them
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -231,8 +211,7 @@ def test_validator_them_condition_correlation_rule(correlation_rule):
 
 def test_validator_all_of_them():
     validator = AllOfThemConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -243,15 +222,13 @@ def test_validator_all_of_them():
         selection2:
             field2: val2
         condition: all of them
-    """
-    )
+    """)
     assert validator.validate(rule) == [AllOfThemConditionIssue([rule])]
 
 
 def test_validator_all_of_them_valid():
     validator = AllOfThemConditionValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -262,8 +239,7 @@ def test_validator_all_of_them_valid():
         selection2:
             field2: val2
         condition: all of selection*
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 

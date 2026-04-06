@@ -212,3 +212,51 @@ def test_issue_string_rendering(rules_with_id_collision):
         )
         == 'issue=IdentifierCollisionIssue severity=high description="Rule identifier used by multiple rules" rules=[32532a0b-e56c-47c9-bcbb-3d88bd670c37, 32532a0b-e56c-47c9-bcbb-3d88bd670c37] identifier=32532a0b-e56c-47c9-bcbb-3d88bd670c37'
     )
+
+
+def test_sigmavalidator_fromdict_unknown_validator_in_config(validators):
+    """Test that unknown validator in config raises SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Unknown validator 'non_existing'"):
+        SigmaValidator.from_dict(
+            {
+                "validators": ["all"],
+                "config": {
+                    "non_existing": {"param": "value"},
+                },
+            },
+            validators,
+        )
+
+
+def test_sigmavalidator_fromdict_non_dict_config(validators):
+    """Test that non-dict config value raises SigmaConfigurationError."""
+    with pytest.raises(
+        SigmaConfigurationError,
+        match="Configuration for validator 'filename_length' is not a dict",
+    ):
+        SigmaValidator.from_dict(
+            {
+                "validators": ["filename_length"],
+                "config": {
+                    "filename_length": "not_a_dict",
+                },
+            },
+            validators,
+        )
+
+
+def test_sigmavalidator_from_yaml_invalid(validators):
+    """Test that invalid YAML raises SigmaValidatorConfigurationParsingError."""
+    from sigma.exceptions import SigmaValidatorConfigurationParsingError
+
+    with pytest.raises(SigmaValidatorConfigurationParsingError, match="Error in parsing"):
+        SigmaValidator.from_yaml(
+            """
+validators:
+  - all
+  foo:
+    bar: baz
+  - test
+    """,
+            validators,
+        )

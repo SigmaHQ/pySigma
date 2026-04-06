@@ -334,8 +334,7 @@ def test_index_rule_by_name_not_existing(ruleset):
 
 @pytest.fixture
 def rules_with_correlation():
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Correlating 1+2
 name: corr-1-2
 correlation:
@@ -365,8 +364,7 @@ detection:
     selection:
         ImageFile|endswith: '\\\\b.exe'
     condition: selection
-"""
-    )
+""")
     return rule_collection
 
 
@@ -399,8 +397,7 @@ def test_get_unreferenced_rules(rules_with_correlation):
 
 def test_load_ruleset_with_correlation_referencing_nonexistent_rule():
     with pytest.raises(SigmaRuleNotFoundError, match="Rule 'rule-2' not found in rule collection"):
-        SigmaCollection.from_yaml(
-            """
+        SigmaCollection.from_yaml("""
 title: Rule 1
 name: rule-1
 logsource:
@@ -420,8 +417,7 @@ correlation:
         - rule-2
     group-by: user
     timespan: 5m
-"""
-        )
+""")
 
 
 def test_disable_resolve_references():

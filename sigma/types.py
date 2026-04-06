@@ -582,7 +582,7 @@ class SigmaString(SigmaType):
                     # Only escaping needed, process character-by-character only if necessary
                     if any(c in escaped_chars for c in part):
                         for c in part:
-                            if c in escaped_chars:
+                            if c in escaped_chars and escape_char is not None:
                                 result.append(escape_char)
                             result.append(c)
                     else:
@@ -592,7 +592,7 @@ class SigmaString(SigmaType):
                     for c in part:
                         if c in filter_set:
                             continue
-                        if c in escaped_chars:
+                        if c in escaped_chars and escape_char is not None:
                             result.append(escape_char)
                         result.append(c)
             elif isinstance(part, SpecialChars):  # special handling for special characters
@@ -1025,10 +1025,9 @@ type_map: dict[type, Type[SigmaType]] = {
 def sigma_type(v: (int | float | str | bool) | None) -> SigmaType:
     """Return Sigma type from Python value"""
     # Check bool before int since bool is a subclass of int in Python
-    vtype = type(v)
-    if vtype is bool:
+    if isinstance(v, bool):
         return SigmaBool(v)
-    matched = type_map.get(vtype)
+    matched = type_map.get(type(v))
     if matched is not None:
         return matched(v)
     # Fallback to isinstance checks for subclasses

@@ -34,7 +34,6 @@ from sigma.correlations import (
     SigmaRuleReference,
 )
 from sigma.exceptions import (
-    ExceptionOnUsage,
     SigmaBackendError,
     SigmaConversionError,
     SigmaError,
@@ -2644,10 +2643,8 @@ class TextQueryBackend(Backend):
             self.referenced_rules_expression is None
             or self.referenced_rules_expression_joiner is None
         ):
-            return ExceptionOnUsage(  # type: ignore
-                SigmaBackendError(
-                    "Backend doesn't defines referenced rule expression but uses it in correlation query template"
-                )
+            raise SigmaBackendError(
+                "Backend doesn't defines referenced rule expression but uses it in correlation query template"
             )
         else:
             return self.referenced_rules_expression_joiner[method].join(

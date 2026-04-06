@@ -2380,8 +2380,7 @@ def test_nested_pipeline_transformation_from_yaml(nested_pipeline_transformation
     monkeypatch.setitem(rule_conditions, "true", RuleConditionTrue)
     monkeypatch.setitem(rule_conditions, "false", RuleConditionFalse)
     assert (
-        ProcessingPipeline.from_yaml(
-            """
+        ProcessingPipeline.from_yaml("""
             name: Test
             priority: 100
             transformations:
@@ -2396,8 +2395,7 @@ def test_nested_pipeline_transformation_from_yaml(nested_pipeline_transformation
                     - type: "false"
                       dummy: test-false
                     rule_cond_op: or
-            """
-        )
+            """)
         == ProcessingPipeline(
             name="Test",
             priority=100,
@@ -2646,9 +2644,7 @@ def test_strict_mapped_fields_throws_exception():
     with pytest.raises(
         SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
     ):
-        a = test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+        a = test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2659,9 +2655,7 @@ def test_strict_mapped_fields_throws_exception():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
+                """))
 
 
 def test_strict_mapped_fields_does_not_throw_exception():
@@ -2681,10 +2675,7 @@ def test_strict_mapped_fields_does_not_throw_exception():
         ),
     )
 
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2695,11 +2686,7 @@ def test_strict_mapped_fields_does_not_throw_exception():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
-        == ['mappedField="mapped" and mappedFieldB="not-mapped"']
-    )
+                """)) == ['mappedField="mapped" and mappedFieldB="not-mapped"']
 
 
 def test_strict_mapped_fields_on_prefixing():
@@ -2712,10 +2699,7 @@ def test_strict_mapped_fields_on_prefixing():
         ),
     )
 
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2726,11 +2710,7 @@ def test_strict_mapped_fields_on_prefixing():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
-        == ['prefix_fieldOne="mapped" and prefix_fieldTwo="not-mapped"']
-    )
+                """)) == ['prefix_fieldOne="mapped" and prefix_fieldTwo="not-mapped"']
 
 
 def test_strict_mapped_fields_on_suffixing():
@@ -2743,10 +2723,7 @@ def test_strict_mapped_fields_on_suffixing():
         ),
     )
 
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2757,11 +2734,7 @@ def test_strict_mapped_fields_on_suffixing():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
-        == ['fieldOne_suffix="mapped" and fieldTwo_suffix="not-mapped"']
-    )
+                """)) == ['fieldOne_suffix="mapped" and fieldTwo_suffix="not-mapped"']
 
 
 def test_strict_mapped_fields_multiple_pipelines():
@@ -2785,10 +2758,7 @@ def test_strict_mapped_fields_multiple_pipelines():
         ),
     )
 
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2799,11 +2769,7 @@ def test_strict_mapped_fields_multiple_pipelines():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
-        == ['mappedField="mapped" and mappedFieldB="not-mapped"']
-    )
+                """)) == ['mappedField="mapped" and mappedFieldB="not-mapped"']
 
 
 def test_strict_mapped_fields_multiple_pipelines_error():
@@ -2829,9 +2795,7 @@ def test_strict_mapped_fields_multiple_pipelines_error():
     with pytest.raises(
         SigmaTransformationError, match="The following fields are not mapped: fieldTwo"
     ):
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+        test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -2842,12 +2806,63 @@ def test_strict_mapped_fields_multiple_pipelines_error():
                     fieldOne: "mapped"
                     fieldTwo: "not-mapped"
                 condition: sel
-                """
-            )
-        )
+                """))
 
 
 def test_strict_mapped_fields_correlation_rule(dummy_pipeline, sigma_correlation_rule):
     transformation = StrictFieldMappingFailure()
     transformation.set_pipeline(dummy_pipeline)
     transformation.apply(sigma_correlation_rule)
+
+
+def test_strict_mapped_fields_nested_detection():
+    """Test StrictFieldMappingFailure with nested detections (OR groups)."""
+    test_backend = TextQueryTestBackend(
+        ProcessingPipeline(
+            [
+                ProcessingItem(
+                    FieldMappingTransformation(
+                        {
+                            "fieldOne": "mappedOne",
+                            "fieldTwo": "mappedTwo",
+                        }
+                    )
+                ),
+                ProcessingItem(StrictFieldMappingFailure()),
+            ]
+        ),
+    )
+
+    # This rule uses OR-grouped detections which create nested SigmaDetection structures
+    result = test_backend.convert(SigmaCollection.from_yaml("""
+            title: Test
+            status: test
+            logsource:
+                category: test_category
+                product: test_product
+            detection:
+                sel1:
+                    fieldOne: value1
+                sel2:
+                    fieldTwo: value2
+                condition: sel1 or sel2
+            """))
+    assert len(result) == 1
+
+
+def test_strict_mapped_fields_no_pipeline():
+    """Test StrictFieldMappingFailure raises error when pipeline is not set."""
+    transformation = StrictFieldMappingFailure()
+    rule = SigmaRule.from_yaml("""
+        title: Test
+        status: test
+        logsource:
+            category: test_category
+            product: test_product
+        detection:
+            sel:
+                fieldA: value
+            condition: sel
+        """)
+    with pytest.raises(SigmaTransformationError, match="Pipeline is not set"):
+        transformation.apply(rule)

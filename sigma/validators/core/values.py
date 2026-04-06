@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from typing import ClassVar, List
+from typing import ClassVar
 from sigma.modifiers import (
     SigmaContainsModifier,
     SigmaEndswithModifier,

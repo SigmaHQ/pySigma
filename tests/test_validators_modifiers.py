@@ -24,8 +24,7 @@ from sigma.validators.core.modifiers import (
 
 def test_validator_all_without_contains():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -37,8 +36,7 @@ def test_validator_all_without_contains():
                 - value2
                 - value3
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         AllWithoutContainsModifierIssue(
             [rule],
@@ -53,8 +51,7 @@ def test_validator_all_without_contains():
 
 def test_validator_all_without_contains_unbound():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -66,15 +63,13 @@ def test_validator_all_without_contains_unbound():
                 - value2
                 - value3
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_all_with_contains():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -86,15 +81,13 @@ def test_validator_all_with_contains():
                 - value2
                 - value3
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_base64offset_without_contains_modifier():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -103,8 +96,7 @@ def test_validator_base64offset_without_contains_modifier():
         sel:
             field|base64offset: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         Base64OffsetWithoutContainsModifierIssue(
             [rule], SigmaDetectionItem("field", [SigmaBase64OffsetModifier], [SigmaString("value")])
@@ -119,8 +111,7 @@ def test_validator_invalid_modifier_combination_correlation_rule(correlation_rul
 
 def test_validator_base64offset_after_contains_modifier():
     with pytest.raises(SigmaValueError, match="strings with wildcards"):
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         logsource:
@@ -129,14 +120,12 @@ def test_validator_base64offset_after_contains_modifier():
             sel:
                 field|contains|base64offset: value
             condition: sel
-        """
-        )
+        """)
 
 
 def test_validator_base64offset_with_contains_modifier():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -145,15 +134,13 @@ def test_validator_base64offset_with_contains_modifier():
         sel:
             field|base64offset|contains: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_multiple_modifier():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -162,8 +149,7 @@ def test_validator_multiple_modifier():
         sel:
             field|base64offset|base64offset|contains|contains: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         ModifierAppliedMultipleIssue(
             [rule],
@@ -184,8 +170,7 @@ def test_validator_multiple_modifier():
 
 def test_validator_multiple_base64_modifier():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -194,15 +179,13 @@ def test_validator_multiple_base64_modifier():
         sel:
             field|base64|base64: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_windowsdash_combined_with_all_modifier():
     validator = InvalidModifierCombinationsValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -213,8 +196,7 @@ def test_validator_windowsdash_combined_with_all_modifier():
                 - value1
                 - value2
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         WindowsDashCombinedWithAllModifierIssue(
             [rule],

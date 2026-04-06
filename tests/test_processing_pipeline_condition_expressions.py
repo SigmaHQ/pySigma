@@ -232,3 +232,21 @@ def test_pipeline_condition_expression_identifier_invalid_field_name_type():
     result.resolve(conditions)
     with pytest.raises(SigmaPipelineConditionError, match="does not match to the item type"):
         result.match_field_name("test")
+
+
+def test_pipeline_condition_expression_set_pipeline_twice(sigma_rule):
+    """Test that setting pipeline twice on a condition expression raises SigmaError."""
+    from sigma.exceptions import SigmaError
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    conditions = {
+        "cond1": RuleConditionTrue(dummy="test-true"),
+    }
+    condition_expression = "cond1"
+    result = parse_condition_expression(condition_expression)
+    result.resolve(conditions)
+
+    pipeline = ProcessingPipeline()
+    result.set_pipeline(pipeline)
+    with pytest.raises(SigmaError, match="Pipeline already set"):
+        result.set_pipeline(pipeline)

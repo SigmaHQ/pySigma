@@ -28,43 +28,33 @@ def test_embed_query_transformation_none(dummy_pipeline, sigma_rule):
 def test_query_simple_template_transformation(
     dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
 ):
-    transformation = QuerySimpleTemplateTransformation(
-        """
+    transformation = QuerySimpleTemplateTransformation("""
 title = {rule.title}
 query = {query}
 state = {pipeline.state[test]}
-    """
-    )
+    """)
     transformation.set_pipeline(dummy_pipeline)
     dummy_pipeline.state["test"] = "teststate"
-    assert (
-        transformation.apply(sigma_rule, 'field="value"')
-        == """
+    assert transformation.apply(sigma_rule, 'field="value"') == """
 title = Test
 query = field="value"
 state = teststate
     """
-    )
 
 
 def test_query_template_transformation(dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule):
-    transformation = QueryTemplateTransformation(
-        """
+    transformation = QueryTemplateTransformation("""
 title = {{ rule.title }}
 query = {{ query }}
 state = {{ pipeline.state.test }}
-    """
-    )
+    """)
     transformation.set_pipeline(dummy_pipeline)
     dummy_pipeline.state["test"] = "teststate"
-    assert (
-        transformation.apply(sigma_rule, 'field="value"')
-        == """
+    assert transformation.apply(sigma_rule, 'field="value"') == """
 title = Test
 query = field="value"
 state = teststate
     """
-    )
 
 
 def test_embed_query_in_json_transformation_dict(dummy_pipeline, sigma_rule):

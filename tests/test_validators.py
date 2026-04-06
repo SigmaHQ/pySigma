@@ -24,8 +24,7 @@ from .test_correlations import correlation_rule
 
 @pytest.fixture
 def rule_without_id():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -34,14 +33,12 @@ def rule_without_id():
         selection:
             field: value
         condition: selection
-    """
-    )
+    """)
 
 
 @pytest.fixture
 def rule_with_id():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
     title: Test
     id: 19855ce4-00b3-4d07-8e57-f6c6955ce4e7
     status: test
@@ -51,15 +48,12 @@ def rule_with_id():
         selection:
             field: value
         condition: selection
-    """
-    )
+    """)
 
 
 @pytest.fixture
 def rules_with_id_collision():
-    return [
-        SigmaRule.from_yaml(
-            f"""
+    return [SigmaRule.from_yaml(f"""
         title: Test {i}
         id: 32532a0b-e56c-47c9-bcbb-3d88bd670c37
         status: test
@@ -69,16 +63,12 @@ def rules_with_id_collision():
             selection:
                 field{i}: value{i}
             condition: selection
-        """
-        )
-        for i in range(2)
-    ]
+        """) for i in range(2)]
 
 
 def test_validator_double_wildcard():
     validator = DoubleWildcardValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -88,15 +78,13 @@ def test_validator_double_wildcard():
             field1: te**st
             field2: 123
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [DoubleWildcardIssue([rule], SigmaString("te**st"))]
 
 
 def test_validator_double_wildcard_valid():
     validator = DoubleWildcardValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -106,8 +94,7 @@ def test_validator_double_wildcard_valid():
             field1: t*es*t
             field2: 123
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -118,8 +105,7 @@ def test_validator_double_wildcard_correlation_rule(correlation_rule):
 
 def test_validator_number_as_string():
     validator = NumberAsStringValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -129,15 +115,13 @@ def test_validator_number_as_string():
             field1: 123
             field2: "234"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [NumberAsStringIssue([rule], SigmaString("234"))]
 
 
 def test_validator_number_as_string_valid():
     validator = NumberAsStringValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -146,8 +130,7 @@ def test_validator_number_as_string_valid():
         sel:
             field1: a
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -158,8 +141,7 @@ def test_validator_number_as_string_correlation_rule(correlation_rule):
 
 def test_validator_control_characters():
     validator = ControlCharacterValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -169,8 +151,7 @@ def test_validator_control_characters():
             field1: "\\temp"
             field2: "\\\\test"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [ControlCharacterIssue([rule], SigmaString("\temp"))]
 
 
@@ -181,8 +162,7 @@ def test_validator_control_characters_correlation_rule(correlation_rule):
 
 def test_validator_wildcards_instead_of_contains():
     validator = WildcardsInsteadOfModifiersValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -194,8 +174,7 @@ def test_validator_wildcards_instead_of_contains():
               - "*val2*"
               - "*val3*"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         WildcardsInsteadOfContainsModifierIssue(
             [rule],
@@ -214,8 +193,7 @@ def test_validator_wildcards_instead_of_contains():
 
 def test_validator_wildcard_instead_of_endswith():
     validator = WildcardsInsteadOfModifiersValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -227,8 +205,7 @@ def test_validator_wildcard_instead_of_endswith():
               - "*val2"
               - "*val3"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         WildcardInsteadOfEndswithIssue(
             [rule],
@@ -247,8 +224,7 @@ def test_validator_wildcard_instead_of_endswith():
 
 def test_validator_wildcard_instead_of_startswith():
     validator = WildcardsInsteadOfModifiersValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -260,8 +236,7 @@ def test_validator_wildcard_instead_of_startswith():
               - "val2*"
               - "val3*"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         WildcardInsteadOfStartswithIssue(
             [rule],
@@ -280,8 +255,7 @@ def test_validator_wildcard_instead_of_startswith():
 
 def test_validator_wildcards_instead_of_modifiers_inconsistent():
     validator = WildcardsInsteadOfModifiersValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -293,15 +267,13 @@ def test_validator_wildcards_instead_of_modifiers_inconsistent():
               - "*val2"
               - "val3*"
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_wildcards_instead_of_modifiers_none():
     validator = WildcardsInsteadOfModifiersValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -312,8 +284,7 @@ def test_validator_wildcards_instead_of_modifiers_none():
               - "val1"
               - null
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -324,8 +295,7 @@ def test_validator_wildcards_instead_of_modifiers_correlation_rule(correlation_r
 
 def test_validator_sysmon_insteadof_generic_logsource():
     validator = SpecificInsteadOfGenericLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -338,8 +308,7 @@ def test_validator_sysmon_insteadof_generic_logsource():
                - 999
                - 7
         condition: sel
-    """
-    )
+    """)
     logsource_sysmon = SigmaLogSource(None, "windows", "sysmon")
     assert validator.validate(rule) == [
         SpecificInsteadOfGenericLogsourceIssue(
@@ -359,8 +328,7 @@ def test_validator_sysmon_insteadof_generic_logsource():
 
 def test_validator_sysmon_insteadof_generic_logsource_sysmon_valid():
     validator = SpecificInsteadOfGenericLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -370,15 +338,13 @@ def test_validator_sysmon_insteadof_generic_logsource_sysmon_valid():
         sel:
             field: 999
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_sysmon_insteadof_generic_logsource_other_valid():
     validator = SpecificInsteadOfGenericLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -388,8 +354,7 @@ def test_validator_sysmon_insteadof_generic_logsource_other_valid():
         sel:
             field: 999
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -400,8 +365,7 @@ def test_validator_specific_insteadof_generic_correlation_rule(correlation_rule)
 
 def test_validator_escaped_wildcard():
     validator = EscapedWildcardValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -410,8 +374,7 @@ def test_validator_escaped_wildcard():
         sel:
             field: path\\*something
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         EscapedWildcardIssue([rule], SigmaString(r"path\*something"))
     ]
@@ -419,8 +382,7 @@ def test_validator_escaped_wildcard():
 
 def test_validator_escaped_wildcard_valid():
     validator = EscapedWildcardValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -429,8 +391,7 @@ def test_validator_escaped_wildcard_valid():
         sel:
             field: path\\\\*something
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 

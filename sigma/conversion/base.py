@@ -2,7 +2,8 @@ import re
 from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
-from typing import Any, Callable, ClassVar, Iterator, Pattern, cast
+from typing import Any, Callable, ClassVar, Iterator, cast
+from itertools import pairwise
 
 from typing_extensions import Self
 
@@ -507,37 +508,38 @@ class Backend(ABC):
         self, cond: ConditionFieldEqualsValueExpression, state: ConversionState
     ) -> Any:
         """Conversion dispatcher of field = value conditions. Dispatches to value-specific methods."""
-        if isinstance(cond.value, SigmaCasedString):
-            return self.convert_condition_field_eq_val_str_case_sensitive(cond, state)
-        elif isinstance(cond.value, SigmaString):
-            return self.convert_condition_field_eq_val_str(cond, state)
-        elif isinstance(cond.value, SigmaTimestampPart):
-            return self.convert_condition_field_eq_val_timestamp_part(cond, state)
-        elif isinstance(cond.value, SigmaNumber):
-            return self.convert_condition_field_eq_val_num(cond, state)
-        elif isinstance(cond.value, SigmaBool):
-            return self.convert_condition_field_eq_val_bool(cond, state)
-        elif isinstance(cond.value, SigmaRegularExpression):
-            return self.convert_condition_field_eq_val_re(cond, state)
-        elif isinstance(cond.value, SigmaCIDRExpression):
-            return self.convert_condition_field_eq_val_cidr(cond, state)
-        elif isinstance(cond.value, SigmaCompareExpression):
-            return self.convert_condition_field_compare_op_val(cond, state)
-        elif isinstance(cond.value, SigmaFieldReference):
-            return self.convert_condition_field_eq_field(cond, state)
-        elif isinstance(cond.value, SigmaNull):
-            return self.convert_condition_field_eq_val_null(cond, state)
-        elif isinstance(cond.value, SigmaQueryExpression):
-            return self.convert_condition_field_eq_query_expr(cond, state)
-        elif isinstance(cond.value, SigmaExists):
-            return self.convert_condition_field_eq_val_exists(cond, state)
-        elif isinstance(cond.value, SigmaExpansion):
-            return self.convert_condition_field_eq_expansion(cond, state)
-        else:  # pragma: no cover
-            raise TypeError(
-                "Unexpected value type class in condition parse tree: "
-                + cond.value.__class__.__name__
-            )
+        match cond.value:
+            case SigmaCasedString():
+                return self.convert_condition_field_eq_val_str_case_sensitive(cond, state)
+            case SigmaString():
+                return self.convert_condition_field_eq_val_str(cond, state)
+            case SigmaTimestampPart():
+                return self.convert_condition_field_eq_val_timestamp_part(cond, state)
+            case SigmaNumber():
+                return self.convert_condition_field_eq_val_num(cond, state)
+            case SigmaBool():
+                return self.convert_condition_field_eq_val_bool(cond, state)
+            case SigmaRegularExpression():
+                return self.convert_condition_field_eq_val_re(cond, state)
+            case SigmaCIDRExpression():
+                return self.convert_condition_field_eq_val_cidr(cond, state)
+            case SigmaCompareExpression():
+                return self.convert_condition_field_compare_op_val(cond, state)
+            case SigmaFieldReference():
+                return self.convert_condition_field_eq_field(cond, state)
+            case SigmaNull():
+                return self.convert_condition_field_eq_val_null(cond, state)
+            case SigmaQueryExpression():
+                return self.convert_condition_field_eq_query_expr(cond, state)
+            case SigmaExists():
+                return self.convert_condition_field_eq_val_exists(cond, state)
+            case SigmaExpansion():
+                return self.convert_condition_field_eq_expansion(cond, state)
+            case _:  # pragma: no cover
+                raise TypeError(
+                    "Unexpected value type class in condition parse tree: "
+                    + cond.value.__class__.__name__
+                )
 
     @abstractmethod
     def convert_condition_val_str(
@@ -565,27 +567,28 @@ class Backend(ABC):
 
     def convert_condition_val(self, cond: ConditionValueExpression, state: ConversionState) -> Any:
         """Conversion of value-only conditions."""
-        if isinstance(cond.value, SigmaString):
-            return self.convert_condition_val_str(cond, state)
-        elif isinstance(cond.value, SigmaNumber):
-            return self.convert_condition_val_num(cond, state)
-        elif isinstance(cond.value, SigmaBool):
-            raise SigmaValueError(
-                "Boolean values can't appear as standalone value without a field name."
-            )
-        elif isinstance(cond.value, SigmaRegularExpression):
-            return self.convert_condition_val_re(cond, state)
-        elif isinstance(cond.value, SigmaCIDRExpression):
-            raise SigmaValueError(
-                "CIDR values can't appear as standalone value without a field name."
-            )
-        elif isinstance(cond.value, SigmaQueryExpression):
-            return self.convert_condition_query_expr(cond, state)
-        else:  # pragma: no cover
-            raise TypeError(
-                "Unexpected value type class in condition parse tree: "
-                + cond.value.__class__.__name__
-            )
+        match cond.value:
+            case SigmaString():
+                return self.convert_condition_val_str(cond, state)
+            case SigmaNumber():
+                return self.convert_condition_val_num(cond, state)
+            case SigmaBool():
+                raise SigmaValueError(
+                    "Boolean values can't appear as standalone value without a field name."
+                )
+            case SigmaRegularExpression():
+                return self.convert_condition_val_re(cond, state)
+            case SigmaCIDRExpression():
+                raise SigmaValueError(
+                    "CIDR values can't appear as standalone value without a field name."
+                )
+            case SigmaQueryExpression():
+                return self.convert_condition_query_expr(cond, state)
+            case _:  # pragma: no cover
+                raise TypeError(
+                    "Unexpected value type class in condition parse tree: "
+                    + cond.value.__class__.__name__
+                )
 
     def convert_condition(
         self,
@@ -601,28 +604,29 @@ class Backend(ABC):
         process after the conversion of the condition to a query is finished. This is done in the
         finalize_query method and must be implemented individually.
         """
-        if isinstance(cond, ConditionOR):
-            if self.decide_convert_condition_as_in_expression(cond, state):
-                return self.convert_condition_as_in_expression(cond, state)
-            else:
-                return self.convert_condition_or(cond, state)
-        elif isinstance(cond, ConditionAND):
-            if self.decide_convert_condition_as_in_expression(cond, state):
-                return self.convert_condition_as_in_expression(cond, state)
-            else:
-                return self.convert_condition_and(cond, state)
-        elif isinstance(cond, ConditionNOT):
-            return self.convert_condition_not(cond, state)
-        elif isinstance(cond, ConditionFieldEqualsValueExpression):
-            return self.convert_condition_field_eq_val(cond, state)
-        elif isinstance(cond, ConditionValueExpression):
-            return self.convert_condition_val(cond, state)
-        elif cond is None:
-            return None
-        else:  # pragma: no cover
-            raise TypeError(
-                "Unexpected data type in condition parse tree: " + cond.__class__.__name__
-            )
+        match cond:
+            case ConditionOR():
+                if self.decide_convert_condition_as_in_expression(cond, state):
+                    return self.convert_condition_as_in_expression(cond, state)
+                else:
+                    return self.convert_condition_or(cond, state)
+            case ConditionAND():
+                if self.decide_convert_condition_as_in_expression(cond, state):
+                    return self.convert_condition_as_in_expression(cond, state)
+                else:
+                    return self.convert_condition_and(cond, state)
+            case ConditionNOT():
+                return self.convert_condition_not(cond, state)
+            case ConditionFieldEqualsValueExpression():
+                return self.convert_condition_field_eq_val(cond, state)
+            case ConditionValueExpression():
+                return self.convert_condition_val(cond, state)
+            case None:
+                return None
+            case _:  # pragma: no cover
+                raise TypeError(
+                    "Unexpected data type in condition parse tree: " + cond.__class__.__name__
+                )
 
     def convert_correlation_rule(
         self,
@@ -1047,7 +1051,7 @@ class TextQueryBackend(Backend):
     field_quote: ClassVar[str | None] = (
         None  # Character used to quote field characters if field_quote_pattern matches (or not, depending on field_quote_pattern_negation). No field name quoting is done if not set.
     )
-    field_quote_pattern: ClassVar[Pattern[str] | None] = (
+    field_quote_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # Quote field names if this pattern (doesn't) matches, depending on field_quote_pattern_negation. Field name is always quoted if pattern is not set.
     )
     field_quote_pattern_negation: ClassVar[bool] = (
@@ -1059,7 +1063,7 @@ class TextQueryBackend(Backend):
         None  # Character to escape particular parts defined in field_escape_pattern.
     )
     field_escape_quote: ClassVar[bool] = True  # Escape quote string defined in field_quote
-    field_escape_pattern: ClassVar[Pattern[str] | None] = (
+    field_escape_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # All matches of this pattern are prepended with the string contained in field_escape.
     )
 
@@ -1070,7 +1074,7 @@ class TextQueryBackend(Backend):
     ## Values
     ### String quoting
     str_quote: ClassVar[str] = ""  # string quoting character (added as escaping character)
-    str_quote_pattern: ClassVar[Pattern[str] | None] = (
+    str_quote_pattern: ClassVar[re.Pattern[str] | None] = (
         None  # Quote string values that match (or don't match) this pattern
     )
     str_quote_pattern_negation: ClassVar[bool] = True  # Negate str_quote_pattern result
@@ -1717,15 +1721,11 @@ class TextQueryBackend(Backend):
                 match_positions.update((match.start() for match in re_quote.finditer(field_name)))
 
             if len(match_positions) > 0:  # found matches, escape them
-                r = [0] + list(sorted(match_positions)) + [len(field_name)]
-                escaped_field_name = ""
-                for i in range(
-                    len(r) - 1
-                ):  # TODO: from Python 3.10 this can be replaced with itertools.pairwise(), but for now we keep support for Python <3.10
-                    if i == 0:  # The first range is passed to the result without escaping
-                        escaped_field_name += field_name[r[i] : r[i + 1]]
-                    else:  # Subsequent ranges are positions of matches and therefore are prepended with field_escape
-                        escaped_field_name += self.field_escape + field_name[r[i] : r[i + 1]]
+                indices = [0, *sorted(match_positions), len(field_name)]
+                escaped_field_name = self.field_escape.join(
+                    field_name[first_index:second_index]
+                    for (first_index, second_index) in pairwise(indices)
+                )
             else:  # no matches, just pass original field name without escaping
                 escaped_field_name = field_name
         else:

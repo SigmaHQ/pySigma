@@ -62,10 +62,7 @@ def test_backend():
 
 
 def test_deferred_conversion_and(test_backend: TextQueryTestBackend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -77,18 +74,11 @@ def test_deferred_conversion_and(test_backend: TextQueryTestBackend):
                     fieldB: foo
                     fieldC: bar
                 condition: sel
-        """
-            )
-        )
-        == ['fieldB="foo" and fieldC="bar" | mappedA="foo.*bar"']
-    )
+        """)) == ['fieldB="foo" and fieldC="bar" | mappedA="foo.*bar"']
 
 
 def test_deferred_conversion_or(test_backend: TextQueryTestBackend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -102,18 +92,11 @@ def test_deferred_conversion_or(test_backend: TextQueryTestBackend):
                 sel3:
                     fieldC: bar
                 condition: sel1 or sel2 or sel3
-        """
-            )
-        )
-        == ['fieldB="foo" or fieldC="bar" | mappedA="foo.*bar"']
-    )
+        """)) == ['fieldB="foo" or fieldC="bar" | mappedA="foo.*bar"']
 
 
 def test_deferred_conversion_multiple_cond(test_backend: TextQueryTestBackend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -130,18 +113,11 @@ def test_deferred_conversion_multiple_cond(test_backend: TextQueryTestBackend):
                     - sel1
                     - sel2
                     - sel3
-        """
-            )
-        )
-        == ['* | mappedA="foo.*bar"', '* | fieldB="foo.*"', '* | fieldC=".*bar"']
-    )
+        """)) == ['* | mappedA="foo.*bar"', '* | fieldB="foo.*"', '* | fieldC=".*bar"']
 
 
 def test_deferred_conversion_not(test_backend: TextQueryTestBackend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -154,18 +130,11 @@ def test_deferred_conversion_not(test_backend: TextQueryTestBackend):
                 sel2:
                     fieldA|re: foo.*bar
                 condition: sel1 and not sel2
-        """
-            )
-        )
-        == ['fieldB="foo" and fieldC="bar" | mappedA!="foo.*bar"']
-    )
+        """)) == ['fieldB="foo" and fieldC="bar" | mappedA!="foo.*bar"']
 
 
 def test_deferred_only_conversion(test_backend: TextQueryTestBackend):
-    assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+    assert test_backend.convert(SigmaCollection.from_yaml("""
             title: Test
             status: test
             logsource:
@@ -175,18 +144,12 @@ def test_deferred_only_conversion(test_backend: TextQueryTestBackend):
                 sel:
                     fieldA|re: foo.*bar
                 condition: sel
-        """
-            )
-        )
-        == ['* | mappedA="foo.*bar"']
-    )
+        """)) == ['* | mappedA="foo.*bar"']
 
 
 def test_deferred_conversion_correlation_rule_references(test_backend: TextQueryTestBackend):
     assert (
-        test_backend.convert(
-            SigmaCollection.from_yaml(
-                """
+        test_backend.convert(SigmaCollection.from_yaml("""
 title: Referenced Rule with Deferred
 name: rule_with_deferred
 status: test
@@ -210,12 +173,8 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-        """
-            )
-        )
-        == [
-            """fieldB="normalvalue" | mappedA="foo.*bar"
+        """))
+        == ["""fieldB="normalvalue" | mappedA="foo.*bar"
 | aggregate window=5min count() as event_count by fieldC
-| where event_count >= 10"""
-        ]
+| where event_count >= 10"""]
     )

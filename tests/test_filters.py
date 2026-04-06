@@ -27,8 +27,7 @@ from .test_conversion_base import test_backend
 
 @pytest.fixture
 def sigma_filter():
-    return SigmaFilter.from_yaml(
-        """
+    return SigmaFilter.from_yaml("""
 title: Filter Administrator account
 description: The valid administrator account start with adm_
 logsource:
@@ -41,14 +40,12 @@ filter:
   selection:
       User|startswith: 'adm_'
   condition: not selection
-  """
-    )
+  """)
 
 
 @pytest.fixture
 def rule_collection():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed login
 id: 6f3e2987-db24-4c78-a860-b4f4095a7095
 name: failed_login
@@ -60,14 +57,12 @@ detection:
         - EventID: 4625
         - EventID2: 4624
     condition: selection
-"""
-    )
+""")
 
 
 @pytest.fixture
 def event_count_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 id: df0841c0-9846-4e9f-ad8a-7df91571771b
@@ -93,8 +88,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-            """
-    )
+            """)
 
 
 def test_filter_valid(sigma_filter):
@@ -639,3 +633,88 @@ def test_filter_selection_confusion(rule_collection, test_backend, sigma_filter)
     assert test_backend.convert(rule_collection) == [
         '(EventID=4625 or EventID2=4624) and not User startswith "adm_"'
     ]
+
+
+def test_filter_single_string_rule_reference():
+    """Test SigmaGlobalFilter with a single string rule reference (not 'any')."""
+    gf = SigmaGlobalFilter.from_dict(
+        {
+            "rules": "6f3e2987-db24-4c78-a860-b4f4095a7095",
+            "selection": {"User|startswith": "adm_"},
+            "condition": "not selection",
+        }
+    )
+    assert isinstance(gf.rules, list)
+    assert len(gf.rules) == 1
+    assert gf.rules[0].reference == "6f3e2987-db24-4c78-a860-b4f4095a7095"
+
+
+def test_filter_invalid_rules_type():
+    """Test SigmaGlobalFilter with invalid rules type raises error."""
+    with pytest.raises(SigmaFilterRuleReferenceError, match="must be 'any'"):
+        SigmaGlobalFilter.from_dict(
+            {
+                "rules": 12345,
+                "selection": {"User|startswith": "adm_"},
+                "condition": "not selection",
+            }
+        )
+
+
+def test_filter_to_dict_with_any_rules():
+    """Test SigmaGlobalFilter to_dict with 'any' rules."""
+    gf = SigmaGlobalFilter.from_dict(
+        {
+            "rules": "any",
+            "selection": {"User|startswith": "adm_"},
+            "condition": "not selection",
+        }
+    )
+    d = gf.to_dict()
+    assert d["rules"] == "any"
+
+
+def test_filter_to_dict_with_list_rules():
+    """Test SigmaGlobalFilter to_dict with list rules."""
+    gf = SigmaGlobalFilter.from_dict(
+        {
+            "rules": ["6f3e2987-db24-4c78-a860-b4f4095a7095"],
+            "selection": {"User|startswith": "adm_"},
+            "condition": "not selection",
+        }
+    )
+    d = gf.to_dict()
+    assert isinstance(d["rules"], list)
+    assert d["rules"] == ["6f3e2987-db24-4c78-a860-b4f4095a7095"]
+
+
+def test_filter_rule_reference_not_found(test_backend):
+    """Test filter with rule references that don't match any rules."""
+    sigma_filter = SigmaFilter.from_yaml("""
+title: Filter with nonexistent rule
+logsource:
+    category: process_creation
+    product: windows
+filter:
+  rules:
+    - 00000000-0000-0000-0000-000000000000
+  selection:
+      User|startswith: 'adm_'
+  condition: not selection
+""")
+    rule = SigmaCollection.from_yaml("""
+title: Test Rule
+id: 6f3e2987-db24-4c78-a860-b4f4095a7095
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        EventID: 4625
+    condition: selection
+""")
+    # Filter with nonexistent rule ref should not apply to any rule
+    rule_collection = SigmaCollection(rule.rules + [sigma_filter])
+    result = test_backend.convert(rule_collection)
+    # The rule should be converted without the filter being applied
+    assert result == ["EventID=4625"]

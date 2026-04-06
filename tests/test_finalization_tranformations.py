@@ -26,15 +26,13 @@ def test_concatenate_queries_tranformation(dummy_pipeline):
 
 def test_template_transformation(dummy_pipeline):
     dummy_pipeline.state["setting"] = "value"
-    transformation = TemplateFinalizer(
-        """
+    transformation = TemplateFinalizer("""
 [config]
 setting = {{ pipeline.state.setting }}
 
 [queries]{% for query in queries %}
 query{{ loop.index }} = {{ query }}{% endfor %}
-"""
-    )
+""")
     transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(
@@ -179,3 +177,48 @@ def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "value = value"
+
+
+def test_finalizer_from_dict_invalid_params():
+    """Test that invalid parameters in Finalizer.from_dict raise SigmaConfigurationError."""
+    with pytest.raises(SigmaConfigurationError, match="Error in instantiation of finalizer"):
+        ConcatenateQueriesFinalizer.from_dict({"invalid_param": "value"})
+
+
+def test_yaml_finalizer_custom_indent(dummy_pipeline):
+    """Test YAMLFinalizer with custom indent parameter."""
+    from sigma.processing.finalization import YAMLFinalizer
+
+    finalizer = YAMLFinalizer(indent=4)
+    finalizer.set_pipeline(dummy_pipeline)
+    result = finalizer.apply(["query1", "query2"])
+    assert "query1" in result
+    assert "query2" in result
+
+
+def test_yaml_finalizer_default_indent(dummy_pipeline):
+    """Test YAMLFinalizer with default indent."""
+    from sigma.processing.finalization import YAMLFinalizer
+
+    finalizer = YAMLFinalizer()
+    finalizer.set_pipeline(dummy_pipeline)
+    result = finalizer.apply(["query1", "query2"])
+    assert "query1" in result
+
+
+def test_json_finalizer_custom_indent(dummy_pipeline):
+    """Test JSONFinalizer with custom indent parameter."""
+    from sigma.processing.finalization import JSONFinalizer
+
+    finalizer = JSONFinalizer(indent=2)
+    finalizer.set_pipeline(dummy_pipeline)
+    result = finalizer.apply(["query1", "query2"])
+    import json
+
+    assert json.loads(result) == ["query1", "query2"]
+
+
+def test_template_finalizer_with_nonexistent_vars_file():
+    """Test that a non-existent vars file raises ValueError."""
+    with pytest.raises(ValueError, match="Could not load vars file"):
+        TemplateFinalizer(template="test", vars="/nonexistent/path/vars.py")

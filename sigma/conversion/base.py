@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
 from typing import Any, Callable, ClassVar, Iterator, cast
+from itertools import pairwise
 
 from typing_extensions import Self
 
@@ -1720,15 +1721,11 @@ class TextQueryBackend(Backend):
                 match_positions.update((match.start() for match in re_quote.finditer(field_name)))
 
             if len(match_positions) > 0:  # found matches, escape them
-                r = [0] + list(sorted(match_positions)) + [len(field_name)]
-                escaped_field_name = ""
-                for i in range(
-                    len(r) - 1
-                ):  # TODO: from Python 3.10 this can be replaced with itertools.pairwise(), but for now we keep support for Python <3.10
-                    if i == 0:  # The first range is passed to the result without escaping
-                        escaped_field_name += field_name[r[i] : r[i + 1]]
-                    else:  # Subsequent ranges are positions of matches and therefore are prepended with field_escape
-                        escaped_field_name += self.field_escape + field_name[r[i] : r[i + 1]]
+                indices = [0, *sorted(match_positions), len(field_name)]
+                escaped_field_name = self.field_escape.join(
+                    field_name[first_index:second_index]
+                    for (first_index, second_index) in pairwise(indices)
+                )
             else:  # no matches, just pass original field name without escaping
                 escaped_field_name = field_name
         else:

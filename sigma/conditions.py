@@ -294,7 +294,7 @@ def _parse_condition_string(
 ) -> ConditionItem:
     """Parse a condition string using pyparsing, with caching for repeated strings.
 
-    Results are deep-copied on retrieval since postprocessing mutates the parse tree.
+    Callers must deep-copy the returned result since postprocessing mutates the parse tree.
     """
     return cast(ConditionItem, condition.parse_string(condition_str, parse_all=True)[0])
 

@@ -8,8 +8,7 @@ from .test_conversion_correlations import event_count_correlation_rule
 
 def test_fieldnamelogsourcevalidator_valid():
     validator = FieldnameLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -21,15 +20,13 @@ def test_fieldnamelogsourcevalidator_valid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_fieldnamelogsourcevalidator_service_invalid():
     validator = FieldnameLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -41,15 +38,13 @@ def test_fieldnamelogsourcevalidator_service_invalid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [FieldnameLogsourceIssue(rule, "services")]
 
 
 def test_fieldnamelogsourcevalidator_definition_invalid():
     validator = FieldnameLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -59,15 +54,13 @@ def test_fieldnamelogsourcevalidator_definition_invalid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [FieldnameLogsourceIssue(rule, "description")]
 
 
 def test_fieldnamelogsourcevalidator_many_invalid():
     validator = FieldnameLogsourceValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -78,8 +71,7 @@ def test_fieldnamelogsourcevalidator_many_invalid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         FieldnameLogsourceIssue(rule, "editor"),
         FieldnameLogsourceIssue(rule, "description"),

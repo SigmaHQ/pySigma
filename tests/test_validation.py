@@ -214,9 +214,6 @@ def test_issue_string_rendering(rules_with_id_collision):
     )
 
 
-# --- Tests for uncovered code paths ---
-
-
 def test_sigmavalidator_fromdict_unknown_validator_in_config(validators):
     """Test that unknown validator in config raises SigmaConfigurationError."""
     with pytest.raises(SigmaConfigurationError, match="Unknown validator 'non_existing'"):

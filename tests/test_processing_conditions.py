@@ -55,8 +55,7 @@ def detection_item_nofield():
 
 @pytest.fixture
 def sigma_rule():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
         title: Test
         id: 809718e3-f7f5-46f1-931e-d036f0ffb0af
         related:
@@ -78,8 +77,7 @@ def sigma_rule():
             - test.tag
         level: medium
         custom: 123
-    """
-    )
+    """)
 
 
 def test_processing_condition_multiple_pipelines_set(dummy_processing_pipeline):
@@ -300,8 +298,7 @@ def test_rule_attribute_condition_invalid_rule_field_type(sigma_rule):
 
 @pytest.fixture
 def sigma_rule_with_list_attribute():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
         title: Test
         status: test
         logsource:
@@ -314,8 +311,7 @@ def sigma_rule_with_list_attribute():
         custom:
             - valueA
             - valueB
-    """
-    )
+    """)
 
 
 def test_rule_attribute_condition_list_eq_match(sigma_rule_with_list_attribute):
@@ -766,9 +762,6 @@ def test_field_name_processing_item_applied_no_pipeline():
         SigmaProcessingItemError, match="Processing pipeline must be set before matching condition"
     ):
         condition.match_field_name("fieldA")
-
-
-# --- Tests for uncovered code paths ---
 
 
 def test_include_field_condition_re_exception_single_arg():

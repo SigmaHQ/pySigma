@@ -26,15 +26,13 @@ def test_concatenate_queries_tranformation(dummy_pipeline):
 
 def test_template_transformation(dummy_pipeline):
     dummy_pipeline.state["setting"] = "value"
-    transformation = TemplateFinalizer(
-        """
+    transformation = TemplateFinalizer("""
 [config]
 setting = {{ pipeline.state.setting }}
 
 [queries]{% for query in queries %}
 query{{ loop.index }} = {{ query }}{% endfor %}
-"""
-    )
+""")
     transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(
@@ -179,9 +177,6 @@ def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "value = value"
-
-
-# --- Tests for uncovered code paths ---
 
 
 def test_finalizer_from_dict_invalid_params():

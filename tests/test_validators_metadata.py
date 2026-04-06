@@ -24,8 +24,7 @@ from sigma.validators.core.metadata import (
 
 @pytest.fixture
 def rule_without_id():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -34,14 +33,12 @@ def rule_without_id():
         selection:
             field: value
         condition: selection
-    """
-    )
+    """)
 
 
 @pytest.fixture
 def rule_with_id():
-    return SigmaRule.from_yaml(
-        """
+    return SigmaRule.from_yaml("""
     title: Test
     id: 19855ce4-00b3-4d07-8e57-f6c6955ce4e7
     status: test
@@ -51,15 +48,12 @@ def rule_with_id():
         selection:
             field: value
         condition: selection
-    """
-    )
+    """)
 
 
 @pytest.fixture
 def rules_with_id_collision():
-    return [
-        SigmaRule.from_yaml(
-            f"""
+    return [SigmaRule.from_yaml(f"""
         title: Test {i}
         id: 32532a0b-e56c-47c9-bcbb-3d88bd670c37
         status: test
@@ -69,10 +63,7 @@ def rules_with_id_collision():
             selection:
                 field{i}: value{i}
             condition: selection
-        """
-        )
-        for i in range(2)
-    ]
+        """) for i in range(2)]
 
 
 def test_validator_identifier_existence(rule_without_id):
@@ -101,8 +92,7 @@ def test_validator_identifier_uniqueness(rules_with_id_collision):
 
 def test_validator_duplicate_title():
     validator = DuplicateTitleValidator()
-    rule1 = SigmaRule.from_yaml(
-        """
+    rule1 = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -111,11 +101,9 @@ def test_validator_duplicate_title():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
 
-    rule2 = SigmaRule.from_yaml(
-        """
+    rule2 = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -124,8 +112,7 @@ def test_validator_duplicate_title():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule1) == []
     assert validator.validate(rule2) == []
     assert validator.finalize() == [DuplicateTitleIssue([rule1, rule2], "Test")]
@@ -133,8 +120,7 @@ def test_validator_duplicate_title():
 
 def test_validator_duplicate_title_valid():
     validator = DuplicateTitleValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -143,15 +129,13 @@ def test_validator_duplicate_title_valid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_duplicate_references():
     validator = DuplicateReferencesValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     references:
         - ref_a
@@ -164,15 +148,13 @@ def test_validator_duplicate_references():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == [DuplicateReferencesIssue([rule], "ref_a")]
 
 
 def test_validator_duplicate_references_valid():
     validator = DuplicateReferencesValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     references:
         - ref_a
@@ -185,8 +167,7 @@ def test_validator_duplicate_references_valid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -233,8 +214,7 @@ def test_validator_filename_length_valid():
 
 def test_validator_custom_attributes():
     validator = CustomAttributesValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     logsource:
         category: test
@@ -245,15 +225,13 @@ def test_validator_custom_attributes():
     realted: 
         - id: abc
           type: abc
-    """
-    )
+    """)
     assert validator.validate(rule) == [CustomAttributesIssue([rule], "realted")]
 
 
 def test_validator_custom_attributes_valid():
     validator = CustomAttributesValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     logsource:
         category: test
@@ -261,12 +239,8 @@ def test_validator_custom_attributes_valid():
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     assert validator.validate(rule) == []
-
-
-# --- Tests for uncovered code paths ---
 
 
 def test_is_uuid_v4_valid():

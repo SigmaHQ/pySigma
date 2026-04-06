@@ -234,9 +234,6 @@ def test_pipeline_condition_expression_identifier_invalid_field_name_type():
         result.match_field_name("test")
 
 
-# --- Tests for uncovered code paths ---
-
-
 def test_pipeline_condition_expression_set_pipeline_twice(sigma_rule):
     """Test that setting pipeline twice on a condition expression raises SigmaError."""
     from sigma.exceptions import SigmaError

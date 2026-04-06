@@ -1075,8 +1075,7 @@ def test_sigmarule_bad_date():
     for test_string in bad_string_dates:
         match_string = f"Rule date '{test_string}' is invalid, use yyyy-mm-dd"
         with pytest.raises(sigma_exceptions.SigmaDateError, match=match_string) as ex:
-            SigmaRule.from_yaml(
-                f"""
+            SigmaRule.from_yaml(f"""
                 title: Test
                 date: '{test_string}'  # try a string
                 logsource:
@@ -1085,8 +1084,7 @@ def test_sigmarule_bad_date():
                     selection_1:
                         fieldA: valueA
                     condition: selection_1
-                """
-            )
+                """)
             assert False, f"Did not throw SigmaDateError on date {test_string}"
 
 
@@ -1108,8 +1106,7 @@ def test_sigmarule_bad_modified():
     for test_string in bad_dates:
         match_string = f"Rule modified '{test_string}' is invalid, use yyyy-mm-dd"
         with pytest.raises(sigma_exceptions.SigmaModifiedError, match=match_string) as ex:
-            SigmaRule.from_yaml(
-                f"""
+            SigmaRule.from_yaml(f"""
                 title: Test
                 modified: {test_string}  # this can be recognized as date by yaml parser
                 logsource:
@@ -1118,8 +1115,7 @@ def test_sigmarule_bad_modified():
                     selection_1:
                         fieldA: valueA
                     condition: selection_1
-                """
-            )
+                """)
             assert False, f"Did not throw SigmaModifiedError on date {test_string}"
 
 
@@ -1145,8 +1141,7 @@ def test_sigmarule_bad_references():
 
 def test_sigmarule_date():
     expected_date = date(3000, 1, 2)
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     id: cafedead-beef-0000-1111-0123456789ab
     level: medium
@@ -1158,8 +1153,7 @@ def test_sigmarule_date():
         selection_1:
             fieldA: valueA
         condition: selection_1
-    """
-    )
+    """)
     assert rule is not None
     assert rule.date == expected_date
 
@@ -1176,8 +1170,7 @@ def test_modified_date():
         "1970/1/1": date(1970, 1, 1),
     }
     for test_string, expected_date in validDates.items():
-        rule = SigmaRule.from_yaml(
-            f"""
+        rule = SigmaRule.from_yaml(f"""
             title: Test
             id: cafedead-beef-0000-1111-0123456789ab
             level: medium
@@ -1190,8 +1183,7 @@ def test_modified_date():
                 selection_1:
                     fieldA: valueA
                 condition: selection_1
-            """
-        )
+            """)
         assert rule is not None
         assert rule.date == expected_date, f"bad 'date' for '{test_string}'"
         assert rule.modified == expected_date, f"bad 'modified' for '{test_string}'"
@@ -1199,8 +1191,7 @@ def test_modified_date():
 
 def test_sigmarule_datetime():
     expected_date = datetime(3000, 1, 2, 3, 4, 5)
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     id: cafedead-beef-0000-1111-123456789abc
     level: medium
@@ -1212,8 +1203,7 @@ def test_sigmarule_datetime():
         selection_1:
             fieldA: valueA
         condition: selection_1
-    """
-    )
+    """)
     assert rule is not None
     assert rule.date == expected_date
 
@@ -1371,8 +1361,7 @@ def sigma_rule():
 
 
 def test_sigmarule_fromyaml(sigma_rule):
-    sigmarule_from_yaml = SigmaRule.from_yaml(
-        """
+    sigmarule_from_yaml = SigmaRule.from_yaml("""
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
     name: test
@@ -1409,14 +1398,12 @@ def test_sigmarule_fromyaml(sigma_rule):
     scope:
         - scope1
         - scope2     
-    """
-    )
+    """)
     assert sigmarule_from_yaml == sigma_rule
 
 
 def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
-    sigmarule_from_yaml = SigmaRule.from_yaml(
-        """
+    sigmarule_from_yaml = SigmaRule.from_yaml("""
     title: Test
     id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
     name: test
@@ -1454,16 +1441,14 @@ def test_sigmarule_fromyaml_with_custom_attribute(sigma_rule):
     scope:
         - scope1
         - scope2    
-    """
-    )
+    """)
     assert sigmarule_from_yaml == sigma_rule
     assert sigmarule_from_yaml.custom_attributes == {"custom": "attribute"}
 
 
 def test_sigmarule_fromyaml_duplicate_key():
     with pytest.raises(YAMLError, match="Duplicate key"):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
         title: Test
         id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
         logsource:
@@ -1477,8 +1462,7 @@ def test_sigmarule_fromyaml_duplicate_key():
                 - CommandLine|contains: cmd.exe
             condition: 1 of them
         level: low
-        """
-        )
+        """)
 
 
 def test_sigmarule_to_dict(sigma_rule: SigmaRule):
@@ -1536,8 +1520,7 @@ def test_sigmarule_processing_item_tracking(sigma_rule, processing_item):
 
 
 def test_sigma_rule_overlapping_selections():
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: test
     logsource:
         category: test
@@ -1553,8 +1536,7 @@ def test_sigma_rule_overlapping_selections():
                 - str3
                 - str4
         condition: 1 of selection*
-    """
-    )
+    """)
     cond = rule.detection.parsed_condition[0].parsed
     assert (
         isinstance(cond, ConditionOR)
@@ -1567,8 +1549,7 @@ def test_invalid_related_type():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="same is not a Sigma related valid type"
     ):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
     title: Test
     related:
         - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
@@ -1584,16 +1565,14 @@ def test_invalid_related_type():
         sel:
             field: value
         condition: sel
-    """
-        )
+    """)
 
 
 def test_invalid_related_id():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma related identifier must be an UUID"
     ):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
     title: Test
     related:
         - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
@@ -1607,16 +1586,14 @@ def test_invalid_related_id():
         sel:
             field: value
         condition: sel
-    """
-        )
+    """)
 
 
 def test_invalid_related_id_subfield():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma related must have an id field"
     ):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
     title: Test
     related:
         - uuid: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
@@ -1628,16 +1605,14 @@ def test_invalid_related_id_subfield():
         sel:
             field: value
         condition: sel
-    """
-        )
+    """)
 
 
 def test_invalid_related_type_subfield():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma related must have a type field"
     ):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
     title: Test
     related:
         - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
@@ -1649,16 +1624,14 @@ def test_invalid_related_type_subfield():
         sel:
             field: value
         condition: sel
-    """
-        )
+    """)
 
 
 def test_invalid_related_list():
     with pytest.raises(
         sigma_exceptions.SigmaRelatedError, match="Sigma rule related must be a list"
     ):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
     title: Test
     related:
         id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
@@ -1670,16 +1643,14 @@ def test_invalid_related_list():
         sel:
             field: value
         condition: sel
-    """
-        )
+    """)
 
 
 def test_invalid_author():
     with pytest.raises(
         sigma_exceptions.SigmaAuthorError, match="Sigma rule author must be a string"
     ):
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         author:
@@ -1691,14 +1662,12 @@ def test_invalid_author():
             sel:
                 field: value
             condition: sel
-        """
-        )
+        """)
 
 
 def test_missing_title():
     with pytest.raises(sigma_exceptions.SigmaTitleError, match="Sigma rule must have a title"):
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         status: test
         logsource:
             category: test
@@ -1706,14 +1675,12 @@ def test_missing_title():
             sel:
                 field: value
             condition: sel
-        """
-        )
+        """)
 
 
 def test_invalid_title_type():
     with pytest.raises(sigma_exceptions.SigmaTitleError, match="Sigma rule title must be a string"):
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         title:
             - abc
         status: test
@@ -1723,8 +1690,7 @@ def test_invalid_title_type():
             sel:
                 field: value
             condition: sel
-        """
-        )
+        """)
 
 
 def test_invalid_title_length():
@@ -1733,8 +1699,7 @@ def test_invalid_title_length():
         match="Sigma rule title length must not exceed 256 characters",
     ):
         title = "0123456789 " * 26
-        rule = SigmaRule.from_yaml(
-            f"""
+        rule = SigmaRule.from_yaml(f"""
         title: {title}
         status: test
         logsource:
@@ -1743,8 +1708,7 @@ def test_invalid_title_length():
             sel:
                 field: value
             condition: sel
-        """
-        )
+        """)
 
 
 def test_sigma_rule_backreference(sigma_rule):
@@ -1873,9 +1837,6 @@ def test_sigmarule_timestamp_modifiers_greater_than():
     assert detection_items[5].value[0].number == SigmaTimestampPart(TimestampPart.YEAR, 6)
 
 
-# --- Tests for uncovered code paths ---
-
-
 def test_sigmarule_bad_taxonomy_type():
     """Test that non-string taxonomy raises SigmaTaxonomyError."""
     with pytest.raises(sigma_exceptions.SigmaTaxonomyError, match="must be a string.*test.yml"):
@@ -1897,8 +1858,7 @@ def test_sigmarule_empty_taxonomy():
 def test_sigmarule_date_with_exception_in_parsing():
     """Test that date values causing exceptions during parsing (e.g., invalid month) are handled."""
     with pytest.raises(sigma_exceptions.SigmaDateError, match="is invalid"):
-        SigmaRule.from_yaml(
-            """
+        SigmaRule.from_yaml("""
             title: Test
             date: '2024-13-01'
             logsource:
@@ -1907,8 +1867,7 @@ def test_sigmarule_date_with_exception_in_parsing():
                 sel:
                     field: value
                 condition: sel
-            """
-        )
+            """)
 
 
 def test_sigma_rule_conversion_states(sigma_rule):
@@ -1930,8 +1889,7 @@ def test_sigma_rule_conversion_states_not_available(sigma_rule):
 
 def test_sigma_rule_to_dict_with_modified():
     """Test rule to_dict when modified date is set."""
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         date: 2024-01-01
@@ -1942,7 +1900,6 @@ def test_sigma_rule_to_dict_with_modified():
             sel:
                 field: value
             condition: sel
-        """
-    )
+        """)
     d = rule.to_dict()
     assert d["modified"] == "2024-06-01"

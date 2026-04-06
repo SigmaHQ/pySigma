@@ -20,8 +20,7 @@ from sigma.exceptions import (
 
 @pytest.fixture
 def rule_collection():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed login
 name: failed_login
 logsource:
@@ -31,8 +30,7 @@ detection:
     selection:
         EventID: 4625
     condition: selection
-        """
-    )
+        """)
 
 
 @pytest.fixture
@@ -109,8 +107,7 @@ def test_correlation_valid_2():
 
 
 def test_correlation_valid_1_from_yaml():
-    rule = SigmaCorrelationRule.from_yaml(
-        """
+    rule = SigmaCorrelationRule.from_yaml("""
 title: Valid correlation
 correlation:
     type: event_count
@@ -119,8 +116,7 @@ correlation:
     timespan: 10m
     condition:
         gte: 10
-"""
-    )
+""")
     assert isinstance(rule, SigmaCorrelationRule)
     assert rule.title == "Valid correlation"
     assert rule.type == SigmaCorrelationType.EVENT_COUNT
@@ -133,8 +129,7 @@ correlation:
 
 
 def test_correlation_valid_2_from_yaml():
-    rule = SigmaCorrelationRule.from_yaml(
-        """
+    rule = SigmaCorrelationRule.from_yaml("""
 title: Valid correlation
 correlation:
     type: temporal
@@ -152,8 +147,7 @@ correlation:
             event_a: username
             event_b: user_name
     timespan: 1h
-"""
-    )
+""")
     assert isinstance(rule, SigmaCorrelationRule)
     assert rule.title == "Valid correlation"
     assert rule.type == SigmaCorrelationType.TEMPORAL
@@ -1315,9 +1309,6 @@ def test_extended_condition_parse_deeply_nested():
     }
 
 
-# --- Tests for uncovered code paths ---
-
-
 def test_correlation_condition_invalid_percentile():
     """Test that invalid percentile value raises error."""
     with pytest.raises(SigmaCorrelationConditionError, match="no valid.*percentile"):
@@ -1340,8 +1331,7 @@ def test_correlation_condition_to_dict_with_percentile():
 def test_correlation_condition_non_dict_non_string():
     """Test that correlation with non-dict/non-string condition raises error."""
     with pytest.raises(SigmaCorrelationRuleError, match="must be a dict or string"):
-        SigmaCorrelationRule.from_yaml(
-            """
+        SigmaCorrelationRule.from_yaml("""
 title: Test correlation
 status: test
 correlation:
@@ -1352,5 +1342,4 @@ correlation:
     condition:
         - invalid
         - list_condition
-        """
-        )
+        """)

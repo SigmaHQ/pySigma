@@ -3,7 +3,7 @@ from __future__ import annotations
 import dataclasses
 from collections.abc import Mapping
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Any
 
 from typing_extensions import Self
 
@@ -33,17 +33,17 @@ if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
 
 # Type alias for plain detection types
-# SigmaPlainValue = Union[str, int, float, bool, None]
+# SigmaPlainValue = str | int | float | bool | None
 # SigmaDetectionPlainList = list[SigmaPlainValue]
-# SigmaDetectionPlainDict = dict[str, Union[SigmaPlainValue, SigmaDetectionPlainList]]
-# SigmaDetectionPlainTypes = Union[
-#     SigmaDetectionPlainDict,
-#     SigmaDetectionPlainList,
-#     SigmaPlainValue,
-#     list[SigmaDetectionPlainDict],
-#     list[SigmaPlainValue],
-# ]
-SigmaDetectionPlainTypes = Union[dict[str, Any], list[Any], str, int, float, bool, None]
+# SigmaDetectionPlainDict = dict[str, SigmaPlainValue | SigmaDetectionPlainList]
+# SigmaDetectionPlainTypes = (
+#     SigmaDetectionPlainDict
+#     | SigmaDetectionPlainList
+#     | SigmaPlainValue
+#     | list[SigmaDetectionPlainDict]
+#     | list[SigmaPlainValue]
+# )
+SigmaDetectionPlainTypes = dict[str, Any] | list[Any] | str | int | float | bool | None
 
 
 @dataclass

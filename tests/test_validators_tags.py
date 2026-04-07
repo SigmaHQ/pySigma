@@ -35,8 +35,7 @@ from sigma.data import mitre_attack, mitre_d3fend
 
 def test_validator_invalid_attack_tags():
     validator = ATTACKTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -48,8 +47,7 @@ def test_validator_invalid_attack_tags():
     tags:
         - attack.test1
         - attack.test2
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         InvalidATTACKTagIssue([rule], SigmaRuleTag.from_str("attack.test1")),
         InvalidATTACKTagIssue([rule], SigmaRuleTag.from_str("attack.test2")),
@@ -58,8 +56,7 @@ def test_validator_invalid_attack_tags():
 
 def test_validator_valid_attack_tags():
     validator = ATTACKTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -76,15 +73,13 @@ def test_validator_valid_attack_tags():
         - attack.s0005
         - attack.ds0026
         - attack.m1015
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
 def test_validator_invalid_d3fend_tags():
     validator = D3FENDTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -96,8 +91,7 @@ def test_validator_invalid_d3fend_tags():
     tags:
         - d3fend.test1
         - d3fend.test2
-    """
-    )
+    """)
     assert validator.validate(rule) == [
         InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test1")),
         InvalidD3FENDagIssue([rule], SigmaRuleTag.from_str("d3fend.test2")),
@@ -106,8 +100,7 @@ def test_validator_invalid_d3fend_tags():
 
 def test_validator_valid_d3fend_tags():
     validator = D3FENDTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -120,8 +113,7 @@ def test_validator_valid_d3fend_tags():
         - d3fend.isolate
         - d3fend.d3-mfa
         - attack.d3f-AccessControlConfiguration
-    """
-    )
+    """)
     assert validator.validate(rule) == []
 
 
@@ -142,8 +134,7 @@ def test_validator_valid_d3fend_tags():
 )
 def test_validator_tlp_tags(validator_class, tags, issue_tags):
     validator = validator_class()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -152,8 +143,7 @@ def test_validator_tlp_tags(validator_class, tags, issue_tags):
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     rule.tags = [SigmaRuleTag.from_str(tag) for tag in tags]
     assert validator.validate(rule) == [
         InvalidTLPTagIssue([rule], SigmaRuleTag.from_str(tag)) for tag in issue_tags
@@ -162,8 +152,7 @@ def test_validator_tlp_tags(validator_class, tags, issue_tags):
 
 def test_validator_duplicate_tags():
     validator = DuplicateTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -179,8 +168,7 @@ def test_validator_duplicate_tags():
         - attack.g0001
         - attack.s0001
         - attack.s0005
-    """
-    )
+    """)
     assert validator.validate(rule) == [DuplicateTagIssue([rule], SigmaRuleTag("attack", "g0001"))]
 
 
@@ -258,8 +246,7 @@ def test_validator_duplicate_tags():
 )
 def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, opt_issue_class):
     validator = opt_validator_class()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -268,8 +255,7 @@ def test_validator_optional_tag(opt_validator_class, opt_tags, opt_issue_tags, o
         sel:
             field: value
         condition: sel
-    """
-    )
+    """)
     rule.tags = [SigmaRuleTag.from_str(tag) for tag in opt_tags]
     assert validator.validate(rule) == [
         opt_issue_class([rule], SigmaRuleTag.from_str(tag)) for tag in opt_issue_tags
@@ -320,8 +306,7 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
 
         # Verify it works with the validator
         validator = ATTACKTagValidator()
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         logsource:
@@ -332,8 +317,7 @@ def test_mitre_attack_set_url_with_file(monkeypatch):
             condition: sel
         tags:
             - attack.t9999
-        """
-        )
+        """)
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
@@ -389,8 +373,7 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
 
         # Verify it works with the validator
         validator = D3FENDTagValidator()
-        rule = SigmaRule.from_yaml(
-            """
+        rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         logsource:
@@ -401,8 +384,7 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
             condition: sel
         tags:
             - d3fend.d3-test
-        """
-        )
+        """)
         assert validator.validate(rule) == []
     finally:
         # Clean up and restore original state
@@ -421,8 +403,7 @@ def test_validator_valid_attack_tags_online(monkeypatch):
     mitre_attack.clear_cache()
 
     validator = ATTACKTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
     title: Test
     status: test
     logsource:
@@ -436,8 +417,7 @@ def test_validator_valid_attack_tags_online(monkeypatch):
         - attack.t1001.001
         - attack.g0001
         - attack.s0001
-    """
-    )
+    """)
     issues = validator.validate(rule)
 
     # Print debug info if test fails
@@ -461,8 +441,7 @@ def test_validator_valid_d3fend_tags_online(monkeypatch):
     mitre_d3fend.clear_cache()
 
     validator = D3FENDTagValidator()
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
         title: Test
         status: test
         logsource:
@@ -474,8 +453,7 @@ def test_validator_valid_d3fend_tags_online(monkeypatch):
         tags:
             - d3fend.isolate
             - d3fend.d3-mfa
-        """
-    )
+        """)
 
     # Get the validation result
     issues = validator.validate(rule)

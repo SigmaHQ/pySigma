@@ -519,8 +519,7 @@ def test_and_condition_has_parent(sigma_simple_detections):
     """
     Non-regression test related to issue #64
     """
-    rule = SigmaRule.from_yaml(
-        """
+    rule = SigmaRule.from_yaml("""
 title: rule
 id: cafecafe-0499-4d3f-9670-55cfc950e2dc
 status: stable
@@ -535,8 +534,7 @@ detection:
   selection2:
     Thirdfield: 'thirdvalue'
   condition: selection or selection2
-"""
-    )
+""")
     or_condition = rule.detection.parsed_condition[0].parsed
     assert or_condition.args[0].parent != None
     assert or_condition.args[0].parent.parent == or_condition

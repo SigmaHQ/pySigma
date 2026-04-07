@@ -9,8 +9,7 @@ from .test_conversion_base import test_backend
 
 @pytest.fixture
 def event_count_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -39,29 +38,24 @@ fields:
     - SubjectUserName
     - TargetUserName
     - Computer
-            """
-    )
+            """)
 
 
 def test_event_count_correlation_single_rule_with_grouping(
     test_backend, event_count_correlation_rule
 ):
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
-| where event_count >= 10"""
-    ]
+| where event_count >= 10"""]
 
 
 def test_correlation_without_normalization_support(
     monkeypatch, test_backend, event_count_correlation_rule
 ):
     monkeypatch.setattr(test_backend, "correlation_search_field_normalization_expression", None)
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
-| where event_count >= 10"""
-    ]
+| where event_count >= 10"""]
 
 
 def test_generate_query_without_referenced_rules_expression(
@@ -69,11 +63,9 @@ def test_generate_query_without_referenced_rules_expression(
 ):
     monkeypatch.setattr(test_backend, "referenced_rules_expression", None)
     monkeypatch.setattr(test_backend, "referenced_rules_expression_joiner", None)
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
-| where event_count >= 10"""
-    ]
+| where event_count >= 10"""]
 
 
 def test_event_count_correlation_single_rule_with_fields(
@@ -90,17 +82,14 @@ def test_event_count_correlation_single_rule_with_fields(
         {"test": "| aggregate window={timespan} count() as event_count{fields}{groupby}"},
     )
 
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min count() as event_count values(SubjectUserName) as SubjectUserName values(Computer) as Computer by TargetUserName, TargetDomainName, mappedB
-| where event_count >= 10"""
-    ]
+| where event_count >= 10"""]
 
 
 @pytest.fixture
 def value_count_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -122,24 +111,20 @@ correlation:
     condition:
         gte: 100
         field: TargetUserName
-            """
-    )
+            """)
 
 
 def test_value_count_correlation_single_rule_without_grouping(
     test_backend, value_count_correlation_rule
 ):
-    assert test_backend.convert(value_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(value_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min value_count(TargetUserName) as value_count
-| where value_count >= 100"""
-    ]
+| where value_count >= 100"""]
 
 
 @pytest.fixture
 def temporal_correlation_rule():
-    temporal_correlation_rule = SigmaCollection.from_yaml(
-        """
+    temporal_correlation_rule = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -180,8 +165,7 @@ correlation:
     group-by:
         - TargetUserName
         - TargetDomainName
-            """
-    )
+            """)
 
     return temporal_correlation_rule
 
@@ -263,8 +247,7 @@ def test_referenced_rule_expression_used_but_not_defined(
 
 @pytest.fixture
 def temporal_ordered_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -329,8 +312,7 @@ correlation:
         - mapped
     condition:
         gte: 2
-            """
-    )
+            """)
 
 
 def test_temporal_ordered_correlation_multi_rule_with_condition_and_field_normalization(
@@ -347,27 +329,22 @@ subsearch { CommandLine in ("*whoami*", "*dsquery*", "*net group*") | set event_
 
 def test_correlation_timespan_in_seconds(monkeypatch, test_backend, event_count_correlation_rule):
     monkeypatch.setattr(test_backend, "timespan_seconds", True)
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
 | aggregate window=300 count() as event_count by TargetUserName, TargetDomainName, mappedB
-| where event_count >= 10"""
-    ]
+| where event_count >= 10"""]
 
 
 def test_correlation_no_aggregation_expression(
     monkeypatch, test_backend, value_count_correlation_rule
 ):
     monkeypatch.setattr(test_backend, "groupby_expression_nofield", {"test": " by nothing"})
-    assert test_backend.convert(value_count_correlation_rule) == [
-        """EventID=4625
+    assert test_backend.convert(value_count_correlation_rule) == ["""EventID=4625
 | aggregate window=5min value_count(TargetUserName) as value_count by nothing
-| where value_count >= 100"""
-    ]
+| where value_count >= 100"""]
 
 
 def test_correlation_generate_rule(test_backend):
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -392,8 +369,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-            """
-    )
+            """)
     assert test_backend.convert(rule_collection) == [
         "EventID=4625",
         """EventID=4625
@@ -403,8 +379,7 @@ correlation:
 
 
 def test_correlation_generate_chained_rule(test_backend):
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Successful login
 name: successful_login
 logsource:
@@ -453,8 +428,7 @@ correlation:
     group-by:
         - User
     timespan: 10m
-            """
-    )
+            """)
 
     assert test_backend.convert(rule_collection) == [
         """EventID in (528, 4624)""",
@@ -524,11 +498,9 @@ def test_correlation_query_postprocessing(event_count_correlation_rule):
             ]
         )
     )
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """[ EventID=4625
+    assert test_backend.convert(event_count_correlation_rule) == ["""[ EventID=4625
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, fieldB
-| where event_count >= 10 ]"""
-    ]
+| where event_count >= 10 ]"""]
 
 
 def test_correlation_subqueries_finalization(monkeypatch, event_count_correlation_rule):
@@ -540,18 +512,15 @@ def test_correlation_subqueries_finalization(monkeypatch, event_count_correlatio
         )
     )
     monkeypatch.setattr(test_backend, "finalize_correlation_subqueries", True)
-    assert test_backend.convert(event_count_correlation_rule) == [
-        """[ [ EventID=4625 ]
+    assert test_backend.convert(event_count_correlation_rule) == ["""[ [ EventID=4625 ]
 | aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, fieldB
-| where event_count >= 10 ]"""
-    ]
+| where event_count >= 10 ]"""]
 
 
 # Tests for new correlation types: value_sum, value_avg, value_percentile
 @pytest.fixture
 def value_sum_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Transaction event
 name: transaction_event
 status: test
@@ -574,22 +543,18 @@ correlation:
     condition:
         gte: 10000
         field: Amount
-            """
-    )
+            """)
 
 
 def test_value_sum_correlation_single_rule_with_grouping(test_backend, value_sum_correlation_rule):
-    assert test_backend.convert(value_sum_correlation_rule) == [
-        """EventType="transaction"
+    assert test_backend.convert(value_sum_correlation_rule) == ["""EventType="transaction"
 | aggregate window=10min sum(Amount) as value_sum by AccountID
-| where value_sum >= 10000"""
-    ]
+| where value_sum >= 10000"""]
 
 
 @pytest.fixture
 def value_avg_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: API response event
 name: api_response
 status: test
@@ -612,22 +577,18 @@ correlation:
     condition:
         gte: 1000
         field: ResponseTime
-            """
-    )
+            """)
 
 
 def test_value_avg_correlation_single_rule_with_grouping(test_backend, value_avg_correlation_rule):
-    assert test_backend.convert(value_avg_correlation_rule) == [
-        """EventType="api_response"
+    assert test_backend.convert(value_avg_correlation_rule) == ["""EventType="api_response"
 | aggregate window=5min avg(ResponseTime) as value_avg by Endpoint
-| where value_avg >= 1000"""
-    ]
+| where value_avg >= 1000"""]
 
 
 @pytest.fixture
 def value_percentile_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: Network traffic event
 name: network_traffic
 status: test
@@ -651,8 +612,7 @@ correlation:
         gte: 500
         field: Latency
         percentile: 95
-            """
-    )
+            """)
 
 
 def test_value_percentile_correlation_single_rule_with_grouping(
@@ -667,8 +627,7 @@ def test_value_percentile_correlation_single_rule_with_grouping(
 
 @pytest.fixture
 def value_median_correlation_rule():
-    return SigmaCollection.from_yaml(
-        """
+    return SigmaCollection.from_yaml("""
 title: API response event
 name: api_response
 status: test
@@ -691,24 +650,20 @@ correlation:
     condition:
         gte: 1000
         field: ResponseTime
-            """
-    )
+            """)
 
 
 def test_value_median_correlation_single_rule_with_grouping(
     test_backend, value_median_correlation_rule
 ):
-    assert test_backend.convert(value_median_correlation_rule) == [
-        """EventType="api_response"
+    assert test_backend.convert(value_median_correlation_rule) == ["""EventType="api_response"
 | aggregate window=5min median(ResponseTime) as value_median by Endpoint
-| where value_median >= 1000"""
-    ]
+| where value_median >= 1000"""]
 
 
 def test_value_percentile_correlation_missing_percentile(test_backend):
     """Test that missing percentile attribute raises SigmaConversionError for value_percentile correlation"""
-    correlation_rule = SigmaCollection.from_yaml(
-        """
+    correlation_rule = SigmaCollection.from_yaml("""
 title: Network traffic event
 name: network_traffic
 status: test
@@ -731,8 +686,7 @@ correlation:
     condition:
         gte: 500
         field: Latency
-            """
-    )
+            """)
     with pytest.raises(
         SigmaConversionError,
         match="Percentile must be specified in condition for value_percentile correlation type",
@@ -742,8 +696,7 @@ correlation:
 
 def test_correlation_rule_callback(test_backend):
     """Test that callback is invoked for correlation rules"""
-    correlation_rule = SigmaCollection.from_yaml(
-        """
+    correlation_rule = SigmaCollection.from_yaml("""
 title: Test event
 name: test_event
 status: test
@@ -765,8 +718,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 5
-            """
-    )
+            """)
 
     callback_invocations = []
 
@@ -800,8 +752,7 @@ def test_correlation_rule_callback_skip_result(test_backend):
         # Skip the result
         return None
 
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -825,8 +776,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-        """
-    )
+        """)
 
     result = test_backend.convert(rule_collection, callback=test_callback)
     assert result == []
@@ -845,8 +795,7 @@ def test_finish_query_correlation_rule_only(test_backend):
             return query
 
     backend = SearchWrapperCorrelationBackend()
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -871,8 +820,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-        """
-    )
+        """)
     result = backend.convert(rule_collection)
     # First query is regular rule (not wrapped)
     assert result[0] == "EventID=4625"
@@ -895,8 +843,7 @@ def test_finish_query_regular_rule_only():
             return query
 
     backend = SearchWrapperRegularBackend()
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -921,8 +868,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-        """
-    )
+        """)
     result = backend.convert(rule_collection)
     # First query is regular rule (wrapped)
     assert result[0] == "search(EventID=4625)"
@@ -942,8 +888,7 @@ def test_finish_query_both_correlation_and_subqueries():
             return f"search({query})"
 
     backend = SearchWrapperAllBackend()
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -968,8 +913,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 10
-        """
-    )
+        """)
     result = backend.convert(rule_collection)
     # First query is regular rule (wrapped)
     assert result[0] == "search(EventID=4625)"
@@ -989,8 +933,7 @@ def test_finish_query_temporal_correlation_with_subqueries():
             return f"search({query})"
 
     backend = SearchWrapperAllBackend()
-    rule_collection = SigmaCollection.from_yaml(
-        """
+    rule_collection = SigmaCollection.from_yaml("""
 title: Failed logon
 name: failed_logon
 status: test
@@ -1025,8 +968,7 @@ correlation:
         - TargetUserName
         - TargetDomainName
     timespan: 5m
-        """
-    )
+        """)
     result = backend.convert(rule_collection)
     # First two queries are regular rules (wrapped)
     assert result[0] == "search(EventID=4625)"
@@ -1041,8 +983,7 @@ correlation:
 
 def test_correlation_rule_callback_skip_result(test_backend):
     """Test that callback can skip results by returning None"""
-    correlation_rule = SigmaCollection.from_yaml(
-        """
+    correlation_rule = SigmaCollection.from_yaml("""
 title: Test event
 name: test_event
 status: test
@@ -1064,8 +1005,7 @@ correlation:
     timespan: 5m
     condition:
         gte: 5
-            """
-    )
+            """)
 
     def skip_callback(rule, output_format, index, query, result):
         return None  # Skip all results

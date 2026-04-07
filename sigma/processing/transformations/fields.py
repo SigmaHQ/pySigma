@@ -19,9 +19,9 @@ from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 class FieldMappingTransformation(FieldMappingTransformationBase):
     """Map a field name to one or multiple different."""
 
-    mapping: dict[Optional[str], Union[str, list[str]]]
+    mapping: dict[str | None, str | list[str]]
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
+    def apply_field_name(self, field: str | None) -> None | str | list[str]:
         return self.mapping.get(field)
 
 
@@ -29,7 +29,7 @@ class FieldMappingTransformation(FieldMappingTransformationBase):
 class FieldPrefixMappingTransformation(FieldMappingTransformation):
     """Map a field name prefix to one or multiple different prefixes."""
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
+    def apply_field_name(self, field: str | None) -> None | str | list[str]:
         if field is None:
             return None
 
@@ -51,10 +51,10 @@ class FieldFunctionTransformation(FieldMappingTransformation):
     """Map a field name to another using provided transformation function.
     You can overwrite transformation by providing explicit mapping for a field."""
 
-    transform_func: Callable[[Optional[str]], str]
+    transform_func: Callable[[str | None], str]
     apply_keyword: bool = False
 
-    def apply_field_name(self, field: Optional[str]) -> Union[None, str, list[str]]:
+    def apply_field_name(self, field: str | None) -> None | str | list[str]:
         if field is None and not self.apply_keyword:
             return None
         return self.mapping.get(field, self.transform_func(field))
@@ -68,7 +68,7 @@ class AddFieldnameSuffixTransformation(FieldMappingTransformationBase):
 
     suffix: str
 
-    def apply_field_name(self, field: Optional[str]) -> Optional[str]:
+    def apply_field_name(self, field: str | None) -> str | None:
         if field is None:
             return None
         return field + self.suffix
@@ -82,7 +82,7 @@ class AddFieldnamePrefixTransformation(FieldMappingTransformationBase):
 
     prefix: str
 
-    def apply_field_name(self, field: Optional[str]) -> Optional[str]:
+    def apply_field_name(self, field: str | None) -> str | None:
         if field is None:
             return None
         return self.prefix + field
@@ -94,9 +94,9 @@ class AddFieldTransformation(PreprocessingTransformation):
     Add one or multiple fields to the Sigma rule. The field is added to the fields list of the rule:
     """
 
-    field: Union[str, list[str]]
+    field: str | list[str]
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         if isinstance(self.field, str):
             rule.fields.append(self.field)
@@ -111,9 +111,9 @@ class RemoveFieldTransformation(PreprocessingTransformation):
     rules list, it is ignored.
     """
 
-    field: Union[str, list[str]]
+    field: str | list[str]
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         if isinstance(self.field, str):
             try:
@@ -136,6 +136,6 @@ class SetFieldTransformation(PreprocessingTransformation):
 
     fields: list[str]
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         super().apply(rule)
         rule.fields = self.fields

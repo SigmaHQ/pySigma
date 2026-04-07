@@ -8,7 +8,7 @@ from sigma.processing.conditions.base import (
     RuleProcessingCondition,
 )
 from sigma.types import sigma_type
-from typing import ClassVar, Literal, Optional, Union
+from typing import ClassVar, Literal
 from sigma.rule import (
     SigmaDetection,
     SigmaLevel,
@@ -28,16 +28,16 @@ class LogsourceCondition(RuleProcessingCondition):
     the condition returns true if any of the associated rules have the required log source fields.
     """
 
-    category: Optional[str] = field(default=None)
-    product: Optional[str] = field(default=None)
-    service: Optional[str] = field(default=None)
+    category: str | None = field(default=None)
+    product: str | None = field(default=None)
+    service: str | None = field(default=None)
 
     def __post_init__(self) -> None:
         self.logsource = SigmaLogSource(self.category, self.product, self.service)
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         if isinstance(rule, SigmaRule):
             return rule.logsource in self.logsource
@@ -54,9 +54,9 @@ class LogsourceCondition(RuleProcessingCondition):
 class RuleContainsFieldCondition(RuleDetectionItemCondition):
     """Returns True if rule contains a field that matches the given field name."""
 
-    field: Optional[str]
+    field: str | None
 
-    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+    def find_detection_item(self, detection: SigmaDetectionItem | SigmaDetection) -> bool:
         if isinstance(detection, SigmaDetection):
             for detection_item in detection.detection_items:
                 if self.find_detection_item(detection_item):
@@ -74,13 +74,13 @@ class RuleContainsFieldCondition(RuleDetectionItemCondition):
 class RuleContainsDetectionItemCondition(RuleDetectionItemCondition):
     """Returns True if rule contains a detection item that matches the given field name and value."""
 
-    field: Optional[str]
-    value: Union[str, int, float, bool]
+    field: str | None
+    value: str | int | float | bool
 
     def __post_init__(self) -> None:
         self.sigma_value = sigma_type(self.value)
 
-    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+    def find_detection_item(self, detection: SigmaDetectionItem | SigmaDetection) -> bool:
         if isinstance(detection, SigmaDetection):
             for detection_item in detection.detection_items:
                 if self.find_detection_item(detection_item):
@@ -107,7 +107,7 @@ class IsSigmaRuleCondition(RuleProcessingCondition):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         return isinstance(rule, SigmaRule)
 
@@ -120,7 +120,7 @@ class IsSigmaCorrelationRuleCondition(RuleProcessingCondition):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         return isinstance(rule, SigmaCorrelationRule)
 
@@ -144,7 +144,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
     """
 
     attribute: str
-    value: Union[str, int, float]
+    value: str | int | float
     op: Literal["eq", "ne", "gte", "gt", "lte", "lt", "in", "not_in"] = field(default="eq")
     op_methods: ClassVar[dict[str, str]] = {
         "eq": "__eq__",
@@ -163,7 +163,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         try:  # first try to get built-in attribute
             value = getattr(rule, self.attribute)
@@ -174,7 +174,7 @@ class RuleAttributeCondition(RuleProcessingCondition):
                 return False
 
         # Finally, value has some comparable type
-        compare_value: Union[str, int, float, date, SigmaLevel, SigmaStatus]
+        compare_value: str | int | float | date | SigmaLevel | SigmaStatus
         if isinstance(value, list):  # list membership check
             if self.op == "in":
                 return self.value in value
@@ -266,6 +266,6 @@ class RuleTagCondition(RuleProcessingCondition):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         return self.match_tag in rule.tags

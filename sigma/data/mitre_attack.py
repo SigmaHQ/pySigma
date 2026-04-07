@@ -9,7 +9,7 @@ to avoid repeated downloads across sessions.
 import json
 import os
 from pathlib import Path
-from typing import Any, Optional, Dict, List, cast
+from typing import Any, cast
 from urllib.error import URLError
 from urllib.request import urlopen
 
@@ -25,9 +25,9 @@ MITRE_ATTACK_ENTERPRISE_URL = (
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pysigma" / "mitre_attack"
 
 # Disk cache instance
-_cache: Optional[diskcache.Cache] = None
-_custom_url: Optional[str] = None
-_custom_cache_dir: Optional[Path] = None
+_cache: diskcache.Cache | None = None
+_custom_url: str | None = None
+_custom_cache_dir: Path | None = None
 
 
 def _get_cache() -> diskcache.Cache:
@@ -40,7 +40,7 @@ def _get_cache() -> diskcache.Cache:
     return _cache
 
 
-def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
+def _get_external_id(obj: dict[str, Any]) -> str | None:
     """Extract the external ID from a STIX object's external references."""
     for ref in obj.get("external_references", []):
         if ref.get("source_name") == "mitre-attack":
@@ -50,7 +50,7 @@ def _get_external_id(obj: Dict[str, Any]) -> Optional[str]:
     return None
 
 
-def _load_mitre_attack_data() -> Dict[str, Any]:
+def _load_mitre_attack_data() -> dict[str, Any]:
     """
     Load MITRE ATT&CK data from GitHub or a custom URL/file.
 
@@ -150,7 +150,7 @@ def _load_mitre_attack_data() -> Dict[str, Any]:
     return result
 
 
-def _get_cached_data() -> Dict[str, Any]:
+def _get_cached_data() -> dict[str, Any]:
     """Get cached MITRE ATT&CK data, loading it if necessary."""
     return _load_mitre_attack_data()
 

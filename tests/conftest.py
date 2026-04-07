@@ -6,7 +6,6 @@ import pytest
 
 from sigma.data import mitre_attack
 
-
 # Mock MITRE ATT&CK data for testing
 MOCK_ATTACK_DATA = {
     "mitre_attack_version": "17.1",

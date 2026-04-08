@@ -231,7 +231,7 @@ class SigmaString(SigmaType):
                     # else:
                     if end < e_len:  # end lies within this string part
                         assert isinstance(end, int)  # finite end guaranteed by condition above
-                        return self.__class__(e[start : end])
+                        return self.__class__(e[start:end])
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -251,7 +251,7 @@ class SigmaString(SigmaType):
                 e_len = len(e)
                 if end < e_len:  # end lies within this string part
                     assert isinstance(end, int)  # finite end guaranteed by condition above
-                    result.append(e[: end])
+                    result.append(e[:end])
                 else:
                     result.append(e)
                 end -= e_len

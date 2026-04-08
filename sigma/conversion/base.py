@@ -349,9 +349,7 @@ class Backend(ABC):
         if not all((isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args)):
             return False
         # After the check above, all arguments are ConditionFieldEqualsValueExpression
-        args = [
-            arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)
-        ]
+        args = [arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)]
 
         # Build a set of all fields appearing in condition arguments
         fields = {arg.field for arg in args}
@@ -1597,16 +1595,12 @@ class TextQueryBackend(Backend):
         """Conversion of field in value list conditions."""
         if self.field_in_list_expression is None or self.list_separator is None:
             raise NotImplementedError("Field in list expressions are not supported by the backend")
-        if not all(
-            isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args
-        ):
+        if not all(isinstance(arg, ConditionFieldEqualsValueExpression) for arg in cond.args):
             raise TypeError(
                 "Field in list expression requires all arguments to be ConditionFieldEqualsValueExpression"
             )
         # After the isinstance check above, all args are ConditionFieldEqualsValueExpression
-        args = [
-            arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)
-        ]
+        args = [arg for arg in cond.args if isinstance(arg, ConditionFieldEqualsValueExpression)]
         field_name = args[0].field
         if {arg.field for arg in args} != {field_name}:
             raise ValueError("Field in list expression requires all fields to be the same")

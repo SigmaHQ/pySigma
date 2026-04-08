@@ -89,9 +89,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             values = detection_item.value
             if not isinstance(values, list):
                 values = [values]
-            algo_dict = self._parse_hash_values(
-                [v for v in values if isinstance(v, SigmaString)]
-            )
+            algo_dict = self._parse_hash_values([v for v in values if isinstance(v, SigmaString)])
 
             if not algo_dict:
                 raise Exception(

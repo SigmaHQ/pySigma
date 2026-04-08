@@ -63,11 +63,9 @@ def test_generate_query_without_referenced_rules_expression(
 ):
     monkeypatch.setattr(test_backend, "referenced_rules_expression", None)
     monkeypatch.setattr(test_backend, "referenced_rules_expression_joiner", None)
-    with pytest.raises(
-        SigmaBackendError,
-        match="Backend doesn't define referenced rule expression but uses it in correlation query template",
-    ):
-        test_backend.convert(event_count_correlation_rule)
+    assert test_backend.convert(event_count_correlation_rule) == ["""EventID=4625
+| aggregate window=5min count() as event_count by TargetUserName, TargetDomainName, mappedB
+| where event_count >= 10"""]
 
 
 def test_event_count_correlation_single_rule_with_fields(

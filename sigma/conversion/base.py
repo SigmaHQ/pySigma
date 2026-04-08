@@ -2641,23 +2641,20 @@ class TextQueryBackend(Backend):
 
     def convert_referenced_rules(
         self, referenced_rules: list[SigmaRuleReference], method: str
-    ) -> str:
+    ) -> str | None:
         if (
             self.referenced_rules_expression is None
             or self.referenced_rules_expression_joiner is None
         ):
-            raise SigmaBackendError(
-                "Backend doesn't define referenced rule expression but uses it in correlation query template"
-            )
-        else:
-            return self.referenced_rules_expression_joiner[method].join(
-                (
-                    self.referenced_rules_expression[method].format(
-                        ruleid=rule_reference.rule.name or rule_reference.rule.id
-                    )
-                    for rule_reference in referenced_rules
+            return None
+        return self.referenced_rules_expression_joiner[method].join(
+            (
+                self.referenced_rules_expression[method].format(
+                    ruleid=rule_reference.rule.name or rule_reference.rule.id
                 )
+                for rule_reference in referenced_rules
             )
+        )
 
     # Implementation of the condition phase of the correlation query.
     def convert_correlation_condition_from_template(

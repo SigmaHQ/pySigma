@@ -24,7 +24,7 @@ class AddConditionTransformation(ConditionTransformation):
     * $category, $product and $service: with the corresponding values of the Sigma rule log source.
     """
 
-    conditions: dict[str, Union[int, str, list[str]]] = field(default_factory=dict)
+    conditions: dict[str, int | str | list[str]] = field(default_factory=dict)
     name: str = field(
         default_factory=lambda: "_cond_" + ("".join(random.choices(string.ascii_lowercase, k=10))),
         compare=False,
@@ -32,7 +32,7 @@ class AddConditionTransformation(ConditionTransformation):
     template: bool = False
     negated: bool = False
 
-    def apply(self, rule: Union[SigmaRule, SigmaCorrelationRule]) -> None:
+    def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> None:
         if isinstance(rule, SigmaRule):
             if self.template:
                 conditions = {

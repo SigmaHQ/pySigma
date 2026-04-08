@@ -1,7 +1,7 @@
 import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Optional
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sigma.rule import SigmaRuleBase
@@ -12,8 +12,8 @@ class SigmaRuleLocation:
     """Describes a Sigma source file and optionally a location inside it."""
 
     path: Path
-    line: Optional[int] = None
-    char: Optional[int] = None
+    line: int | None = None
+    char: int | None = None
 
     def __post_init__(self) -> None:
         if isinstance(self.path, str):
@@ -32,7 +32,7 @@ class SigmaError(ValueError):
     """Generic Sigma error and super-class of all Sigma exceptions"""
 
     def __init__(
-        self, *args: Any, source: Optional[SigmaRuleLocation] = None, **kwargs: dict[str, Any]
+        self, *args: Any, source: SigmaRuleLocation | None = None, **kwargs: dict[str, Any]
     ) -> None:
         self.source = source
         super().__init__(*args, **kwargs)
@@ -92,7 +92,7 @@ class SigmaConversionError(SigmaError):
     def __init__(
         self,
         rule: "SigmaRuleBase",
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         *args: Any,
         **kwargs: dict[str, Any],
     ) -> None:
@@ -128,7 +128,7 @@ class SigmaPipelineNotAllowedForBackendError(SigmaConfigurationError):
         self,
         spec: str,
         backend: str,
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         *args: list[Any],
         **kwargs: dict[str, Any],
     ):
@@ -149,7 +149,7 @@ class SigmaPipelineNotFoundError(SigmaError, ValueError):
     def __init__(
         self,
         spec: str,
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         *args: list[Any],
         **kwargs: dict[str, Any],
     ) -> None:
@@ -283,10 +283,10 @@ class SigmaPipelineConditionError(SigmaConfigurationError):
     def __init__(
         self,
         error: str,
-        expression: Optional[str] = None,
-        location: Optional[int] = None,
+        expression: str | None = None,
+        location: int | None = None,
         *args: Any,
-        source: Optional[SigmaRuleLocation] = None,
+        source: SigmaRuleLocation | None = None,
         **kwargs: dict[str, Any],
     ):
         self.expression = expression

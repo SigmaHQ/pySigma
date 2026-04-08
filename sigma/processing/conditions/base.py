@@ -1,6 +1,8 @@
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Literal, Optional, Union, TYPE_CHECKING
+from typing import Literal, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.types import SigmaFieldReference, SigmaType
 from sigma.rule import (
@@ -21,7 +23,7 @@ if TYPE_CHECKING:
 class ProcessingCondition(ABC):
     """Anchor base class for all processing condition types."""
 
-    _pipeline: Optional["ProcessingPipeline"] = field(init=False, compare=False, default=None)
+    _pipeline: "ProcessingPipeline" | None = field(init=False, compare=False, default=None)
 
     def set_pipeline(self, pipeline: "ProcessingPipeline") -> None:
         if self._pipeline is None:
@@ -42,7 +44,7 @@ class RuleProcessingCondition(ProcessingCondition, ABC):
     @abstractmethod
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         """Match condition on Sigma rule."""
 
@@ -54,7 +56,7 @@ class FieldNameProcessingCondition(ProcessingCondition, ABC):
     """
 
     @abstractmethod
-    def match_field_name(self, field: Optional[str]) -> bool:
+    def match_field_name(self, field: str | None) -> bool:
         "The method match is called for each field name and must return a bool result."
 
     def match_detection_item(
@@ -156,7 +158,7 @@ class RuleDetectionItemCondition(RuleProcessingCondition, ABC):
 
     def match(
         self,
-        rule: Union[SigmaRule, SigmaCorrelationRule],
+        rule: SigmaRule | SigmaCorrelationRule,
     ) -> bool:
         if isinstance(rule, SigmaRule):
             for detection in rule.detection.detections.values():
@@ -167,5 +169,5 @@ class RuleDetectionItemCondition(RuleProcessingCondition, ABC):
             return False
 
     @abstractmethod
-    def find_detection_item(self, detection: Union[SigmaDetectionItem, SigmaDetection]) -> bool:
+    def find_detection_item(self, detection: SigmaDetectionItem | SigmaDetection) -> bool:
         pass

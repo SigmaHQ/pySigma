@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 import re
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
@@ -6,7 +8,6 @@ from ipaddress import IPv4Network, IPv6Network, ip_network
 from math import inf
 from typing import (
     ClassVar,
-    Pattern,
     Type,
     Union,
     Optional,
@@ -93,7 +94,7 @@ class SigmaNull(SigmaType):
 
     null: ClassVar[None] = None
 
-    def __init__(self, dummy: Optional[Any] = None):
+    def __init__(self, dummy: Any | None = None):
         pass
 
     def __eq__(self, other: Any) -> bool:
@@ -110,7 +111,7 @@ class SigmaExists(SigmaType):
         return self.exists
 
 
-SigmaStringPartType = Union[str, SpecialChars, Placeholder]
+SigmaStringPartType = str | SpecialChars | Placeholder
 
 
 class SigmaString(SigmaType):
@@ -123,7 +124,7 @@ class SigmaString(SigmaType):
         SigmaStringPartType
     ]  # the string is represented as sequence of strings and characters with special meaning
 
-    def __init__(self, s: Optional[str] = None, escape: bool = True):
+    def __init__(self, s: str | None = None, escape: bool = True):
         """
         Initializes SigmaString instance from raw string by parsing it:
 
@@ -141,7 +142,7 @@ class SigmaString(SigmaType):
 
         self.original = s
 
-        r: list[Union[str, SpecialChars, Placeholder]] = list()
+        r: list[str | SpecialChars | Placeholder] = list()
         acc = []  # list accumulation until special character appears
         escaped = False  # escape mode flag: characters in this mode are always accumulated
         for c in s:
@@ -181,12 +182,12 @@ class SigmaString(SigmaType):
         sigma_string.original = s
         return sigma_string
 
-    def __getitem__(self, idx: Union[int, slice]) -> "SigmaString":
+    def __getitem__(self, idx: int | slice) -> "SigmaString":
         """
         Index SigmaString parts with transparent handling of special characters.
 
         :param key: Integer index or slice.
-        :type key: Union[int, slice]
+        :type key: int | slice
         :return: SigmaString containing only the specified part.
         :rtype: SigmaString
         """
@@ -218,7 +219,7 @@ class SigmaString(SigmaType):
             raise IndexError("SigmaString index out of range")
 
         i = 0  # Pointer to SigmaString element
-        result: list[Union[str, SpecialChars, Placeholder]] = []  # Result: indexed string part
+        result: list[str | SpecialChars | Placeholder] = []  # Result: indexed string part
 
         # Find start. The variables start and end now contain the remaining characters until the
         # indexed part begins/ends relative to the current element.
@@ -271,7 +272,7 @@ class SigmaString(SigmaType):
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
         """
-        res: list[Union[str, SpecialChars, Placeholder]] = []
+        res: list[str | SpecialChars | Placeholder] = []
         for part in self.s:  # iterate over all parts and...
             if isinstance(part, str):  # ...search in strings...
                 lastpos = 0
@@ -296,7 +297,9 @@ class SigmaString(SigmaType):
 
         return self
 
-    def replace_with_placeholder(self, regex: Pattern[str], placeholder_name: str) -> "SigmaString":
+    def replace_with_placeholder(
+        self, regex: re.Pattern[str], placeholder_name: str
+    ) -> "SigmaString":
         """
         Replace all occurrences of string part matching regular expression with placeholder.
 
@@ -307,7 +310,7 @@ class SigmaString(SigmaType):
         :return: Returns a string with the replacement placeholders.
         :rtype: SigmaString
         """
-        result: list[Union[str, SpecialChars, Placeholder]] = []
+        result: list[str | SpecialChars | Placeholder] = []
         for e in self.s:
             if isinstance(e, str):
                 matched = False
@@ -335,24 +338,18 @@ class SigmaString(SigmaType):
 
     def _merge_strs(self) -> "SigmaString":
         """Merge consecutive plain strings in self.s."""
-        src = list(reversed(self.s))
-        res: list[SigmaStringPartType] = []
-        while src:
-            item = src.pop()
-            try:
-                if isinstance(res[-1], str) and isinstance(
-                    item, str
-                ):  # append current item to last result element if both are strings
-                    res[-1] += item
-                else:
-                    res.append(item)
-            except IndexError:  # first element
+        if not self.s:
+            return self
+        res: list[SigmaStringPartType] = [self.s[0]]
+        for item in self.s[1:]:
+            if isinstance(res[-1], str) and isinstance(item, str):
+                res[-1] += item
+            else:
                 res.append(item)
-
         self.s = res
         return self
 
-    def __add__(self, other: Union["SigmaString", str, SpecialChars, Placeholder]) -> "SigmaString":
+    def __add__(self, other: "SigmaString" | str | SpecialChars | Placeholder) -> "SigmaString":
         s = self.__class__()
         if isinstance(other, self.__class__):
             s.s = self.s + other.s
@@ -362,7 +359,7 @@ class SigmaString(SigmaType):
             return NotImplemented
         return s._merge_strs()
 
-    def __radd__(self, other: Union[str, SpecialChars, Placeholder]) -> "SigmaString":
+    def __radd__(self, other: str | SpecialChars | Placeholder) -> "SigmaString":
         if isinstance(other, (str, SpecialChars, Placeholder)):
             s = self.__class__()
             s.s = [other] + self.s
@@ -450,10 +447,10 @@ class SigmaString(SigmaType):
 
     def contains_special(self) -> bool:
         """Check if string contains special characters."""
-        return any([isinstance(item, SpecialChars) for item in self.s])
+        return any(isinstance(item, SpecialChars) for item in self.s)
 
     def contains_placeholder(
-        self, include: Optional[list[str]] = None, exclude: Optional[list[str]] = None
+        self, include: list[str] | None = None, exclude: list[str] | None = None
     ) -> bool:
         """
         Check if string contains placeholders and if any placeholder name is
@@ -476,7 +473,7 @@ class SigmaString(SigmaType):
     def replace_placeholders(
         self,
         callback: Callable[
-            [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
+            [Placeholder], Iterator[str | SpecialChars | Placeholder | "SigmaString"]
         ],
     ) -> list["SigmaString"]:
         """
@@ -528,7 +525,7 @@ class SigmaString(SigmaType):
 
     def map_parts(
         self,
-        func: Callable[[SigmaStringPartType], Optional[SigmaStringPartType]],
+        func: Callable[[SigmaStringPartType], SigmaStringPartType | None],
         filter_func: Callable[[SigmaStringPartType], bool] = lambda x: True,
         interpret_special: bool = False,
     ) -> "SigmaString":
@@ -550,14 +547,14 @@ class SigmaString(SigmaType):
         s.s = parts
         return s
 
-    def map_str_parts(self, func: Callable[[str], Optional[str]]) -> "SigmaString":
+    def map_str_parts(self, func: Callable[[str], str | None]) -> "SigmaString":
         return self.map_parts(func, lambda x: isinstance(x, str))  # type: ignore
 
     def convert(
         self,
-        escape_char: Optional[str] = "\\",
-        wildcard_multi: Optional[str] = "*",
-        wildcard_single: Optional[str] = "?",
+        escape_char: str | None = "\\",
+        wildcard_multi: str | None = "*",
+        wildcard_single: str | None = "?",
         add_escaped: str = "",
         filter_chars: str = "",
     ) -> str:
@@ -572,40 +569,56 @@ class SigmaString(SigmaType):
         Setting one of the wildcard or multiple parameters to None indicates that this feature is not supported. Appearance
         of these characters in a string will raise a SigmaValueError.
         """
-        s = ""
+        result = []
         escaped_chars = frozenset((wildcard_multi or "") + (wildcard_single or "") + add_escaped)
+        filter_set = frozenset(filter_chars)
 
-        for c in iter(self):
-            if isinstance(c, str):  # c is plain character
-                if c in filter_chars:  # Skip filtered characters
-                    continue
-                if c in escaped_chars:
-                    s += escape_char
-                s += c
-            elif isinstance(c, SpecialChars):  # special handling for special characters
-                if c == SpecialChars.WILDCARD_MULTI:
+        for part in self.s:
+            if isinstance(part, str):  # part is a plain string segment
+                if not filter_set and not escaped_chars:
+                    # Fast path: no escaping or filtering needed
+                    result.append(part)
+                elif not filter_set and escaped_chars:
+                    # Only escaping needed, process character-by-character only if necessary
+                    if any(c in escaped_chars for c in part):
+                        for c in part:
+                            if c in escaped_chars and escape_char is not None:
+                                result.append(escape_char)
+                            result.append(c)
+                    else:
+                        result.append(part)
+                else:
+                    # Both filtering and escaping
+                    for c in part:
+                        if c in filter_set:
+                            continue
+                        if c in escaped_chars and escape_char is not None:
+                            result.append(escape_char)
+                        result.append(c)
+            elif isinstance(part, SpecialChars):  # special handling for special characters
+                if part == SpecialChars.WILDCARD_MULTI:
                     if wildcard_multi is not None:
-                        s += wildcard_multi
+                        result.append(wildcard_multi)
                     else:
                         raise SigmaValueError(
                             "Multi-character wildcard not specified for conversion"
                         )
-                elif c == SpecialChars.WILDCARD_SINGLE:
+                elif part == SpecialChars.WILDCARD_SINGLE:
                     if wildcard_single is not None:
-                        s += wildcard_single
+                        result.append(wildcard_single)
                     else:
                         raise SigmaValueError(
                             "Single-character wildcard not specified for conversion"
                         )
-            elif isinstance(c, Placeholder):
+            elif isinstance(part, Placeholder):
                 raise SigmaPlaceholderError(
-                    f"Attempt to convert unhandled placeholder '{c.name}' into query."
+                    f"Attempt to convert unhandled placeholder '{part.name}' into query."
                 )
             else:
                 raise SigmaValueError(
-                    f"Trying to convert SigmaString containing part of type '{type(c).__name__}'"
+                    f"Trying to convert SigmaString containing part of type '{type(part).__name__}'"
                 )
-        return s
+        return "".join(result)
 
     def to_regex(self, custom_escaped: str = "") -> "SigmaRegularExpression":
         """Convert SigmaString into a regular expression."""
@@ -651,7 +664,7 @@ class SigmaCasedString(SigmaString):
 class SigmaNumber(SigmaType):
     """Numeric value type"""
 
-    number: Union[int, float] = field(init=False, repr=True)
+    number: int | float = field(init=False, repr=True)
     init_number: InitVar[Any]
 
     def __post_init__(self, init_number: Any) -> None:
@@ -726,7 +739,7 @@ class SigmaRegularExpression(SigmaType):
     """Regular expression type"""
 
     regexp: SigmaString = field(init=False)
-    regexp_init: InitVar[Union[SigmaString, str]]
+    regexp_init: InitVar[SigmaString | str]
     flags: set[SigmaRegularExpressionFlag] = field(default_factory=set)
     sigma_to_python_flags: ClassVar[dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
         SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
@@ -741,7 +754,7 @@ class SigmaRegularExpression(SigmaType):
 
     def __post_init__(
         self,
-        regexp_init: Union[str, SigmaString],
+        regexp_init: str | SigmaString,
     ) -> None:
         if isinstance(regexp_init, str):
             regexp_init = SigmaString(regexp_init, escape=False)
@@ -806,7 +819,7 @@ class SigmaRegularExpression(SigmaType):
         return prefix + escape_char.join([regexp_str[i:j] for i, j in ranges])
 
     def contains_placeholder(
-        self, include: Optional[list[str]] = None, exclude: Optional[list[str]] = None
+        self, include: list[str] | None = None, exclude: list[str] | None = None
     ) -> bool:
         return self.regexp.contains_placeholder(include, exclude)
 
@@ -822,7 +835,7 @@ class SigmaRegularExpression(SigmaType):
     def replace_placeholders(
         self,
         callback: Callable[
-            [Placeholder], Iterator[Union[str, SpecialChars, Placeholder, "SigmaString"]]
+            [Placeholder], Iterator[str | SpecialChars | Placeholder | "SigmaString"]
         ],
     ) -> list["SigmaRegularExpression"]:
         """
@@ -839,8 +852,8 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
     """CIDR IP address range expression type"""
 
     cidr: str
-    source: Optional[SigmaRuleLocation] = None
-    network: Union[IPv4Network, IPv6Network] = field(init=False, compare=False)
+    source: SigmaRuleLocation | None = None
+    network: IPv4Network | IPv6Network = field(init=False, compare=False)
 
     def __post_init__(self) -> None:
         """Verify if cidr is valid by re"""
@@ -932,7 +945,7 @@ class SigmaCompareExpression(NoPlainConversionMixin, SigmaType):
 
     number: SigmaNumber
     op: CompareOperators
-    source: Optional[SigmaRuleLocation] = None
+    source: SigmaRuleLocation | None = None
     CompareOperators: ClassVar[Type["CompareOperators"]] = CompareOperators
 
     def __post_init__(self) -> None:
@@ -975,7 +988,7 @@ class SigmaQueryExpression(NoPlainConversionMixin, SigmaType):
     def has_field_placeholder(self) -> bool:
         return "{field}" in self.expr
 
-    def finalize(self, field: Optional[str] = None) -> str:
+    def finalize(self, field: str | None = None) -> str:
         if field is None and self.has_field_placeholder():
             raise SigmaValueError(
                 f"Query expression '{ self.expr }' has a field placeholder but no field was given in finalization"
@@ -1009,8 +1022,15 @@ type_map: dict[type, Type[SigmaType]] = {
 }
 
 
-def sigma_type(v: Optional[Union[int, float, str, bool]]) -> SigmaType:
+def sigma_type(v: (int | float | str | bool) | None) -> SigmaType:
     """Return Sigma type from Python value"""
+    # Check bool before int since bool is a subclass of int in Python
+    if isinstance(v, bool):
+        return SigmaBool(v)
+    matched = type_map.get(type(v))
+    if matched is not None:
+        return matched(v)
+    # Fallback to isinstance checks for subclasses
     for t, st in type_map.items():
         if isinstance(v, t):
             return st(v)

@@ -6,7 +6,7 @@ from sigma.exceptions import (
     SigmaPipelineNotFoundError,
 )
 from sigma.processing.pipeline import ProcessingPipeline
-from typing import Iterable, Optional, Tuple, Union, cast, Callable
+from typing import Iterable, cast, Callable
 from collections import namedtuple
 
 
@@ -17,7 +17,7 @@ class ProcessingPipelineResolver:
     It takes care of sorting by priority and resolution of filenames as well as pipeline name identifiers.
     """
 
-    pipelines: dict[str, Union[ProcessingPipeline, Callable[[], ProcessingPipeline]]] = field(
+    pipelines: dict[str, ProcessingPipeline | Callable[[], ProcessingPipeline]] = field(
         default_factory=dict
     )
 
@@ -38,7 +38,7 @@ class ProcessingPipelineResolver:
         """List identifier/processing pipeline tuples."""
         return ((id, self.resolve_pipeline(id)) for id in self.pipelines.keys())
 
-    def resolve_pipeline(self, spec: str, target: Optional[str] = None) -> ProcessingPipeline:
+    def resolve_pipeline(self, spec: str, target: str | None = None) -> ProcessingPipeline:
         """
         Resolve single processing pipeline. It first tries to find a pipeline with this identifier
         in the registered pipelines. If this fails, *spec* is treated as file name. If this fails
@@ -67,9 +67,7 @@ class ProcessingPipelineResolver:
             except OSError as e:
                 raise SigmaPipelineNotFoundError(spec)
 
-    def resolve(
-        self, pipeline_specs: list[str], target: Optional[str] = None
-    ) -> ProcessingPipeline:
+    def resolve(self, pipeline_specs: list[str], target: str | None = None) -> ProcessingPipeline:
         """
         Resolve a list of
 

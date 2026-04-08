@@ -239,7 +239,7 @@ class ConditionSelector(ConditionItem):
         self.parent = parent
 
         ids = self.resolve_referenced_detections(detections)
-        cond = self.cond_class(ids)
+        cond = self.cond_class(ids)  # type: ignore[arg-type]  # list invariance: ConditionIdentifier is a subtype of the union
         return cond.postprocess(detections, parent, source)
 
 

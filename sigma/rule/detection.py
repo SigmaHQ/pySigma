@@ -140,6 +140,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             val_list = val
 
         # Map Python types to Sigma typing classes
+        sigma_val: list[SigmaType]
         if SigmaRegularExpressionModifier in modifiers:
             # The 're' modifier ensures all values are strings
             sigma_val = [

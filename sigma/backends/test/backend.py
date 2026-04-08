@@ -229,10 +229,10 @@ class TextQueryTestBackend(TextQueryBackend):
     def finalize_query_test(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        return "[ " + self.finalize_query_default(rule, query, index, state) + " ]"
+        return "[ " + str(self.finalize_query_default(rule, query, index, state)) + " ]"
 
     def finalize_output_test(self, queries: list[str]) -> str:
-        return self.finalize_output_default(queries)  # type: ignore[return-value]  # returns str at runtime
+        return self.finalize_output_default(queries)  # type: ignore[no-any-return]  # returns str at runtime
 
     def finalize_query_state(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
@@ -241,17 +241,17 @@ class TextQueryTestBackend(TextQueryBackend):
             "index="
             + str(state.processing_state.get("index", "default"))
             + " ("
-            + self.finalize_query_default(rule, query, index, state)
+            + str(self.finalize_query_default(rule, query, index, state))
             + ")"
         )
 
     def finalize_output_state(self, queries: list[str]) -> str:
-        return self.finalize_output_default(queries)  # type: ignore[return-value]  # returns str at runtime
+        return self.finalize_output_default(queries)  # type: ignore[no-any-return]  # returns str at runtime
 
     def finalize_query_list_of_dict(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        return self.finalize_query_default(rule, query, index, state)
+        return str(self.finalize_query_default(rule, query, index, state))
 
     def finalize_output_list_of_dict(self, queries: list[str]) -> list[dict[str, str | None]]:
         return [
@@ -266,7 +266,7 @@ class TextQueryTestBackend(TextQueryBackend):
     def finalize_query_bytes(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        return self.finalize_query_default(rule, query, index, state)
+        return str(self.finalize_query_default(rule, query, index, state))
 
     def finalize_output_bytes(self, queries: list[str]) -> bytes:
         return bytes("\x00".join(self.finalize_output_default(queries)), "utf-8")
@@ -274,7 +274,7 @@ class TextQueryTestBackend(TextQueryBackend):
     def finalize_query_str(
         self, rule: SigmaRule, query: str, index: int, state: ConversionState
     ) -> str:
-        return self.finalize_query_default(rule, query, index, state)
+        return str(self.finalize_query_default(rule, query, index, state))
 
     def finalize_output_str(self, queries: list[str]) -> str:
         return "\n".join(self.finalize_output_default(queries))

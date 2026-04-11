@@ -1,9 +1,10 @@
 import re
+import string
 from abc import ABC, abstractmethod
 from collections import ChainMap, defaultdict
 from contextlib import contextmanager
-from typing import Any, Callable, ClassVar, Iterator, cast
 from itertools import pairwise
+from typing import Any, Callable, ClassVar, Iterator, cast
 
 from typing_extensions import Self
 
@@ -33,13 +34,7 @@ from sigma.correlations import (
     SigmaExtendedCorrelationCondition,
     SigmaRuleReference,
 )
-from sigma.exceptions import (
-    ExceptionOnUsage,
-    SigmaBackendError,
-    SigmaConversionError,
-    SigmaError,
-    SigmaValueError,
-)
+from sigma.exceptions import SigmaBackendError, SigmaConversionError, SigmaError, SigmaValueError
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule
 from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
@@ -318,6 +313,33 @@ class Backend(ABC):
             else:
                 e.args = (e.args[0] + msg,)
             raise
+
+    def _format_template(
+        self: Self, template: str, **kwargs: str | int | list[str] | SigmaCorrelationRule | None
+    ) -> str:
+        """
+        Ensure all template's variables are properly populated before generating the output.
+
+        :param template: Templated string to format.
+        :type cond: str
+        :param kwargs: List of parameters to populate the template.
+        :type kwargs: str | int | list[str] | SigmaCorrelationRule | None
+        :return: Templated string
+        :rtype: str
+        """
+        variables: list[tuple[str, str | int | list[str] | SigmaCorrelationRule | None]] = [
+            (parsed_template[1], kwargs.get(parsed_template[1]))
+            for parsed_template in string.Formatter().parse(template)
+            if parsed_template[1]
+        ]
+
+        for variable_name, variable_value in variables:
+            if variable_name == "referenced_rules" and variable_value is None:
+                raise SigmaBackendError(
+                    "Backend doesn't define referenced rule expression but uses it in correlation query template"
+                )
+
+        return template.format(**kwargs)
 
     def decide_convert_condition_as_in_expression(
         self, cond: ConditionOR | ConditionAND, state: ConversionState
@@ -2552,7 +2574,8 @@ class TextQueryBackend(Backend):
             )
 
         template = templates[method]
-        return template.format(
+        return self._format_template(
+            template,
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.referenced_rules, method),
             field=(
@@ -2642,25 +2665,20 @@ class TextQueryBackend(Backend):
 
     def convert_referenced_rules(
         self, referenced_rules: list[SigmaRuleReference], method: str
-    ) -> str:
+    ) -> str | None:
         if (
             self.referenced_rules_expression is None
             or self.referenced_rules_expression_joiner is None
         ):
-            return ExceptionOnUsage(  # type: ignore
-                SigmaBackendError(
-                    "Backend doesn't defines referenced rule expression but uses it in correlation query template"
+            return None
+        return self.referenced_rules_expression_joiner[method].join(
+            (
+                self.referenced_rules_expression[method].format(
+                    ruleid=rule_reference.rule.name or rule_reference.rule.id
                 )
+                for rule_reference in referenced_rules
             )
-        else:
-            return self.referenced_rules_expression_joiner[method].join(
-                (
-                    self.referenced_rules_expression[method].format(
-                        ruleid=rule_reference.rule.name or rule_reference.rule.id
-                    )
-                    for rule_reference in referenced_rules
-                )
-            )
+        )
 
     # Implementation of the condition phase of the correlation query.
     def convert_correlation_condition_from_template(
@@ -2679,7 +2697,8 @@ class TextQueryBackend(Backend):
 
         # Only basic conditions have these attributes
         if isinstance(cond, SigmaCorrelationCondition):
-            return template.format(
+            return self._format_template(
+                template,
                 field=cond.fieldref,
                 op=self.correlation_condition_mapping[cond.op],
                 count=cond.count,
@@ -2688,7 +2707,8 @@ class TextQueryBackend(Backend):
         else:
             # Extended conditions - convert parse tree to query expression
             extended_condition = self.convert_extended_correlation_condition(cond.parsed, method)
-            return template.format(
+            return self._format_template(
+                template,
                 extended_condition=extended_condition,
                 referenced_rules=self.convert_referenced_rules(referenced_rules, method),
             )

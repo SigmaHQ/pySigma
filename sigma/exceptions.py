@@ -1,6 +1,7 @@
+import warnings
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
     from sigma.rule import SigmaRuleBase
@@ -395,4 +396,8 @@ class ExceptionOnUsage:
     exception: Exception
 
     def __getattribute__(self, item: str) -> Any:
+        deprecation_message: str = (
+            f"{type(self).__name__} is deprecated and will be removed in a future release."
+        )
+        warnings.warn(deprecation_message, DeprecationWarning)
         raise object.__getattribute__(self, "exception")

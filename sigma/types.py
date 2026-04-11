@@ -15,7 +15,6 @@ from typing import (
     Iterable,
     Callable,
     Iterator,
-    cast,
 )
 
 from sigma.exceptions import (
@@ -231,7 +230,8 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return self.__class__(e[start : cast(int, end)])
+                        assert isinstance(end, int)  # finite end guaranteed by condition above
+                        return self.__class__(e[start:end])
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -250,7 +250,8 @@ class SigmaString(SigmaType):
             if isinstance(e, str):  # Current SigmaString part is string
                 e_len = len(e)
                 if end < e_len:  # end lies within this string part
-                    result.append(e[: cast(int, end)])
+                    assert isinstance(end, int)  # finite end guaranteed by condition above
+                    result.append(e[:end])
                 else:
                     result.append(e)
                 end -= e_len
@@ -426,10 +427,10 @@ class SigmaString(SigmaType):
         if len(self.s) == 0:
             return False
         c = self.s[0]
-        if not isinstance(val, type(c)):  # can't match if types differ
+        if isinstance(c, str) and isinstance(val, str):
+            return c.startswith(val)
+        elif not isinstance(val, type(c)):  # can't match if types differ
             return False
-        elif isinstance(c, str):  # pass startswith invocation to string objects
-            return c.startswith(cast(str, val))
         else:  # direct comparison of SpecialChars
             return c == val
 
@@ -438,10 +439,10 @@ class SigmaString(SigmaType):
         if len(self.s) == 0:
             return False
         c = self.s[-1]
-        if not isinstance(val, type(c)):  # can't match if types differ
+        if isinstance(c, str) and isinstance(val, str):
+            return c.endswith(val)
+        elif not isinstance(val, type(c)):  # can't match if types differ
             return False
-        elif isinstance(c, str):  # pass endswith invocation to string objects
-            return c.endswith(cast(str, val))
         else:  # direct comparison of SpecialChars
             return c == val
 
@@ -498,12 +499,13 @@ class SigmaString(SigmaType):
                 prefix = SigmaString()
                 prefix.s = s[:i]
                 placeholder = s[i]
+                assert isinstance(placeholder, Placeholder)  # narrowed by isinstance check above
                 suffix = SigmaString()
                 suffix.s = s[i + 1 :]
                 return [
                     prefix + replacement + result_suffix
                     for replacement in callback(
-                        cast(Placeholder, placeholder)
+                        placeholder
                     )  # iterate over all callback result values
                     for result_suffix in suffix.replace_placeholders(
                         callback
@@ -638,14 +640,12 @@ class SigmaString(SigmaType):
         return self.map_str_parts(str.lower)
 
     def snake_case(self) -> "SigmaString":
+        def _to_snake_case(x: SigmaStringPartType) -> Optional[SigmaStringPartType]:
+            assert isinstance(x, str)  # ensured by filter function below
+            return re.sub(r"(?<!^)(?=[A-Z])", "_", x).lower()
+
         return self.map_parts(
-            lambda x: re.sub(
-                r"(?<!^)(?=[A-Z])",
-                "_",
-                cast(
-                    str, x
-                ),  # str type ensured by filtering for str in next parameter of map_parts
-            ).lower(),
+            _to_snake_case,
             lambda x: isinstance(x, str),
         )
 
@@ -782,7 +782,7 @@ class SigmaRegularExpression(SigmaType):
 
     def escape(
         self,
-        escaped: list[str] = cast(list[str], ()),
+        escaped: Optional[list[str]] = None,
         escape_char: str = "\\",
         escape_escape_char: bool = True,
         flag_prefix: bool = True,
@@ -790,6 +790,8 @@ class SigmaRegularExpression(SigmaType):
         """Escape strings from escaped tuple as well as escape_char itself (can be disabled with
         escape_escape_char) with escape_char. Prepends a (?...) expression with set flags (i, m and
         s) if flag_prefix is set."""
+        if escaped is None:
+            escaped = []
         r = "|".join(
             [  # Generate regular expressions from sequences that should be escaped and the escape char itself
                 re.escape(e)

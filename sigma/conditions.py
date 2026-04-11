@@ -78,7 +78,7 @@ class ParentChainMixin:
             self.source: SigmaRuleLocation | None = source or self.source
         except AttributeError:
             self.source = None
-        return cast("ConditionItem", self)
+        return self  # type: ignore[return-value]  # self is always a subtype of the return union
 
 
 @dataclass
@@ -239,18 +239,7 @@ class ConditionSelector(ConditionItem):
         self.parent = parent
 
         ids = self.resolve_referenced_detections(detections)
-        cond = self.cond_class(
-            cast(
-                list[
-                    ConditionIdentifier
-                    | ConditionItem
-                    | ConditionFieldEqualsValueExpression
-                    | ConditionValueExpression
-                    | None
-                ],
-                ids,
-            )
-        )
+        cond = self.cond_class(ids)  # type: ignore[arg-type]  # list invariance: ConditionIdentifier is a subtype of the union
         return cond.postprocess(detections, parent, source)
 
 

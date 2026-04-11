@@ -4,7 +4,7 @@ from collections.abc import Iterable, Iterator
 from dataclasses import InitVar, dataclass, field
 from functools import reduce
 from pathlib import Path
-from typing import IO, Any, Callable, cast
+from typing import IO, Any, Callable
 from uuid import UUID
 
 import yaml
@@ -95,9 +95,7 @@ class SigmaCollection:
                 rule.resolve_rule_references(self)
 
         # Extract all filters from the rules
-        filters: list[SigmaFilter] = [
-            cast("SigmaFilter", rule) for rule in self.rules if isinstance(rule, SigmaFilter)
-        ]
+        filters: list[SigmaFilter] = [rule for rule in self.rules if isinstance(rule, SigmaFilter)]
         self.rules = [rule for rule in self.rules if not isinstance(rule, SigmaFilter)]
 
         # Apply filters on each rule and replace the rule with the filtered rule

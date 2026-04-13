@@ -109,16 +109,38 @@ class NestedFinalizer(Finalizer):
         self._nested_pipeline = ProcessingPipeline(finalizers=self.finalizers)
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "NestedFinalizer":
+    def from_dict(
+        cls,
+        d: dict[str, Any],
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
+    ) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
         fs = []
         for finalizer in d["finalizers"]:
+            finalizer.pop("allow_template_vars", None)  # Strip untrusted YAML value
+            finalizer.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = finalizer.pop("type")
             except KeyError:
                 raise SigmaConfigurationError("Finalizer type not specified for: " + str(finalizer))
-            fs.append(finalizers[finalizer_type].from_dict(finalizer))
+
+            finalizer_cls = finalizers[finalizer_type]
+            if issubclass(finalizer_cls, TemplateBase):
+                finalizer["allow_template_vars"] = allow_template_vars
+                finalizer["vars_allowed_paths"] = vars_allowed_paths
+                fs.append(finalizer_cls.from_dict(finalizer))
+            elif finalizer_cls is cls:
+                fs.append(
+                    finalizer_cls.from_dict(
+                        finalizer,
+                        allow_template_vars=allow_template_vars,
+                        vars_allowed_paths=vars_allowed_paths,
+                    )
+                )
+            else:
+                fs.append(finalizer_cls.from_dict(finalizer))
         return cls(finalizers=fs)
 
     def apply(self, queries: list[Any]) -> Any:

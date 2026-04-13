@@ -4,6 +4,7 @@ from collections import defaultdict
 from dataclasses import dataclass, field
 from functools import partial
 import hashlib
+import os
 from typing import (
     Literal,
     Mapping,
@@ -858,8 +859,18 @@ class ProcessingPipeline:
         processing_pipeline: str,
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        source_path: str | None = None,
     ) -> "ProcessingPipeline":
-        """Convert YAML input string into processing pipeline."""
+        """Convert YAML input string into processing pipeline.
+
+        If *source_path* is provided and *vars_allowed_paths* is ``None``, the
+        directory containing *source_path* is automatically used as the only
+        allowed base directory for template vars files. This prevents a
+        pipeline YAML from referencing vars files outside its own directory
+        tree.
+        """
+        if vars_allowed_paths is None and source_path is not None:
+            vars_allowed_paths = (os.path.dirname(os.path.realpath(source_path)),)
         try:
             parsed_pipeline = yaml.safe_load(processing_pipeline)
         except yaml.parser.ParserError as e:

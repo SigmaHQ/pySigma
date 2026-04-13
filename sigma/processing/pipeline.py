@@ -807,7 +807,7 @@ class ProcessingPipeline:
                 raise SigmaConfigurationError(f"Error in processing rule {i + 1}: {str(e)}") from e
 
         fds = d.get("finalizers", list())  # no default transformation
-        fs = list()
+        fs: list[Finalizer] = list()
         for fd in fds:
             fd.pop("allow_template_vars", None)  # Strip untrusted YAML value
             fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
@@ -829,7 +829,7 @@ class ProcessingPipeline:
                 fs.append(finalizer_cls.from_dict(fd))
             elif finalizer_cls is NestedFinalizer:
                 fs.append(
-                    finalizer_cls.from_dict(
+                    NestedFinalizer.from_dict(
                         fd,
                         allow_template_vars=allow_template_vars,
                         vars_allowed_paths=vars_allowed_paths,

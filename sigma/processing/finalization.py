@@ -117,7 +117,7 @@ class NestedFinalizer(Finalizer):
     ) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
-        fs = []
+        fs: list[Finalizer] = []
         for finalizer in d["finalizers"]:
             finalizer.pop("allow_template_vars", None)  # Strip untrusted YAML value
             finalizer.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
@@ -133,7 +133,7 @@ class NestedFinalizer(Finalizer):
                 fs.append(finalizer_cls.from_dict(finalizer))
             elif finalizer_cls is cls:
                 fs.append(
-                    finalizer_cls.from_dict(
+                    cls.from_dict(
                         finalizer,
                         allow_template_vars=allow_template_vars,
                         vars_allowed_paths=vars_allowed_paths,

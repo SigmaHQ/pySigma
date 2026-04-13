@@ -63,7 +63,7 @@ class ProcessingPipelineResolver:
         except KeyError:  # identifier not found, try it as path
             try:
                 with open(spec, "r") as f:
-                    return ProcessingPipeline.from_yaml(f.read())
+                    return ProcessingPipeline.from_yaml(f.read(), source_path=spec)
             except OSError as e:
                 raise SigmaPipelineNotFoundError(spec)
 

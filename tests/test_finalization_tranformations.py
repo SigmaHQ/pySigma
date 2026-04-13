@@ -309,3 +309,51 @@ def test_template_finalizer_vars_allowed_paths_stripped_from_yaml(dummy_pipeline
                 vars_allowed_paths:
                   - "tests/files"
             """)
+
+
+def test_template_finalizer_vars_source_path_default_allowed(dummy_pipeline):
+    """Test that from_yaml with source_path defaults vars_allowed_paths to that directory."""
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    pipeline = ProcessingPipeline.from_yaml(
+        "finalizers:\n"
+        "  - type: template\n"
+        "    template: \"{{ queries | join(', ') }}\"\n"
+        '    vars: "tests/files/template_vars.py"\n',
+        allow_template_vars=True,
+        source_path="tests/files/pipeline.yml",
+    )
+    assert pipeline.finalizers[0].j2template.globals["parse_json"] is not None
+
+
+def test_template_finalizer_vars_source_path_blocks_outside(dummy_pipeline):
+    """Test that from_yaml with source_path blocks vars files outside the source directory."""
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    with pytest.raises(SigmaSecurityError, match="outside the allowed base directories"):
+        ProcessingPipeline.from_yaml(
+            """
+finalizers:
+  - type: template
+    template: "test"
+    vars: "tests/files/template_vars.py"
+            """,
+            allow_template_vars=True,
+            source_path="some/other/dir/pipeline.yml",
+        )
+
+
+def test_template_finalizer_vars_explicit_allowed_paths_not_overridden(dummy_pipeline):
+    """Test that explicit vars_allowed_paths is not overridden by source_path."""
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    pipeline = ProcessingPipeline.from_yaml(
+        "finalizers:\n"
+        "  - type: template\n"
+        "    template: \"{{ queries | join(', ') }}\"\n"
+        '    vars: "tests/files/template_vars.py"\n',
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests/files"),),
+        source_path="some/other/dir/pipeline.yml",
+    )
+    assert pipeline.finalizers[0].j2template.globals["parse_json"] is not None

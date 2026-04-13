@@ -987,6 +987,11 @@ class Backend(ABC):
         This is the place where syntactic elements of the target format for the specific query are added,
         e.g. adding query metadata.
         """
+        if output_format not in self.formats:
+            raise SigmaBackendError(
+                f"Unknown output format '{output_format}', "
+                f"must be one of: {', '.join(self.formats.keys())}"
+            )
         backend_query = self.__getattribute__("finalize_query_" + output_format)(
             rule, query, index, state
         )
@@ -1003,6 +1008,11 @@ class Backend(ABC):
 
     def finalize(self, queries: list[Any], output_format: str) -> Any:
         """Finalize output. Dispatches to format-specific method."""
+        if output_format not in self.formats:
+            raise SigmaBackendError(
+                f"Unknown output format '{output_format}', "
+                f"must be one of: {', '.join(self.formats.keys())}"
+            )
         output = self.__getattribute__("finalize_output_" + output_format)(queries)
         return self.last_processing_pipeline.finalize(output)
 

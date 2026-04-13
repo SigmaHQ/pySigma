@@ -16,7 +16,12 @@ from sigma.processing.transformations import (
     SetStateTransformation,
     ValueListPlaceholderTransformation,
 )
-from sigma.exceptions import SigmaPlaceholderError, SigmaTypeError, SigmaValueError
+from sigma.exceptions import (
+    SigmaBackendError,
+    SigmaPlaceholderError,
+    SigmaTypeError,
+    SigmaValueError,
+)
 import pytest
 
 from sigma.processing.transformations.failure import StrictFieldMappingFailure
@@ -2885,3 +2890,22 @@ def test_backend_output_format_str(test_backend):
     )
     assert isinstance(result, str)
     assert "mappedA" in result
+
+
+def test_backend_unknown_output_format(test_backend):
+    """Test that an unknown output format raises SigmaBackendError."""
+    with pytest.raises(SigmaBackendError, match="Unknown output format"):
+        test_backend.convert(
+            SigmaCollection.from_yaml("""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: valueA
+                    condition: sel
+            """),
+            output_format="nonexistent_format",
+        )

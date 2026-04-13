@@ -50,7 +50,9 @@ class TemplateBase:
             env = SandboxedEnvironment(autoescape=self.autoescape)
             self.j2template = env.from_string(self.template)
         else:
-            env = SandboxedEnvironment(autoescape=self.autoescape, loader=FileSystemLoader(self.path))
+            env = SandboxedEnvironment(
+                autoescape=self.autoescape, loader=FileSystemLoader(self.path)
+            )
             self.j2template = env.get_template(self.template)
 
         # Load custom variables/functions from Python file if provided

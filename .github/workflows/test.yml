@@ -35,7 +35,7 @@ jobs:
         run: poetry run python print-coverage.py >> $GITHUB_ENV
       - name: Create coverage badge
         if: ${{ github.repository == 'SigmaHQ/pySigma' && github.event_name == 'push' && runner.os == 'Linux' && matrix.os == 'ubuntu-latest' && matrix.python-version == '3.14' }}
-        uses: schneegans/dynamic-badges-action@v1.7.0
+        uses: schneegans/dynamic-badges-action@v1.8.0
         with:
           auth: ${{ secrets.GIST_SECRET }}
           gistID: 11b31b4f709b6dc54a30d5203e8fe0ee

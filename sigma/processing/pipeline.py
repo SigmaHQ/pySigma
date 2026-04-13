@@ -865,7 +865,9 @@ class ProcessingPipeline:
         except yaml.parser.ParserError as e:
             raise SigmaPipelineParsingError("Error in parsing of a Sigma processing pipeline")
         return cls.from_dict(
-            parsed_pipeline, allow_template_vars=allow_template_vars, vars_allowed_paths=vars_allowed_paths
+            parsed_pipeline,
+            allow_template_vars=allow_template_vars,
+            vars_allowed_paths=vars_allowed_paths,
         )
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> SigmaRule | SigmaCorrelationRule:

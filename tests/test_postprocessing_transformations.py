@@ -325,13 +325,11 @@ def test_query_template_transformation_vars_allowed_paths_from_yaml(
 ):
     """Test that vars_allowed_paths specified in YAML is stripped and has no effect."""
     with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
-        ProcessingPipeline.from_yaml(
-            """
+        ProcessingPipeline.from_yaml("""
             postprocessing:
               - type: template
                 template: "{{ query }}"
                 vars: "tests/files/template_vars.py"
                 vars_allowed_paths:
                   - "tests/files"
-            """
-        )
+            """)

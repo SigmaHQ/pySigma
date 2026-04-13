@@ -4,7 +4,8 @@ import os
 import sys
 from typing import Any, Dict
 
-from jinja2 import Environment, FileSystemLoader, Template
+from jinja2.sandbox import SandboxedEnvironment
+from jinja2 import FileSystemLoader
 
 from sigma.exceptions import SigmaSecurityError
 
@@ -46,10 +47,12 @@ class TemplateBase:
 
     def __post_init__(self) -> None:
         if self.path is None:
-            env = Environment(autoescape=self.autoescape)
+            env = SandboxedEnvironment(autoescape=self.autoescape)
             self.j2template = env.from_string(self.template)
         else:
-            env = Environment(autoescape=self.autoescape, loader=FileSystemLoader(self.path))
+            env = SandboxedEnvironment(
+                autoescape=self.autoescape, loader=FileSystemLoader(self.path)
+            )
             self.j2template = env.get_template(self.template)
 
         # Load custom variables/functions from Python file if provided

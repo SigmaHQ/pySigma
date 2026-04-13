@@ -1,5 +1,7 @@
+from __future__ import annotations
+
 from abc import abstractmethod
-from typing import Any, Callable
+from typing import Any, Callable, ClassVar
 
 from sigma.processing.pipeline import ProcessingPipeline
 
@@ -11,6 +13,8 @@ class Pipeline:
     the new pipelines. The reasoning behind this is discussed in:
     https://github.com/SigmaHQ/pySigma/discussions/110#discussioncomment-6179682
     """
+
+    _instance: ClassVar[Pipeline | None] = None
 
     def __init__(
         self,
@@ -52,6 +56,6 @@ class Pipeline:
         Returns:
             Pipeline: The class instance.
         """
-        if not hasattr(cls, "_instance"):
+        if cls._instance is None:
             cls._instance = super(Pipeline, cls).__new__(cls)
         return cls._instance

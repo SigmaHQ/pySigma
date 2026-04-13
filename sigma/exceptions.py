@@ -190,6 +190,12 @@ class SigmaRegularExpressionError(SigmaValueError):
     pass
 
 
+class SigmaSecurityError(SigmaError):
+    """Security-sensitive operation was attempted without explicit opt-in."""
+
+    pass
+
+
 class SigmaTransformationError(SigmaError):
     """Error while transformation. Can be raised intentionally by FailureTransformation."""
 

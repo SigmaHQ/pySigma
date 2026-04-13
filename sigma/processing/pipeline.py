@@ -20,7 +20,8 @@ from typing import (
 
 from sigma.processing.condition_expressions import ConditionExpression, parse_condition_expression
 from sigma.processing.conditions.base import ProcessingCondition
-from sigma.processing.finalization import Finalizer, finalizers
+from sigma.processing.finalization import Finalizer, NestedFinalizer, finalizers
+from sigma.processing.templates import TemplateBase
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
 from sigma.rule import SigmaDetectionItem, SigmaRule
@@ -67,7 +68,11 @@ class ProcessingItemBase:
 
     @classmethod
     def _base_args_from_dict(
-        cls, d: dict[str, Any], transformations: dict[str, Type[Transformation]]
+        cls,
+        d: dict[str, Any],
+        transformations: dict[str, Type[Transformation]],
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
     ) -> dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -92,7 +97,12 @@ class ProcessingItemBase:
             "rule_condition_expression": rule_cond_expr,
             "rule_condition_linking": cls._parse_condition_linking(d, "rule_cond_op"),
             "rule_condition_negation": d.get("rule_cond_not", False),
-            "transformation": cls._instantiate_transformation(d, transformations),
+            "transformation": cls._instantiate_transformation(
+                d,
+                transformations,
+                allow_template_vars=allow_template_vars,
+                vars_allowed_paths=vars_allowed_paths,
+            ),
         }
 
     def _check_conditions(
@@ -291,7 +301,11 @@ class ProcessingItemBase:
 
     @classmethod
     def _instantiate_transformation(
-        cls, d: dict[str, Any], transformations: dict[str, Type[Transformation]]
+        cls,
+        d: dict[str, Any],
+        transformations: dict[str, Type[Transformation]],
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
     ) -> Transformation:
         try:
             transformation_class_name = d["type"]
@@ -324,8 +338,13 @@ class ProcessingItemBase:
                 "field_name_cond_not",
                 "type",
                 "id",
+                "allow_template_vars",
+                "vars_allowed_paths",
             }
         }
+        if issubclass(transformation_class, TemplateBase):
+            params["allow_template_vars"] = allow_template_vars
+            params["vars_allowed_paths"] = vars_allowed_paths
         try:
             return transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
@@ -626,10 +645,18 @@ class QueryPostprocessingItem(ProcessingItemBase):
     transformation: QueryPostprocessingTransformation
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "QueryPostprocessingItem":
+    def from_dict(
+        cls,
+        d: dict[str, Any],
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
+    ) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(
-            d, cast(dict[str, Type[Transformation]], query_postprocessing_transformations)
+            d,
+            cast(dict[str, Type[Transformation]], query_postprocessing_transformations),
+            allow_template_vars=allow_template_vars,
+            vars_allowed_paths=vars_allowed_paths,
         )
         return cls(**kwargs)
 
@@ -729,7 +756,12 @@ class ProcessingPipeline:
             finalizer._pipeline = None
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ProcessingPipeline":
+    def from_dict(
+        cls,
+        d: dict[str, Any],
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
+    ) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
 
         custom_keys = [
@@ -764,13 +796,21 @@ class ProcessingPipeline:
         postprocessing_items = list()
         for i, item in enumerate(items):
             try:
-                postprocessing_items.append(QueryPostprocessingItem.from_dict(item))
+                postprocessing_items.append(
+                    QueryPostprocessingItem.from_dict(
+                        item,
+                        allow_template_vars=allow_template_vars,
+                        vars_allowed_paths=vars_allowed_paths,
+                    )
+                )
             except SigmaConfigurationError as e:
                 raise SigmaConfigurationError(f"Error in processing rule {i + 1}: {str(e)}") from e
 
         fds = d.get("finalizers", list())  # no default transformation
-        fs = list()
+        fs: list[Finalizer] = list()
         for fd in fds:
+            fd.pop("allow_template_vars", None)  # Strip untrusted YAML value
+            fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = fd.pop("type")
             except KeyError:
@@ -779,9 +819,24 @@ class ProcessingPipeline:
                 )
 
             try:
-                fs.append(finalizers[finalizer_type].from_dict(fd))
+                finalizer_cls = finalizers[finalizer_type]
             except KeyError:
                 raise SigmaConfigurationError(f"Finalizer '{finalizer_type}' is unknown")
+
+            if issubclass(finalizer_cls, TemplateBase):
+                fd["allow_template_vars"] = allow_template_vars
+                fd["vars_allowed_paths"] = vars_allowed_paths
+                fs.append(finalizer_cls.from_dict(fd))
+            elif finalizer_cls is NestedFinalizer:
+                fs.append(
+                    NestedFinalizer.from_dict(
+                        fd,
+                        allow_template_vars=allow_template_vars,
+                        vars_allowed_paths=vars_allowed_paths,
+                    )
+                )
+            else:
+                fs.append(finalizer_cls.from_dict(fd))
 
         priority = d.get("priority", 0)
         name = d.get("name", None)
@@ -798,13 +853,22 @@ class ProcessingPipeline:
         )
 
     @classmethod
-    def from_yaml(cls, processing_pipeline: str) -> "ProcessingPipeline":
+    def from_yaml(
+        cls,
+        processing_pipeline: str,
+        allow_template_vars: bool = False,
+        vars_allowed_paths: tuple[str, ...] | None = None,
+    ) -> "ProcessingPipeline":
         """Convert YAML input string into processing pipeline."""
         try:
             parsed_pipeline = yaml.safe_load(processing_pipeline)
         except yaml.parser.ParserError as e:
             raise SigmaPipelineParsingError("Error in parsing of a Sigma processing pipeline")
-        return cls.from_dict(parsed_pipeline)
+        return cls.from_dict(
+            parsed_pipeline,
+            allow_template_vars=allow_template_vars,
+            vars_allowed_paths=vars_allowed_paths,
+        )
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> SigmaRule | SigmaCorrelationRule:
         """Apply processing pipeline on Sigma rule."""

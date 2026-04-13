@@ -1,5 +1,6 @@
 import pytest
-from sigma.exceptions import SigmaConfigurationError, SigmaTransformationError
+import os
+from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaTransformationError
 from sigma.processing.finalization import (
     ConcatenateQueriesFinalizer,
     NestedFinalizer,
@@ -136,6 +137,7 @@ def test_template_finalizer_with_vars(dummy_pipeline):
     transformation = TemplateFinalizer(
         template='value = {{ parse_json(\'{"key": "value"}\').key }}',
         vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "value = value"
@@ -146,6 +148,7 @@ def test_template_finalizer_with_vars_and_queries(dummy_pipeline):
     transformation = TemplateFinalizer(
         template="{% for query in queries %}{{ parse_json('{\"index\": ' ~ loop.index ~ '}').index }}{% if not loop.last %}, {% endif %}{% endfor %}",
         vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2", "query3"]) == "1, 2, 3"
@@ -156,6 +159,7 @@ def test_template_finalizer_with_json_helper(dummy_pipeline):
     transformation = TemplateFinalizer(
         template='{{ parse_json(\'{"queries": ["q1", "q2"]}\').queries | join(", ") }}',
         vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "q1, q2"
@@ -164,7 +168,11 @@ def test_template_finalizer_with_json_helper(dummy_pipeline):
 def test_template_finalizer_with_invalid_vars_file(dummy_pipeline):
     """Test that missing 'vars' dict raises appropriate error."""
     with pytest.raises(ValueError, match="must define a 'vars' dictionary"):
-        TemplateFinalizer(template="test", vars="tests/files/invalid_template_vars.py")
+        TemplateFinalizer(
+            template="test",
+            vars="tests/files/invalid_template_vars.py",
+            allow_template_vars=True,
+        )
 
 
 def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
@@ -173,6 +181,7 @@ def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
         {
             "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}',
             "vars": "tests/files/template_vars.py",
+            "allow_template_vars": True,
         }
     )
     transformation.set_pipeline(dummy_pipeline)
@@ -221,4 +230,82 @@ def test_json_finalizer_custom_indent(dummy_pipeline):
 def test_template_finalizer_with_nonexistent_vars_file():
     """Test that a non-existent vars file raises ValueError."""
     with pytest.raises(ValueError, match="Could not load vars file"):
-        TemplateFinalizer(template="test", vars="/nonexistent/path/vars.py")
+        TemplateFinalizer(
+            template="test", vars="/nonexistent/path/vars.py", allow_template_vars=True
+        )
+
+
+def test_template_finalizer_vars_blocked_by_default():
+    """Test that vars usage without allow_template_vars raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        TemplateFinalizer(
+            template="test",
+            vars="tests/files/template_vars.py",
+        )
+
+
+def test_template_finalizer_vars_blocked_by_default_from_dict():
+    """Test that vars usage from dict without allow_template_vars raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        TemplateFinalizer.from_dict(
+            {
+                "template": "test",
+                "vars": "tests/files/template_vars.py",
+            }
+        )
+
+
+def test_template_finalizer_vars_allowed_via_env(dummy_pipeline, monkeypatch):
+    """Test that vars usage is allowed when env var is set."""
+    monkeypatch.setenv("PYSIGMA_ALLOW_VARS_EXECUTION", "1")
+    transformation = TemplateFinalizer(
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1", "query2"]) == "value = value"
+
+
+def test_template_finalizer_no_vars_no_error(dummy_pipeline):
+    """Test that templates without vars work normally without allow_template_vars."""
+    transformation = TemplateFinalizer(template="{{ queries | join(', ') }}")
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["q1", "q2"]) == "q1, q2"
+
+
+def test_template_finalizer_vars_allowed_path(dummy_pipeline):
+    """Test that vars file under an allowed base path is accepted."""
+    transformation = TemplateFinalizer(
+        template='value = {{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests/files"),),
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(["query1"]) == "value = value"
+
+
+def test_template_finalizer_vars_blocked_by_path_allowlist(dummy_pipeline):
+    """Test that vars file outside allowed base paths raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="outside the allowed base directories"):
+        TemplateFinalizer(
+            template="test",
+            vars="tests/files/template_vars.py",
+            allow_template_vars=True,
+            vars_allowed_paths=("/some/other/directory",),
+        )
+
+
+def test_template_finalizer_vars_allowed_paths_stripped_from_yaml(dummy_pipeline):
+    """Test that vars_allowed_paths specified in YAML is stripped."""
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        ProcessingPipeline.from_yaml("""
+            finalizers:
+              - type: template
+                template: "{{ queries | join(', ') }}"
+                vars: "tests/files/template_vars.py"
+                vars_allowed_paths:
+                  - "tests/files"
+            """)

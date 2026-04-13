@@ -1,5 +1,6 @@
 import pytest
-from sigma.exceptions import SigmaConfigurationError
+import os
+from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError
 from sigma.processing.pipeline import ProcessingPipeline, QueryPostprocessingItem
 from sigma.processing.postprocessing import (
     EmbedQueryInJSONTransformation,
@@ -141,6 +142,7 @@ def test_query_template_transformation_with_vars(
     transformation = QueryTemplateTransformation(
         template='value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
         vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert (
@@ -153,7 +155,10 @@ def test_query_template_transformation_with_vars_and_path(
 ):
     """Test template transformation with custom vars from Python file and template from file."""
     transformation = QueryTemplateTransformation(
-        template="finalize.j2", path="tests/files", vars="tests/files/template_vars.py"
+        template="finalize.j2",
+        path="tests/files",
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     dummy_pipeline.state["setting"] = "value"
@@ -167,7 +172,9 @@ def test_query_template_transformation_with_json_parsing(
 ):
     """Test template with JSON parsing helper function."""
     transformation = QueryTemplateTransformation(
-        template='{{ parse_json(\'{"key": "value"}\').key }}', vars="tests/files/template_vars.py"
+        template='{{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(sigma_rule, 'field="value"') == "value"
@@ -178,7 +185,11 @@ def test_query_template_transformation_with_invalid_vars_file(
 ):
     """Test that missing 'vars' dict raises appropriate error."""
     with pytest.raises(ValueError, match="must define a 'vars' dictionary"):
-        QueryTemplateTransformation(template="test", vars="tests/files/invalid_template_vars.py")
+        QueryTemplateTransformation(
+            template="test",
+            vars="tests/files/invalid_template_vars.py",
+            allow_template_vars=True,
+        )
 
 
 def test_query_template_transformation_with_nonexistent_vars_file(
@@ -186,7 +197,9 @@ def test_query_template_transformation_with_nonexistent_vars_file(
 ):
     """Test that nonexistent vars file raises appropriate error."""
     with pytest.raises(ValueError, match="Could not load vars file"):
-        QueryTemplateTransformation(template="test", vars="tests/files/nonexistent.py")
+        QueryTemplateTransformation(
+            template="test", vars="tests/files/nonexistent.py", allow_template_vars=True
+        )
 
 
 def test_query_template_transformation_from_dict_with_vars(
@@ -197,9 +210,126 @@ def test_query_template_transformation_from_dict_with_vars(
         {
             "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}\nquery = {{ query }}',
             "vars": "tests/files/template_vars.py",
+            "allow_template_vars": True,
         }
     )
     transformation.set_pipeline(dummy_pipeline)
     assert (
         transformation.apply(sigma_rule, 'field="value"') == 'value = value\nquery = field="value"'
     )
+
+
+def test_query_template_transformation_vars_blocked_by_default(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars usage without allow_template_vars raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        QueryTemplateTransformation(
+            template="test",
+            vars="tests/files/template_vars.py",
+        )
+
+
+def test_query_template_transformation_vars_blocked_by_default_from_dict(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars usage from dict without allow_template_vars raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        QueryTemplateTransformation.from_dict(
+            {
+                "template": "test",
+                "vars": "tests/files/template_vars.py",
+            }
+        )
+
+
+def test_query_template_transformation_vars_allowed_via_env(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule, monkeypatch
+):
+    """Test that vars usage is allowed when env var is set."""
+    monkeypatch.setenv("PYSIGMA_ALLOW_VARS_EXECUTION", "1")
+    transformation = QueryTemplateTransformation(
+        template='{{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == "value"
+
+
+def test_query_template_transformation_no_vars_no_error(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that templates without vars work normally without allow_template_vars."""
+    transformation = QueryTemplateTransformation(template="{{ query }}")
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == 'field="value"'
+
+
+def test_query_template_transformation_vars_allowed_path(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars file under an allowed base path is accepted."""
+    transformation = QueryTemplateTransformation(
+        template='{{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests/files"),),
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == "value"
+
+
+def test_query_template_transformation_vars_allowed_path_subdir(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars file in a subdirectory of an allowed base path is accepted."""
+    transformation = QueryTemplateTransformation(
+        template='{{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests"),),
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == "value"
+
+
+def test_query_template_transformation_vars_blocked_by_path_allowlist(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars file outside allowed base paths raises SigmaSecurityError."""
+    with pytest.raises(SigmaSecurityError, match="outside the allowed base directories"):
+        QueryTemplateTransformation(
+            template="test",
+            vars="tests/files/template_vars.py",
+            allow_template_vars=True,
+            vars_allowed_paths=("/some/other/directory",),
+        )
+
+
+def test_query_template_transformation_vars_no_path_restriction(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars_allowed_paths=None imposes no path restriction."""
+    transformation = QueryTemplateTransformation(
+        template='{{ parse_json(\'{"key": "value"}\').key }}',
+        vars="tests/files/template_vars.py",
+        allow_template_vars=True,
+        vars_allowed_paths=None,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    assert transformation.apply(sigma_rule, 'field="value"') == "value"
+
+
+def test_query_template_transformation_vars_allowed_paths_from_yaml(
+    dummy_pipeline: ProcessingPipeline, sigma_rule: SigmaRule
+):
+    """Test that vars_allowed_paths specified in YAML is stripped and has no effect."""
+    with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+        ProcessingPipeline.from_yaml("""
+            postprocessing:
+              - type: template
+                template: "{{ query }}"
+                vars: "tests/files/template_vars.py"
+                vars_allowed_paths:
+                  - "tests/files"
+            """)

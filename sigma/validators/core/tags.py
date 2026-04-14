@@ -43,7 +43,10 @@ class ATTACKTagValidator(SigmaTagValidator):
     """Check for usage of valid MITRE ATT&CK tags."""
 
     def __init__(self) -> None:
-        self.allowed_tags = (
+        self.allowed_tags: set[str] | None = None
+
+    def _load_allowed_tags(self) -> set[str]:
+        return (
             {tactic.lower() for tactic in mitre_attack.mitre_attack_tactics.values()}
             .union({technique.lower() for technique in mitre_attack.mitre_attack_techniques.keys()})
             .union(
@@ -62,6 +65,8 @@ class ATTACKTagValidator(SigmaTagValidator):
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
+        if self.allowed_tags is None:
+            self.allowed_tags = self._load_allowed_tags()
         if tag.namespace == "attack" and tag.name not in self.allowed_tags:
             return [InvalidATTACKTagIssue([self.rule], tag)]
         return []
@@ -78,13 +83,18 @@ class D3FENDTagValidator(SigmaTagValidator):
     """Check for usage of valid MITRE D3FEND tags."""
 
     def __init__(self) -> None:
-        self.allowed_tags = (
+        self.allowed_tags: set[str] | None = None
+
+    def _load_allowed_tags(self) -> set[str]:
+        return (
             {tactic.lower() for tactic in mitre_d3fend.mitre_d3fend_tactics.keys()}
             .union({technique.lower() for technique in mitre_d3fend.mitre_d3fend_techniques.keys()})
             .union({artefact for artefact in mitre_d3fend.mitre_d3fend_artifacts.keys()})
         )
 
     def validate_tag(self, tag: SigmaRuleTag) -> list[SigmaValidationIssue]:
+        if self.allowed_tags is None:
+            self.allowed_tags = self._load_allowed_tags()
         if tag.namespace == "d3fend" and tag.name not in self.allowed_tags:
             return [InvalidD3FENDagIssue([self.rule], tag)]
         return []

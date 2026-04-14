@@ -22,7 +22,7 @@ Follow these steps **sequentially**. Each step requires user confirmation before
 ### Step 1: Pre-flight Checks
 
 1. Run `git status` to confirm clean working tree and correct branch (`main`).
-2. Run `git fetch origin` then `git status` to confirm local main is up to date.
+2. Run `git fetch github` then `git status` to confirm local main is up to date.
 3. Run `gh auth status` to confirm GitHub CLI is authenticated.
 4. If any check fails, inform the user and stop.
 
@@ -70,12 +70,12 @@ Ask the user to **confirm** the proposed version or **override** with a differen
    git commit -m "Bump version to <new_version>"
    ```
 4. **Ask the user for confirmation** before pushing.
-5. Push the commit: `git push origin main`.
+5. Push the commit: `git push github main`.
 
 ### Step 6: Create and Push Version Tag
 
 1. Create an annotated tag: `git tag -a v<new_version> -m "Release v<new_version>"`.
-2. Push the tag: `git push origin v<new_version>`.
+2. Push the tag: `git push github v<new_version>`.
 3. Inform the user: "Tag `v<new_version>` pushed. This triggers the test PyPI deployment via GitHub Actions."
 
 ### Step 7: Wait for Test PyPI Deployment
@@ -155,7 +155,7 @@ Present the draft to the user and let them **review and amend** the release note
 ## Error Recovery
 
 - **Version bump pushed but tag failed**: Create and push the tag manually.
-- **Test PyPI failed**: Fix the issue, delete the tag (`git push --delete origin v<new_version> && git tag -d v<new_version>`), amend or re-commit, and restart from Step 6.
+- **Test PyPI failed**: Fix the issue, delete the tag (`git push --delete github v<new_version> && git tag -d v<new_version>`), amend or re-commit, and restart from Step 6.
 - **Release creation failed**: Retry `gh release create` or create manually at `https://github.com/SigmaHQ/pySigma/releases/new`.
 
 ## Reference

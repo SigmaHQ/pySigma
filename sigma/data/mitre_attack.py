@@ -8,6 +8,7 @@ to avoid repeated downloads across sessions.
 
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any, cast
 from urllib.error import URLError
@@ -50,6 +51,20 @@ def _get_external_id(obj: dict[str, Any]) -> str | None:
     return None
 
 
+def _empty_data() -> dict[str, Any]:
+    """Return empty MITRE ATT&CK data structure."""
+    return {
+        "mitre_attack_version": "unknown",
+        "mitre_attack_tactics": {},
+        "mitre_attack_techniques": {},
+        "mitre_attack_techniques_tactics_mapping": {},
+        "mitre_attack_intrusion_sets": {},
+        "mitre_attack_software": {},
+        "mitre_attack_datasources": {},
+        "mitre_attack_mitigations": {},
+    }
+
+
 def _load_mitre_attack_data() -> dict[str, Any]:
     """
     Load MITRE ATT&CK data from GitHub or a custom URL/file.
@@ -83,7 +98,16 @@ def _load_mitre_attack_data() -> dict[str, Any]:
             with urlopen(url, timeout=30) as response:
                 stix_data = json.load(response)
     except (URLError, json.JSONDecodeError, OSError, IOError) as e:
-        raise RuntimeError(f"Failed to load MITRE ATT&CK data: {e}") from e
+        if _custom_url is not None:
+            raise RuntimeError(f"Failed to load MITRE ATT&CK data: {e}") from e
+        else:
+            warnings.warn(
+                f"Failed to load MITRE ATT&CK data from default URL: {e}. "
+                "MITRE ATT&CK data will be empty. Use set_url() to configure a "
+                "local file path or a custom URL.",
+                stacklevel=2,
+            )
+            return _empty_data()
 
     version = None
     tactics = {}

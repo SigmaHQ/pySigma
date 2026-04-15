@@ -8,6 +8,7 @@ to avoid repeated downloads across sessions.
 
 import json
 import os
+import warnings
 from pathlib import Path
 from typing import Any, cast
 from urllib.error import URLError
@@ -38,6 +39,16 @@ def _get_cache() -> diskcache.Cache:
         cache_dir.mkdir(parents=True, exist_ok=True)
         _cache = diskcache.Cache(str(cache_dir))
     return _cache
+
+
+def _empty_data() -> dict[str, Any]:
+    """Return empty MITRE D3FEND data structure."""
+    return {
+        "mitre_d3fend_version": "unknown",
+        "mitre_d3fend_tactics": {},
+        "mitre_d3fend_techniques": {},
+        "mitre_d3fend_artifacts": {},
+    }
 
 
 def _load_mitre_d3fend_data() -> dict[str, Any]:
@@ -86,7 +97,13 @@ def _load_mitre_d3fend_data() -> dict[str, Any]:
                 continue
 
     if ontology_data is None:
-        raise RuntimeError(f"Failed to load MITRE D3FEND data: {last_error}") from last_error
+        warnings.warn(
+            f"Failed to load MITRE D3FEND data from default URL: {last_error}. "
+            "MITRE D3FEND data will be empty. Use set_url() to configure a "
+            "local file path or a custom URL.",
+            stacklevel=2,
+        )
+        return _empty_data()
 
     # Extract version from the ontology metadata
     version = "unknown"

@@ -511,6 +511,7 @@ def test_mitre_attack_graceful_degradation_on_network_failure(monkeypatch):
         assert data["mitre_attack_version"] == "unknown"
         assert data["mitre_attack_tactics"] == {}
         assert data["mitre_attack_techniques"] == {}
+        assert data["mitre_attack_techniques_tactics_mapping"] == {}
         assert data["mitre_attack_intrusion_sets"] == {}
         assert data["mitre_attack_software"] == {}
         assert data["mitre_attack_datasources"] == {}

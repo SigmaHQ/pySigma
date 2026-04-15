@@ -472,3 +472,137 @@ def test_validator_valid_d3fend_tags_online(monkeypatch):
         )
 
     assert issues == []
+
+
+def test_mitre_attack_graceful_degradation_on_network_failure(monkeypatch):
+    """Test that MITRE ATT&CK data loading returns empty data when default URL fails."""
+    import warnings as _warnings
+
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_attack._cache
+    original_url = mitre_attack._custom_url
+
+    try:
+        # Ensure no custom URL is set (using default URL)
+        mitre_attack._custom_url = None
+        mitre_attack.clear_cache()
+
+        # Mock urlopen to simulate network failure
+        def mock_urlopen(*args, **kwargs):
+            from urllib.error import URLError
+
+            raise URLError("Network is unreachable")
+
+        monkeypatch.setattr("sigma.data.mitre_attack.urlopen", mock_urlopen)
+
+        # Accessing data should return empty data with a warning, not raise
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            data = mitre_attack._load_mitre_attack_data()
+
+            # Should have issued a warning
+            assert len(w) == 1
+            assert "Failed to load MITRE ATT&CK data" in str(w[0].message)
+
+        # Should return empty data structure
+        assert data["mitre_attack_version"] == "unknown"
+        assert data["mitre_attack_tactics"] == {}
+        assert data["mitre_attack_techniques"] == {}
+        assert data["mitre_attack_techniques_tactics_mapping"] == {}
+        assert data["mitre_attack_intrusion_sets"] == {}
+        assert data["mitre_attack_software"] == {}
+        assert data["mitre_attack_datasources"] == {}
+        assert data["mitre_attack_mitigations"] == {}
+    finally:
+        mitre_attack._cache = original_cache
+        mitre_attack._custom_url = original_url
+
+
+def test_mitre_attack_raises_on_custom_url_failure(monkeypatch):
+    """Test that MITRE ATT&CK data loading raises RuntimeError when custom URL fails."""
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_attack._cache
+    original_url = mitre_attack._custom_url
+
+    try:
+        # Set a custom URL that doesn't exist
+        mitre_attack._custom_url = "/nonexistent/path/to/data.json"
+        mitre_attack.clear_cache()
+
+        # Should raise RuntimeError
+        with pytest.raises(RuntimeError, match="Failed to load MITRE ATT&CK data"):
+            mitre_attack._load_mitre_attack_data()
+    finally:
+        mitre_attack._cache = original_cache
+        mitre_attack._custom_url = original_url
+
+
+def test_mitre_d3fend_graceful_degradation_on_network_failure(monkeypatch):
+    """Test that MITRE D3FEND data loading returns empty data when default URL fails."""
+    import warnings as _warnings
+
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_d3fend._cache
+    original_url = mitre_d3fend._custom_url
+
+    try:
+        # Ensure no custom URL is set (using default URL)
+        mitre_d3fend._custom_url = None
+        mitre_d3fend.clear_cache()
+
+        # Mock urlopen to simulate network failure
+        def mock_urlopen(*args, **kwargs):
+            from urllib.error import URLError
+
+            raise URLError("Network is unreachable")
+
+        monkeypatch.setattr("sigma.data.mitre_d3fend.urlopen", mock_urlopen)
+
+        # Accessing data should return empty data with a warning, not raise
+        with _warnings.catch_warnings(record=True) as w:
+            _warnings.simplefilter("always")
+            data = mitre_d3fend._load_mitre_d3fend_data()
+
+            # Should have issued a warning
+            assert len(w) == 1
+            assert "Failed to load MITRE D3FEND data" in str(w[0].message)
+
+        # Should return empty data structure
+        assert data["mitre_d3fend_version"] == "unknown"
+        assert data["mitre_d3fend_tactics"] == {}
+        assert data["mitre_d3fend_techniques"] == {}
+        assert data["mitre_d3fend_artifacts"] == {}
+    finally:
+        mitre_d3fend._cache = original_cache
+        mitre_d3fend._custom_url = original_url
+
+
+def test_mitre_d3fend_raises_on_custom_url_failure(monkeypatch):
+    """Test that MITRE D3FEND data loading raises RuntimeError when custom URL fails."""
+    # Remove the monkeypatch for this test so we can test the real function
+    monkeypatch.undo()
+
+    # Save the original state
+    original_cache = mitre_d3fend._cache
+    original_url = mitre_d3fend._custom_url
+
+    try:
+        # Set a custom URL that doesn't exist
+        mitre_d3fend._custom_url = "/nonexistent/path/to/data.json"
+        mitre_d3fend.clear_cache()
+
+        # Should raise RuntimeError
+        with pytest.raises(RuntimeError, match="Failed to load MITRE D3FEND data"):
+            mitre_d3fend._load_mitre_d3fend_data()
+    finally:
+        mitre_d3fend._cache = original_cache
+        mitre_d3fend._custom_url = original_url

@@ -51,7 +51,7 @@ def _load_mitre_d3fend_data() -> dict[str, Any]:
     - mitre_d3fend_artifacts: dict[str, str] mapping artifact IDs to names
     """
     cache = _get_cache()
-    cache_key = f"mitre_d3fend_data_{_custom_url or 'default'}"
+    cache_key = "mitre_d3fend_data"
 
     # Try to get from cache first
     cached_data = cache.get(cache_key)

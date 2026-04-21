@@ -393,6 +393,114 @@ def test_mitre_d3fend_set_url_with_file(monkeypatch):
         os.unlink(temp_path)
 
 
+def test_mitre_attack_cached_data_used_without_url(monkeypatch):
+    """Test that data cached via a custom URL is found when accessed without a URL set.
+
+    This simulates the offline workflow: 'sigma pysigma update-cache --url mitre_attack:...'
+    pre-populates the cache, then 'sigma check' runs in a fresh process with no URL set and
+    must use the cached data instead of attempting a download.
+    """
+    import os
+
+    monkeypatch.undo()
+
+    original_cache = mitre_attack._cache
+    original_url = mitre_attack._custom_url
+
+    attack_data = {
+        "objects": [
+            {"type": "x-mitre-collection", "x_mitre_version": "99.9"},
+            {
+                "type": "attack-pattern",
+                "name": "Offline Technique",
+                "external_references": [{"source_name": "mitre-attack", "external_id": "T8888"}],
+                "kill_chain_phases": [
+                    {"kill_chain_name": "mitre-attack", "phase_name": "test-tactic"}
+                ],
+            },
+        ]
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(attack_data, f)
+        temp_path = f.name
+
+    try:
+        # Step 1: simulate 'update-cache --url mitre_attack:<file>'
+        mitre_attack.set_url(temp_path)
+        _ = mitre_attack.mitre_attack_techniques  # populate cache
+
+        # Step 2: simulate fresh process - clear in-memory state but keep disk cache
+        mitre_attack._custom_url = None
+        mitre_attack._cache = None  # force cache object to be re-opened from disk
+
+        # Step 3: access data without any URL set - must use cached data, not download
+        techniques = mitre_attack.mitre_attack_techniques
+        assert "T8888" in techniques
+        assert techniques["T8888"] == "Offline Technique"
+    finally:
+        mitre_attack._cache = original_cache
+        mitre_attack._custom_url = original_url
+        os.unlink(temp_path)
+
+
+def test_mitre_d3fend_cached_data_used_without_url(monkeypatch):
+    """Test that D3FEND data cached via a custom URL is found when accessed without a URL set.
+
+    This simulates the offline workflow: 'sigma pysigma update-cache --url mitre_d3fend:...'
+    pre-populates the cache, then 'sigma check' runs in a fresh process with no URL set and
+    must use the cached data instead of attempting a download.
+    """
+    import os
+
+    monkeypatch.undo()
+
+    original_cache = mitre_d3fend._cache
+    original_url = mitre_d3fend._custom_url
+
+    d3fend_data = {
+        "@graph": [
+            {
+                "@type": "owl:Ontology",
+                "owl:versionIRI": "http://d3fend.mitre.org/ontologies/d3fend/99.9",
+            },
+            {
+                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#OfflineTechnique",
+                "@type": ["owl:Class", "owl:NamedIndividual"],
+                "d3f:d3fend-id": "D3-OFFLINE",
+                "rdfs:label": "Offline Technique",
+            },
+            {
+                "@id": "http://d3fend.mitre.org/ontologies/d3fend.owl#OfflineTactic",
+                "@type": ["owl:Class", "owl:NamedIndividual", "d3f:DefensiveTactic"],
+                "rdfs:label": "OfflineTactic",
+            },
+        ]
+    }
+
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
+        json.dump(d3fend_data, f)
+        temp_path = f.name
+
+    try:
+        # Step 1: simulate 'update-cache --url mitre_d3fend:<file>'
+        mitre_d3fend.set_url(temp_path)
+        _ = mitre_d3fend.mitre_d3fend_techniques  # populate cache
+
+        # Step 2: simulate fresh process - clear in-memory state but keep disk cache
+        mitre_d3fend._custom_url = None
+        mitre_d3fend._cache = None  # force cache object to be re-opened from disk
+
+        # Step 3: access data without any URL set - must use cached data, not download
+        techniques = mitre_d3fend.mitre_d3fend_techniques
+        assert "D3-OFFLINE" in techniques
+        assert techniques["D3-OFFLINE"] == "Offline Technique"
+    finally:
+        mitre_d3fend._cache = original_cache
+        mitre_d3fend._custom_url = original_url
+        os.unlink(temp_path)
+
+
 @pytest.mark.online
 def test_validator_valid_attack_tags_online(monkeypatch):
     """Test ATT&CK tag validator with real data downloaded from the internet."""

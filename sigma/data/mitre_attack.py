@@ -65,7 +65,7 @@ def _load_mitre_attack_data() -> dict[str, Any]:
     - mitre_attack_mitigations: dict[str, str] mapping mitigation IDs to names
     """
     cache = _get_cache()
-    cache_key = f"mitre_attack_data_{_custom_url or 'default'}"
+    cache_key = "mitre_attack_data"
 
     # Try to get from cache first
     cached_data = cache.get(cache_key)

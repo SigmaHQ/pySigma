@@ -183,6 +183,25 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         else:
             return [field]
 
+    def apply_detection(self, detection: SigmaDetection) -> None:
+        for i, detection_item in enumerate(detection.detection_items):
+            if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
+                self.apply_detection(detection_item)
+            else:
+                original_value = detection_item.value  # save reference before transformation
+                if (
+                    self.processing_item is None
+                    or self.processing_item.match_detection_item(detection_item)
+                ) and (r := self.apply_detection_item(detection_item)) is not None:
+                    if isinstance(r, SigmaDetectionItem) and r.value is not original_value:
+                        # Only disable conversion to plain if the values list was replaced
+                        # (i.e., values actually changed). A pure field name rename keeps the
+                        # same list object, so original_value remains valid and to_plain()
+                        # will correctly serialize the current (renamed) state.
+                        r.disable_conversion_to_plain()
+                    detection.detection_items[i] = r
+                    self.processing_item_applied(r)
+
     def apply(
         self,
         rule: SigmaRule | SigmaCorrelationRule,

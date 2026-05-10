@@ -183,6 +183,29 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
         else:
             return [field]
 
+    def apply_detection(self, detection: SigmaDetection) -> None:
+        for i, detection_item in enumerate(detection.detection_items):
+            if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
+                self.apply_detection(detection_item)
+            else:
+                # Save a reference to the value list *before* the transformation so we can
+                # detect whether the transformation replaced it with a new list object.
+                # Field-only renames keep the same list instance; value-modifying operations
+                # (e.g. keyword-to-field mapping that adds wildcards, field-reference remapping)
+                # always assign a new list to detection_item.value.
+                value_before = detection_item.value
+                if (
+                    self.processing_item is None
+                    or self.processing_item.match_detection_item(detection_item)
+                ) and (r := self.apply_detection_item(detection_item)) is not None:
+                    if isinstance(r, SigmaDetectionItem) and r.value is not value_before:
+                        # The value list was replaced, so original_value is no longer in sync
+                        # with the current values. Disable conversion to prevent to_plain()
+                        # from producing stale output.
+                        r.disable_conversion_to_plain()
+                    detection.detection_items[i] = r
+                    self.processing_item_applied(r)
+
     def apply(
         self,
         rule: SigmaRule | SigmaCorrelationRule,

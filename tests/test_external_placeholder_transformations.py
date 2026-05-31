@@ -132,17 +132,6 @@ class TestApplyJqExpression:
 
 
 class TestExternalValueSourceMixinParsers:
-    def _make(self, format: str, data: str, **kwargs) -> ConcreteExternalTransformation:
-        obj = FilePlaceholderTransformation.__new__(ConcreteExternalTransformation)
-        ExternalValueSourceMixin.__init__(
-            obj, format=format, allow_external_sources=True, **kwargs
-        )
-        FilePlaceholderTransformation.__init__(
-            obj, path="/unused", allow_external_sources=True, format=format, **kwargs
-        )
-        object.__setattr__(obj, "_injected_data", data)
-        return obj
-
     def test_plaintext_basic(self):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True

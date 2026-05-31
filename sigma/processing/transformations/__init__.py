@@ -23,6 +23,12 @@ from sigma.processing.transformations.placeholder import (
     ValueListPlaceholderTransformation,
     WildcardPlaceholderTransformation,
 )
+from sigma.processing.transformations.external import (
+    ExternalValueSourceMixin,
+    FilePlaceholderTransformation,
+    HTTPPlaceholderTransformation,
+    CommandPlaceholderTransformation,
+)
 from sigma.processing.transformations.rule import (
     ChangeLogsourceTransformation,
     SetCustomAttributeTransformation,
@@ -49,6 +55,9 @@ transformations: dict[str, Type[Transformation]] = {
     "wildcard_placeholders": WildcardPlaceholderTransformation,
     "value_placeholders": ValueListPlaceholderTransformation,
     "query_expression_placeholders": QueryExpressionPlaceholderTransformation,
+    "file_placeholders": FilePlaceholderTransformation,
+    "http_placeholders": HTTPPlaceholderTransformation,
+    "command_placeholders": CommandPlaceholderTransformation,
     "add_condition": AddConditionTransformation,
     "change_logsource": ChangeLogsourceTransformation,
     "add_field": AddFieldTransformation,
@@ -81,6 +90,10 @@ __all__ = [
     "WildcardPlaceholderTransformation",
     "ValueListPlaceholderTransformation",
     "QueryExpressionPlaceholderTransformation",
+    "ExternalValueSourceMixin",
+    "FilePlaceholderTransformation",
+    "HTTPPlaceholderTransformation",
+    "CommandPlaceholderTransformation",
     "AddConditionTransformation",
     "ChangeLogsourceTransformation",
     "AddFieldTransformation",

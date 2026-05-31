@@ -25,6 +25,7 @@ from sigma.processing.finalization import Finalizer, NestedFinalizer, finalizers
 from sigma.processing.templates import TemplateBase
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
+from sigma.processing.transformations.external import ExternalValueSourceMixin
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
@@ -74,6 +75,7 @@ class ProcessingItemBase:
         transformations: dict[str, Type[Transformation]],
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        allow_external_sources: bool = False,
     ) -> dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -103,6 +105,7 @@ class ProcessingItemBase:
                 transformations,
                 allow_template_vars=allow_template_vars,
                 vars_allowed_paths=vars_allowed_paths,
+                allow_external_sources=allow_external_sources,
             ),
         }
 
@@ -307,6 +310,7 @@ class ProcessingItemBase:
         transformations: dict[str, Type[Transformation]],
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        allow_external_sources: bool = False,
     ) -> Transformation:
         try:
             transformation_class_name = d["type"]
@@ -341,11 +345,14 @@ class ProcessingItemBase:
                 "id",
                 "allow_template_vars",
                 "vars_allowed_paths",
+                "allow_external_sources",
             }
         }
         if issubclass(transformation_class, TemplateBase):
             params["allow_template_vars"] = allow_template_vars
             params["vars_allowed_paths"] = vars_allowed_paths
+        if issubclass(transformation_class, ExternalValueSourceMixin):
+            params["allow_external_sources"] = allow_external_sources
         try:
             return transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
@@ -420,9 +427,17 @@ class ProcessingItem(ProcessingItemBase):
     field_name_condition_expression: ConditionExpression | None = None
 
     @classmethod
-    def from_dict(cls, d: dict[str, Any]) -> "ProcessingItem":
+    def from_dict(
+        cls,
+        d: dict[str, Any],
+        allow_external_sources: bool = False,
+    ) -> "ProcessingItem":
         """Instantiate processing item from parsed definition and variables."""
-        kwargs = super()._base_args_from_dict(d, transformations)
+        kwargs = super()._base_args_from_dict(
+            d,
+            transformations,
+            allow_external_sources=allow_external_sources,
+        )
 
         detection_item_conds = cls._parse_conditions(
             cast(Mapping[str, Type[ProcessingCondition]], detection_item_conditions),
@@ -762,6 +777,7 @@ class ProcessingPipeline:
         d: dict[str, Any],
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        allow_external_sources: bool = False,
     ) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
 
@@ -788,7 +804,9 @@ class ProcessingPipeline:
         processing_items = list()
         for i, item in enumerate(items):
             try:
-                processing_item = ProcessingItem.from_dict(item)
+                processing_item = ProcessingItem.from_dict(
+                    item, allow_external_sources=allow_external_sources
+                )
                 processing_items.append(processing_item)
             except SigmaConfigurationError as e:
                 raise SigmaConfigurationError(f"Error in processing rule {i + 1}: {str(e)}") from e
@@ -812,6 +830,7 @@ class ProcessingPipeline:
         for fd in fds:
             fd.pop("allow_template_vars", None)  # Strip untrusted YAML value
             fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
+            fd.pop("allow_external_sources", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = fd.pop("type")
             except KeyError:
@@ -860,6 +879,7 @@ class ProcessingPipeline:
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
         source_path: str | None = None,
+        allow_external_sources: bool = False,
     ) -> "ProcessingPipeline":
         """Convert YAML input string into processing pipeline.
 
@@ -879,6 +899,7 @@ class ProcessingPipeline:
             parsed_pipeline,
             allow_template_vars=allow_template_vars,
             vars_allowed_paths=vars_allowed_paths,
+            allow_external_sources=allow_external_sources,
         )
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> SigmaRule | SigmaCorrelationRule:

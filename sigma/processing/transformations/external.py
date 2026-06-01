@@ -29,6 +29,9 @@ from sigma.types import Placeholder, SigmaString
 
 PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV = "PYSIGMA_ALLOW_EXTERNAL_SOURCES"
 
+# Default cap on the amount of data accepted from an external source (10 MiB).
+DEFAULT_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
 
 @dataclass
 class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
@@ -228,6 +231,8 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
       (``application/x-www-form-urlencoded``)
     * **json_body** — optional dict to send as a JSON request body
       (``application/json``)
+    * **max_body_size** — maximum response body size in bytes; the fetch is
+      aborted with an error once this many bytes have been read (default 10 MiB)
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
@@ -242,6 +247,7 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
     params: dict[str, str] | None = None
     form_data: dict[str, Any] | None = None
     json_body: dict[str, Any] | None = None
+    max_body_size: int = DEFAULT_MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
         if not self.url:
@@ -254,7 +260,7 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
         import requests
 
         try:
-            response = requests.request(
+            with requests.request(
                 method=self.method,
                 url=self.url,
                 timeout=self.timeout,
@@ -262,9 +268,21 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
                 params=self.params,
                 data=self.form_data,
                 json=self.json_body,
-            )
-            response.raise_for_status()
-            return response.text
+                stream=True,
+            ) as response:
+                response.raise_for_status()
+                content = bytearray()
+                for chunk in response.iter_content(chunk_size=8192):
+                    content.extend(chunk)
+                    if len(content) > self.max_body_size:
+                        raise SigmaValueError(
+                            f"HTTPPlaceholderTransformation: response from '{self.url}' "
+                            f"exceeds max_body_size ({self.max_body_size} bytes)"
+                        )
+                encoding = response.encoding or response.apparent_encoding or "utf-8"
+                return content.decode(encoding, errors="replace")
+        except SigmaValueError:
+            raise
         except Exception as e:
             raise SigmaValueError(
                 f"HTTPPlaceholderTransformation: failed to fetch '{self.url}': {e}"
@@ -279,6 +297,8 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
     * **cmd** — command string (passed to ``/bin/sh -c``) or a list of
       arguments (required)
     * **timeout** — maximum execution time in seconds (default: 30)
+    * **max_stdout** — maximum accepted stdout size in bytes; output larger
+      than this is rejected with an error (default 10 MiB)
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
@@ -288,6 +308,7 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
 
     cmd: str | list[str] = ""
     timeout: int = 30
+    max_stdout: int = DEFAULT_MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
         if not self.cmd:
@@ -318,5 +339,10 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaValueError(
                 f"CommandPlaceholderTransformation: command exited with code "
                 f"{result.returncode}: {result.stderr.strip()}"
+            )
+        if len(result.stdout.encode("utf-8", errors="replace")) > self.max_stdout:
+            raise SigmaValueError(
+                f"CommandPlaceholderTransformation: command output exceeds "
+                f"max_stdout ({self.max_stdout} bytes)"
             )
         return result.stdout

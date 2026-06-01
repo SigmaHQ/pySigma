@@ -30,6 +30,19 @@ JSON_FILE = str(FILES_DIR / "placeholder_values.json")
 YAML_FILE = str(FILES_DIR / "placeholder_values.yaml")
 
 
+def _streaming_response(body: bytes, *, chunk_size: int = 8192) -> MagicMock:
+    """Build a mock ``requests`` response usable as a streaming context manager."""
+    resp = MagicMock()
+    resp.__enter__.return_value = resp
+    resp.__exit__.return_value = False
+    resp.encoding = "utf-8"
+    resp.raise_for_status = MagicMock()
+    resp.iter_content.return_value = [
+        body[i : i + chunk_size] for i in range(0, len(body), chunk_size)
+    ]
+    return resp
+
+
 @pytest.fixture
 def dummy_pipeline():
     return ProcessingPipeline([], {})
@@ -358,10 +371,7 @@ class TestHTTPPlaceholderTransformation:
 
     def test_http_post_with_json_body(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "result1\nresult2\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"result1\nresult2\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/api",
@@ -380,14 +390,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data=None,
                 json={"query": "all"},
+                stream=True,
             )
 
     def test_http_post_with_form_data(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "a\nb\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"a\nb\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/form",
@@ -405,14 +413,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data={"token": "secret"},
                 json=None,
+                stream=True,
             )
 
     def test_http_custom_headers(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "v1\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"v1\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/",
@@ -429,14 +435,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data=None,
                 json=None,
+                stream=True,
             )
 
     def test_http_query_params(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "v1\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"v1\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/search",
@@ -453,7 +457,21 @@ class TestHTTPPlaceholderTransformation:
                 params={"type": "ip", "limit": "100"},
                 data=None,
                 json=None,
+                stream=True,
             )
+
+    def test_http_max_body_size_exceeded(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_req.return_value = _streaming_response(b"x" * 5000, chunk_size=1000)
+
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/big",
+                allow_external_sources=True,
+                max_body_size=2000,
+            )
+            t.set_pipeline(dummy_pipeline)
+            with pytest.raises(SigmaValueError, match="exceeds max_body_size"):
+                t._get_values()
 
 
 class TestCommandPlaceholderTransformation:
@@ -516,6 +534,16 @@ class TestCommandPlaceholderTransformation:
             )
             t.set_pipeline(dummy_pipeline)
             assert t._get_values() == ["x", "y"]
+
+    def test_max_stdout_exceeded(self, dummy_pipeline):
+        t = CommandPlaceholderTransformation(
+            cmd=["printf", "%s", "x" * 5000],
+            allow_external_sources=True,
+            max_stdout=1000,
+        )
+        t.set_pipeline(dummy_pipeline)
+        with pytest.raises(SigmaValueError, match="exceeds max_stdout"):
+            t._get_values()
 
 
 class TestPipelineIntegration:

@@ -268,7 +268,8 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             not_cond = ConditionNOT([cond])
             not_cond.parent = parent
             not_cond.source = self.source
-            cond.parent = not_cond
+            if cond is not None:
+                cond.parent = not_cond
             return not_cond
         return cond
 

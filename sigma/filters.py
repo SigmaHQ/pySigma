@@ -238,7 +238,7 @@ class SigmaFilter(SigmaRuleBase):
         # Wildcards are only valid at the start or end of a Sigma identifier pattern
         # but this regex accepts any occurrence; the Sigma condition parser is
         # responsible for rejecting syntactically invalid patterns at parse time.
-        def _replace_token(m: re.Match) -> str:
+        def _replace_token(m: re.Match[str]) -> str:
             token = m.group(0)
             if token.lower() in self._CONDITION_KEYWORDS:
                 return token

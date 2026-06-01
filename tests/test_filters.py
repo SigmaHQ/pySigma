@@ -750,8 +750,7 @@ _FILTER_RULES = """
 
 def test_filter_condition_suffix_wildcard(test_backend):
     """Filter condition '1 of selection_*' should be applied correctly."""
-    sigma_filter = SigmaFilter.from_yaml(
-        f"""
+    sigma_filter = SigmaFilter.from_yaml(f"""
 title: Filter with suffix wildcard
 {_FILTER_LOGSOURCE}
 filter:
@@ -761,20 +760,16 @@ filter:
   selection_block:
       User|startswith: 'srv_'
   condition: not 1 of selection_*
-"""
-    )
+""")
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
     rule_collection.apply_filters([sigma_filter])
     result = test_backend.convert(rule_collection)
-    assert result == [
-        'EventID=4625 and not (User in ("adm_*", "srv_*"))'
-    ]
+    assert result == ['EventID=4625 and not (User in ("adm_*", "srv_*"))']
 
 
 def test_filter_condition_prefix_wildcard(test_backend):
     """Filter condition '1 of *_allow' should be applied correctly."""
-    sigma_filter = SigmaFilter.from_yaml(
-        f"""
+    sigma_filter = SigmaFilter.from_yaml(f"""
 title: Filter with prefix wildcard
 {_FILTER_LOGSOURCE}
 filter:
@@ -784,20 +779,16 @@ filter:
   extra_allow:
       User|startswith: 'srv_'
   condition: not 1 of *_allow
-"""
-    )
+""")
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
     rule_collection.apply_filters([sigma_filter])
     result = test_backend.convert(rule_collection)
-    assert result == [
-        'EventID=4625 and not (User in ("adm_*", "srv_*"))'
-    ]
+    assert result == ['EventID=4625 and not (User in ("adm_*", "srv_*"))']
 
 
 def test_filter_condition_all_of_suffix_wildcard(test_backend):
     """Filter condition 'all of selection_*' should be applied correctly."""
-    sigma_filter = SigmaFilter.from_yaml(
-        f"""
+    sigma_filter = SigmaFilter.from_yaml(f"""
 title: Filter with all-of suffix wildcard
 {_FILTER_LOGSOURCE}
 filter:
@@ -807,20 +798,16 @@ filter:
   selection_b:
       User|startswith: 'srv_'
   condition: not all of selection_*
-"""
-    )
+""")
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
     rule_collection.apply_filters([sigma_filter])
     result = test_backend.convert(rule_collection)
-    assert result == [
-        'EventID=4625 and not (User contains-all ("adm_*", "srv_*"))'
-    ]
+    assert result == ['EventID=4625 and not (User contains-all ("adm_*", "srv_*"))']
 
 
 def test_filter_condition_of_them(test_backend):
     """Filter condition '1 of them' should match all filter detections."""
-    sigma_filter = SigmaFilter.from_yaml(
-        f"""
+    sigma_filter = SigmaFilter.from_yaml(f"""
 title: Filter with 1-of-them
 {_FILTER_LOGSOURCE}
 filter:
@@ -830,29 +817,32 @@ filter:
   filter_service:
       User|startswith: 'srv_'
   condition: not 1 of them
-"""
-    )
+""")
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
     rule_collection.apply_filters([sigma_filter])
     result = test_backend.convert(rule_collection)
-    assert result == [
-        'EventID=4625 and not (User in ("adm_*", "srv_*"))'
-    ]
+    assert result == ['EventID=4625 and not (User in ("adm_*", "srv_*"))']
 
 
 def test_filter_condition_wildcard_does_not_match_rule_identifiers(test_backend):
-    """Filter wildcard pattern must not accidentally match rule detection identifiers."""
-    sigma_filter = SigmaFilter.from_yaml(
-        f"""
-title: Filter with suffix wildcard that shares prefix with rule identifier
+    """Filter wildcard pattern must not accidentally match rule detection identifiers.
+
+    The pattern ``selection*`` (no underscore before the wildcard) would match both
+    ``selection_filter`` (the filter identifier) *and* ``selection`` (the rule's own
+    detection identifier) if the isolation logic were absent.  With isolation the
+    filter identifier is renamed to ``_filt_<rand>_selection_filter`` and the pattern
+    is rewritten to ``_filt_<rand>_selection*``, which only matches the renamed filter
+    identifier and never the rule's plain ``selection`` identifier.
+    """
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with wildcard that shares prefix with rule identifier
 {_FILTER_LOGSOURCE}
 filter:
 {_FILTER_RULES}
   selection_filter:
       User|startswith: 'adm_'
-  condition: not 1 of selection_*
-"""
-    )
+  condition: not 1 of selection*
+""")
     # The rule also has a 'selection' detection.  After applying the filter the rule's
     # own 'selection' identifier must not be consumed by the filter's wildcard pattern.
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
@@ -863,8 +853,7 @@ filter:
 
 def test_filter_condition_multiple_filters_with_wildcards(test_backend):
     """Two filters, each using a wildcard condition, should both be applied."""
-    sigma_filter_1 = SigmaFilter.from_yaml(
-        f"""
+    sigma_filter_1 = SigmaFilter.from_yaml(f"""
 title: Filter 1
 {_FILTER_LOGSOURCE}
 filter:
@@ -872,10 +861,8 @@ filter:
   selection_admin:
       User|startswith: 'adm_'
   condition: not 1 of selection_*
-"""
-    )
-    sigma_filter_2 = SigmaFilter.from_yaml(
-        f"""
+""")
+    sigma_filter_2 = SigmaFilter.from_yaml(f"""
 title: Filter 2
 {_FILTER_LOGSOURCE}
 filter:
@@ -883,11 +870,8 @@ filter:
   selection_service:
       User|startswith: 'srv_'
   condition: not 1 of selection_*
-"""
-    )
+""")
     rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
     rule_collection.apply_filters([sigma_filter_1, sigma_filter_2])
     result = test_backend.convert(rule_collection)
-    assert result == [
-        'EventID=4625 and not User startswith "adm_" and not User startswith "srv_"'
-    ]
+    assert result == ['EventID=4625 and not User startswith "adm_" and not User startswith "srv_"']

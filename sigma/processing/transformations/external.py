@@ -171,7 +171,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
             result = jq.all(self.jq_expression, parsed)
         except ValueError as e:
             raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
-        return [str(v) for v in result if v is not None]
+        return self._jq_results_to_values(result)
 
     def _parse_yaml_data(self, data: str) -> list[str]:
         import jq
@@ -186,7 +186,29 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
             result = jq.all(self.jq_expression, parsed)
         except ValueError as e:
             raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
-        return [str(v) for v in result if v is not None]
+        return self._jq_results_to_values(result)
+
+    @staticmethod
+    def _jq_results_to_values(result: Iterable[Any]) -> list[str]:
+        """Convert jq output into scalar placeholder values.
+
+        Each placeholder replacement becomes an individual field match value,
+        so a jq result must be a scalar. An expression that yields an array or
+        object is rejected with guidance to project to scalars (e.g. use
+        ``.items[]`` instead of ``.items``). ``None`` results are skipped.
+        """
+        values: list[str] = []
+        for v in result:
+            if v is None:
+                continue
+            if isinstance(v, (dict, list)):
+                raise SigmaConfigurationError(
+                    "jq_expression must select scalar values for placeholder "
+                    f"replacement, but a {type(v).__name__} was returned; project "
+                    "to scalars (e.g. '.items[]' instead of '.items')"
+                )
+            values.append(str(v))
+        return values
 
     def placeholder_replacements(self, p: Placeholder) -> Iterable[SigmaString]:
         return [SigmaString(v) for v in self._get_values()]

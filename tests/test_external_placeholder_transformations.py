@@ -159,6 +159,28 @@ class TestExternalValueSourceParsers:
         )
         assert t._parse_data(data) == ["a", "b", "c"]
 
+    def test_json_array_value_raises(self):
+        data = json.dumps({"items": ["a", "b"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".items",
+        )
+        with pytest.raises(SigmaConfigurationError, match="must select scalar values"):
+            t._parse_data(data)
+
+    def test_json_object_value_raises(self):
+        data = json.dumps({"items": [{"a": 1}, {"a": 2}]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".items[]",
+        )
+        with pytest.raises(SigmaConfigurationError, match="must select scalar values"):
+            t._parse_data(data)
+
     def test_json_no_expression_raises(self):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True, format="json"

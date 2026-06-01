@@ -12,6 +12,7 @@ from sigma.conditions import (
     ConditionAND,
     ConditionFieldEqualsValueExpression,
     ConditionItem,
+    ConditionNOT,
     ConditionOR,
     ConditionValueExpression,
     ParentChainMixin,
@@ -67,6 +68,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
     modifiers: list[type[SigmaModifier[Any, Any]]]
     value: list[SigmaType]
     value_linking: type[ConditionAND | ConditionOR] = ConditionOR
+    negated: bool = False
     source: SigmaRuleLocation | None = dataclasses.field(default=None, compare=False)
     original_value: list[SigmaType] | None = dataclasses.field(
         init=False, repr=False, hash=False, compare=False
@@ -241,16 +243,16 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                     "Null value must be bound to a field", source=self.source
                 )
             else:
-                return ConditionFieldEqualsValueExpression(self.field, SigmaNull()).postprocess(
+                cond = ConditionFieldEqualsValueExpression(self.field, SigmaNull()).postprocess(
                     detections, self, self.source
                 )
-        if len(self.value) == 1:  # single value: return key/value or value-only expression
+        elif len(self.value) == 1:  # single value: return key/value or value-only expression
             if self.field is None:
-                return ConditionValueExpression(self.value[0]).postprocess(
+                cond = ConditionValueExpression(self.value[0]).postprocess(
                     detections, self, self.source
                 )
             else:
-                return ConditionFieldEqualsValueExpression(self.field, self.value[0]).postprocess(
+                cond = ConditionFieldEqualsValueExpression(self.field, self.value[0]).postprocess(
                     detections, self, self.source
                 )
         else:  # more than one value, return logically linked values or an "in" expression
@@ -261,7 +263,16 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                     [ConditionFieldEqualsValueExpression(self.field, v) for v in self.value]
                 )
             cond.postprocess(detections, parent, self.source)
-            return cond
+
+        if self.negated:
+            if cond is None:
+                return None
+            not_cond = ConditionNOT([cond])
+            not_cond.parent = parent
+            not_cond.source = self.source
+            cond.parent = not_cond
+            return not_cond
+        return cond
 
     def is_keyword(self: Self) -> bool:
         """Returns True if detection item is a keyword detection without field reference."""

@@ -387,6 +387,14 @@ class SigmaAllModifier(SigmaListModifier[Any, Any]):
         return val
 
 
+class SigmaNegateModifier(SigmaListModifier[Any, Any]):
+    """Negate the match - turns the detection item into a NOT match."""
+
+    def modify(self, val: Any) -> Any:
+        self.detection_item.negated = True
+        return val
+
+
 class SigmaCompareModifier(SigmaValueModifier[SigmaNumber, SigmaCompareExpression]):
     """Base class for numeric comparison operator modifiers."""
 
@@ -526,6 +534,7 @@ class SigmaTimestampYearModifier(SigmaTimestampModifier):
 # Mapping from modifier identifier strings to modifier classes
 modifier_mapping: dict[str, Type[SigmaModifier[Any, Any]]] = {
     "all": SigmaAllModifier,
+    "neq": SigmaNegateModifier,
     "base64": SigmaBase64Modifier,
     "base64offset": SigmaBase64OffsetModifier,
     "cased": SigmaCaseSensitiveModifier,

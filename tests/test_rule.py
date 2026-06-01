@@ -29,6 +29,7 @@ from sigma.modifiers import (
     SigmaContainsModifier,
     SigmaRegularExpressionModifier,
     SigmaAllModifier,
+    SigmaNegateModifier,
 )
 from sigma.conditions import (
     ConditionFieldEqualsValueExpression,
@@ -36,6 +37,7 @@ from sigma.conditions import (
     SigmaCondition,
     ConditionAND,
     ConditionOR,
+    ConditionNOT,
 )
 import sigma.exceptions as sigma_exceptions
 from tests.test_processing_conditions import detection_item
@@ -776,6 +778,46 @@ def test_detectionitem_all_modified_key_special_values_postprocess():
             ConditionFieldEqualsValueExpression("field", SigmaNumber(123)),
         ]
     )
+
+
+def test_detectionitem_neq_modified_single_value_postprocess():
+    """
+    Test if postprocessed condition result of a neq-modified field-bound single value results in
+    a NOT condition wrapping the field-equals-value expression.
+    """
+    detections = SigmaDetections.from_dict(
+        {"selection": {"field|neq": "val1"}, "condition": "selection"}
+    )
+    assert detections.parsed_condition[0].parsed == ConditionNOT(
+        [ConditionFieldEqualsValueExpression("field", SigmaString("val1"))]
+    )
+
+
+def test_detectionitem_neq_modified_multi_value_postprocess():
+    """
+    Test if postprocessed condition result of a neq-modified field-bound multi-value list results
+    in a NOT condition wrapping the OR-linked field-equals-value expressions.
+    """
+    detections = SigmaDetections.from_dict(
+        {"selection": {"field|neq": ["val1", "val2"]}, "condition": "selection"}
+    )
+    assert detections.parsed_condition[0].parsed == ConditionNOT(
+        [
+            ConditionOR(
+                [
+                    ConditionFieldEqualsValueExpression("field", SigmaString("val1")),
+                    ConditionFieldEqualsValueExpression("field", SigmaString("val2")),
+                ]
+            )
+        ]
+    )
+
+
+def test_detectionitem_neq_modified_to_plain():
+    """Test that a neq-modified detection item can be serialized back to plain form."""
+    assert SigmaDetectionItem.from_mapping("field|neq", "value").to_plain() == {
+        "field|neq": "value"
+    }
 
 
 def test_sigmadetection_from_definition_mapping():

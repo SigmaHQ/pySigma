@@ -19,7 +19,7 @@ import re
 import subprocess
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Union
+from typing import Any, Iterable
 
 import jq  # type: ignore[import-not-found]
 import yaml

@@ -206,23 +206,47 @@ class SigmaFilter(SigmaRuleBase):
 
         return True
 
+    # Keywords that must not be prefixed when rewriting filter conditions
+    _CONDITION_KEYWORDS: frozenset[str] = frozenset({"not", "and", "or", "all", "any", "of", "1"})
+
     def apply_on_rule(
         self: Self, rule: SigmaRule | SigmaCorrelationRule
     ) -> SigmaRule | SigmaCorrelationRule:
         if not self._should_apply_on_rule(rule) or isinstance(rule, SigmaCorrelationRule):
             return rule
 
-        filter_condition = self.filter.condition[0]
-        for original_cond_name, condition in self.filter.detections.items():
-            cond_name = "_filt_" + ("".join(random.choices(string.ascii_lowercase, k=10)))
+        # Generate one random prefix shared by all filter identifiers in this application.
+        # Using a single prefix (rather than a fresh random name per identifier) preserves
+        # the structure of the original identifier names so that wildcard patterns in the
+        # filter condition (e.g. "1 of selection_*") continue to work after renaming.
+        prefix = "_filt_" + "".join(random.choices(string.ascii_lowercase, k=10))
 
-            # Replace each instance of the original condition name with the new condition name to avoid conflicts
-            filter_condition = re.sub(
-                rf"(\s|\(|^){original_cond_name}(\s|$|\))",
-                r"\1" + cond_name + r"\2",
-                filter_condition,
-            )
-            rule.detection.detections[cond_name] = condition
+        # Rename every filter detection identifier with the shared prefix.
+        for original_cond_name, condition in self.filter.detections.items():
+            rule.detection.detections[prefix + "_" + original_cond_name] = condition
+
+        # Rewrite the filter condition string so that every identifier/pattern token is
+        # prefixed.  This handles:
+        #   - exact names:        "selection"    -> "PREFIX_selection"
+        #   - suffix wildcards:   "selection_*"  -> "PREFIX_selection_*"
+        #   - prefix wildcards:   "*_allow"      -> "PREFIX_*_allow"
+        #   - the "them" keyword: "1 of them"    -> "1 of PREFIX_*"
+        # Sigma keywords (not, and, or, all, any, of, 1) are left unchanged.
+        def _replace_token(m: re.Match) -> str:
+            token = m.group(0)
+            if token.lower() in self._CONDITION_KEYWORDS:
+                return token
+            if token == "them":
+                # "them" means all detections; replace with a pattern that matches all
+                # filter identifiers carrying the current prefix.
+                return prefix + "_*"
+            return prefix + "_" + token
+
+        filter_condition = re.sub(
+            r"[a-zA-Z*][a-zA-Z0-9*_-]*",
+            _replace_token,
+            self.filter.condition[0],
+        )
 
         for i, condition_str in enumerate(rule.detection.condition):
             rule.detection.condition[i] = f"({condition_str}) and " + f"({filter_condition})"

@@ -1,0 +1,4 @@
+name,value,other
+first,val1,x
+second,val2,y
+third,ignored_val,z

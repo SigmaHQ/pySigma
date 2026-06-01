@@ -17,6 +17,7 @@ from sigma.modifiers import (
     SigmaRegularExpressionModifier,
     SigmaCIDRModifier,
     SigmaAllModifier,
+    SigmaNegateModifier,
     SigmaLessThanModifier,
     SigmaLessThanEqualModifier,
     SigmaGreaterThanModifier,
@@ -410,6 +411,14 @@ def test_all(dummy_detection_item):
     assert (
         SigmaAllModifier(dummy_detection_item, []).modify(values) == values
         and dummy_detection_item.value_linking == ConditionAND
+    )
+
+
+def test_neq(dummy_detection_item):
+    values = [SigmaString("foobar")]
+    assert (
+        SigmaNegateModifier(dummy_detection_item, []).modify(values) == values
+        and dummy_detection_item.negated is True
     )
 
 

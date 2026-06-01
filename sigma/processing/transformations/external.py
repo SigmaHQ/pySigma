@@ -324,9 +324,7 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
                         )
                 encoding = response.encoding or response.apparent_encoding or "utf-8"
                 return content.decode(encoding, errors="replace")
-        except SigmaValueError:
-            raise
-        except Exception as e:
+        except requests.RequestException as e:
             raise SigmaValueError(
                 f"HTTPPlaceholderTransformation: failed to fetch '{self.url}': {e}"
             ) from e

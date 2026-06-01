@@ -19,9 +19,8 @@ import re
 import subprocess
 from abc import abstractmethod
 from dataclasses import dataclass, field
-from typing import Any, Iterable, Union
+from typing import Any, Iterable
 
-import jq  # type: ignore[import-not-found]
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
@@ -29,6 +28,12 @@ from sigma.processing.transformations.placeholder import BasePlaceholderTransfor
 from sigma.types import Placeholder, SigmaString
 
 PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV = "PYSIGMA_ALLOW_EXTERNAL_SOURCES"
+
+# Default cap on the amount of data accepted from an external source (10 MiB).
+DEFAULT_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
+
+# Data formats understood by the external source parsers.
+SUPPORTED_FORMATS = ("plaintext", "csv", "json", "yaml")
 
 
 @dataclass
@@ -41,8 +46,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     * ``"plaintext"`` — one value per line; an optional *filter* regex must
       match for a line to be included.
     * ``"csv"`` — CSV data; *csv_column* selects the column (column header
-      name **or** 0-based integer index); an optional *filter* regex is
-      applied to each extracted cell value.
+      name **or** 0-based integer index); *csv_has_header* (default ``True``)
+      controls whether the first row is treated as a header; an optional
+      *filter* regex is applied to each extracted cell value.
     * ``"json"`` — JSON data; *jq_expression* selects the value(s).
     * ``"yaml"`` — YAML data; *jq_expression* selects the value(s).
 
@@ -55,10 +61,19 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     format: str = "plaintext"
     filter: str | None = None
     csv_column: str | int | None = None
+    csv_has_header: bool = True
     jq_expression: str | None = None
     allow_external_sources: bool = False
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self.format not in SUPPORTED_FORMATS:
+            raise SigmaConfigurationError(
+                f"Unknown external source format '{self.format}'. "
+                f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
+            )
+        super().__post_init__()
 
     def _external_sources_allowed(self) -> bool:
         """Return *True* if external data sources are permitted."""
@@ -110,7 +125,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         else:
             raise SigmaConfigurationError(
                 f"Unknown external source format '{self.format}'. "
-                "Supported formats: plaintext, csv, json, yaml."
+                f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
             )
 
     def _parse_plaintext(self, data: str) -> list[str]:
@@ -127,6 +142,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         values: list[str] = []
 
         if isinstance(self.csv_column, str):
+            if not self.csv_has_header:
+                raise SigmaConfigurationError(
+                    "CSV column referenced by name requires a header row (csv_has_header=True)"
+                )
             reader_dict = csv.DictReader(io.StringIO(data))
             for row in reader_dict:
                 if self.csv_column not in row:
@@ -138,8 +157,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                     values.append(val)
         else:
             col_idx = self.csv_column
-            reader_list = csv.reader(io.StringIO(data))
-            for csv_row in reader_list:
+            rows = iter(csv.reader(io.StringIO(data)))
+            if self.csv_has_header:
+                next(rows, None)  # discard header row for consistency with name-based mode
+            for csv_row in rows:
                 if col_idx < len(csv_row):
                     values.append(csv_row[col_idx])
 
@@ -149,6 +170,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         return values
 
     def _parse_json(self, data: str) -> list[str]:
+        import jq  # type: ignore[import-not-found]
+
         if self.jq_expression is None:
             raise SigmaConfigurationError("'jq_expression' must be specified when format is 'json'")
         try:
@@ -159,9 +182,11 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
             result = jq.all(self.jq_expression, parsed)
         except ValueError as e:
             raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
-        return [str(v) for v in result if v is not None]
+        return self._jq_results_to_values(result)
 
     def _parse_yaml_data(self, data: str) -> list[str]:
+        import jq
+
         if self.jq_expression is None:
             raise SigmaConfigurationError("'jq_expression' must be specified when format is 'yaml'")
         try:
@@ -172,7 +197,29 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
             result = jq.all(self.jq_expression, parsed)
         except ValueError as e:
             raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
-        return [str(v) for v in result if v is not None]
+        return self._jq_results_to_values(result)
+
+    @staticmethod
+    def _jq_results_to_values(result: Iterable[Any]) -> list[str]:
+        """Convert jq output into scalar placeholder values.
+
+        Each placeholder replacement becomes an individual field match value,
+        so a jq result must be a scalar. An expression that yields an array or
+        object is rejected with guidance to project to scalars (e.g. use
+        ``.items[]`` instead of ``.items``). ``None`` results are skipped.
+        """
+        values: list[str] = []
+        for v in result:
+            if v is None:
+                continue
+            if isinstance(v, (dict, list)):
+                raise SigmaConfigurationError(
+                    "jq_expression must select scalar values for placeholder "
+                    f"replacement, but a {type(v).__name__} was returned; project "
+                    "to scalars (e.g. '.items[]' instead of '.items')"
+                )
+            values.append(str(v))
+        return values
 
     def placeholder_replacements(self, p: Placeholder) -> Iterable[SigmaString]:
         return [SigmaString(v) for v in self._get_values()]
@@ -187,6 +234,7 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats (e.g. ``.items[]``)
     * **include** / **exclude** — placeholder name lists (from
       :class:`~sigma.processing.transformations.placeholder.BasePlaceholderTransformation`)
@@ -199,7 +247,7 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaConfigurationError(
                 "FilePlaceholderTransformation requires a non-empty 'path'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         try:
@@ -225,9 +273,12 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
       (``application/x-www-form-urlencoded``)
     * **json_body** — optional dict to send as a JSON request body
       (``application/json``)
+    * **max_body_size** — maximum response body size in bytes; the fetch is
+      aborted with an error once this many bytes have been read (default 10 MiB)
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats
     * **include** / **exclude** — placeholder name lists
     """
@@ -239,19 +290,20 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
     params: dict[str, str] | None = None
     form_data: dict[str, Any] | None = None
     json_body: dict[str, Any] | None = None
+    max_body_size: int = DEFAULT_MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
         if not self.url:
             raise SigmaConfigurationError(
                 "HTTPPlaceholderTransformation requires a non-empty 'url'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         import requests
 
         try:
-            response = requests.request(
+            with requests.request(
                 method=self.method,
                 url=self.url,
                 timeout=self.timeout,
@@ -259,10 +311,20 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
                 params=self.params,
                 data=self.form_data,
                 json=self.json_body,
-            )
-            response.raise_for_status()
-            return response.text
-        except Exception as e:
+                stream=True,
+            ) as response:
+                response.raise_for_status()
+                content = bytearray()
+                for chunk in response.iter_content(chunk_size=8192):
+                    content.extend(chunk)
+                    if len(content) > self.max_body_size:
+                        raise SigmaValueError(
+                            f"HTTPPlaceholderTransformation: response from '{self.url}' "
+                            f"exceeds max_body_size ({self.max_body_size} bytes)"
+                        )
+                encoding = response.encoding or response.apparent_encoding or "utf-8"
+                return content.decode(encoding, errors="replace")
+        except requests.RequestException as e:
             raise SigmaValueError(
                 f"HTTPPlaceholderTransformation: failed to fetch '{self.url}': {e}"
             ) from e
@@ -276,22 +338,26 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
     * **cmd** — command string (passed to ``/bin/sh -c``) or a list of
       arguments (required)
     * **timeout** — maximum execution time in seconds (default: 30)
+    * **max_stdout** — maximum accepted stdout size in bytes; output larger
+      than this is rejected with an error (default 10 MiB)
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats
     * **include** / **exclude** — placeholder name lists
     """
 
     cmd: str | list[str] = ""
     timeout: int = 30
+    max_stdout: int = DEFAULT_MAX_RESPONSE_BYTES
 
     def __post_init__(self) -> None:
         if not self.cmd:
             raise SigmaConfigurationError(
                 "CommandPlaceholderTransformation requires a non-empty 'cmd'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         try:
@@ -315,5 +381,10 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaValueError(
                 f"CommandPlaceholderTransformation: command exited with code "
                 f"{result.returncode}: {result.stderr.strip()}"
+            )
+        if len(result.stdout.encode("utf-8", errors="replace")) > self.max_stdout:
+            raise SigmaValueError(
+                f"CommandPlaceholderTransformation: command output exceeds "
+                f"max_stdout ({self.max_stdout} bytes)"
             )
         return result.stdout

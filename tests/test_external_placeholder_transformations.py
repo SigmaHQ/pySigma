@@ -30,6 +30,19 @@ JSON_FILE = str(FILES_DIR / "placeholder_values.json")
 YAML_FILE = str(FILES_DIR / "placeholder_values.yaml")
 
 
+def _streaming_response(body: bytes, *, chunk_size: int = 8192) -> MagicMock:
+    """Build a mock ``requests`` response usable as a streaming context manager."""
+    resp = MagicMock()
+    resp.__enter__.return_value = resp
+    resp.__exit__.return_value = False
+    resp.encoding = "utf-8"
+    resp.raise_for_status = MagicMock()
+    resp.iter_content.return_value = [
+        body[i : i + chunk_size] for i in range(0, len(body), chunk_size)
+    ]
+    return resp
+
+
 @pytest.fixture
 def dummy_pipeline():
     return ProcessingPipeline([], {})
@@ -80,7 +93,31 @@ class TestExternalValueSourceParsers:
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True, format="csv", csv_column=1
         )
-        assert t._parse_data(data) == ["score", "10", "20"]
+        # Header row is skipped by default, consistent with column-name mode.
+        assert t._parse_data(data) == ["10", "20"]
+
+    def test_csv_by_column_index_no_header(self):
+        data = "alice,10\nbob,20\n"
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column=1,
+            csv_has_header=False,
+        )
+        assert t._parse_data(data) == ["10", "20"]
+
+    def test_csv_by_column_name_without_header_raises(self):
+        data = "alice,10\nbob,20\n"
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column="score",
+            csv_has_header=False,
+        )
+        with pytest.raises(SigmaConfigurationError, match="requires a header row"):
+            t._parse_data(data)
 
     def test_csv_missing_column_raises(self):
         data = "name,score\nalice,10\n"
@@ -122,6 +159,28 @@ class TestExternalValueSourceParsers:
         )
         assert t._parse_data(data) == ["a", "b", "c"]
 
+    def test_json_array_value_raises(self):
+        data = json.dumps({"items": ["a", "b"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".items",
+        )
+        with pytest.raises(SigmaConfigurationError, match="must select scalar values"):
+            t._parse_data(data)
+
+    def test_json_object_value_raises(self):
+        data = json.dumps({"items": [{"a": 1}, {"a": 2}]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".items[]",
+        )
+        with pytest.raises(SigmaConfigurationError, match="must select scalar values"):
+            t._parse_data(data)
+
     def test_json_no_expression_raises(self):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True, format="json"
@@ -157,11 +216,10 @@ class TestExternalValueSourceParsers:
             t._parse_data("key: val")
 
     def test_unknown_format_raises(self):
-        t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, allow_external_sources=True, format="xml"
-        )
         with pytest.raises(SigmaConfigurationError, match="Unknown external source format"):
-            t._parse_data("<root/>")
+            FilePlaceholderTransformation(
+                path=PLAINTEXT_FILE, allow_external_sources=True, format="xml"
+            )
 
 
 class TestSecurityFlag:
@@ -358,10 +416,7 @@ class TestHTTPPlaceholderTransformation:
 
     def test_http_post_with_json_body(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "result1\nresult2\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"result1\nresult2\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/api",
@@ -380,14 +435,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data=None,
                 json={"query": "all"},
+                stream=True,
             )
 
     def test_http_post_with_form_data(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "a\nb\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"a\nb\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/form",
@@ -405,14 +458,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data={"token": "secret"},
                 json=None,
+                stream=True,
             )
 
     def test_http_custom_headers(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "v1\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"v1\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/",
@@ -429,14 +480,12 @@ class TestHTTPPlaceholderTransformation:
                 params=None,
                 data=None,
                 json=None,
+                stream=True,
             )
 
     def test_http_query_params(self, dummy_pipeline):
         with patch("requests.request") as mock_req:
-            mock_resp = MagicMock()
-            mock_resp.text = "v1\n"
-            mock_resp.raise_for_status = MagicMock()
-            mock_req.return_value = mock_resp
+            mock_req.return_value = _streaming_response(b"v1\n")
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/search",
@@ -453,7 +502,21 @@ class TestHTTPPlaceholderTransformation:
                 params={"type": "ip", "limit": "100"},
                 data=None,
                 json=None,
+                stream=True,
             )
+
+    def test_http_max_body_size_exceeded(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_req.return_value = _streaming_response(b"x" * 5000, chunk_size=1000)
+
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/big",
+                allow_external_sources=True,
+                max_body_size=2000,
+            )
+            t.set_pipeline(dummy_pipeline)
+            with pytest.raises(SigmaValueError, match="exceeds max_body_size"):
+                t._get_values()
 
 
 class TestCommandPlaceholderTransformation:
@@ -516,6 +579,16 @@ class TestCommandPlaceholderTransformation:
             )
             t.set_pipeline(dummy_pipeline)
             assert t._get_values() == ["x", "y"]
+
+    def test_max_stdout_exceeded(self, dummy_pipeline):
+        t = CommandPlaceholderTransformation(
+            cmd=["printf", "%s", "x" * 5000],
+            allow_external_sources=True,
+            max_stdout=1000,
+        )
+        t.set_pipeline(dummy_pipeline)
+        with pytest.raises(SigmaValueError, match="exceeds max_stdout"):
+            t._get_values()
 
 
 class TestPipelineIntegration:

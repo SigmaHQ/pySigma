@@ -21,7 +21,7 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Union
 
-import jq
+import jq  # type: ignore[import-not-found]
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
@@ -139,9 +139,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         else:
             col_idx = self.csv_column
             reader_list = csv.reader(io.StringIO(data))
-            for row in reader_list:
-                if col_idx < len(row):
-                    values.append(row[col_idx])
+            for csv_row in reader_list:
+                if col_idx < len(csv_row):
+                    values.append(csv_row[col_idx])
 
         if self.filter:
             pattern = re.compile(self.filter)

@@ -33,6 +33,7 @@ poetry run pytest -x                 # Stop at first failure
 ```bash
 poetry run black .                   # Format code
 poetry run black --check .           # Check formatting
+poetry run mypy                      # Type checking
 ```
 
 ### Building
@@ -83,3 +84,13 @@ poetry build
 - Update documentation if changing user-facing behavior
 - Ensure all tests pass locally before submitting
 - Run linters and formatters before committing
+
+## Validation Before Finishing
+
+Before completing any task, **always** run the following checks and fix any issues found:
+
+1. **Format with black** — run `poetry run black .` to auto-format, then verify with `poetry run black --check .`
+2. **Type-check with mypy** — run `poetry run mypy` and resolve all reported errors
+3. **Run tests** — run `poetry run pytest` (excluding network tests) to confirm nothing is broken
+
+Do not consider a task done until all three checks pass with no errors.

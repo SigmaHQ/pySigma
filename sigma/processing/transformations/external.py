@@ -32,6 +32,9 @@ PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV = "PYSIGMA_ALLOW_EXTERNAL_SOURCES"
 # Default cap on the amount of data accepted from an external source (10 MiB).
 DEFAULT_MAX_RESPONSE_BYTES = 10 * 1024 * 1024
 
+# Data formats understood by the external source parsers.
+SUPPORTED_FORMATS = ("plaintext", "csv", "json", "yaml")
+
 
 @dataclass
 class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
@@ -63,6 +66,14 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     allow_external_sources: bool = False
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
+
+    def __post_init__(self) -> None:
+        if self.format not in SUPPORTED_FORMATS:
+            raise SigmaConfigurationError(
+                f"Unknown external source format '{self.format}'. "
+                f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
+            )
+        super().__post_init__()
 
     def _external_sources_allowed(self) -> bool:
         """Return *True* if external data sources are permitted."""
@@ -114,7 +125,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         else:
             raise SigmaConfigurationError(
                 f"Unknown external source format '{self.format}'. "
-                "Supported formats: plaintext, csv, json, yaml."
+                f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
             )
 
     def _parse_plaintext(self, data: str) -> list[str]:
@@ -236,7 +247,7 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaConfigurationError(
                 "FilePlaceholderTransformation requires a non-empty 'path'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         try:
@@ -286,7 +297,7 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaConfigurationError(
                 "HTTPPlaceholderTransformation requires a non-empty 'url'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         import requests
@@ -348,7 +359,7 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
             raise SigmaConfigurationError(
                 "CommandPlaceholderTransformation requires a non-empty 'cmd'"
             )
-        BasePlaceholderTransformation.__post_init__(self)
+        super().__post_init__()
 
     def _fetch_data(self) -> str:
         try:

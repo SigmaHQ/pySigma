@@ -216,11 +216,10 @@ class TestExternalValueSourceParsers:
             t._parse_data("key: val")
 
     def test_unknown_format_raises(self):
-        t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, allow_external_sources=True, format="xml"
-        )
         with pytest.raises(SigmaConfigurationError, match="Unknown external source format"):
-            t._parse_data("<root/>")
+            FilePlaceholderTransformation(
+                path=PLAINTEXT_FILE, allow_external_sources=True, format="xml"
+            )
 
 
 class TestSecurityFlag:

@@ -1,4 +1,5 @@
 """Tests for external data source placeholder transformations."""
+
 from __future__ import annotations
 
 import json
@@ -15,28 +16,18 @@ from sigma.processing.pipeline import ProcessingPipeline
 from sigma.processing.transformations.external import (
     PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV,
     CommandPlaceholderTransformation,
-    ExternalValueSourceMixin,
+    ExternalSourceBaseTransformation,
     FilePlaceholderTransformation,
     HTTPPlaceholderTransformation,
-    _apply_jq_expression,
 )
 from sigma.rule.rule import SigmaRule
 from sigma.types import SigmaString
-
-# ---------------------------------------------------------------------------
-# Paths to test fixture files
-# ---------------------------------------------------------------------------
 
 FILES_DIR = Path(__file__).parent / "files"
 PLAINTEXT_FILE = str(FILES_DIR / "placeholder_values.txt")
 CSV_FILE = str(FILES_DIR / "placeholder_values.csv")
 JSON_FILE = str(FILES_DIR / "placeholder_values.json")
 YAML_FILE = str(FILES_DIR / "placeholder_values.yaml")
-
-
-# ---------------------------------------------------------------------------
-# Fixtures
-# ---------------------------------------------------------------------------
 
 
 @pytest.fixture
@@ -58,92 +49,15 @@ def sigma_rule_with_placeholder():
     )
 
 
-# ---------------------------------------------------------------------------
-# jq expression evaluator unit tests
-# ---------------------------------------------------------------------------
-
-
-class TestApplyJqExpression:
-    def test_dot_returns_whole_document(self):
-        data = ["a", "b", "c"]
-        assert _apply_jq_expression(data, ".") == ["a", "b", "c"]
-
-    def test_simple_key(self):
-        data = {"key": "value"}
-        assert _apply_jq_expression(data, ".key") == ["value"]
-
-    def test_nested_keys(self):
-        data = {"outer": {"inner": "deep"}}
-        assert _apply_jq_expression(data, ".outer.inner") == ["deep"]
-
-    def test_array_index(self):
-        data = ["a", "b", "c"]
-        assert _apply_jq_expression(data, ".[1]") == ["b"]
-
-    def test_iterate_array(self):
-        data = ["x", "y", "z"]
-        assert _apply_jq_expression(data, ".[]") == ["x", "y", "z"]
-
-    def test_key_then_iterate(self):
-        data = {"items": ["p", "q"]}
-        assert _apply_jq_expression(data, ".items[]") == ["p", "q"]
-
-    def test_key_array_index(self):
-        data = {"items": ["first", "second"]}
-        assert _apply_jq_expression(data, ".items[0]") == ["first"]
-
-    def test_none_values_dropped(self):
-        data = {"items": [None, "keep", None]}
-        assert _apply_jq_expression(data, ".items[]") == ["keep"]
-
-    def test_numeric_values_converted_to_string(self):
-        data = {"nums": [1, 2, 3]}
-        assert _apply_jq_expression(data, ".nums[]") == ["1", "2", "3"]
-
-    def test_missing_leading_dot_raises(self):
-        with pytest.raises(SigmaConfigurationError, match="must start with"):
-            _apply_jq_expression({}, "key")
-
-    def test_missing_key_raises(self):
-        with pytest.raises(SigmaValueError, match="key 'missing' not found"):
-            _apply_jq_expression({"other": "x"}, ".missing")
-
-    def test_key_on_non_dict_raises(self):
-        with pytest.raises(SigmaValueError, match="non-object"):
-            _apply_jq_expression(["a", "b"], ".key")
-
-    def test_index_on_non_list_raises(self):
-        with pytest.raises(SigmaValueError, match="non-array"):
-            _apply_jq_expression({"a": 1}, ".[0]")
-
-    def test_iterate_on_non_list_raises(self):
-        with pytest.raises(SigmaValueError, match="non-array"):
-            _apply_jq_expression({"a": 1}, ".[]")
-
-
-# ---------------------------------------------------------------------------
-# ExternalValueSourceMixin parsing tests (via a minimal concrete subclass)
-# ---------------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------------
-# ExternalValueSourceMixin parsing tests (via FilePlaceholderTransformation)
-# ---------------------------------------------------------------------------
-
-
-class TestExternalValueSourceMixinParsers:
+class TestExternalValueSourceParsers:
     def test_plaintext_basic(self):
-        t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, allow_external_sources=True
-        )
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t._values_cache = None
         values = t._parse_data("alpha\nbeta\ngamma\n")
         assert values == ["alpha", "beta", "gamma"]
 
     def test_plaintext_empty_lines_skipped(self):
-        t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, allow_external_sources=True
-        )
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         values = t._parse_data("\nalpha\n\nbeta\n")
         assert values == ["alpha", "beta"]
 
@@ -171,7 +85,10 @@ class TestExternalValueSourceMixinParsers:
     def test_csv_missing_column_raises(self):
         data = "name,score\nalice,10\n"
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, allow_external_sources=True, format="csv", csv_column="missing"
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column="missing",
         )
         with pytest.raises(SigmaConfigurationError, match="CSV column 'missing' not found"):
             t._parse_data(data)
@@ -247,11 +164,6 @@ class TestExternalValueSourceMixinParsers:
             t._parse_data("<root/>")
 
 
-# ---------------------------------------------------------------------------
-# Security: allow_external_sources flag
-# ---------------------------------------------------------------------------
-
-
 class TestSecurityFlag:
     def test_security_error_when_disabled(self, dummy_pipeline):
         t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=False)
@@ -291,11 +203,6 @@ class TestSecurityFlag:
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
-
-
-# ---------------------------------------------------------------------------
-# FilePlaceholderTransformation
-# ---------------------------------------------------------------------------
 
 
 class TestFilePlaceholderTransformation:
@@ -345,7 +252,6 @@ class TestFilePlaceholderTransformation:
         t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         first = t._get_values()
-        # Modify cache to verify it's returned on second call
         t._values_cache = ["cached_only"]
         second = t._get_values()
         assert second == ["cached_only"]
@@ -375,10 +281,8 @@ class TestFilePlaceholderTransformation:
         t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         t.apply(sigma_rule_with_placeholder)
-        # After applying, no placeholders should remain (replaced with file values)
         detection = sigma_rule_with_placeholder.detection.detections["test"]
         detection_items = detection.detection_items
-        # Navigate nested detections to find the SigmaDetectionItem
         for di in detection_items:
             if hasattr(di, "detection_items"):
                 for inner in di.detection_items:
@@ -403,17 +307,8 @@ class TestFilePlaceholderTransformation:
         assert "ignore_this" not in values
 
 
-# ---------------------------------------------------------------------------
-# HTTPPlaceholderTransformation
-# ---------------------------------------------------------------------------
-
-
 class TestHTTPPlaceholderTransformation:
     def test_fetches_url(self, dummy_pipeline):
-        mock_resp = MagicMock()
-        mock_resp.text = "http_val1\nhttp_val2\n"
-        mock_resp.raise_for_status = MagicMock()
-
         with patch(
             "sigma.processing.transformations.external.HTTPPlaceholderTransformation._fetch_data",
             return_value="http_val1\nhttp_val2\n",
@@ -432,7 +327,7 @@ class TestHTTPPlaceholderTransformation:
     def test_http_error_raises(self, dummy_pipeline):
         import requests
 
-        with patch("requests.get", side_effect=requests.RequestException("conn error")):
+        with patch("requests.request", side_effect=requests.RequestException("conn error")):
             t = HTTPPlaceholderTransformation(
                 url="http://bad-host.invalid/", allow_external_sources=True
             )
@@ -461,10 +356,104 @@ class TestHTTPPlaceholderTransformation:
             t.set_pipeline(dummy_pipeline)
             assert t._get_values() == ["h1", "h2"]
 
+    def test_http_post_with_json_body(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_resp = MagicMock()
+            mock_resp.text = "result1\nresult2\n"
+            mock_resp.raise_for_status = MagicMock()
+            mock_req.return_value = mock_resp
 
-# ---------------------------------------------------------------------------
-# CommandPlaceholderTransformation
-# ---------------------------------------------------------------------------
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/api",
+                allow_external_sources=True,
+                method="POST",
+                json_body={"query": "all"},
+            )
+            t.set_pipeline(dummy_pipeline)
+            values = t._get_values()
+            assert values == ["result1", "result2"]
+            mock_req.assert_called_once_with(
+                method="POST",
+                url="http://example.com/api",
+                timeout=10,
+                headers=None,
+                params=None,
+                data=None,
+                json={"query": "all"},
+            )
+
+    def test_http_post_with_form_data(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_resp = MagicMock()
+            mock_resp.text = "a\nb\n"
+            mock_resp.raise_for_status = MagicMock()
+            mock_req.return_value = mock_resp
+
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/form",
+                allow_external_sources=True,
+                method="POST",
+                form_data={"token": "secret"},
+            )
+            t.set_pipeline(dummy_pipeline)
+            t._get_values()
+            mock_req.assert_called_once_with(
+                method="POST",
+                url="http://example.com/form",
+                timeout=10,
+                headers=None,
+                params=None,
+                data={"token": "secret"},
+                json=None,
+            )
+
+    def test_http_custom_headers(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_resp = MagicMock()
+            mock_resp.text = "v1\n"
+            mock_resp.raise_for_status = MagicMock()
+            mock_req.return_value = mock_resp
+
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/",
+                allow_external_sources=True,
+                headers={"Authorization": "******"},
+            )
+            t.set_pipeline(dummy_pipeline)
+            t._get_values()
+            mock_req.assert_called_once_with(
+                method="GET",
+                url="http://example.com/",
+                timeout=10,
+                headers={"Authorization": "******"},
+                params=None,
+                data=None,
+                json=None,
+            )
+
+    def test_http_query_params(self, dummy_pipeline):
+        with patch("requests.request") as mock_req:
+            mock_resp = MagicMock()
+            mock_resp.text = "v1\n"
+            mock_resp.raise_for_status = MagicMock()
+            mock_req.return_value = mock_resp
+
+            t = HTTPPlaceholderTransformation(
+                url="http://example.com/search",
+                allow_external_sources=True,
+                params={"type": "ip", "limit": "100"},
+            )
+            t.set_pipeline(dummy_pipeline)
+            t._get_values()
+            mock_req.assert_called_once_with(
+                method="GET",
+                url="http://example.com/search",
+                timeout=10,
+                headers=None,
+                params={"type": "ip", "limit": "100"},
+                data=None,
+                json=None,
+            )
 
 
 class TestCommandPlaceholderTransformation:
@@ -490,9 +479,7 @@ class TestCommandPlaceholderTransformation:
             CommandPlaceholderTransformation(cmd="")
 
     def test_nonzero_exit_raises(self, dummy_pipeline):
-        t = CommandPlaceholderTransformation(
-            cmd="exit 1", allow_external_sources=True
-        )
+        t = CommandPlaceholderTransformation(cmd="exit 1", allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         with pytest.raises(SigmaValueError, match="exited with code"):
             t._get_values()
@@ -531,11 +518,6 @@ class TestCommandPlaceholderTransformation:
             assert t._get_values() == ["x", "y"]
 
 
-# ---------------------------------------------------------------------------
-# Pipeline integration: allow_external_sources passed from pipeline
-# ---------------------------------------------------------------------------
-
-
 class TestPipelineIntegration:
     def _rule_yaml(self) -> str:
         return """
@@ -568,7 +550,6 @@ transformations:
             self._pipeline_yaml(PLAINTEXT_FILE), allow_external_sources=True
         )
         rule = SigmaRule.from_yaml(self._rule_yaml())
-        # Should not raise
         pipeline.apply(rule)
 
     def test_allow_external_sources_stripped_from_yaml(self):
@@ -591,7 +572,6 @@ transformations:
         t.set_pipeline(dummy_pipeline)
         from sigma.types import Placeholder
 
-        # Included placeholder → replaced
         replacements = list(t.placeholder_replacements(Placeholder("var1")))
         assert len(replacements) > 0
 

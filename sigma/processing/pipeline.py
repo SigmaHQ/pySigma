@@ -25,7 +25,7 @@ from sigma.processing.finalization import Finalizer, NestedFinalizer, finalizers
 from sigma.processing.templates import TemplateBase
 from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
-from sigma.processing.transformations.external import ExternalValueSourceMixin
+from sigma.processing.transformations.external import ExternalSourceBaseTransformation
 from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
@@ -351,7 +351,7 @@ class ProcessingItemBase:
         if issubclass(transformation_class, TemplateBase):
             params["allow_template_vars"] = allow_template_vars
             params["vars_allowed_paths"] = vars_allowed_paths
-        if issubclass(transformation_class, ExternalValueSourceMixin):
+        if issubclass(transformation_class, ExternalSourceBaseTransformation):
             params["allow_external_sources"] = allow_external_sources
         try:
             return transformation_class(**params)

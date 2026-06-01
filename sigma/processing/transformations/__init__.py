@@ -24,7 +24,7 @@ from sigma.processing.transformations.placeholder import (
     WildcardPlaceholderTransformation,
 )
 from sigma.processing.transformations.external import (
-    ExternalValueSourceMixin,
+    ExternalSourceBaseTransformation,
     FilePlaceholderTransformation,
     HTTPPlaceholderTransformation,
     CommandPlaceholderTransformation,
@@ -90,7 +90,7 @@ __all__ = [
     "WildcardPlaceholderTransformation",
     "ValueListPlaceholderTransformation",
     "QueryExpressionPlaceholderTransformation",
-    "ExternalValueSourceMixin",
+    "ExternalSourceBaseTransformation",
     "FilePlaceholderTransformation",
     "HTTPPlaceholderTransformation",
     "CommandPlaceholderTransformation",

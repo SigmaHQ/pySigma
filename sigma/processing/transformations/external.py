@@ -17,9 +17,11 @@ import json
 import os
 import re
 import subprocess
+from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterable, Union
 
+import jq
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
@@ -29,118 +31,9 @@ from sigma.types import Placeholder, SigmaString
 PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV = "PYSIGMA_ALLOW_EXTERNAL_SOURCES"
 
 
-# ---------------------------------------------------------------------------
-# Simple jq-like expression evaluator
-# ---------------------------------------------------------------------------
-
-
-def _flatten(value: Any) -> list[Any]:
-    """Recursively flatten nested lists into a flat list."""
-    if isinstance(value, list):
-        result: list[Any] = []
-        for item in value:
-            result.extend(_flatten(item))
-        return result
-    return [value]
-
-
-def _eval_jq_path(data: Any, path: str) -> Any:
-    """Evaluate one step (or more) of a jq path expression on *data*.
-
-    The leading ``.`` must have already been stripped before calling this
-    function.  An empty *path* means "return current value".
-    """
-    if not path:
-        return data
-
-    # .[]: iterate over all elements
-    if path.startswith("[]"):
-        remaining = path[2:]
-        if remaining.startswith("."):
-            remaining = remaining[1:]
-        if not isinstance(data, list):
-            raise SigmaValueError("jq '[]' applied to non-array value")
-        return [_eval_jq_path(item, remaining) for item in data]
-
-    # .[n]: index into an array
-    if path.startswith("["):
-        bracket_end = path.find("]")
-        if bracket_end == -1:
-            raise SigmaConfigurationError(f"jq: unmatched '[' in expression")
-        idx_str = path[1:bracket_end]
-        try:
-            idx = int(idx_str)
-        except ValueError:
-            raise SigmaConfigurationError(f"jq: invalid array index '{idx_str}'")
-        remaining = path[bracket_end + 1 :]
-        if remaining.startswith("."):
-            remaining = remaining[1:]
-        if not isinstance(data, (list, tuple)):
-            raise SigmaValueError(f"jq: [{idx}] applied to non-array value")
-        return _eval_jq_path(data[idx], remaining)
-
-    # .key, .key.nested, .key[], .key[n]
-    dot_pos = path.find(".")
-    bracket_pos = path.find("[")
-
-    if dot_pos == -1 and bracket_pos == -1:
-        key, remaining = path, ""
-    elif dot_pos == -1:
-        key, remaining = path[:bracket_pos], path[bracket_pos:]
-    elif bracket_pos == -1:
-        key, remaining = path[:dot_pos], path[dot_pos + 1 :]
-    else:
-        split_pos = min(dot_pos, bracket_pos)
-        if split_pos == dot_pos:
-            key, remaining = path[:dot_pos], path[dot_pos + 1 :]
-        else:
-            key, remaining = path[:bracket_pos], path[bracket_pos:]
-
-    if not key:
-        return _eval_jq_path(data, remaining)
-
-    if not isinstance(data, dict):
-        raise SigmaValueError(f"jq: key access on non-object (tried key '{key}')")
-    if key not in data:
-        raise SigmaValueError(f"jq: key '{key}' not found in object")
-    return _eval_jq_path(data[key], remaining)
-
-
-def _apply_jq_expression(data: Any, expression: str) -> list[str]:
-    """Apply a jq-like expression to *data* and return the extracted string values.
-
-    Supported syntax subset:
-
-    * ``.`` — return the whole document
-    * ``.key`` — dict key access
-    * ``.key.nested`` — nested dict access
-    * ``.[n]`` — array index (0-based integer)
-    * ``.key[]`` — iterate over all array elements under a key
-    * ``.[]`` — iterate over all array elements at the current level
-
-    The expression must start with ``"."``.  When the result is a list its
-    elements are returned individually; when it is a scalar it is returned as
-    a single-element list.  ``None`` values are dropped.
-    """
-    expression = expression.strip()
-    if not expression.startswith("."):
-        raise SigmaConfigurationError(
-            f"jq expression must start with '.', got: {expression!r}"
-        )
-    path = expression[1:]  # strip leading dot
-    result = _eval_jq_path(data, path)
-    flat = _flatten(result)
-    return [str(v) for v in flat if v is not None]
-
-
-# ---------------------------------------------------------------------------
-# Mixin
-# ---------------------------------------------------------------------------
-
-
 @dataclass
-class ExternalValueSourceMixin:
-    """Mixin for placeholder transformations that fetch replacement values from
+class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
+    """Base class for placeholder transformations that fetch replacement values from
     an external source (file, HTTP, command).
 
     **Supported formats** (controlled by the *format* parameter):
@@ -165,14 +58,7 @@ class ExternalValueSourceMixin:
     jq_expression: str | None = None
     allow_external_sources: bool = False
 
-    # Internal cache — not part of __init__ / equality / repr
-    _values_cache: list[str] | None = field(
-        init=False, default=None, repr=False, compare=False
-    )
-
-    # ------------------------------------------------------------------
-    # Security helpers
-    # ------------------------------------------------------------------
+    _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
 
     def _external_sources_allowed(self) -> bool:
         """Return *True* if external data sources are permitted."""
@@ -183,26 +69,15 @@ class ExternalValueSourceMixin:
             "true",
         )
 
-    # ------------------------------------------------------------------
-    # Data fetching (to be implemented by concrete classes)
-    # ------------------------------------------------------------------
-
+    @abstractmethod
     def _fetch_data(self) -> str:
         """Fetch raw text data from the external source.
 
         Subclasses **must** override this method.
         """
-        raise NotImplementedError(
-            f"{type(self).__name__} must implement _fetch_data()"
-        )
-
-    # ------------------------------------------------------------------
-    # Value retrieval with caching
-    # ------------------------------------------------------------------
 
     def _get_values(self) -> list[str]:
-        """Return the list of replacement values, fetching and caching them if
-        necessary.
+        """Return the list of replacement values, fetching and caching them if necessary.
 
         Raises :class:`~sigma.exceptions.SigmaSecurityError` when external
         data sources are not enabled.
@@ -221,10 +96,6 @@ class ExternalValueSourceMixin:
         data = self._fetch_data()
         self._values_cache = self._parse_data(data)
         return self._values_cache
-
-    # ------------------------------------------------------------------
-    # Format parsers
-    # ------------------------------------------------------------------
 
     def _parse_data(self, data: str) -> list[str]:
         """Dispatch to the appropriate format parser."""
@@ -251,9 +122,7 @@ class ExternalValueSourceMixin:
 
     def _parse_csv(self, data: str) -> list[str]:
         if self.csv_column is None:
-            raise SigmaConfigurationError(
-                "'csv_column' must be specified when format is 'csv'"
-            )
+            raise SigmaConfigurationError("'csv_column' must be specified when format is 'csv'")
 
         values: list[str] = []
 
@@ -268,7 +137,6 @@ class ExternalValueSourceMixin:
                 if val is not None:
                     values.append(val)
         else:
-            # Integer index
             col_idx = self.csv_column
             reader_list = csv.reader(io.StringIO(data))
             for row in reader_list:
@@ -282,41 +150,36 @@ class ExternalValueSourceMixin:
 
     def _parse_json(self, data: str) -> list[str]:
         if self.jq_expression is None:
-            raise SigmaConfigurationError(
-                "'jq_expression' must be specified when format is 'json'"
-            )
+            raise SigmaConfigurationError("'jq_expression' must be specified when format is 'json'")
         try:
             parsed = json.loads(data)
         except json.JSONDecodeError as e:
             raise SigmaValueError(f"Failed to parse JSON data: {e}") from e
-        return _apply_jq_expression(parsed, self.jq_expression)
+        try:
+            result = jq.all(self.jq_expression, parsed)
+        except ValueError as e:
+            raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
+        return [str(v) for v in result if v is not None]
 
     def _parse_yaml_data(self, data: str) -> list[str]:
         if self.jq_expression is None:
-            raise SigmaConfigurationError(
-                "'jq_expression' must be specified when format is 'yaml'"
-            )
+            raise SigmaConfigurationError("'jq_expression' must be specified when format is 'yaml'")
         try:
             parsed = yaml.safe_load(data)
         except yaml.YAMLError as e:
             raise SigmaValueError(f"Failed to parse YAML data: {e}") from e
-        return _apply_jq_expression(parsed, self.jq_expression)
-
-    # ------------------------------------------------------------------
-    # Placeholder replacement (used by BasePlaceholderTransformation)
-    # ------------------------------------------------------------------
+        try:
+            result = jq.all(self.jq_expression, parsed)
+        except ValueError as e:
+            raise SigmaConfigurationError(f"Invalid jq expression: {e}") from e
+        return [str(v) for v in result if v is not None]
 
     def placeholder_replacements(self, p: Placeholder) -> Iterable[SigmaString]:
         return [SigmaString(v) for v in self._get_values()]
 
 
-# ---------------------------------------------------------------------------
-# Concrete transformations
-# ---------------------------------------------------------------------------
-
-
 @dataclass
-class FilePlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTransformation):
+class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with values read from a local file.
 
     Parameters:
@@ -332,12 +195,10 @@ class FilePlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTra
     path: str = ""
 
     def __post_init__(self) -> None:
-        # Validate required field before calling parent __post_init__
         if not self.path:
             raise SigmaConfigurationError(
                 "FilePlaceholderTransformation requires a non-empty 'path'"
             )
-        # BasePlaceholderTransformation.__post_init__ calls check_exclusivity and super
         BasePlaceholderTransformation.__post_init__(self)
 
     def _fetch_data(self) -> str:
@@ -351,12 +212,19 @@ class FilePlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTra
 
 
 @dataclass
-class HTTPPlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTransformation):
+class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with values fetched from an HTTP(S) endpoint.
 
     Parameters:
     * **url** — URL to fetch (required)
+    * **method** — HTTP method (default: ``"GET"``)
     * **timeout** — request timeout in seconds (default: 10)
+    * **headers** — optional dict of custom HTTP request headers
+    * **params** — optional dict of URL query parameters
+    * **form_data** — optional dict to send as a form-encoded request body
+      (``application/x-www-form-urlencoded``)
+    * **json_body** — optional dict to send as a JSON request body
+      (``application/json``)
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
@@ -365,7 +233,12 @@ class HTTPPlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTra
     """
 
     url: str = ""
+    method: str = "GET"
     timeout: int = 10
+    headers: dict[str, str] | None = None
+    params: dict[str, str] | None = None
+    form_data: dict[str, Any] | None = None
+    json_body: dict[str, Any] | None = None
 
     def __post_init__(self) -> None:
         if not self.url:
@@ -375,10 +248,18 @@ class HTTPPlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTra
         BasePlaceholderTransformation.__post_init__(self)
 
     def _fetch_data(self) -> str:
-        import requests  # imported here so it is not a hard requirement for tests
+        import requests
 
         try:
-            response = requests.get(self.url, timeout=self.timeout)
+            response = requests.request(
+                method=self.method,
+                url=self.url,
+                timeout=self.timeout,
+                headers=self.headers,
+                params=self.params,
+                data=self.form_data,
+                json=self.json_body,
+            )
             response.raise_for_status()
             return response.text
         except Exception as e:
@@ -388,7 +269,7 @@ class HTTPPlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTra
 
 
 @dataclass
-class CommandPlaceholderTransformation(ExternalValueSourceMixin, BasePlaceholderTransformation):
+class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with the stdout output of a shell command.
 
     Parameters:

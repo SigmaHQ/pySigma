@@ -93,7 +93,31 @@ class TestExternalValueSourceParsers:
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True, format="csv", csv_column=1
         )
-        assert t._parse_data(data) == ["score", "10", "20"]
+        # Header row is skipped by default, consistent with column-name mode.
+        assert t._parse_data(data) == ["10", "20"]
+
+    def test_csv_by_column_index_no_header(self):
+        data = "alice,10\nbob,20\n"
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column=1,
+            csv_has_header=False,
+        )
+        assert t._parse_data(data) == ["10", "20"]
+
+    def test_csv_by_column_name_without_header_raises(self):
+        data = "alice,10\nbob,20\n"
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column="score",
+            csv_has_header=False,
+        )
+        with pytest.raises(SigmaConfigurationError, match="requires a header row"):
+            t._parse_data(data)
 
     def test_csv_missing_column_raises(self):
         data = "name,score\nalice,10\n"

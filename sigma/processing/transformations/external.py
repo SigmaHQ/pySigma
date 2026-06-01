@@ -43,8 +43,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     * ``"plaintext"`` — one value per line; an optional *filter* regex must
       match for a line to be included.
     * ``"csv"`` — CSV data; *csv_column* selects the column (column header
-      name **or** 0-based integer index); an optional *filter* regex is
-      applied to each extracted cell value.
+      name **or** 0-based integer index); *csv_has_header* (default ``True``)
+      controls whether the first row is treated as a header; an optional
+      *filter* regex is applied to each extracted cell value.
     * ``"json"`` — JSON data; *jq_expression* selects the value(s).
     * ``"yaml"`` — YAML data; *jq_expression* selects the value(s).
 
@@ -57,6 +58,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     format: str = "plaintext"
     filter: str | None = None
     csv_column: str | int | None = None
+    csv_has_header: bool = True
     jq_expression: str | None = None
     allow_external_sources: bool = False
 
@@ -129,6 +131,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         values: list[str] = []
 
         if isinstance(self.csv_column, str):
+            if not self.csv_has_header:
+                raise SigmaConfigurationError(
+                    "CSV column referenced by name requires a header row (csv_has_header=True)"
+                )
             reader_dict = csv.DictReader(io.StringIO(data))
             for row in reader_dict:
                 if self.csv_column not in row:
@@ -140,8 +146,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                     values.append(val)
         else:
             col_idx = self.csv_column
-            reader_list = csv.reader(io.StringIO(data))
-            for csv_row in reader_list:
+            rows = iter(csv.reader(io.StringIO(data)))
+            if self.csv_has_header:
+                next(rows, None)  # discard header row for consistency with name-based mode
+            for csv_row in rows:
                 if col_idx < len(csv_row):
                     values.append(csv_row[col_idx])
 
@@ -193,6 +201,7 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats (e.g. ``.items[]``)
     * **include** / **exclude** — placeholder name lists (from
       :class:`~sigma.processing.transformations.placeholder.BasePlaceholderTransformation`)
@@ -236,6 +245,7 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats
     * **include** / **exclude** — placeholder name lists
     """
@@ -302,6 +312,7 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
     * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
     * **filter** — optional regex that each value must match (plaintext/csv)
     * **csv_column** — column name (str) or 0-based index (int) for CSV format
+    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
     * **jq_expression** — path expression for JSON/YAML formats
     * **include** / **exclude** — placeholder name lists
     """

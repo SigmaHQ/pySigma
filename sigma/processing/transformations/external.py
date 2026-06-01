@@ -21,7 +21,6 @@ from abc import abstractmethod
 from dataclasses import dataclass, field
 from typing import Any, Iterable
 
-import jq  # type: ignore[import-not-found]
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
@@ -149,6 +148,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         return values
 
     def _parse_json(self, data: str) -> list[str]:
+        import jq  # type: ignore[import-not-found]
+
         if self.jq_expression is None:
             raise SigmaConfigurationError("'jq_expression' must be specified when format is 'json'")
         try:
@@ -162,6 +163,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         return [str(v) for v in result if v is not None]
 
     def _parse_yaml_data(self, data: str) -> list[str]:
+        import jq
+
         if self.jq_expression is None:
             raise SigmaConfigurationError("'jq_expression' must be specified when format is 'yaml'")
         try:

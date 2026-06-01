@@ -505,6 +505,52 @@ def test_field_mapping_field_to_field_no_wildcards(dummy_pipeline):
         assert not value.contains_special()
 
 
+def test_field_mapping_to_dict_after_field_rename(dummy_pipeline):
+    """Test that to_dict() works after a simple field name mapping (field rename only, no value change)."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"User|contains": ["AUTHORI", "AUTORI"]},
+                "condition": "selection",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={"User": "UserName"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    # to_dict() must not raise an error after a pure field rename
+    result = rule.to_dict()
+    assert result["detection"]["selection"] == {"UserName|contains": ["AUTHORI", "AUTORI"]}
+
+
+def test_field_mapping_none_to_field_disables_to_dict(dummy_pipeline):
+    """Test that to_dict() raises an error after a keyword-to-field mapping (values changed)."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "keywords": ["value1", "value2"],
+                "condition": "keywords",
+            },
+        }
+    )
+
+    transformation = FieldMappingTransformation(mapping={None: "my_field"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    # to_dict() must raise since wildcards were added to values (values changed)
+    with pytest.raises(SigmaValueError):
+        rule.to_dict()
+
+
 def test_field_mapping_none_preserves_existing_wildcards(dummy_pipeline):
     """Test that mapping None to field doesn't duplicate existing wildcards."""
     rule = SigmaRule.from_dict(

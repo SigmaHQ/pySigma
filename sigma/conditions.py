@@ -223,6 +223,13 @@ class ConditionSelector(ConditionItem):
         else:
             r = re.compile(self.pattern.replace("*", ".*"))
 
+        # When a filter is applied to a rule its detection identifiers are renamed to
+        # start with a `_filt_<random>_` prefix, and its condition patterns receive the
+        # same prefix.  We therefore allow `_`-prefixed identifiers to be matched when
+        # the pattern itself starts with `_` (i.e. it is a filter-internal pattern).
+        # For patterns that do NOT start with `_` (i.e. rule-level patterns such as
+        # "1 of selection_*") the original restriction is kept so that filter identifiers
+        # are never accidentally pulled into the rule's own selectors.
         return [
             ConditionIdentifier([identifier])
             for identifier in detections.detections.keys()

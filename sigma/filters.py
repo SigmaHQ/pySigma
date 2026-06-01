@@ -232,6 +232,12 @@ class SigmaFilter(SigmaRuleBase):
         #   - prefix wildcards:   "*_allow"      -> "PREFIX_*_allow"
         #   - the "them" keyword: "1 of them"    -> "1 of PREFIX_*"
         # Sigma keywords (not, and, or, all, any, of, 1) are left unchanged.
+        #
+        # The regex matches a single Sigma condition token: an optional leading `*`
+        # (wildcard prefix) or a letter, followed by alphanumerics, `*`, `_`, or `-`.
+        # Wildcards are only valid at the start or end of a Sigma identifier pattern
+        # but this regex accepts any occurrence; the Sigma condition parser is
+        # responsible for rejecting syntactically invalid patterns at parse time.
         def _replace_token(m: re.Match) -> str:
             token = m.group(0)
             if token.lower() in self._CONDITION_KEYWORDS:

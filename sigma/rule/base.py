@@ -25,7 +25,7 @@ class SigmaYAMLLoader(yaml.CSafeLoader):
     def construct_mapping(self, node: yaml.MappingNode, deep: bool = False) -> dict[Any, Any]:
         keys = set()
         for k, v in node.value:
-            key = self.construct_object(k, deep=deep)  # type: ignore
+            key = self.construct_object(k, deep=deep)
             if key in keys:
                 raise yaml.error.YAMLError("Duplicate key '{k}'")
             else:

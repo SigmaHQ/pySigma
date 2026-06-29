@@ -226,6 +226,94 @@ def test_string_contains_placeholders_all_excluded():
     )
 
 
+def test_string_placeholders_with_hyphen():
+    """Test placeholders with hyphens in names"""
+    assert SigmaString("test%var-name%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var-name"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_dot():
+    """Test placeholders with dots in names"""
+    assert SigmaString("test%var.name%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var.name"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_space():
+    """Test placeholders with spaces in names"""
+    assert SigmaString("test%var name%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var name"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_slash():
+    """Test placeholders with slashes in names"""
+    assert SigmaString("test%var/path%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var/path"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_colon():
+    """Test placeholders with colons in names"""
+    assert SigmaString("test%var:name%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var:name"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_at_sign():
+    """Test placeholders with @ signs in names"""
+    assert SigmaString("test%field@domain%end").insert_placeholders().s == [
+        "test",
+        Placeholder("field@domain"),
+        "end",
+    ]
+
+
+def test_string_placeholders_with_mixed_special_chars():
+    """Test placeholders with multiple special characters"""
+    assert SigmaString("test%var-1.2.3%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var-1.2.3"),
+        "end",
+    ]
+
+
+def test_string_placeholders_unicode():
+    """Test placeholders with unicode characters"""
+    assert SigmaString("test%これは日本語%end").insert_placeholders().s == [
+        "test",
+        Placeholder("これは日本語"),
+        "end",
+    ]
+
+
+def test_string_placeholders_empty():
+    """Test that empty placeholders %% don't create a Placeholder object"""
+    result = SigmaString("test%%end").insert_placeholders()
+    # Empty placeholders should not match the regex [^%]+ pattern
+    assert result.s == ["test%%end"]
+
+
+def test_string_placeholders_newline_tab():
+    """Test placeholders can contain newlines and tabs"""
+    assert SigmaString("test%var\ttab%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var\ttab"),
+        "end",
+    ]
+
+
 def test_strings_equal():
     assert SigmaString("test*string") == SigmaString("test*string")
 

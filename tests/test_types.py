@@ -299,14 +299,30 @@ def test_string_placeholders_unicode():
 
 
 def test_string_placeholders_empty():
-    """Test that empty placeholders %% don't create a Placeholder object"""
+    """Test that empty placeholders %% don't create a Placeholder object
+    
+    The regex pattern [^%]+ requires at least one non-% character,
+    so %% (zero characters between delimiters) doesn't match and
+    remains as the literal string '%%'.
+    """
     result = SigmaString("test%%end").insert_placeholders()
-    # Empty placeholders should not match the regex [^%]+ pattern
+    # Empty placeholders should not match the regex [^%]+ pattern (requires at least 1 char)
     assert result.s == ["test%%end"]
+    # Explicitly verify no Placeholder objects were created
+    assert not any(isinstance(part, Placeholder) for part in result.s)
 
 
-def test_string_placeholders_newline_tab():
-    """Test placeholders can contain newlines and tabs"""
+def test_string_placeholders_newline():
+    """Test placeholders can contain newlines"""
+    assert SigmaString("test%var\nline%end").insert_placeholders().s == [
+        "test",
+        Placeholder("var\nline"),
+        "end",
+    ]
+
+
+def test_string_placeholders_tab():
+    """Test placeholders can contain tabs"""
     assert SigmaString("test%var\ttab%end").insert_placeholders().s == [
         "test",
         Placeholder("var\ttab"),

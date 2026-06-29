@@ -276,7 +276,7 @@ class SigmaString(SigmaType):
         for part in self.s:  # iterate over all parts and...
             if isinstance(part, str):  # ...search in strings...
                 lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>\\w+)%", part):  # ...for placeholders
+                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
                     s = part[lastpos : m.start()].replace("\\%", "%")
                     if s != "":
                         res.append(

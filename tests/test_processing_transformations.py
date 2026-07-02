@@ -2616,6 +2616,47 @@ def test_hashes_transformation_no_string_value(hashes_transformation):
     assert hashes_transformation.apply_detection_item(detection_item) is None
 
 
+def test_hashes_transformation_contains_modifier(hashes_transformation):
+    # Simulate Hashes|contains: by using SigmaStrings with wildcards at start and end,
+    # as produced by the |contains modifier.
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("*SHA1=5F1CBC3D99558307BC1250D084FA968521482025*"),
+            SigmaString("*MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7*"),
+        ],
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+    assert result.detection_items[1].field == "FileMD5"
+    assert result.detection_items[1].value == [SigmaString("987B65CD9B9F4E9A1AFD8F8B48CF64A7")]
+
+
+def test_hashes_transformation_contains_modifier_auto_detect(hashes_transformation):
+    # Simulate Hashes|contains: for values without an algo prefix (auto-detected by length),
+    # as produced by the |contains modifier.
+    detection_item = SigmaDetectionItem(
+        "Hashes",
+        [],
+        [
+            SigmaString("*5F1CBC3D99558307BC1250D084FA968521482025*"),  # SHA1, 40 chars
+        ],
+    )
+    result = hashes_transformation.apply_detection_item(detection_item)
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 1
+    assert result.detection_items[0].field == "FileSHA1"
+    assert result.detection_items[0].value == [
+        SigmaString("5F1CBC3D99558307BC1250D084FA968521482025")
+    ]
+
+
 def test_case_transformation_lower(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC")])
     transformation = CaseTransformation(method="lower")

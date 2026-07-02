@@ -134,8 +134,9 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         if len(parts) == 2:
             hash_algo, hash_value = parts
             hash_algo = hash_algo.lstrip("*").upper()
+            hash_value = hash_value.strip("*?")
         else:
-            hash_value = parts[0]
+            hash_value = parts[0].strip("*?")
             hash_algo = self._determine_hash_algo_by_length(hash_value)
 
         return (hash_algo, hash_value) if hash_algo in self.valid_hash_algos else ("", hash_value)

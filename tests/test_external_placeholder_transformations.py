@@ -75,11 +75,13 @@ class TestExternalValueSourceParsers:
         values = t._parse_data("\nalpha\n\nbeta\n")
         assert values == ["alpha", "beta"]
 
-    def test_plaintext_filter_regex(self):
+    def test_plaintext_filter_regex(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE, allow_external_sources=True, filter=r"^\d+"
         )
-        values = t._parse_data("123abc\nhello\n456def\n")
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value="123abc\nhello\n456def\n"):
+            values = t._get_values()
         assert values == ["123abc", "456def"]
 
     def test_csv_by_column_name(self):
@@ -139,7 +141,7 @@ class TestExternalValueSourceParsers:
         with pytest.raises(SigmaConfigurationError, match="csv_column"):
             t._parse_data(data)
 
-    def test_csv_filter_regex(self):
+    def test_csv_filter_regex(self, dummy_pipeline):
         data = "val\nkeep_this\nskip\nkeep_too\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
@@ -148,7 +150,10 @@ class TestExternalValueSourceParsers:
             csv_column="val",
             filter=r"^keep",
         )
-        assert t._parse_data(data) == ["keep_this", "keep_too"]
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=data):
+            values = t._get_values()
+        assert values == ["keep_this", "keep_too"]
 
     def test_filter_invalid_regex_raises_at_init(self):
         with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'filter'"):
@@ -684,3 +689,146 @@ transformations:
         assert "file_placeholders" in transformations
         assert "http_placeholders" in transformations
         assert "command_placeholders" in transformations
+
+
+class TestFilter:
+    """Tests for the unified *filter* field on ExternalSourceBaseTransformation.
+
+    All tests use FilePlaceholderTransformation (the simplest concrete subclass) and
+    drive _get_values() via a mocked _fetch_data() — no real network or disk I/O needed.
+    """
+
+    # ------------------------------------------------------------------
+    # JSON — mirrors the issue reporter's IPv4 / IPv6 example
+    # ------------------------------------------------------------------
+    def test_filter_json_keeps_ipv4(self, dummy_pipeline):
+        """filter keeps only IPv4 addresses from a mixed IPv4/IPv6 JSON result."""
+        mixed_json = json.dumps(
+            {
+                "content": [
+                    {
+                        "IPs": [
+                            "8.25.203.0/24",
+                            "64.74.126.64/26",
+                            "2400:7aa0:1c16::/48",
+                            "2400:7aa0:1c17::/48",
+                        ]
+                    }
+                ]
+            }
+        )
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".content[].IPs[]",
+            filter=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=mixed_json):
+            values = t._get_values()
+
+        assert "8.25.203.0/24" in values
+        assert "64.74.126.64/26" in values
+        assert "2400:7aa0:1c16::/48" not in values
+        assert "2400:7aa0:1c17::/48" not in values
+
+    def test_filter_json_applied_via_get_values(self, dummy_pipeline):
+        """_get_values() applies filter after JSON parsing."""
+        raw = json.dumps({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".hosts[]",
+            filter=r"^\d{1,3}(\.\d{1,3}){3}$",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=raw):
+            values = t._get_values()
+        assert values == ["192.168.1.1", "10.0.0.1"]
+
+    # ------------------------------------------------------------------
+    # YAML
+    # ------------------------------------------------------------------
+    def test_filter_yaml_applied_via_get_values(self, dummy_pipeline):
+        """_get_values() applies filter after YAML parsing."""
+        raw = yaml.dump({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="yaml",
+            jq_expression=".hosts[]",
+            filter=r"^\d{1,3}(\.\d{1,3}){3}$",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=raw):
+            values = t._get_values()
+        assert values == ["192.168.1.1", "10.0.0.1"]
+
+    # ------------------------------------------------------------------
+    # Plaintext and CSV — filter still works as before
+    # ------------------------------------------------------------------
+    def test_filter_plaintext_applied_via_get_values(self, dummy_pipeline):
+        """filter applied after plaintext parsing keeps only matching lines."""
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="plaintext",
+            filter=r"^keep",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value="keep_this\nskip_this\nkeep_too\n"):
+            values = t._get_values()
+        assert values == ["keep_this", "keep_too"]
+
+    def test_filter_csv_applied_via_get_values(self, dummy_pipeline):
+        """filter applied after CSV parsing keeps only matching cell values."""
+        data = "val\nkeep_this\nskip\nkeep_too\n"
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="csv",
+            csv_column="val",
+            filter=r"^keep",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=data):
+            values = t._get_values()
+        assert values == ["keep_this", "keep_too"]
+
+    # ------------------------------------------------------------------
+    # Default / no-op — omitting filter changes nothing
+    # ------------------------------------------------------------------
+    def test_no_filter_returns_all_values(self, dummy_pipeline):
+        """Without filter the full jq result is returned unchanged."""
+        data = json.dumps({"values": ["alpha", "beta", "gamma"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".values[]",
+        )
+        t.set_pipeline(dummy_pipeline)
+        assert t._filter_pattern is None
+        with patch.object(t, "_fetch_data", return_value=data):
+            values = t._get_values()
+        assert values == ["alpha", "beta", "gamma"]
+
+    # ------------------------------------------------------------------
+    # Edge case — valid regex that matches nothing → empty list, no error
+    # ------------------------------------------------------------------
+    def test_filter_no_matches_returns_empty_list(self, dummy_pipeline):
+        """When filter matches no extracted values the result is an empty list."""
+        data = json.dumps({"hosts": ["fe80::1", "::1", "2001:db8::"]})
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            allow_external_sources=True,
+            format="json",
+            jq_expression=".hosts[]",
+            filter=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",
+        )
+        t.set_pipeline(dummy_pipeline)
+        with patch.object(t, "_fetch_data", return_value=data):
+            values = t._get_values()
+        assert values == []

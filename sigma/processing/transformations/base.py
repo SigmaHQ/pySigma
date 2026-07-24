@@ -376,6 +376,25 @@ class ValueTransformation(DetectionItemTransformation):
             return detection_item
         return None  # no replacement was made
 
+    def apply_detection(self, detection: SigmaDetection) -> None:
+        for i, detection_item in enumerate(detection.detection_items):
+            if isinstance(detection_item, SigmaDetection):  # recurse into nested detection items
+                self.apply_detection(detection_item)
+            else:
+                if (
+                    self.processing_item is None
+                    or self.processing_item.match_detection_item(detection_item)
+                ) and (r := self.apply_detection_item(detection_item)) is not None:
+                    if isinstance(r, SigmaDetectionItem):
+                        # Update original_value to stay in sync with the new transformed values
+                        # so that to_plain() / to_dict() can still serialize this detection item.
+                        # Unlike FieldMappingTransformation (which may add wildcards to values
+                        # making round-tripping incorrect), ValueTransformation operates on the
+                        # values directly and the new values serve as the serializable original.
+                        r.original_value = r.value.copy()
+                    detection.detection_items[i] = r
+                    self.processing_item_applied(r)
+
     @abstractmethod
     def apply_value(
         self, field: str | None, val: SigmaType

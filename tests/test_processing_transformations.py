@@ -2102,6 +2102,29 @@ def test_map_string_transformation_correlation_rule(
     assert sigma_correlation_rule == orig_correlation_rule
 
 
+def test_map_string_transformation_to_dict(dummy_pipeline):
+    """Test that to_dict() works after applying a map_string transformation (issue #496)."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"IntegrityLevel": "System"},
+                "condition": "selection",
+            },
+        }
+    )
+
+    transformation = MapStringTransformation(mapping={"System": "16384"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    # to_dict() must not raise an error after map_string transformation
+    result = rule.to_dict()
+    assert result["detection"]["selection"] == {"IntegrityLevel": "16384"}
+
+
 def test_regex_transformation_plain_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")

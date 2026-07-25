@@ -238,6 +238,7 @@ class SigmaRuleBase:
 
         # Rule tags validation
         tags = rule.get("tags", list())
+        rule_tags = []
         if tags is not None:
             if not isinstance(tags, list):
                 errors.append(
@@ -246,7 +247,6 @@ class SigmaRuleBase:
                     )
                 )
             else:
-                rule_tags = []
                 for tag in tags:
                     try:
                         rule_tags.append(SigmaRuleTag.from_str(tag))

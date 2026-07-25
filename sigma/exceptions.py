@@ -395,6 +395,12 @@ class SigmaTitleError(SigmaError):
     pass
 
 
+class SigmaTagError(SigmaError):
+    """Error in Sigma rule tag"""
+
+    pass
+
+
 @dataclass
 class ExceptionOnUsage:
     """Raise an exception when the class is used."""

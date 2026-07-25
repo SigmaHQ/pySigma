@@ -150,6 +150,21 @@ class TestExternalValueSourceParsers:
         )
         assert t._parse_data(data) == ["keep_this", "keep_too"]
 
+    def test_filter_invalid_regex_raises_at_init(self):
+        with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'filter'"):
+            FilePlaceholderTransformation(
+                path=PLAINTEXT_FILE,
+                allow_external_sources=True,
+                filter="[unclosed",
+            )
+
+    def test_filter_pattern_compiled_at_init(self):
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE, allow_external_sources=True, filter=r"^\d+"
+        )
+        assert t._filter_pattern is not None
+        assert t._filter_pattern.pattern == r"^\d+"
+
     def test_json_jq_expression(self):
         data = json.dumps({"values": ["a", "b", "c"]})
         t = FilePlaceholderTransformation(

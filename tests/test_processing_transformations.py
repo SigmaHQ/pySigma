@@ -3250,3 +3250,123 @@ def test_extract_fields_transformation_leading_zero_float():
     assert result.detection_items[0].value == [SigmaString("Key")]
     assert result.detection_items[1].field == "reg.value"
     assert result.detection_items[1].value == [SigmaString("03.14")]
+
+
+def test_extract_fields_transformation_partial_match_preserve_false():
+    """Test ExtractFieldsTransformation with partial match and preserve_unmatched=False (default)."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)", field_prefix="reg"
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("Dword:1234"), SigmaString("NOMATCH")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Non-matching value should be dropped
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2  # Only extracted fields from matched value
+    assert result.detection_items[0].field == "reg.type"
+    assert result.detection_items[0].value == [SigmaString("Dword")]
+    assert result.detection_items[1].field == "reg.value"
+    assert result.detection_items[1].value == [SigmaNumber(1234)]
+
+
+def test_extract_fields_transformation_partial_match_preserve_true():
+    """Test ExtractFieldsTransformation with partial match and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("Dword:1234"), SigmaString("NOMATCH")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Both matched and unmatched values should be present
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.item_linking == ConditionOR
+    # First: extracted fields from matched value
+    first = result.detection_items[0]
+    assert isinstance(first, SigmaDetection)
+    assert first.item_linking == ConditionAND
+    assert len(first.detection_items) == 2
+    assert first.detection_items[0].field == "reg.type"
+    assert first.detection_items[0].value == [SigmaString("Dword")]
+    assert first.detection_items[1].field == "reg.value"
+    assert first.detection_items[1].value == [SigmaNumber(1234)]
+    # Second: preserved unmatched value
+    second = result.detection_items[1]
+    assert isinstance(second, SigmaDetectionItem)
+    assert second.field == "anything"
+    assert second.value == [SigmaString("NOMATCH")]
+
+
+def test_extract_fields_transformation_no_match_preserve_true():
+    """Test ExtractFieldsTransformation with no match and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z0-9_]+):(?P<value>[^\s=|]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem("anything", [], [SigmaString("NOMATCH")])
+    result = transformation.apply_detection_item(detection_item)
+    # Unmatched value should be preserved
+    # Note: Single value returns SigmaDetectionItem directly (unwrapped)
+    assert isinstance(result, SigmaDetectionItem)
+    assert result.field == "anything"
+    assert result.value == [SigmaString("NOMATCH")]
+
+
+def test_extract_fields_transformation_multiple_no_match_preserve_true():
+    """Test ExtractFieldsTransformation with multiple non-matching values and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("NOMATCH1"), SigmaString("NOMATCH2")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # All unmatched values should be preserved
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.item_linking == ConditionOR
+    assert result.detection_items[0].field == "anything"
+    assert result.detection_items[0].value == [SigmaString("NOMATCH1")]
+    assert result.detection_items[1].field == "anything"
+    assert result.detection_items[1].value == [SigmaString("NOMATCH2")]
+
+
+def test_extract_fields_transformation_mixed_matches_preserve_true():
+    """Test ExtractFieldsTransformation with mixed matches and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything",
+        [],
+        [SigmaString("Dword:1234"), SigmaString("NOMATCH"), SigmaString("Qword:5678")],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # All values should be present: 2 matched, 1 preserved
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 3
+    assert result.item_linking == ConditionOR
+    # First: extracted fields from first matched value
+    first = result.detection_items[0]
+    assert isinstance(first, SigmaDetection)
+    assert first.detection_items[0].field == "reg.type"
+    assert first.detection_items[0].value == [SigmaString("Dword")]
+    # Second: preserved unmatched value
+    second = result.detection_items[1]
+    assert isinstance(second, SigmaDetectionItem)
+    assert second.field == "anything"
+    assert second.value == [SigmaString("NOMATCH")]
+    # Third: extracted fields from second matched value
+    third = result.detection_items[2]
+    assert isinstance(third, SigmaDetection)
+    assert third.detection_items[0].field == "reg.type"
+    assert third.detection_items[0].value == [SigmaString("Qword")]

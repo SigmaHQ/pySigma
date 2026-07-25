@@ -488,10 +488,13 @@ class ExtractFieldsTransformation(DetectionItemTransformation):
         regex (str): Regex pattern with named groups (e.g., (?P<name>pattern)).
         field_prefix (str | None): Prefix for field names. Used as {field_prefix}.{group_name}.
             If None, only the group name is used as the field name.
+        preserve_unmatched (bool): If True, values that don't match the regex are preserved
+            as-is in the original field. If False (default), non-matching values are dropped.
     """
 
     regex: str
     field_prefix: str | None = None
+    preserve_unmatched: bool = False
 
     def __post_init__(self) -> None:
         if hasattr(super(), "__post_init__"):
@@ -540,7 +543,18 @@ class ExtractFieldsTransformation(DetectionItemTransformation):
             plain = val.to_plain()
             match = self.re.match(plain)
             if not match:
-                return None
+                # Value doesn't match - handle based on preserve_unmatched setting
+                if self.preserve_unmatched:
+                    # Preserve the original value as-is
+                    value_detections.append(
+                        SigmaDetectionItem(
+                            field=detection_item.field,
+                            modifiers=[],
+                            value=[val],
+                        )
+                    )
+                # Otherwise, skip this value (dropped from results)
+                continue
 
             items: list[SigmaDetectionItem | SigmaDetection] = []
             for group_name, group_value in match.groupdict().items():

@@ -2553,7 +2553,7 @@ def test_hashes_transformation_drop_algo_prefix():
 
 def test_hashes_transformation_invalid_hash(hashes_transformation):
     detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
-    with pytest.raises(Exception, match="No valid hash algorithm found"):
+    with pytest.raises(SigmaValueError, match="No valid hash algorithm found"):
         hashes_transformation.apply_detection_item(detection_item)
 
 

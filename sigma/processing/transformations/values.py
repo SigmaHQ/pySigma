@@ -96,7 +96,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
             algo_dict = self._parse_hash_values(cast(list[SigmaString], values))
 
             if not algo_dict:
-                raise Exception(
+                raise SigmaValueError(
                     f"No valid hash algorithm found in Hashes field. Please use one of the following: {', '.join(self.valid_hash_algos)}"
                 )
 

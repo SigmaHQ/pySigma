@@ -390,41 +390,45 @@ class ConvertTypeTransformation(ValueTransformation):
         self, field: str | None, val: SigmaType
     ) -> (SigmaString | SigmaNumber | SigmaExpansion) | None:
         if self.target_type == "str":
-            # Preserve SigmaNull values - they should not be converted to strings
-            if isinstance(val, SigmaNull):
-                return None
+            # Only convert SigmaNumber to SigmaString
+            if isinstance(val, SigmaNumber):
+                return SigmaString(str(val))
 
             if isinstance(val, SigmaExpansion):
                 for i, entry in enumerate(val.values):
-                    # avoid re-parsing entries that are already SigmaString
-                    # skip SigmaNull entries to preserve them
-                    if not isinstance(entry, SigmaString) and not isinstance(entry, SigmaNull):
+                    # Only convert SigmaNumber entries to SigmaString
+                    if isinstance(entry, SigmaNumber):
                         val.values[i] = SigmaString(str(entry))
 
                 return val
 
-            # confirming correct structure, avoiding re-parsing
+            # Return None for other types - no conversion
+            return None
+        elif self.target_type == "num":
+            # Only convert SigmaString to SigmaNumber
             if isinstance(val, SigmaString):
+                try:
+                    return SigmaNumber(str(val))
+                except SigmaValueError:
+                    raise SigmaValueError(
+                        f"Value '{val}' can't be converted to number for {str(self)}"
+                    )
+
+            if isinstance(val, SigmaExpansion):
+                for i, entry in enumerate(val.values):
+                    # Only convert SigmaString entries to SigmaNumber
+                    if isinstance(entry, SigmaString):
+                        try:
+                            val.values[i] = SigmaNumber(str(entry))
+                        except SigmaValueError:
+                            raise SigmaValueError(
+                                f"Value '{entry}' can't be converted to number for {str(self)}"
+                            )
+
                 return val
 
-            return SigmaString(str(val))
-        elif self.target_type == "num":
-            # Preserve SigmaNull values - they should not be converted to numbers
-            if isinstance(val, SigmaNull):
-                return None
-
-            try:
-                if isinstance(val, SigmaExpansion):
-                    for i, entry in enumerate(val.values):
-                        # skip SigmaNull entries to preserve them
-                        if not isinstance(entry, SigmaNull):
-                            val.values[i] = SigmaNumber(str(entry))
-
-                    return val
-
-                return SigmaNumber(str(val))
-            except SigmaValueError:
-                raise SigmaValueError(f"Value '{val}' can't be converted to number for {str(self)}")
+            # Return None for other types - no conversion
+            return None
 
 
 @dataclass

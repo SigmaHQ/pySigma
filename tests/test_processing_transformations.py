@@ -2308,6 +2308,62 @@ def test_convert_type_transformation_expansion_null_to_num():
     )
 
 
+def test_convert_type_transformation_regex_to_str():
+    """Test that SigmaRegularExpression values are not converted to strings"""
+    transformation = ConvertTypeTransformation("str")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem("field", [], [regex])
+    result = transformation.apply_detection_item(detection_item)
+    assert result is None  # no transformation should occur
+    assert detection_item.value[0] is regex
+
+
+def test_convert_type_transformation_regex_to_num():
+    """Test that SigmaRegularExpression values are not converted to numbers"""
+    transformation = ConvertTypeTransformation("num")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem("field", [], [regex])
+    result = transformation.apply_detection_item(detection_item)
+    assert result is None  # no transformation should occur
+    assert detection_item.value[0] is regex
+
+
+def test_convert_type_transformation_expansion_regex_to_str():
+    """Test that SigmaRegularExpression values in expansions are not converted to strings"""
+    transformation = ConvertTypeTransformation("str")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem(
+        "field",
+        [],
+        [SigmaExpansion(values=[SigmaNumber(123), regex, SigmaString("test")])],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Check that SigmaNumber was converted to SigmaString
+    assert detection_item.value[0].values[0] == SigmaString("123")
+    # Check that SigmaRegularExpression was not converted
+    assert detection_item.value[0].values[1] is regex
+    # Check that SigmaString remained unchanged
+    assert detection_item.value[0].values[2] == SigmaString("test")
+
+
+def test_convert_type_transformation_expansion_regex_to_num():
+    """Test that SigmaRegularExpression values in expansions are not converted to numbers"""
+    transformation = ConvertTypeTransformation("num")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem(
+        "field",
+        [],
+        [SigmaExpansion(values=[SigmaString("456"), regex, SigmaNumber(789)])],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Check that SigmaString was converted to SigmaNumber
+    assert detection_item.value[0].values[0] == SigmaNumber(456)
+    # Check that SigmaRegularExpression was not converted
+    assert detection_item.value[0].values[1] is regex
+    # Check that SigmaNumber remained unchanged
+    assert detection_item.value[0].values[2] == SigmaNumber(789)
+
+
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):
     transformation = SetStateTransformation("testkey", "testvalue")
     transformation.set_processing_item(

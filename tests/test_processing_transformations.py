@@ -2102,6 +2102,29 @@ def test_map_string_transformation_correlation_rule(
     assert sigma_correlation_rule == orig_correlation_rule
 
 
+def test_map_string_transformation_to_dict(dummy_pipeline):
+    """Test that to_dict() works after applying a map_string transformation (issue #496)."""
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "status": "test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"IntegrityLevel": "System"},
+                "condition": "selection",
+            },
+        }
+    )
+
+    transformation = MapStringTransformation(mapping={"System": "16384"})
+    transformation.set_pipeline(dummy_pipeline)
+    transformation.apply(rule)
+
+    # to_dict() must not raise an error after map_string transformation
+    result = rule.to_dict()
+    assert result["detection"]["selection"] == {"IntegrityLevel": "16384"}
+
+
 def test_regex_transformation_plain_method(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("\\te.st*va?ue")])
     transformation = RegexTransformation(method="plain")
@@ -2306,6 +2329,62 @@ def test_convert_type_transformation_expansion_null_to_num():
     assert detection_item.value[0] == SigmaExpansion(
         values=[SigmaNumber(456), SigmaNull(), SigmaNumber(789)]
     )
+
+
+def test_convert_type_transformation_regex_to_str():
+    """Test that SigmaRegularExpression values are not converted to strings"""
+    transformation = ConvertTypeTransformation("str")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem("field", [], [regex])
+    result = transformation.apply_detection_item(detection_item)
+    assert result is None  # no transformation should occur
+    assert detection_item.value[0] is regex
+
+
+def test_convert_type_transformation_regex_to_num():
+    """Test that SigmaRegularExpression values are not converted to numbers"""
+    transformation = ConvertTypeTransformation("num")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem("field", [], [regex])
+    result = transformation.apply_detection_item(detection_item)
+    assert result is None  # no transformation should occur
+    assert detection_item.value[0] is regex
+
+
+def test_convert_type_transformation_expansion_regex_to_str():
+    """Test that SigmaRegularExpression values in expansions are not converted to strings"""
+    transformation = ConvertTypeTransformation("str")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem(
+        "field",
+        [],
+        [SigmaExpansion(values=[SigmaNumber(123), regex, SigmaString("test")])],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Check that SigmaNumber was converted to SigmaString
+    assert detection_item.value[0].values[0] == SigmaString("123")
+    # Check that SigmaRegularExpression was not converted
+    assert detection_item.value[0].values[1] is regex
+    # Check that SigmaString remained unchanged
+    assert detection_item.value[0].values[2] == SigmaString("test")
+
+
+def test_convert_type_transformation_expansion_regex_to_num():
+    """Test that SigmaRegularExpression values in expansions are not converted to numbers"""
+    transformation = ConvertTypeTransformation("num")
+    regex = SigmaRegularExpression("test.*pattern")
+    detection_item = SigmaDetectionItem(
+        "field",
+        [],
+        [SigmaExpansion(values=[SigmaString("456"), regex, SigmaNumber(789)])],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Check that SigmaString was converted to SigmaNumber
+    assert detection_item.value[0].values[0] == SigmaNumber(456)
+    # Check that SigmaRegularExpression was not converted
+    assert detection_item.value[0].values[1] is regex
+    # Check that SigmaNumber remained unchanged
+    assert detection_item.value[0].values[2] == SigmaNumber(789)
 
 
 def test_set_state(dummy_pipeline, sigma_rule: SigmaRule):
@@ -2553,7 +2632,7 @@ def test_hashes_transformation_drop_algo_prefix():
 
 def test_hashes_transformation_invalid_hash(hashes_transformation):
     detection_item = SigmaDetectionItem("Hashes", [], [SigmaString("INVALID=123456")])
-    with pytest.raises(Exception, match="No valid hash algorithm found"):
+    with pytest.raises(SigmaValueError, match="No valid hash algorithm found"):
         hashes_transformation.apply_detection_item(detection_item)
 
 
@@ -3250,3 +3329,123 @@ def test_extract_fields_transformation_leading_zero_float():
     assert result.detection_items[0].value == [SigmaString("Key")]
     assert result.detection_items[1].field == "reg.value"
     assert result.detection_items[1].value == [SigmaString("03.14")]
+
+
+def test_extract_fields_transformation_partial_match_preserve_false():
+    """Test ExtractFieldsTransformation with partial match and preserve_unmatched=False (default)."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)", field_prefix="reg"
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("Dword:1234"), SigmaString("NOMATCH")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Non-matching value should be dropped
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2  # Only extracted fields from matched value
+    assert result.detection_items[0].field == "reg.type"
+    assert result.detection_items[0].value == [SigmaString("Dword")]
+    assert result.detection_items[1].field == "reg.value"
+    assert result.detection_items[1].value == [SigmaNumber(1234)]
+
+
+def test_extract_fields_transformation_partial_match_preserve_true():
+    """Test ExtractFieldsTransformation with partial match and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("Dword:1234"), SigmaString("NOMATCH")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # Both matched and unmatched values should be present
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.item_linking == ConditionOR
+    # First: extracted fields from matched value
+    first = result.detection_items[0]
+    assert isinstance(first, SigmaDetection)
+    assert first.item_linking == ConditionAND
+    assert len(first.detection_items) == 2
+    assert first.detection_items[0].field == "reg.type"
+    assert first.detection_items[0].value == [SigmaString("Dword")]
+    assert first.detection_items[1].field == "reg.value"
+    assert first.detection_items[1].value == [SigmaNumber(1234)]
+    # Second: preserved unmatched value
+    second = result.detection_items[1]
+    assert isinstance(second, SigmaDetectionItem)
+    assert second.field == "anything"
+    assert second.value == [SigmaString("NOMATCH")]
+
+
+def test_extract_fields_transformation_no_match_preserve_true():
+    """Test ExtractFieldsTransformation with no match and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z0-9_]+):(?P<value>[^\s=|]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem("anything", [], [SigmaString("NOMATCH")])
+    result = transformation.apply_detection_item(detection_item)
+    # Unmatched value should be preserved
+    # Note: Single value returns SigmaDetectionItem directly (unwrapped)
+    assert isinstance(result, SigmaDetectionItem)
+    assert result.field == "anything"
+    assert result.value == [SigmaString("NOMATCH")]
+
+
+def test_extract_fields_transformation_multiple_no_match_preserve_true():
+    """Test ExtractFieldsTransformation with multiple non-matching values and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything", [], [SigmaString("NOMATCH1"), SigmaString("NOMATCH2")]
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # All unmatched values should be preserved
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 2
+    assert result.item_linking == ConditionOR
+    assert result.detection_items[0].field == "anything"
+    assert result.detection_items[0].value == [SigmaString("NOMATCH1")]
+    assert result.detection_items[1].field == "anything"
+    assert result.detection_items[1].value == [SigmaString("NOMATCH2")]
+
+
+def test_extract_fields_transformation_mixed_matches_preserve_true():
+    """Test ExtractFieldsTransformation with mixed matches and preserve_unmatched=True."""
+    transformation = ExtractFieldsTransformation(
+        regex=r"(?P<type>[A-Za-z]+):(?P<value>[0-9]+)",
+        field_prefix="reg",
+        preserve_unmatched=True,
+    )
+    detection_item = SigmaDetectionItem(
+        "anything",
+        [],
+        [SigmaString("Dword:1234"), SigmaString("NOMATCH"), SigmaString("Qword:5678")],
+    )
+    result = transformation.apply_detection_item(detection_item)
+    # All values should be present: 2 matched, 1 preserved
+    assert isinstance(result, SigmaDetection)
+    assert len(result.detection_items) == 3
+    assert result.item_linking == ConditionOR
+    # First: extracted fields from first matched value
+    first = result.detection_items[0]
+    assert isinstance(first, SigmaDetection)
+    assert first.detection_items[0].field == "reg.type"
+    assert first.detection_items[0].value == [SigmaString("Dword")]
+    # Second: preserved unmatched value
+    second = result.detection_items[1]
+    assert isinstance(second, SigmaDetectionItem)
+    assert second.field == "anything"
+    assert second.value == [SigmaString("NOMATCH")]
+    # Third: extracted fields from second matched value
+    third = result.detection_items[2]
+    assert isinstance(third, SigmaDetection)
+    assert third.detection_items[0].field == "reg.type"
+    assert third.detection_items[0].value == [SigmaString("Qword")]

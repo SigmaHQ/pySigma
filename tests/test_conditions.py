@@ -538,3 +538,26 @@ detection:
     or_condition = rule.detection.parsed_condition[0].parsed
     assert or_condition.args[0].parent != None
     assert or_condition.args[0].parent.parent == or_condition
+
+
+def test_selector_no_wildcard_exact_match_no_prefix_collision():
+    # "1 of selection" must resolve to exactly the "selection" detection,
+    # not also match a prefix-sibling like "selection_extra".
+    from sigma.collection import SigmaCollection
+
+    rule = SigmaCollection.from_yaml("""
+        title: Test
+        logsource:
+            category: test
+        detection:
+            selection:
+                fieldA: valueA
+            selection_extra:
+                fieldB: valueB
+            condition: 1 of selection
+        """).rules[0]
+    parsed = rule.detection.parsed_condition[0].parse()
+    # Before the fix this is an OR over both detections; after, a single condition.
+    from sigma.conditions import ConditionOR
+
+    assert not isinstance(parsed, ConditionOR)

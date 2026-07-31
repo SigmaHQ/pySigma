@@ -638,6 +638,10 @@ class ProcessingItem(ProcessingItemBase):
                 field_name_cond_result = self.field_name_condition_linking(
                     [condition.match_value(value) for condition in self.field_name_conditions]
                 )
+            else:  # no field name condition expression or linking defined
+                raise SigmaPipelineConditionError(
+                    "No field name condition expression or linking defined for processing item."
+                )
             if self.field_name_condition_negation:
                 field_name_cond_result = not field_name_cond_result
 

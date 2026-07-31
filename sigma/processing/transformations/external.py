@@ -66,6 +66,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     allow_external_sources: bool = False
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
+    _filter_pattern: re.Pattern[str] | None = field(
+        init=False, default=None, repr=False, compare=False
+    )
 
     def __post_init__(self) -> None:
         if self.format not in SUPPORTED_FORMATS:
@@ -73,6 +76,11 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                 f"Unknown external source format '{self.format}'. "
                 f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
             )
+        if self.filter is not None:
+            try:
+                self._filter_pattern = re.compile(self.filter)
+            except re.error as e:
+                raise SigmaConfigurationError(f"Invalid regex in 'filter': {e}") from e
         super().__post_init__()
 
     def _external_sources_allowed(self) -> bool:
@@ -130,9 +138,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
 
     def _parse_plaintext(self, data: str) -> list[str]:
         values = [line for line in (line.strip() for line in data.splitlines()) if line]
-        if self.filter:
-            pattern = re.compile(self.filter)
-            values = [v for v in values if pattern.search(v)]
+        if self._filter_pattern is not None:
+            values = [v for v in values if self._filter_pattern.search(v)]
         return values
 
     def _parse_csv(self, data: str) -> list[str]:
@@ -164,9 +171,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                 if col_idx < len(csv_row):
                     values.append(csv_row[col_idx])
 
-        if self.filter:
-            pattern = re.compile(self.filter)
-            values = [v for v in values if pattern.search(v)]
+        if self._filter_pattern is not None:
+            values = [v for v in values if self._filter_pattern.search(v)]
         return values
 
     def _parse_json(self, data: str) -> list[str]:

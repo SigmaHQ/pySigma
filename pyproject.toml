@@ -38,7 +38,7 @@ types-pyyaml = "^6.0.12.20250915"
 typing-extensions = "^4.16.0"
 diskcache = "^5.6.3"
 diskcache-stubs = ">=5.6.3"
-jq = "^1.6"
+jq = "^1.12"
 
 [tool.poetry.group.dev.dependencies]
 black = "^26.3.1"
@@ -50,8 +50,8 @@ pytest-cov = "^7.0"
 pytest-mypy = "^1.0"
 Sphinx = "^8"
 defusedxml = "^0.7"
-types-requests = "^2.32.4.20250913"
-mypy = "^2.1"
+types-requests = "^2.33.0.20260712"
+mypy = "^2.3"
 
 [tool.black]
 line-length = 100

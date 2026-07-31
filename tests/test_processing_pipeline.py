@@ -33,7 +33,7 @@ from sigma.processing.transformations import (
 )
 from sigma.rule import SigmaRule, SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError, SigmaPipelineConditionError, SigmaTypeError
-from sigma.types import SigmaString
+from sigma.types import SigmaString, SigmaFieldReference
 
 
 @dataclass
@@ -709,6 +709,18 @@ def test_processingitem_match_field_name_with_expression_false():
         ),
     )
     assert not processing_item.match_field_name("field")
+
+
+def test_processingitem_match_field_in_value_no_condition():
+    processing_item = ProcessingItem(
+        transformation=TransformationAppend(s="Test"),
+        field_name_conditions=[FieldNameConditionTrue(dummy="test-true")],
+        field_name_condition_linking=any,
+    )
+    processing_item.field_name_condition_expression = None
+    processing_item.field_name_condition_linking = None
+    with pytest.raises(SigmaPipelineConditionError, match="No field name condition"):
+        processing_item.match_field_in_value(SigmaFieldReference("field"))
 
 
 def test_processingitem_rule_condition_no_list_or_dict():

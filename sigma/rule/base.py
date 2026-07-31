@@ -236,6 +236,23 @@ class SigmaRuleBase:
                         )
                     )
 
+        # Rule tags validation
+        tags = rule.get("tags", list())
+        rule_tags = []
+        if tags is not None:
+            if not isinstance(tags, list):
+                errors.append(
+                    sigma_exceptions.SigmaTagError(
+                        "Sigma tags fields must be a list", source=source
+                    )
+                )
+            else:
+                for tag in tags:
+                    try:
+                        rule_tags.append(SigmaRuleTag.from_str(tag))
+                    except sigma_exceptions.SigmaValueError as e:
+                        errors.append(e)
+
         # parse rule date if existing
         rule_date = get_rule_as_date("date", sigma_exceptions.SigmaDateError)
 
@@ -349,7 +366,7 @@ class SigmaRuleBase:
                 "status": rule_status,
                 "description": rule_description,
                 "references": rule_references,
-                "tags": [SigmaRuleTag.from_str(tag) for tag in rule.get("tags", list())],
+                "tags": rule_tags,
                 "author": rule_author,
                 "date": rule_date,
                 "modified": rule_modified,

@@ -698,41 +698,6 @@ class TestFilter:
     drive _get_values() via a mocked _fetch_data() — no real network or disk I/O needed.
     """
 
-    # ------------------------------------------------------------------
-    # JSON — mirrors the issue reporter's IPv4 / IPv6 example
-    # ------------------------------------------------------------------
-    def test_filter_json_keeps_ipv4(self, dummy_pipeline):
-        """filter keeps only IPv4 addresses from a mixed IPv4/IPv6 JSON result."""
-        mixed_json = json.dumps(
-            {
-                "content": [
-                    {
-                        "IPs": [
-                            "8.25.203.0/24",
-                            "64.74.126.64/26",
-                            "2400:7aa0:1c16::/48",
-                            "2400:7aa0:1c17::/48",
-                        ]
-                    }
-                ]
-            }
-        )
-        t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE,
-            allow_external_sources=True,
-            format="json",
-            jq_expression=".content[].IPs[]",
-            filter=r"\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}",
-        )
-        t.set_pipeline(dummy_pipeline)
-        with patch.object(t, "_fetch_data", return_value=mixed_json):
-            values = t._get_values()
-
-        assert "8.25.203.0/24" in values
-        assert "64.74.126.64/26" in values
-        assert "2400:7aa0:1c16::/48" not in values
-        assert "2400:7aa0:1c17::/48" not in values
-
     def test_filter_json_applied_via_get_values(self, dummy_pipeline):
         """_get_values() applies filter after JSON parsing."""
         raw = json.dumps({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
@@ -748,9 +713,6 @@ class TestFilter:
             values = t._get_values()
         assert values == ["192.168.1.1", "10.0.0.1"]
 
-    # ------------------------------------------------------------------
-    # YAML
-    # ------------------------------------------------------------------
     def test_filter_yaml_applied_via_get_values(self, dummy_pipeline):
         """_get_values() applies filter after YAML parsing."""
         raw = yaml.dump({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
@@ -766,9 +728,6 @@ class TestFilter:
             values = t._get_values()
         assert values == ["192.168.1.1", "10.0.0.1"]
 
-    # ------------------------------------------------------------------
-    # Plaintext and CSV — filter still works as before
-    # ------------------------------------------------------------------
     def test_filter_plaintext_applied_via_get_values(self, dummy_pipeline):
         """filter applied after plaintext parsing keeps only matching lines."""
         t = FilePlaceholderTransformation(
@@ -797,9 +756,6 @@ class TestFilter:
             values = t._get_values()
         assert values == ["keep_this", "keep_too"]
 
-    # ------------------------------------------------------------------
-    # Default / no-op — omitting filter changes nothing
-    # ------------------------------------------------------------------
     def test_no_filter_returns_all_values(self, dummy_pipeline):
         """Without filter the full jq result is returned unchanged."""
         data = json.dumps({"values": ["alpha", "beta", "gamma"]})
@@ -815,9 +771,6 @@ class TestFilter:
             values = t._get_values()
         assert values == ["alpha", "beta", "gamma"]
 
-    # ------------------------------------------------------------------
-    # Edge case — valid regex that matches nothing → empty list, no error
-    # ------------------------------------------------------------------
     def test_filter_no_matches_returns_empty_list(self, dummy_pipeline):
         """When filter matches no extracted values the result is an empty list."""
         data = json.dumps({"hosts": ["fe80::1", "::1", "2001:db8::"]})

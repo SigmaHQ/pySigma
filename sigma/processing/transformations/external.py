@@ -236,15 +236,24 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
 class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with values read from a local file.
 
-    Parameters:
-    * **path** — path to the file (required)
-    * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
-    * **filter** — optional regex; only extracted values that match are kept (all formats)
-    * **csv_column** — column name (str) or 0-based index (int) for CSV format
-    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
-    * **jq_expression** — path expression for JSON/YAML formats (e.g. ``.items[]``)
-    * **include** / **exclude** — placeholder name lists (from
-      :class:`~sigma.processing.transformations.placeholder.BasePlaceholderTransformation`)
+    Parameters
+    ----------
+    path : str
+        Path to the file (required).
+    format : str
+        Data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``.
+    filter : str, optional
+        Regex; only extracted values that match are kept (all formats).
+    csv_column : str or int, optional
+        Column name (str) or 0-based index (int) for CSV format.
+    csv_has_header : bool
+        Whether the first CSV row is a header (default ``True``).
+    jq_expression : str, optional
+        Path expression for JSON/YAML formats (e.g. ``.items[]``).
+    include : list, optional
+        Placeholder name inclusion list.
+    exclude : list, optional
+        Placeholder name exclusion list.
     """
 
     path: str = ""
@@ -270,24 +279,38 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
 class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with values fetched from an HTTP(S) endpoint.
 
-    Parameters:
-    * **url** — URL to fetch (required)
-    * **method** — HTTP method (default: ``"GET"``)
-    * **timeout** — request timeout in seconds (default: 10)
-    * **headers** — optional dict of custom HTTP request headers
-    * **params** — optional dict of URL query parameters
-    * **form_data** — optional dict to send as a form-encoded request body
-      (``application/x-www-form-urlencoded``)
-    * **json_body** — optional dict to send as a JSON request body
-      (``application/json``)
-    * **max_body_size** — maximum response body size in bytes; the fetch is
-      aborted with an error once this many bytes have been read (default 10 MiB)
-    * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
-    * **filter** — optional regex; only extracted values that match are kept (all formats)
-    * **csv_column** — column name (str) or 0-based index (int) for CSV format
-    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
-    * **jq_expression** — path expression for JSON/YAML formats
-    * **include** / **exclude** — placeholder name lists
+    Parameters
+    ----------
+    url : str
+        URL to fetch (required).
+    method : str
+        HTTP method (default: ``"GET"``).
+    timeout : int
+        Request timeout in seconds (default: 10).
+    headers : dict, optional
+        Custom HTTP request headers.
+    params : dict, optional
+        URL query parameters.
+    form_data : dict, optional
+        Form-encoded request body (``application/x-www-form-urlencoded``).
+    json_body : dict, optional
+        JSON request body (``application/json``).
+    max_body_size : int
+        Maximum response body size in bytes (default 10 MiB).
+    format : str
+        Data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``.
+    filter : str, optional
+        Regex; only extracted values that match are kept (all formats).
+    csv_column : str or int, optional
+        Column name (str) or 0-based index (int) for CSV format.
+    csv_has_header : bool
+        Whether the first CSV row is a header (default ``True``).
+    jq_expression : str, optional
+        Path expression for JSON/YAML formats.
+    include : list, optional
+        Placeholder name inclusion list.
+    exclude : list, optional
+        Placeholder name exclusion list.
     """
 
     url: str = ""
@@ -341,18 +364,28 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
 class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
     """Replace placeholders with the stdout output of a shell command.
 
-    Parameters:
-    * **cmd** — command string (passed to ``/bin/sh -c``) or a list of
-      arguments (required)
-    * **timeout** — maximum execution time in seconds (default: 30)
-    * **max_stdout** — maximum accepted stdout size in bytes; output larger
-      than this is rejected with an error (default 10 MiB)
-    * **format** — data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``
-    * **filter** — optional regex; only extracted values that match are kept (all formats)
-    * **csv_column** — column name (str) or 0-based index (int) for CSV format
-    * **csv_has_header** — whether the first CSV row is a header (default ``True``)
-    * **jq_expression** — path expression for JSON/YAML formats
-    * **include** / **exclude** — placeholder name lists
+    Parameters
+    ----------
+    cmd : str or list
+        Command string (passed to ``/bin/sh -c``) or a list of arguments (required).
+    timeout : int
+        Maximum execution time in seconds (default: 30).
+    max_stdout : int
+        Maximum accepted stdout size in bytes (default 10 MiB).
+    format : str
+        Data format: ``"plaintext"`` (default), ``"csv"``, ``"json"``, ``"yaml"``.
+    filter : str, optional
+        Regex; only extracted values that match are kept (all formats).
+    csv_column : str or int, optional
+        Column name (str) or 0-based index (int) for CSV format.
+    csv_has_header : bool
+        Whether the first CSV row is a header (default ``True``).
+    jq_expression : str, optional
+        Path expression for JSON/YAML formats.
+    include : list, optional
+        Placeholder name inclusion list.
+    exclude : list, optional
+        Placeholder name exclusion list.
     """
 
     cmd: str | list[str] = ""

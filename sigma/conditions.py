@@ -233,7 +233,7 @@ class ConditionSelector(ConditionItem):
         return [
             ConditionIdentifier([identifier])
             for identifier in detections.detections.keys()
-            if r.match(identifier)
+            if r.fullmatch(identifier)
             and (self.pattern.startswith("_") or not identifier.startswith("_"))
         ]
 

@@ -405,6 +405,11 @@ def test_include_field_condition_wrong_type():
         IncludeFieldCondition(["field", "otherfield"], "invalid")
 
 
+def test_include_field_condition_invalid_re():
+    with pytest.raises(SigmaConfigurationError, match="Regular expression .* is invalid"):
+        IncludeFieldCondition(["[invalid"], "re")
+
+
 def test_exclude_field_condition_match():
     assert ExcludeFieldCondition(["field", "otherfield"]).match_field_name("field") == False
 

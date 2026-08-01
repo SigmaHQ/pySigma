@@ -25,7 +25,15 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
         if self.mode == "plain":
             pass
         elif self.mode == "re":
-            self.patterns = [re.compile(field) for field in self.fields]
+            compiled = []
+            for field_pattern in self.fields:
+                try:
+                    compiled.append(re.compile(field_pattern))
+                except re.error as e:
+                    raise SigmaConfigurationError(
+                        f"Regular expression '{field_pattern}' in field name condition is invalid: {e}"
+                    ) from e
+            self.patterns = compiled
         else:
             raise SigmaConfigurationError(
                 f"Invalid field name matching mode '{self.mode}', supported types are 'plain' or 're'."

@@ -13,8 +13,14 @@ from collections import namedtuple
 @dataclass
 class ProcessingPipelineResolver:
     """
-    A processing pipeline resolver resolves a list of pipeline specifiers into one summarized processing pipeline.
-    It takes care of sorting by priority and resolution of filenames as well as pipeline name identifiers.
+    A processing pipeline resolver resolves a list of pipeline specifiers into one summarized
+    processing pipeline. It handles sorting by priority, resolution of filenames, and pipeline
+    name identifiers.
+
+    **Key Feature:** When combining multiple pipelines, the resolver sorts them by their
+    priority value (lowest first) before merging, ensuring pipelines are applied in the
+    intended order. This is different from simple addition (``+``), which concatenates
+    pipelines without considering priorities.
     """
 
     pipelines: dict[str, ProcessingPipeline | Callable[[], ProcessingPipeline]] = field(
@@ -76,6 +82,10 @@ class ProcessingPipelineResolver:
         * directories containing processing pipelines YAML definitions
 
         into a consolidated processing pipeline.
+
+        **Important:** Pipelines are merged in order of their priority value (lowest first),
+        not in the order specified by *pipeline_specs*. This ensures pipelines are applied
+        in their intended sequence regardless of the resolution order.
 
         If *target* is specified this is passed in each *resolve_pipeline* call to perform a
         compatibility check for the usage of the specified backend with the pipeline.

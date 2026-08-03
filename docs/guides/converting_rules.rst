@@ -127,15 +127,29 @@ generic Sigma rules to your specific environment. Pass them to the backend const
    backend = TextQueryTestBackend(processing_pipeline=pipeline)
    result = backend.convert(collection)
 
-You can also combine multiple pipelines:
+You can also combine multiple pipelines using the ``ProcessingPipelineResolver``, which respects
+pipeline priorities when merging them:
 
 .. code-block:: python
 
+   from sigma.processing.resolver import ProcessingPipelineResolver
+
    pipeline1 = ProcessingPipeline.from_yaml(yaml1)
    pipeline2 = ProcessingPipeline.from_yaml(yaml2)
-   combined = pipeline1 + pipeline2
+   
+   # Use resolver to properly order pipelines by priority
+   resolver = ProcessingPipelineResolver()
+   resolver.add_pipeline_class(pipeline1)
+   resolver.add_pipeline_class(pipeline2)
+   combined = resolver.resolve([pipeline1.name, pipeline2.name])
 
    backend = TextQueryTestBackend(processing_pipeline=combined)
+
+.. note::
+
+   Simple addition with the ``+`` operator (e.g., ``pipeline1 + pipeline2``) does not respect
+   pipeline priorities. Use ``ProcessingPipelineResolver`` to ensure pipelines are merged in the
+   correct order based on their priority values (lowest priority first).
 
 Output Formats
 --------------

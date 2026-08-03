@@ -15,6 +15,8 @@ The validation system consists of:
 * **SigmaValidationIssue**: Results reported by validators with severity levels.
 * **Built-in validators**: A set of core validators for common checks.
 
+
+
 Basic Usage
 -----------
 
@@ -58,9 +60,7 @@ Basic Usage
 
    # Validate a collection (enables cross-rule checks)
    collection = SigmaCollection.load_ruleset([Path("./rules/")])
-   issues = validator.validate_collection(collection)
-   final_issues = validator.finalize()  # Cross-rule checks like uniqueness
-   all_issues = issues + final_issues
+   issues = validator.validate_rules(collection)
 
 Severity Levels
 ^^^^^^^^^^^^^^^
@@ -124,49 +124,185 @@ Metadata Validators (``sigma.validators.core.metadata``)
 
 Check rule metadata fields for correctness and completeness.
 
-* **IdentifierExistenceValidator**: Ensures every rule has a UUID identifier.
-* **IdentifierUniquenessValidator**: Ensures rule identifiers are unique across a collection.
-* **TitleLengthValidator**: Checks title length constraints.
-* **DuplicateTitleValidator**: Detects duplicate titles.
-* **StatusExistenceValidator**: Ensures rules have a status field.
-* **LevelExistenceValidator**: Ensures rules have a level field.
-* **DateExistenceValidator**: Checks for date field presence.
-* **DescriptionExistenceValidator**: Checks for description field presence.
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``IdentifierExistenceValidator``
+     - ``identifier_existence``
+     - Ensures every rule has a UUID identifier.
+   * - ``IdentifierUniquenessValidator``
+     - ``identifier_uniqueness``
+     - Ensures rule identifiers are unique across a collection.
+   * - ``DuplicateTitleValidator``
+     - ``duplicate_title``
+     - Detects duplicate rule titles in a collection.
+   * - ``DuplicateReferencesValidator``
+     - ``duplicate_references``
+     - Detects duplicate references within a rule.
+   * - ``DuplicateFilenameValidator``
+     - ``duplicate_filename``
+     - Detects duplicate filenames across rules in a collection.
+   * - ``FilenameLengthValidator``
+     - ``filename_length``
+     - Validates rule filename length (default: 10-90 characters).
+   * - ``CustomAttributesValidator``
+     - ``custom_attributes``
+     - Detects custom field names similar to legitimate ones.
 
 Condition Validators (``sigma.validators.core.condition``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check rule conditions for correctness.
 
-* **AllOfThemConditionValidator**: Checks proper use of ``all of them``.
-* **DanglingConditionReferenceValidator**: Detects references to non-existent detections.
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``DanglingDetectionValidator``
+     - ``dangling_detection``
+     - Detects detection definitions not referenced from condition.
+   * - ``DanglingConditionValidator``
+     - ``dangling_condition``
+     - Detects conditions referencing non-existent detection definitions.
+   * - ``AllOfThemConditionValidator``
+     - ``all_of_them_condition``
+     - Discourages use of ``all of them`` condition; suggests ``all of selection*`` instead.
+   * - ``ThemConditionWithSingleDetectionValidator``
+     - ``them_condition_with_single_detection``
+     - Detects ``them`` condition usage with only one detection.
 
 Tag Validators (``sigma.validators.core.tags``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check rule tags for validity.
+Check rule tags for validity and format.
 
-* **ATTACKTagValidator**: Validates MITRE ATT&CK tags.
-* **TLPTagValidator**: Validates TLP (Traffic Light Protocol) tags.
-* **CVETagValidator**: Validates CVE identifier tags.
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``TagFormatValidator``
+     - ``tag_format``
+     - Validates tag namespace and name against allowed character patterns.
+   * - ``ATTACKTagValidator``
+     - ``attack_tag``
+     - Validates MITRE ATT&CK tactics, techniques, and related identifiers.
+   * - ``D3FENDTagValidator``
+     - ``d3fend_tag``
+     - Validates MITRE D3FEND tactics and techniques.
+   * - ``TLPTagValidator``
+     - ``tlp_tag``
+     - Validates TLP (Traffic Light Protocol) tags from all TLP versions.
+   * - ``TLPv1TagValidator``
+     - ``tlpv1_tag``
+     - Validates TLP tags according to TLP 1.0 standard (white, green, amber, red).
+   * - ``TLPv2TagValidator``
+     - ``tlpv2_tag``
+     - Validates TLP tags according to TLP 2.0 standard (clear, green, amber, amber-strict, red).
+   * - ``DuplicateTagValidator``
+     - ``duplicate_tag``
+     - Detects duplicate tags within a rule.
+   * - ``NamespaceTagValidator``
+     - ``namespace_tag``
+     - Validates that tags use allowed namespaces (attack, car, cve, d3fend, detection, stp, tlp).
+   * - ``CARTagValidator``
+     - ``car_tag``
+     - Validates CAR (Cyber Analytics Repository) tag format.
+   * - ``CVETagValidator``
+     - ``cve_tag``
+     - Validates CVE identifier tag format.
+   * - ``DetectionTagValidator``
+     - ``detection_tag``
+     - Validates detection tag content.
+   * - ``STPTagValidator``
+     - ``stp_tag``
+     - Validates STP (Security Techniques and Procedures) tag format.
 
 Modifier Validators (``sigma.validators.core.modifiers``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check detection modifiers for correctness.
+Check detection modifiers for correct usage and combinations.
+
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``InvalidModifierCombinationsValidator``
+     - ``invalid_modifier_combinations``
+     - Detects invalid or problematic modifier combinations.
 
 Value Validators (``sigma.validators.core.values``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Check detection values for potential issues.
 
-* **DanglingWildcardValidator**: Detects wildcards that may be unintentional.
-* **DoubleWildcardValidator**: Detects consecutive wildcards.
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``DoubleWildcardValidator``
+     - ``double_wildcard``
+     - Detects consecutive wildcards (``**``) in values.
+   * - ``NumberAsStringValidator``
+     - ``number_as_string``
+     - Detects numeric values expressed as strings.
+   * - ``ControlCharacterValidator``
+     - ``control_character``
+     - Detects control characters (often from missing escape sequences).
+   * - ``WildcardsInsteadOfModifiersValidator``
+     - ``wildcards_instead_of_modifiers``
+     - Suggests ``contains``, ``startswith``, or ``endswith`` modifiers instead of wildcards.
+   * - ``EscapedWildcardValidator``
+     - ``escaped_wildcard``
+     - Detects escaped wildcards (``\*`` or ``\?``) in rule logic.
 
 Log Source Validators (``sigma.validators.core.logsources``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Check log source definitions for issues.
+Check log source definitions for issues and best practices.
+
+.. list-table::
+   :widths: 30 30 40
+   :header-rows: 1
+
+   * - Validator Class
+     - Config Identifier
+     - Description
+   * - ``SpecificInsteadOfGenericLogsourceValidator``
+     - ``specific_instead_of_generic_logsource``
+     - Detects use of specific event IDs where generic log sources should be used.
+   * - ``FieldnameLogsourceValidator``
+     - ``fieldname_logsource``
+     - Detects invalid field names in log source definitions.
+
+SigmaHQ Strict Validators
+-------------------------
+
+The `pySigma-validators-SigmaHQ <https://github.com/SigmaHQ/pySigma-validators-SigmaHQ>`_
+package provides additional strict validation checks used by the SigmaHQ repository.
+These validators enforce the quality and consistency standards required for rules
+in the official Sigma rule repository.
+
+To use them, install the package:
+
+.. code-block:: bash
+
+   pip install pySigma-validators-SigmaHQ
 
 Writing Custom Validators
 -------------------------

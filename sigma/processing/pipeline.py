@@ -711,6 +711,11 @@ class ProcessingPipeline:
     A processing pipeline is instantiated once for a rule collection. Rules are processed in order of their
     appearance in a rule file or include order. Further, processing pipelines can be chained and contain
     variables that can be used from processing items.
+
+    **Important:** When combining multiple pipelines, the ``ProcessingPipelineResolver.resolve()`` method
+    should be used to respect pipeline priorities (lowest priority first). Simple addition with the ``+``
+    operator does not consider priorities and concatenates pipelines in the order specified. Use the resolver
+    when you have multiple pipelines with different priority values that must be applied in a specific order.
     """
 
     items: list[ProcessingItem] = field(default_factory=list)
@@ -958,7 +963,13 @@ class ProcessingPipeline:
         return processing_item_id in self.field_name_applied_ids[field]
 
     def __add__(self, other: "ProcessingPipeline" | None) -> "ProcessingPipeline":
-        """Concatenate two processing pipelines and merge their variables."""
+        """
+        Concatenate two processing pipelines and merge their variables.
+
+        **Note:** This method concatenates pipelines in the order specified and does NOT respect
+        pipeline priorities. For combining multiple pipelines with different priority values,
+        use ``ProcessingPipelineResolver.resolve()`` which sorts pipelines by priority before merging.
+        """
         if other is None:
             return self
         if not isinstance(other, self.__class__):

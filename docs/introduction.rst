@@ -10,7 +10,7 @@ rules that describe suspicious or malicious activity in log data. pySigma serves
 that transforms these vendor-agnostic rules into specific query languages like Splunk SPL, Elasticsearch
 queries, Microsoft Sentinel KQL, and many more.
 
-pySigma replaces the legacy Sigma toolchain (``sigmac``) with a cleaner, modular design that is
+pySigma replaced the legacy Sigma toolchain (``sigmac``) with a cleaner, modular design that is
 thoroughly tested and maintained.
 
 Purpose
@@ -24,14 +24,6 @@ The main goals of pySigma are:
 * **Convert** processed rules into target query languages via backends.
 * **Validate** rules for correctness and compliance with best practices.
 
-Architecture
-------------
-
-pySigma follows a modular architecture with clear separation of concerns:
-
-.. image:: images/pipelines.png
-   :alt: pySigma processing architecture
-
 Core Components
 ^^^^^^^^^^^^^^^
 
@@ -44,10 +36,10 @@ Core Components
    Collections handle rule reference resolution for correlation rules.
 
 **Processing Pipelines** (``sigma.processing``)
-   Ordered sequences of transformations that modify rules before conversion. Pipelines can
-   rename fields, adjust log sources, add conditions, and perform many other transformations.
-   They can be defined in Python or YAML and are the primary mechanism for adapting generic
-   Sigma rules to a specific environment.
+   Ordered sequences of transformations that modify rules before conversion.
+   Pipelines can rename fields, adjust log sources, add conditions, and perform many other
+   transformations. They can be defined in Python or YAML and are the primary mechanism for
+   adapting generic Sigma rules to a specific environment.
 
 **Backends** (``sigma.conversion``)
    Convert processed Sigma rules into target query languages. Each backend implements the
@@ -90,11 +82,3 @@ pySigma is part of a larger ecosystem:
   ``pySigma-backend-elasticsearch``).
 * **Pipeline packages**: Environment-specific transformation packages (e.g.,
   ``pySigma-pipeline-sysmon``, ``pySigma-pipeline-crowdstrike``).
-
-Related Projects
-^^^^^^^^^^^^^^^^
-
-* `pySigma-backend-splunk <https://github.com/SigmaHQ/pySigma-backend-splunk>`_
-* `pySigma-pipeline-sysmon <https://github.com/SigmaHQ/pySigma-pipeline-sysmon>`_
-* `pySigma-pipeline-crowdstrike <https://github.com/SigmaHQ/pySigma-pipeline-crowdstrike>`_
-* `pySigma Cookie Cutter Template <https://github.com/SigmaHQ/cookiecutter-pySigma-backend>`_

@@ -131,3 +131,4 @@ Next Steps
 * :doc:`guides/building_backends` — How to create your own backend
 * :doc:`guides/processing_pipelines` — Processing pipeline deep dive
 * :doc:`guides/rule_validation` — Rule validation guide
+* :doc:`guides/plugin_system` — Plugin system documentation

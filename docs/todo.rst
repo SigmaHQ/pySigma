@@ -13,13 +13,6 @@ Guides
   rules (event_count, value_count, temporal_ordered, triggered types) with detailed examples.
 * **Filters Guide**: Explain how to use Sigma filters (``SigmaFilter``) to globally modify
   rules in a collection.
-* **Migration from sigmac**: A guide for users migrating from the legacy ``sigmac`` tool to
-  pySigma, covering differences and equivalent functionality.
-* **Advanced Pipeline Techniques**: Document template variables, external sources
-  (file/HTTP/command placeholders), and nested pipelines in more detail with practical examples.
-* **Error Handling Guide**: Best practices for handling errors during parsing, processing,
-  and conversion, including the ``collect_errors`` pattern.
-* **Performance and Optimization**: Guidance on efficiently processing large rule sets.
 
 Reference Documentation
 ^^^^^^^^^^^^^^^^^^^^^^^

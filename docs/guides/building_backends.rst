@@ -189,8 +189,52 @@ Here are the most important categories:
 Implementing Output Formats
 ----------------------------
 
-Backends support multiple output formats. Define them in the ``formats`` class variable
-and implement ``finalize_output_<name>`` methods:
+**Preferred Approach: Processing Pipelines with Query Postprocessing**
+
+The recommended way to implement output formats is through processing pipelines with query
+postprocessing transformations. This approach is more flexible, better configurable via
+template variables, and allows users to customize output through pipeline configuration
+rather than backend code. This is the modern best practice for format handling.
+
+Here's an example using a query postprocessing transformation for Splunk savedsearches.conf:
+
+.. code-block:: python
+
+   from sigma.processing.postprocessing import PostprocessingTransformation, PostprocessingItem
+   from sigma.processing.pipeline import ProcessingPipeline, ProcessingItem
+   from jinja2 import Template
+   from typing import ClassVar
+
+   class SplunkSavedsearchPostprocessing(PostprocessingTransformation):
+       """Convert query output to Splunk savedsearches.conf format."""
+
+       def apply_postprocessing(self, queries: list[str], **kwargs) -> str:
+           """Generate Splunk savedsearches.conf content."""
+           configs = []
+           for i, q in enumerate(queries):
+               config = f"[search_{i}]\\nquery = {q}\\ndescription = {kwargs.get('description', '')}\\n"
+               configs.append(config)
+           return "\\n".join(configs)
+
+   class MyBackend(TextQueryBackend):
+       # Savedsearch format via processing pipeline
+       output_format_processing_pipeline: ClassVar[dict[str, ProcessingPipeline]] = {
+           "savedsearch": ProcessingPipeline(
+               name="splunk_savedsearch_format",
+               postprocessing_items=[
+                   PostprocessingItem(
+                       identifier="convert_to_savedsearch",
+                       transformation=SplunkSavedsearchPostprocessing(),
+                       rule_conditions=[],
+                   )
+               ]
+           )
+       }
+
+**Legacy Approach: finalize_output Methods (Deprecated)**
+
+For backward compatibility, backends can still implement output formats using ``finalize_output_<name>``
+methods, though this approach is no longer recommended:
 
 .. code-block:: python
 
@@ -333,13 +377,18 @@ When building a backend, follow these conventions:
 4. **Use processing pipelines for transformations**: Don't implement field mappings or log source
    handling directly in the backend. Use the built-in pipeline for generic transformations.
 
-5. **Handle backend options properly**: Accept configuration through backend options, not
+5. **Prefer processing pipelines with postprocessing for output formats**: Instead of implementing
+   ``finalize_output_<name>`` methods, use query postprocessing transformations within processing
+   pipelines. This approach is more flexible, allows users to customize output through pipeline
+   configuration and template variables, and follows modern pySigma best practices.
+
+6. **Handle backend options properly**: Accept configuration through backend options, not
    hard-coded values.
 
-6. **Return strings or bytes from ``finalize_output``**: Some output formats produce strings,
+7. **Return strings or bytes from postprocessing**: Some output formats produce strings,
    others may produce bytes (e.g., binary export formats).
 
-7. **Document supported features**: Clearly indicate which Sigma features your backend supports
+8. **Document supported features**: Clearly indicate which Sigma features your backend supports
    and which ones it doesn't.
 
 Testing Your Backend

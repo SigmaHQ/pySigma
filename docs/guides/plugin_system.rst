@@ -58,7 +58,9 @@ pySigma maintains a public directory of available plugins:
 Using Pipeline Resolvers
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-The ``ProcessingPipelineResolver`` combines installed pipelines and resolves them by name:
+The ``ProcessingPipelineResolver`` combines installed pipelines and resolves them by name,
+automatically ordering them by their priority values (lowest first). This ensures pipelines are
+applied in the correct sequence:
 
 .. code-block:: python
 
@@ -68,8 +70,10 @@ The ``ProcessingPipelineResolver`` combines installed pipelines and resolves the
    plugins = InstalledSigmaPlugins.autodiscover()
    resolver = ProcessingPipelineResolver.from_pipeline_list(plugins.pipelines.values())
 
-   # Resolve a pipeline by name
+   # Resolve and merge pipelines by name, respecting their priority values
    pipeline = resolver.resolve(["sysmon", "windows"])
+   # If sysmon has priority 10 and windows has priority 20,
+   # they will be merged with sysmon applied first
 
 Creating a Backend Plugin
 -------------------------
@@ -218,6 +222,11 @@ Follow these naming conventions for plugins:
 * **Backends**: ``pySigma-backend-<name>`` (e.g., ``pySigma-backend-splunk``)
 * **Pipelines**: ``pySigma-pipeline-<name>`` (e.g., ``pySigma-pipeline-sysmon``)
 * **Validators**: ``pySigma-validators-<name>``
+
+.. note::
+   It is a common practice to package processing pipelines in backend plugins. In such cases the backend naming scheme is used.
+
+
 
 Testing Plugins
 ---------------

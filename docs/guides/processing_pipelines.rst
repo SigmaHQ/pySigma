@@ -43,8 +43,9 @@ Both approaches use the same underlying ``ProcessingPipeline`` class and can be 
 Pipeline Priorities
 -------------------
 
-When multiple pipelines are combined, they are applied in order of their priority value
-(lowest first). The following priority conventions are recommended:
+When multiple pipelines are combined using the ``ProcessingPipelineResolver``, they are applied
+in order of their priority value (lowest first). The following priority conventions are
+recommended:
 
 ==========  ==============  ===============================================
 Priority    Category        Purpose
@@ -123,17 +124,22 @@ Example: Log Source Transformation
 
 .. code-block:: yaml
 
-   name: my_logsource_mapping
+   name: sysmon_logsource_mapping
    priority: 10
    transformations:
-     - id: windows_process_creation_logsource
+     - id: map_to_sysmon
        type: change_logsource
-       category: process_creation
-       product: windows
+       service: sysmon
        rule_conditions:
          - type: logsource
            category: process_creation
            product: windows
+
+This is a typical use case for log source transformations: mapping generic Sigma rules to
+backend-specific log sources. In this example, any generic Windows process creation rule
+is mapped to Sysmon events, ensuring the rule is queried against the appropriate data source
+in your backend system. Backends often require rules to target specific event sources like
+Sysmon, WinEventLog, or other data providers to generate correct queries.
 
 Example: Value Replacement
 ^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -218,16 +224,38 @@ Loading Pipelines from YAML
 Combining Pipelines
 ^^^^^^^^^^^^^^^^^^^
 
+There are two ways to combine pipelines, but only one respects priority ordering:
+
+**Using ProcessingPipelineResolver (Recommended)**
+
+The resolver automatically sorts pipelines by priority before merging them:
+
 .. code-block:: python
 
-   combined = pipeline1 + pipeline2
-
-   # Or use the resolver
    from sigma.processing.resolver import ProcessingPipelineResolver
+   
    resolver = ProcessingPipelineResolver()
-   resolver.add_pipeline(pipeline1)
-   resolver.add_pipeline(pipeline2)
-   combined = resolver.resolve(["pipeline1_name", "pipeline2_name"])
+   resolver.add_pipeline_class(pipeline1)  # e.g., priority=10
+   resolver.add_pipeline_class(pipeline2)  # e.g., priority=20
+   
+   # Resolves and merges in priority order (pipeline1, then pipeline2)
+   combined = resolver.resolve([pipeline1.name, pipeline2.name])
+
+**Simple Addition (Use with Caution)**
+
+Direct addition with the ``+`` operator does **not** respect pipeline priorities:
+
+.. code-block:: python
+
+   # WARNING: This combines pipelines in the order specified, ignoring priorities
+   combined = pipeline1 + pipeline2  # Always in this order, regardless of priority values
+
+.. important::
+
+   Use ``ProcessingPipelineResolver.resolve()`` when you have multiple pipelines with
+   different priority values. Simple addition (``+``) concatenates pipelines in the order
+   specified without considering priorities. If pipeline priorities matter for your use case,
+   use the resolver.
 
 Conditions
 ----------
@@ -257,6 +285,9 @@ is applied.
    * - ``contains_detection_item``
      - ``RuleContainsDetectionItemCondition``
      - Rule contains a detection item with specified field and value.
+   * - ``contains_field``
+     - ``RuleContainsFieldCondition``
+     - Rule contains a field with the specified field name.
    * - ``is_sigma_rule``
      - ``IsSigmaRuleCondition``
      - The rule is a regular Sigma rule (not a correlation rule).
@@ -266,7 +297,7 @@ is applied.
    * - ``rule_attribute``
      - ``RuleAttributeCondition``
      - Match by rule attribute (title, id, status, level, etc.).
-   * - ``rule_tag``
+   * - ``tag``
      - ``RuleTagCondition``
      - Match by rule tag.
    * - ``processing_item_applied``
@@ -321,10 +352,10 @@ Applied per detection item within a rule.
    * - ``is_null``
      - ``IsNullCondition``
      - Detection item value is null.
-   * - ``detection_item_processing_item_applied``
+   * - ``processing_item_applied``
      - ``DetectionItemProcessingItemAppliedCondition``
      - A specific processing item was applied to this detection item.
-   * - ``detection_item_processing_state``
+   * - ``processing_state``
      - ``DetectionItemProcessingStateCondition``
      - Match by processing state.
 
@@ -346,10 +377,10 @@ Control which field names a transformation applies to.
    * - ``exclude_fields``
      - ``ExcludeFieldCondition``
      - Exclude listed field names from transformation.
-   * - ``field_name_processing_item_applied``
+   * - ``processing_item_applied``
      - ``FieldNameProcessingItemAppliedCondition``
      - A specific processing item was applied.
-   * - ``field_name_processing_state``
+   * - ``processing_state``
      - ``FieldNameProcessingStateCondition``
      - Match by processing state.
 
@@ -365,133 +396,183 @@ These are the ``type`` values for the ``transformations`` section.
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``field_name_mapping``
+     - ``FieldMappingTransformation``
      - Map field names using a dictionary. Supports one-to-many mappings.
    * - ``field_name_prefix_mapping``
+     - ``FieldPrefixMappingTransformation``
      - Map field name prefixes (e.g., ``win.`` → ``windows.``).
-   * - ``field_name_function_mapping``
+   * - ``field_name_transform``
+     - ``FieldFunctionTransformation``
      - Apply a function to field names (e.g., ``lower``, ``upper``).
    * - ``field_name_suffix``
+     - ``AddFieldnameSuffixTransformation``
      - Add a suffix to all matching field names.
    * - ``field_name_prefix``
+     - ``AddFieldnamePrefixTransformation``
      - Add a prefix to all matching field names.
    * - ``add_field``
+     - ``AddFieldTransformation``
      - Add a new field to the rule's fields list.
    * - ``remove_field``
+     - ``RemoveFieldTransformation``
      - Remove a field from the rule's fields list.
    * - ``set_field``
+     - ``SetFieldTransformation``
      - Set a field in detection items to a specific name.
 
 **Value Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``replace_string``
+     - ``ReplaceStringTransformation``
      - Replace strings in values using regex patterns.
    * - ``map_string``
+     - ``MapStringTransformation``
      - Map string values using a dictionary.
    * - ``regex``
+     - ``RegexTransformation``
      - Transform values using regex with capture groups.
    * - ``set_value``
+     - ``SetValueTransformation``
      - Set detection item values to a fixed value.
    * - ``convert_type``
+     - ``ConvertTypeTransformation``
      - Convert value types (e.g., string to regex).
    * - ``case``
+     - ``CaseTransformation``
      - Change case of string values (lower, upper, title).
-   * - ``hashes``
+   * - ``hashes_fields``
+     - ``HashesFieldsDetectionItemTransformation``
      - Split detection items with hash values into separate items per algorithm.
+   * - ``extract_fields``
+     - ``ExtractFieldsTransformation``
+     - Extract and expand fields from detection items into separate fields.
 
 **Detection Item Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``drop_detection_item``
+     - ``DropDetectionItemTransformation``
      - Remove a detection item from the detection.
 
 **Condition Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``add_condition``
+     - ``AddConditionTransformation``
      - Add a new condition expression to the detection.
 
 **Rule Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``change_logsource``
+     - ``ChangeLogsourceTransformation``
      - Change the log source category, product, or service.
    * - ``set_custom_attribute``
+     - ``SetCustomAttributeTransformation``
      - Set a custom attribute on the rule.
 
 **State Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``set_state``
+     - ``SetStateTransformation``
      - Set a variable in the pipeline state.
 
 **Placeholder Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``value_placeholders``
+     - ``ValueListPlaceholderTransformation``
      - Replace placeholders with lists of values.
    * - ``wildcard_placeholders``
+     - ``WildcardPlaceholderTransformation``
      - Replace placeholders with wildcard patterns.
    * - ``query_expression_placeholders``
+     - ``QueryExpressionPlaceholderTransformation``
      - Replace placeholders with query-language expressions.
+   * - ``file_placeholders``
+     - ``FilePlaceholderTransformation``
+     - Replace placeholders with values from external files.
+   * - ``http_placeholders``
+     - ``HTTPPlaceholderTransformation``
+     - Replace placeholders with values from HTTP endpoints.
+   * - ``command_placeholders``
+     - ``CommandPlaceholderTransformation``
+     - Replace placeholders with values from external command outputs.
 
 **Failure Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``rule_failure``
+     - ``RuleFailureTransformation``
      - Raise an error for rules matching the condition.
    * - ``detection_item_failure``
+     - ``DetectionItemFailureTransformation``
      - Raise an error for detection items matching the condition.
+   * - ``strict_field_mapping_failure``
+     - ``StrictFieldMappingFailure``
+     - Raise an error for rules with unmapped field names.
 
 **Meta Transformations:**
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
-   * - ``nested``
+   * - ``nest``
+     - ``NestedProcessingTransformation``
      - Apply a nested pipeline to matching rules.
 
 Query Post-Processing Transformations
@@ -501,21 +582,28 @@ These operate on the query strings generated by the backend.
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``embed``
+     - ``EmbedQueryTransformation``
      - Embed query in a prefix/suffix string.
    * - ``simple_template``
+     - ``QuerySimpleTemplateTransformation``
      - Apply a simple template to the query string.
    * - ``template``
+     - ``QueryTemplateTransformation``
      - Apply a Jinja2 template with access to rule and pipeline state.
    * - ``json``
+     - ``EmbedQueryInJSONTransformation``
      - Embed query into a JSON structure.
    * - ``replace``
+     - ``ReplaceQueryTransformation``
      - Replace patterns in the query string using regex.
-   * - ``nested``
+   * - ``nest``
+     - ``NestedQueryPostprocessingTransformation``
      - Apply a nested set of post-processing transformations.
 
 Output Finalizers
@@ -525,19 +613,25 @@ Finalizers operate on the complete list of generated queries.
 
 .. list-table::
    :header-rows: 1
-   :widths: 30 70
+   :widths: 25 25 50
 
-   * - Type
+   * - YAML Type
+     - Python Class
      - Description
    * - ``concat``
+     - ``ConcatenateQueriesFinalizer``
      - Concatenate all queries with a separator.
    * - ``json``
+     - ``JSONFinalizer``
      - Output all queries as a JSON array.
    * - ``yaml``
+     - ``YAMLFinalizer``
      - Output all queries as a YAML document.
    * - ``template``
+     - ``TemplateFinalizer``
      - Apply a Jinja2 template to the full query list.
    * - ``nested``
+     - ``NestedFinalizer``
      - Apply a nested set of finalizers.
 
 Complete YAML Example

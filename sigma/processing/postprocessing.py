@@ -134,7 +134,12 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     replacement: str
 
     def __post_init__(self) -> None:
-        self.re = re.compile(self.pattern)
+        try:
+            self.re = re.compile(self.pattern)
+        except re.error as e:
+            raise SigmaConfigurationError(
+                f"Regular expression '{self.pattern}' is invalid: {str(e)}"
+            ) from e
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)

@@ -84,6 +84,11 @@ def test_replace_query_transformation(dummy_pipeline, sigma_rule):
     assert transformation.apply(sigma_rule, 'field="value"') == 'field="replaced"'
 
 
+def test_replace_query_transformation_invalid_regex():
+    with pytest.raises(SigmaConfigurationError, match="Regular expression .* is invalid"):
+        ReplaceQueryTransformation("[invalid", "x")
+
+
 @pytest.fixture
 def nested_query_postprocessing_transformation(dummy_pipeline):
     transformation = NestedQueryPostprocessingTransformation(

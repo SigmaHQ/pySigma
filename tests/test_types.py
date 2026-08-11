@@ -569,6 +569,12 @@ def test_number_invalid():
         SigmaNumber("test")
 
 
+def test_number_invalid_non_finite():
+    for value in [float("inf"), float("-inf"), float("nan")]:
+        with pytest.raises(SigmaValueError, match="Invalid number"):
+            SigmaNumber(value)
+
+
 def test_field_reference():
     assert SigmaFieldReference("field").field == "field"
 

@@ -5,7 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
-from math import inf
+from math import inf, isfinite
 from typing import (
     ClassVar,
     Type,
@@ -669,13 +669,15 @@ class SigmaNumber(SigmaType):
 
     def __post_init__(self, init_number: Any) -> None:
         try:  # Only use float number if it can't be represented as int.
-            i = int(init_number)
             f = float(init_number)
+            if not isfinite(f):
+                raise ValueError("Invalid number")
+            i = int(init_number)
             if i == f:
                 self.number = i
             else:
                 self.number = f
-        except ValueError as e:
+        except (ValueError, OverflowError) as e:
             raise SigmaValueError("Invalid number") from e
 
     def __str__(self) -> str:

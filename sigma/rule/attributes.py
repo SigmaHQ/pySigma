@@ -152,6 +152,10 @@ class SigmaRelated:
 
         list_ret: list[SigmaRelatedItem] = []
         for v in val:
+            if not isinstance(v, dict):
+                raise sigma_exceptions.SigmaRelatedError(
+                    "Sigma related items must be maps with an id and type field"
+                )
             if "id" not in v.keys():
                 raise sigma_exceptions.SigmaRelatedError("Sigma related must have an id field")
             elif "type" not in v.keys():

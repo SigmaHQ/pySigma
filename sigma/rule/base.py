@@ -208,14 +208,21 @@ class SigmaRuleBase:
         # Rule level validation
         rule_level = rule.get("level")
         if rule_level is not None:
-            try:
-                rule_level = SigmaLevel[rule_level.upper()]
-            except KeyError:
+            if not isinstance(rule_level, str):
                 errors.append(
                     sigma_exceptions.SigmaLevelError(
-                        f"'{ rule_level }' is not a valid Sigma rule level", source=source
+                        "Sigma rule level must be a string", source=source
                     )
                 )
+            else:
+                try:
+                    rule_level = SigmaLevel[rule_level.upper()]
+                except KeyError:
+                    errors.append(
+                        sigma_exceptions.SigmaLevelError(
+                            f"'{ rule_level }' is not a valid Sigma rule level", source=source
+                        )
+                    )
 
         # Rule status validation
         rule_status = rule.get("status")
@@ -248,6 +255,13 @@ class SigmaRuleBase:
                 )
             else:
                 for tag in tags:
+                    if not isinstance(tag, str):
+                        errors.append(
+                            sigma_exceptions.SigmaTagError(
+                                "Sigma rule tags must be a list of strings", source=source
+                            )
+                        )
+                        continue
                     try:
                         rule_tags.append(SigmaRuleTag.from_str(tag))
                     except sigma_exceptions.SigmaValueError as e:

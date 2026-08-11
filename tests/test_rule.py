@@ -1295,6 +1295,38 @@ def test_sigmarule_no_detections():
         )
 
 
+def test_sigmarule_detection_not_map():
+    with pytest.raises(
+        sigma_exceptions.SigmaDetectionError, match="detection must be a valid YAML map.*test.yml"
+    ):
+        SigmaRule.from_dict(
+            {
+                "title": "azerty",
+                "logsource": {"category": "category-id"},
+                "detection": "hello",
+            },
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+
+
+def test_sigmarule_detection_not_map_collect_errors():
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "azerty",
+            "logsource": {"category": "category-id"},
+            "detection": ["hello", "world"],
+        },
+        source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        collect_errors=True,
+    )
+    assert sigma_rule.errors == [
+        sigma_exceptions.SigmaDetectionError(
+            "Sigma detection must be a valid YAML map",
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        )
+    ]
+
+
 def test_sigmarule_none_to_list():
     sigma_rule = SigmaRule(
         title="Test",
@@ -1678,6 +1710,44 @@ def test_invalid_related_list():
     related:
         id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
         types: derived
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """)
+
+
+def test_invalid_related_id_type():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma related identifier must be a string UUID"
+    ):
+        SigmaRule.from_yaml("""
+    title: Test
+    related:
+        - id: 123
+          type: derived
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field: value
+        condition: sel
+    """)
+
+
+def test_invalid_related_type_type():
+    with pytest.raises(
+        sigma_exceptions.SigmaRelatedError, match="Sigma related type must be a string"
+    ):
+        SigmaRule.from_yaml("""
+    title: Test
+    related:
+        - id: 08fbc97d-0a2f-491c-ae21-8ffcfd3174e9
+          type: 123
     status: test
     logsource:
         category: test

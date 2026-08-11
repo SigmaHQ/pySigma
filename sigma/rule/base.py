@@ -27,7 +27,7 @@ class SigmaYAMLLoader(yaml.CSafeLoader):
         for k, v in node.value:
             key = self.construct_object(k, deep=deep)
             if key in keys:
-                raise yaml.error.YAMLError("Duplicate key '{k}'")
+                raise yaml.error.YAMLError(f"Duplicate key '{key}'")
             else:
                 keys.add(key)
 
@@ -398,6 +398,8 @@ class SigmaRuleBase:
     def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
+        if parsed_rule is None:
+            parsed_rule = {}
         return cls.from_dict(parsed_rule, collect_errors)
 
     def to_dict(self: Self) -> dict[str, Any]:

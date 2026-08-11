@@ -1507,6 +1507,36 @@ def test_sigmarule_fromyaml_duplicate_key():
         """)
 
 
+def test_sigmarule_fromyaml_empty():
+    with pytest.raises(sigma_exceptions.SigmaError):
+        SigmaRule.from_yaml("   \n# only a comment\n")
+
+
+def test_sigmarule_fromyaml_empty_collect_errors():
+    sigma_rule = SigmaRule.from_yaml("   \n# only a comment\n", collect_errors=True)
+    assert len(sigma_rule.errors) > 0
+    assert all(isinstance(e, sigma_exceptions.SigmaError) for e in sigma_rule.errors)
+
+
+def test_sigmarule_fromyaml_duplicate_key_reports_key():
+    with pytest.raises(YAMLError, match="Duplicate key 'selection'"):
+        SigmaRule.from_yaml("""
+        title: Test
+        id: 9a6cafa7-1481-4e64-89a1-1f69ed08618c
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine|contains: test.exe
+            selection:
+                - CommandLine|contains: test.exe
+                - CommandLine|contains: cmd.exe
+            condition: 1 of them
+        level: low
+        """)
+
+
 def test_sigmarule_to_dict(sigma_rule: SigmaRule):
     assert sigma_rule.to_dict() == {
         "title": "Test",

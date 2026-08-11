@@ -29,7 +29,7 @@ packages = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-packaging = "^26.0"
+packaging = "^26.3"
 pyparsing = "^3.2.5"
 pyyaml = "^6.0.3"
 requests = "^2.32.5"

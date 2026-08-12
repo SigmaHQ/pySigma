@@ -1276,6 +1276,74 @@ def test_sigmarule_collect_errors():
     }
 
 
+@pytest.mark.parametrize(
+    ("rule", "expected_error"),
+    [
+        (
+            """
+    title: Test
+    level: 123
+    logsource:
+        product: windows
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """,
+            sigma_exceptions.SigmaLevelError,
+        ),
+        (
+            """
+    title: Test
+    tags:
+        - 123
+    logsource:
+        product: windows
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """,
+            sigma_exceptions.SigmaTagError,
+        ),
+        (
+            """
+    title: Test
+    related:
+        - foo
+    logsource:
+        product: windows
+    detection:
+        selection_1:
+            fieldA: valueA
+        condition: selection_1
+    """,
+            sigma_exceptions.SigmaRelatedError,
+        ),
+    ],
+)
+def test_sigmarule_meta_field_type_errors_collected(rule, expected_error):
+    """Non-string level, non-string tag and non-map related items must be reported
+    as validation errors, not crash with an AttributeError."""
+    parsed = SigmaRule.from_yaml(rule, collect_errors=True)
+    assert expected_error in {error.__class__ for error in parsed.errors}
+
+
+def test_sigmarule_meta_field_type_errors_raised():
+    """Without collect_errors the first recognized error is raised as a SigmaError."""
+    with pytest.raises(sigma_exceptions.SigmaLevelError):
+        SigmaRule.from_yaml("""
+        title: Test
+        level: 123
+        logsource:
+            product: windows
+        detection:
+            selection_1:
+                fieldA: valueA
+            condition: selection_1
+        """)
+
+
 def test_sigmarule_no_logsource():
     with pytest.raises(
         sigma_exceptions.SigmaLogsourceError, match="must have a log source.*test.yml"

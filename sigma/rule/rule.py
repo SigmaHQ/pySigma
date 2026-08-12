@@ -68,6 +68,13 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
                     "Sigma rule must have a detection definitions", source=source
                 )
             )
+        except TypeError:
+            detections = EmptySigmaDetections()
+            errors.append(
+                sigma_exceptions.SigmaDetectionError(
+                    "Sigma detection must be a valid YAML map", source=source
+                )
+            )
         except SigmaError as e:
             detections = EmptySigmaDetections()
             errors.append(e)

@@ -469,6 +469,14 @@ def test_string_index_slice_empty_result(sigma_string):
     assert sigma_string[4:2] == SigmaString("")
 
 
+def test_string_index_slice_zero_stop(sigma_string):
+    assert sigma_string[:0] == SigmaString("")
+    assert sigma_string[0:0] == SigmaString("")
+    assert sigma_string[1:0] == SigmaString("")
+    assert sigma_string[1:1] == SigmaString("")
+    assert sigma_string[-1:0] == SigmaString("")
+
+
 def test_string_index_slice_start_after_end(sigma_string):
     assert sigma_string[100:] == SigmaString("")
 

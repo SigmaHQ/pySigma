@@ -200,7 +200,7 @@ class SigmaString(SigmaType):
             if idx.step is not None:
                 raise IndexError("SigmaString slice index with step is not allowed")
             start = idx.start or 0
-            end = idx.stop or inf
+            end = idx.stop if idx.stop is not None else inf
         else:
             raise TypeError("SigmaString indices must be integers or slices")
 

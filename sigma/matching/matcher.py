@@ -1,8 +1,6 @@
 from __future__ import annotations
 
-import os
 from collections import defaultdict
-from concurrent.futures import ThreadPoolExecutor, as_completed
 from typing import Any, Iterable
 
 from typing_extensions import Self
@@ -35,8 +33,6 @@ class SigmaMatcher:
         max_correlation_state: int | None = None,
     ) -> None:
         self._compiler = MatchCompiler()
-        self._max_workers = max_workers or os.cpu_count() or 4
-        self._executor = ThreadPoolExecutor(max_workers=self._max_workers)
 
         # Apply pipeline if provided
         if pipeline is not None:
@@ -119,8 +115,8 @@ class SigmaMatcher:
         return result
 
     def close(self) -> None:
-        """Shut down the thread pool."""
-        self._executor.shutdown(wait=False)
+        """Clean up resources."""
+        pass
 
     def __enter__(self) -> Self:
         return self

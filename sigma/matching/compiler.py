@@ -58,9 +58,11 @@ class MatchCompiler:
             expr = "(" + " or ".join(parts) + ")"
 
         func_code = f"def _match(data, raw):\n    return {expr}\n"
+        namespace: dict[str, Any] = {"__builtins__": {"str": str}}
+        namespace.update(closures)
         code_obj = compile(func_code, "<sigma_matcher>", "exec")
-        exec(code_obj, closures)  # noqa: S102
-        return closures["_match"]
+        exec(code_obj, namespace)  # noqa: S102
+        return namespace["_match"]
 
     def _compile_node(self, node: Any, closures: dict[str, Any]) -> str:
         if isinstance(node, ConditionAND):

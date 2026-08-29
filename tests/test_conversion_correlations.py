@@ -981,7 +981,133 @@ correlation:
     assert result[2].startswith("search(")
 
 
-def test_correlation_rule_callback_skip_result(test_backend):
+def test_correlation_ruleid_is_escaped_in_multi_rule_search_and_typing(test_backend):
+    rule_collection = SigmaCollection.from_yaml("""
+title: Rule one
+name: 'bad"name'
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+---
+title: Rule two
+name: 'bad"name2'
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 2
+    condition: selection
+---
+title: Temporal correlation with typing
+status: test
+correlation:
+    type: temporal
+    rules:
+        - 'bad"name'
+        - 'bad"name2'
+    group-by:
+        - User
+    timespan: 5m
+    """)
+
+    result = test_backend.convert(rule_collection)
+    assert 'set event_type="bad\\"name"' in result[0]
+    assert 'set event_type="bad\\"name2"' in result[0]
+
+    monkeypatch_backend = TextQueryTestBackend()
+    monkeypatch_backend.typing_expression = "| eval event_type=case({queries})"
+    monkeypatch_backend.typing_rule_query_expression = '{query}, "{ruleid}"'
+    monkeypatch_backend.typing_rule_query_expression_joiner = ", "
+
+    result_with_typing = monkeypatch_backend.convert(rule_collection)
+    assert '"bad\\"name"' in result_with_typing[0]
+    assert '"bad\\"name2"' in result_with_typing[0]
+
+
+def test_correlation_condition_fieldref_is_escaped(test_backend):
+    rule_collection = SigmaCollection.from_yaml("""
+title: API response event
+name: api_response
+status: test
+logsource:
+    product: api
+detection:
+    selection:
+        EventType: api_response
+    condition: selection
+---
+title: Value count with special fieldref
+status: test
+correlation:
+    type: value_count
+    rules:
+        - api_response
+    timespan: 5m
+    condition:
+        gte: 10
+        field: field with space
+    """)
+
+    assert test_backend.convert(rule_collection) == ["""EventType=\"api_response\"
+| aggregate window=5min value_count('field with space') as value_count
+| where value_count >= 10"""]
+
+
+def test_correlation_alias_mapping_field_is_escaped(test_backend):
+    rule_collection = SigmaCollection.from_yaml("""
+title: Rule one
+name: rule_one
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+---
+title: Rule two
+name: rule_two
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 2
+    condition: selection
+---
+title: Temporal ordered with aliases
+status: test
+correlation:
+    type: temporal_ordered
+    rules:
+        - rule_one
+        - rule_two
+    aliases:
+        alias space:
+            rule_one: field with space
+            rule_two: other field
+    group-by:
+        - alias space
+    timespan: 5m
+    condition:
+        gte: 2
+    """)
+
+    result = test_backend.convert(rule_collection)
+    assert "set 'alias space'='field with space'" in result[0]
+    assert "set 'alias space'='other field'" in result[0]
+
+
+def test_correlation_rule_callback_skip_result_only(test_backend):
     """Test that callback can skip results by returning None"""
     correlation_rule = SigmaCollection.from_yaml("""
 title: Test event

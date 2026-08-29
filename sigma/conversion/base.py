@@ -2471,7 +2471,10 @@ class TextQueryBackend(Backend):
                     (
                         self.correlation_search_multi_rule_query_expression.format(
                             rule=rule_reference.rule,
-                            ruleid=rule_reference.rule.name or rule_reference.rule.id,
+                            ruleid=self.convert_correlation_ruleid(
+                                rule_reference.rule.name or rule_reference.rule.id,
+                                self.correlation_search_multi_rule_query_expression,
+                            ),
                             query=self.convert_correlation_search_multi_rule_query_postprocess(
                                 query
                             ),
@@ -2494,6 +2497,31 @@ class TextQueryBackend(Backend):
         """This function is called for each query in the multi-rule correlation search phase. It can be used to postprocess the query before it is joined with the other queries."""
         return query
 
+    def convert_correlation_ruleid(self, ruleid: str | object | None, template: str) -> str:
+        """Convert rule identifier into a safe template value."""
+        if ruleid is None:
+            return ""
+
+        converted_ruleid = self.convert_value_str(SigmaString(str(ruleid)), ConversionState())
+
+        # If the template already surrounds {ruleid} with the configured quote character,
+        # remove outer quotes to avoid duplicated quoting while keeping escaping intact.
+        if self.str_quote and f"{self.str_quote}{{ruleid}}{self.str_quote}" in template:
+            if converted_ruleid.startswith(self.str_quote) and converted_ruleid.endswith(
+                self.str_quote
+            ):
+                return converted_ruleid[len(self.str_quote) : -len(self.str_quote)]
+
+        return converted_ruleid
+
+    def convert_correlation_fieldref(self, fieldref: str | list[str] | None) -> str:
+        """Convert correlation field reference into escaped/quoted field representation."""
+        if fieldref is None:
+            return ""
+        if isinstance(fieldref, list):
+            return ", ".join(self.escape_and_quote_field(field) for field in fieldref)
+        return self.escape_and_quote_field(fieldref)
+
     def convert_correlation_search_field_normalization_expression(
         self,
         aliases: SigmaCorrelationFieldAliases,
@@ -2512,8 +2540,8 @@ class TextQueryBackend(Backend):
             return self.correlation_search_field_normalization_expression_joiner.join(
                 (
                     self.correlation_search_field_normalization_expression.format(
-                        alias=alias.alias,
-                        field=field,
+                        alias=self.escape_and_quote_field(alias.alias),
+                        field=self.escape_and_quote_field(field),
                     )
                     for alias in aliases
                     for alias_rule_reference, field in alias.mapping.items()
@@ -2539,7 +2567,10 @@ class TextQueryBackend(Backend):
                     (
                         self.typing_rule_query_expression.format(
                             rule=rule_reference.rule,
-                            ruleid=rule_reference.rule.name or rule_reference.rule.id,
+                            ruleid=self.convert_correlation_ruleid(
+                                rule_reference.rule.name or rule_reference.rule.id,
+                                self.typing_rule_query_expression,
+                            ),
                             query=self.convert_correlation_typing_query_postprocess(query),
                         )
                         for rule_reference in rule.referenced_rules
@@ -2589,7 +2620,7 @@ class TextQueryBackend(Backend):
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.referenced_rules, method),
             field=(
-                rule.condition.fieldref
+                self.convert_correlation_fieldref(rule.condition.fieldref)
                 if isinstance(rule.condition, SigmaCorrelationCondition)
                 else ""
             ),
@@ -2709,7 +2740,7 @@ class TextQueryBackend(Backend):
         if isinstance(cond, SigmaCorrelationCondition):
             return self._format_template(
                 template,
-                field=cond.fieldref,
+                field=self.convert_correlation_fieldref(cond.fieldref),
                 op=self.correlation_condition_mapping[cond.op],
                 count=cond.count,
                 referenced_rules=self.convert_referenced_rules(referenced_rules, method),

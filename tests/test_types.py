@@ -835,6 +835,31 @@ def test_cidr_expand_ipv6_56():
     assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab*"]
 
 
+def test_cidr_expand_ipv6_64():
+    """The compressed broadcast address only extends the compressed network address: the wildcard belongs directly after it."""
+    assert SigmaCIDRExpression("2001:db8::/64").expand() == ["2001:db8::*"]
+
+
+def test_cidr_expand_ipv6_112():
+    assert SigmaCIDRExpression("2001:db8::/112").expand() == ["2001:db8::*"]
+
+
+def test_cidr_expand_ipv6_120():
+    assert SigmaCIDRExpression("2001:db8::/120").expand() == ["2001:db8::*"]
+
+
+def test_cidr_expand_ipv6_128():
+    assert SigmaCIDRExpression("2001:db8::1/128").expand() == ["2001:db8::1"]
+
+
+def test_cidr_expand_ipv6_without_wildcard():
+    assert SigmaCIDRExpression("2001:db8::/64").expand(wildcard=None) == ["2001:db8::/64"]
+
+
+def test_cidr_expand_ipv4_without_wildcard():
+    assert SigmaCIDRExpression("192.168.1.0/24").expand(wildcard=None) == ["192.168.1.0/24"]
+
+
 def test_cidr_expand_ipv6_58():
     assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand() == [
         "1234:5678:0:ab0*",

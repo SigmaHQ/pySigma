@@ -880,6 +880,11 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
+        if (
+            wildcard is None
+        ):  # The query language handles CIDR notation properly: return the network itself in CIDR notation
+            return [str(self.network)]
+
         patterns = []
         if isinstance(
             self.network, IPv4Network

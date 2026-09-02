@@ -922,19 +922,21 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             ):  # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
                 first_addr = str(subnet_v6.network_address)
                 last_addr = str(subnet_v6.broadcast_address)
-                wildcard_required = False  # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
-                for i in range(
-                    len(first_addr)
-                ):  # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
-                    if first_addr[i] != last_addr[i]:
-                        wildcard_required = True
-                        break  # location found
-                if wildcard_required:
+                if (
+                    first_addr == last_addr
+                ):  # The /128 case - single address, use network_address not network (avoid "::1/128" literal)
+                    patterns.append(str(subnet_v6.network_address))
+                else:
+                    for i in range(
+                        len(first_addr)
+                    ):  # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
+                        if first_addr[i] != last_addr[i]:
+                            break  # location found
+                    else:  # The compressed broadcast address only extends the compressed network address (e.g. 2001:db8::/64): the wildcard belongs directly after the network address
+                        i = len(first_addr)
                     patterns.append(
                         str(subnet_v6)[:i] + wildcard
                     )  # Generate pattern by cutting of at first difference
-                else:  # The /128 case - single address, use network_address not network (avoid "::1/128" literal)
-                    patterns.append(str(subnet_v6.network_address))
         return patterns
 
 

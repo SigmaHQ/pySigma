@@ -477,6 +477,15 @@ def test_correlation_condition_invalid_count():
         SigmaCorrelationCondition.from_dict({"gte": "test"})
 
 
+@pytest.mark.parametrize("count", [float("inf"), float("-inf")])
+def test_correlation_condition_non_finite_count(count):
+    with pytest.raises(
+        SigmaCorrelationConditionError,
+        match="is no valid Sigma correlation condition count",
+    ):
+        SigmaCorrelationCondition.from_dict({"gte": count})
+
+
 def test_correlation_condition_to_dict():
     cond = SigmaCorrelationCondition.from_dict({"gte": 10})
     assert cond.to_dict() == {"gte": 10}

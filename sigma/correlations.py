@@ -523,6 +523,15 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     ) -> Self:
         kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
         correlation_rule = rule.get("correlation", dict())
+        if not isinstance(correlation_rule, dict):
+            errors.append(
+                sigma_exceptions.SigmaCorrelationRuleError(
+                    "Sigma correlation rule 'correlation' field must be a dict", source=source
+                )
+            )
+            if not collect_errors:
+                raise errors[0]
+            correlation_rule = dict()
 
         # Correlation type
         correlation_type = correlation_rule.get("type")

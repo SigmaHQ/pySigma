@@ -1343,3 +1343,37 @@ correlation:
         - invalid
         - list_condition
         """)
+
+
+def test_correlation_extended_condition_wrong_type_collect_errors():
+    """collect_errors=True must return the error instead of raising an UnboundLocalError
+    when an extended (string) condition is used with a non-temporal correlation type."""
+    rule = SigmaCorrelationRule.from_yaml(
+        """
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
+        """,
+        collect_errors=True,
+    )
+    assert {error.__class__ for error in rule.errors} == {SigmaCorrelationRuleError}
+
+
+def test_correlation_extended_condition_wrong_type_raises():
+    """Without collect_errors the error is raised instead of silently swallowed."""
+    with pytest.raises(SigmaCorrelationRuleError, match="only be used with temporal"):
+        SigmaCorrelationRule.from_yaml("""
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
+        """)

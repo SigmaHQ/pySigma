@@ -875,3 +875,19 @@ filter:
     rule_collection.apply_filters([sigma_filter_1, sigma_filter_2])
     result = test_backend.convert(rule_collection)
     assert result == ['EventID=4625 and not User startswith "adm_" and not User startswith "srv_"']
+
+
+def test_sigmafilter_collect_errors():
+    """collect_errors=True must return the errors instead of raising an UnboundLocalError
+    when both the logsource and filter fail to parse."""
+    sigma_filter = SigmaFilter.from_dict({"title": "Test"}, collect_errors=True)
+    assert {error.__class__ for error in sigma_filter.errors} == {
+        SigmaLogsourceError,
+        SigmaFilterError,
+    }
+
+
+def test_sigmafilter_collect_errors_false_raises():
+    """Without collect_errors the first recognized error is raised as a SigmaError."""
+    with pytest.raises(SigmaLogsourceError):
+        SigmaFilter.from_dict({"title": "Test"}, collect_errors=False)

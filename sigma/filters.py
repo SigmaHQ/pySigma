@@ -11,6 +11,7 @@ from typing_extensions import Self
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
 from sigma.rule import SigmaDetection, SigmaDetections, SigmaLogSource, SigmaRule, SigmaRuleBase
+from sigma.rule.logsource import EmptyLogSource
 
 if TYPE_CHECKING:
     from sigma.exceptions import SigmaRuleLocation
@@ -94,6 +95,21 @@ class SigmaGlobalFilter(SigmaDetections):
 
 
 @dataclass
+class EmptySigmaGlobalFilter(SigmaGlobalFilter):
+    """
+    Empty Sigma global filter used as a placeholder for error handling purposes.
+    """
+
+    detections: dict[str, SigmaDetection] = field(default_factory=dict)
+    condition: list[str] = field(default_factory=list)
+    rules: list[SigmaRuleReference] | str = field(default_factory=list)
+
+    def __post_init__(self: Self) -> None:
+        # Skip all checks and initializations
+        pass
+
+
+@dataclass
 class SigmaFilter(SigmaRuleBase):
     """
     SigmaFilter class is used to represent a Sigma filter object.
@@ -120,36 +136,42 @@ class SigmaFilter(SigmaRuleBase):
         try:
             filter_logsource = SigmaLogSource.from_dict(sigma_filter["logsource"], source)
         except KeyError:
+            filter_logsource = EmptyLogSource()
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma filter must have a log source", source=source
                 )
             )
         except AttributeError:
+            filter_logsource = EmptyLogSource()
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma logsource must be a valid YAML map", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
+            filter_logsource = EmptyLogSource()
             errors.append(e)
 
         # parse detections
         try:
             filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source)
         except KeyError:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(
                 sigma_exceptions.SigmaFilterError(
                     "Sigma filter must have a filter defined", source=source
                 )
             )
         except TypeError:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(
                 sigma_exceptions.SigmaFilterError(
                     "Sigma filter must be a dictionary", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(e)
 
         if not collect_errors and errors:

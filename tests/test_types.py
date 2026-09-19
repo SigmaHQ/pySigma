@@ -441,6 +441,22 @@ def test_string_index_slice_start_and_end_in_same_string_part(sigma_string):
     assert sigma_string[2:4] == SigmaString("es")
 
 
+def test_string_index_slice_cut_out_escaped_wildcard(sigma_string):
+    """The escaped wildcard at index 9 is a plain character and must not become special when cut out by a slice."""
+    assert sigma_string[9:11] == SigmaString("\\*i")
+
+
+def test_string_index_slice_cut_out_only_escaped_wildcard():
+    s = SigmaString("a\\*b")
+    assert s[1:2] == SigmaString("\\*")
+
+
+def test_string_index_slice_cut_out_escaped_wildcard_cased():
+    s = SigmaCasedString("a\\*b")
+    assert type(s[1:2]) is SigmaCasedString
+    assert s[1:2] == SigmaCasedString("\\*")
+
+
 def test_string_index_slice_negative_end(sigma_string):
     assert sigma_string[3:-1] == SigmaString("st*Str\\*ing")
 

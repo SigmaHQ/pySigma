@@ -231,7 +231,11 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return self.__class__(e[start : cast(int, end)])
+                        s = self.__class__()
+                        s.s = [
+                            e[start : cast(int, end)]
+                        ]  # don't re-parse the cut-out substring: plain wildcard characters from escaped sequences would be interpreted as special characters again
+                        return s
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start

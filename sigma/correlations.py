@@ -329,30 +329,38 @@ class SigmaCorrelationTimespan:
     count: int = field(init=False)
     unit: str = field(init=False)
 
+    timespan_re: ClassVar[re.Pattern[str]] = re.compile("(?P<count>[0-9]+)(?P<unit>[smhdwMy])")
+    unit_seconds: ClassVar[dict[str, int]] = {
+        "s": 1,
+        "m": 60,
+        "h": 3600,
+        "d": 86400,
+        "w": 604800,
+        "M": 2629746,
+        "y": 31556952,
+    }
+
     def __post_init__(self: Self) -> None:
         """
         Parses a string representing a time span and stores the equivalent number of seconds.
 
+        A time span must be a positive integer count followed by one of the unit characters
+        s, m, h, d, w, M or y.
+
         Raises:
             sigma_exceptions.SigmaTimespanError: If the given time span is invalid.
         """
-        try:
-            self.count = int(self.spec[:-1])
-            self.unit = self.spec[-1]
-            self.seconds = (
-                self.count
-                * {
-                    "s": 1,
-                    "m": 60,
-                    "h": 3600,
-                    "d": 86400,
-                    "w": 604800,
-                    "M": 2629746,
-                    "y": 31556952,
-                }[self.unit]
-            )
-        except (ValueError, KeyError):
+        parsed = self.timespan_re.fullmatch(self.spec) if isinstance(self.spec, str) else None
+        if parsed is None:
             raise sigma_exceptions.SigmaTimespanError(f"Timespan '{ self.spec }' is invalid.")
+        count = int(parsed.group("count"))
+        if count <= 0:
+            raise sigma_exceptions.SigmaTimespanError(
+                f"Timespan '{ self.spec }' must be greater than zero."
+            )
+        self.count = count
+        self.unit = parsed.group("unit")
+        self.seconds = self.count * self.unit_seconds[self.unit]
 
 
 @dataclass

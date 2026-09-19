@@ -292,6 +292,68 @@ def test_correlation_timespan():
     assert timespan.seconds == 600
 
 
+@pytest.mark.parametrize(
+    ("spec", "count", "unit", "seconds"),
+    [
+        ("30s", 30, "s", 30),
+        ("10m", 10, "m", 600),
+        ("2h", 2, "h", 7200),
+        ("3d", 3, "d", 259200),
+        ("4w", 4, "w", 2419200),
+        ("5M", 5, "M", 13148730),
+        ("6y", 6, "y", 189341712),
+    ],
+)
+def test_correlation_timespan_units(spec, count, unit, seconds):
+    timespan = SigmaCorrelationTimespan(spec)
+    assert timespan.count == count
+    assert timespan.unit == unit
+    assert timespan.seconds == seconds
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "-10m",  # negative count
+        "+10m",  # sign is not part of the specification
+        " 10m",  # leading whitespace
+        "10m ",  # trailing whitespace
+        "1_0m",  # Python integer literal underscore separator
+        "\u0661\u0662m",  # non-ASCII digits
+        "10x",  # unknown unit
+        "10",  # unit missing
+        "m",  # count missing
+        "",  # empty
+        10,  # not a string
+    ],
+)
+def test_correlation_invalid_timespan_spec(spec):
+    with pytest.raises(SigmaTimespanError, match="is invalid"):
+        SigmaCorrelationTimespan(spec)
+
+
+@pytest.mark.parametrize("spec", ["0s", "0m", "00h"])
+def test_correlation_zero_timespan(spec):
+    with pytest.raises(SigmaTimespanError, match="must be greater than zero"):
+        SigmaCorrelationTimespan(spec)
+
+
+def test_correlation_negative_timespan_rule():
+    with pytest.raises(SigmaTimespanError, match="Timespan '-5m' is invalid."):
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Negative time span",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "group-by": ["user"],
+                    "timespan": "-5m",
+                    "condition": {"gte": 10},
+                },
+            }
+        )
+
+
 def test_correlation_without_timespan():
     with pytest.raises(SigmaCorrelationRuleError, match="Sigma correlation rule without timespan"):
         SigmaCorrelationRule.from_dict(

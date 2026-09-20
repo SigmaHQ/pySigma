@@ -187,7 +187,9 @@ def test_correlation_wrong_type():
 @pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
 def test_correlation_field_not_a_dict_raises(bad_correlation):
     with pytest.raises(SigmaCorrelationRuleError, match="'correlation' field must be a dict"):
-        SigmaCorrelationRule.from_dict({"title": "Invalid correlation", "correlation": bad_correlation})
+        SigmaCorrelationRule.from_dict(
+            {"title": "Invalid correlation", "correlation": bad_correlation}
+        )
 
 
 @pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
@@ -196,9 +198,7 @@ def test_correlation_field_not_a_dict_collect_errors(bad_correlation):
         {"title": "Invalid correlation", "correlation": bad_correlation},
         collect_errors=True,
     )
-    assert any(
-        "'correlation' field must be a dict" in str(error) for error in rule.errors
-    )
+    assert any("'correlation' field must be a dict" in str(error) for error in rule.errors)
 
 
 def test_correlation_without_type():

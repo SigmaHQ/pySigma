@@ -35,6 +35,22 @@ def test_single_rule():
     assert SigmaCollection.from_dicts([rule]) == SigmaCollection([SigmaRule.from_dict(rule)])
 
 
+@pytest.mark.parametrize("trailer", ["---\n", "---\n# only a comment\n", "---\n---\n"])
+def test_from_yaml_skips_empty_documents(trailer):
+    rule = """
+title: Test
+logsource:
+    category: test
+detection:
+    test:
+        field: value
+    condition: test
+"""
+    collection = SigmaCollection.from_yaml(rule + trailer)
+    assert len(collection) == 1
+    assert collection.errors == []
+
+
 def test_merge():
     rules = [
         {

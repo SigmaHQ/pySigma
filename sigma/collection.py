@@ -133,6 +133,8 @@ class SigmaCollection:
         global_rule: NestedDict = dict()
 
         for i, rule in zip(range(1, len(rules) + 1), rules):
+            if rule is None:  # empty YAML document, e.g. from a trailing '---'
+                continue
             if isinstance(
                 rule, SigmaRule
             ):  # Included rules are already parsed, skip collection action processing

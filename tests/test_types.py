@@ -184,6 +184,14 @@ def test_string_placeholders_escape():
     ]
 
 
+def test_string_placeholders_escaped_backslash():
+    """Test that escaped backslash before placeholder preserves the placeholder and puts literal backslash before it."""
+    assert SigmaString("\\\\%var%").insert_placeholders().s == [
+        "\\",
+        Placeholder("var"),
+    ]
+
+
 def test_string_contains_placeholders():
     assert SigmaString("test1%var%test2").insert_placeholders().contains_placeholder()
 

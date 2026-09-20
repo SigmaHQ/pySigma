@@ -8,3 +8,4 @@ coverage.xml
 .python-version
 .idea
 .venv
+.mypy_cache

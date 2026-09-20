@@ -272,34 +272,130 @@ class SigmaString(SigmaType):
             return s
 
     def insert_placeholders(self) -> "SigmaString":
-        """
+        r"""
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
-        """
-        res: list[str | SpecialChars | Placeholder] = []
-        for part in self.s:  # iterate over all parts and...
-            if isinstance(part, str):  # ...search in strings...
-                lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
-                    s = part[lastpos : m.start()].replace("\\%", "%")
-                    if s != "":
-                        res.append(
-                            s
-                        )  # append everything until placeholder (if not empty) as string part to new string
-                    res.append(
-                        Placeholder(m["name"])
-                    )  # insert placeholder stub at position of placeholder
-                    lastpos = m.end()
-                s = part[lastpos:].replace("\\%", "%")
-                if s != "":
-                    res.append(
-                        s
-                    )  # append everything from end of last placeholder until end of string (if not empty) to result string
-            else:  # special characters are passed to the result
-                res.append(part)
-        self.s = res  # finally replace the string with the result
 
+        Properly handles backslash escaping:
+        - \\% → escaped backslash (literal \) followed by placeholder %
+        - \% → escaped percent (literal %)
+        - \\\\% → two escaped backslashes (literal \\) followed by placeholder %
+        - etc.
+        """
+        # Build an escape map for the original string
+        # escape_map[i] = True if character at position i is escaped
+        escape_map = self._build_escape_map(self.original)
+
+        result: list[str | SpecialChars | Placeholder] = []
+        i = 0
+        s = self.original
+        current = []
+
+        while i < len(s):
+            if s[i] == "%" and not escape_map[i]:
+                # Found unescaped percent - look for placeholder closing percent
+                j = i + 1
+                while j < len(s):
+                    if escape_map[j]:
+                        # Skip escaped characters
+                        j += 1
+                    elif s[j] == "%":
+                        # Found closing percent
+                        name = s[i + 1 : j]
+                        # Unescape the placeholder name (handle \% and \\ within name)
+                        name = self._unescape_placeholder_name(name)
+
+                        # Process accumulated string before placeholder
+                        if current:
+                            # Replace \% with % in the accumulated string
+                            accumulated = "".join(current).replace("\\%", "%")
+                            # Create a SigmaString to handle escapes and wildcards normally
+                            temp = SigmaString(accumulated, escape=True)
+                            result.extend(temp.s)
+                            current = []
+
+                        # Add placeholder
+                        result.append(Placeholder(name))
+                        i = j + 1
+                        break
+                    else:
+                        j += 1
+                else:
+                    # No closing percent found - % is just a literal character
+                    current.append("%")
+                    i += 1
+            else:
+                # Regular character or escaped character
+                current.append(s[i])
+                i += 1
+
+        # Process remaining accumulated string
+        if current:
+            accumulated = "".join(current).replace("\\%", "%")
+            temp = SigmaString(accumulated, escape=True)
+            result.extend(temp.s)
+
+        self.s = result
         return self
+
+    @staticmethod
+    def _build_escape_map(s: str) -> list[bool]:
+        """
+        Build a map indicating which characters in the string are escaped.
+        A character is escaped if preceded by an odd number of backslashes.
+
+        Returns a list where escape_map[i] = True if character s[i] is escaped.
+        """
+        escape_map = [False] * len(s)
+        i = 0
+        while i < len(s):
+            if s[i] == "\\":
+                # Count consecutive backslashes
+                j = i
+                while j < len(s) and s[j] == "\\":
+                    j += 1
+                # Now j points to the first non-backslash character
+                # The number of backslashes is (j - i)
+                num_backslashes = j - i
+
+                # If odd number of backslashes, the next character is escaped
+                if j < len(s) and num_backslashes % 2 == 1:
+                    escape_map[j] = True
+
+                i = j
+            else:
+                i += 1
+
+        return escape_map
+
+    @staticmethod
+    def _unescape_placeholder_name(name: str) -> str:
+        """
+        Unescape a placeholder name by processing backslash escapes.
+        Within a placeholder name, \\% becomes % and \\\\ becomes \\.
+        """
+        result = []
+        i = 0
+        while i < len(name):
+            if name[i] == "\\" and i + 1 < len(name):
+                next_char = name[i + 1]
+                if next_char == "%":
+                    # \% → %
+                    result.append("%")
+                    i += 2
+                elif next_char == "\\":
+                    # \\ → \
+                    result.append("\\")
+                    i += 2
+                else:
+                    # \ followed by other → both are literal
+                    result.append("\\")
+                    result.append(next_char)
+                    i += 2
+            else:
+                result.append(name[i])
+                i += 1
+        return "".join(result)
 
     def replace_with_placeholder(
         self, regex: re.Pattern[str], placeholder_name: str

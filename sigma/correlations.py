@@ -136,7 +136,7 @@ class SigmaCorrelationCondition:
                 cond_op = SigmaCorrelationConditionOperator[op.upper()]
                 try:
                     cond_count = int(d[op])
-                except ValueError:
+                except (ValueError, OverflowError):
                     raise sigma_exceptions.SigmaCorrelationConditionError(
                         f"'{ d[op] }' is no valid Sigma correlation condition count", source=source
                     )

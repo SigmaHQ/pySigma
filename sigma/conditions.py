@@ -16,7 +16,7 @@ from pyparsing import (
     ParseException,
     ParserElement,
 )
-from typing import ClassVar, Type, cast, TYPE_CHECKING
+from typing import ClassVar, Type, TypeVar, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 
@@ -25,6 +25,9 @@ ParserElement.enable_packrat(cache_size_limit=128)
 
 if TYPE_CHECKING:
     from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
+
+
+OperandType = TypeVar("OperandType")
 
 
 @dataclass
@@ -81,7 +84,12 @@ class ParentChainMixin:
         return cast("ConditionItem", self)
 
 
-def _unwrap_operand(arg: "ConditionItem | ParseResults | None") -> "ConditionItem | None":
+def unwrap_parse_result_operand(
+    arg: OperandType | ParseResults | None,
+    *,
+    error_class: type[Exception] = SigmaConditionError,
+    error_message: str = "Invalid wrapped condition operand",
+) -> OperandType | None:
     """
     Unwrap a ParseResults that contains exactly one operand.
 
@@ -96,7 +104,7 @@ def _unwrap_operand(arg: "ConditionItem | ParseResults | None") -> "ConditionIte
     """
     while isinstance(arg, ParseResults):
         if len(arg) != 1:
-            raise SigmaConditionError("Invalid wrapped condition operand")
+            raise error_class(error_message)
         arg = arg[0]
     return arg
 
@@ -134,7 +142,7 @@ class ConditionItem(ParentChainMixin, ABC):
         else:  # pragma: no cover
             args = list()  # this case can only happen if broken classes are defined
         if not cls.token_list:
-            args = [_unwrap_operand(arg) for arg in args]
+            args = [unwrap_parse_result_operand(arg) for arg in args]
         return [cls(args)]
 
     def postprocess(
@@ -308,7 +316,7 @@ selector = quantifier + Keyword("of") + identifier_pattern
 selector.set_parse_action(ConditionSelector.from_parsed)
 
 operand = selector | identifier
-condition = infix_notation(
+condition = infix_notation(  # type: ignore[no-untyped-call]
     operand,
     [
         ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),

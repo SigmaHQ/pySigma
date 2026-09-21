@@ -20,6 +20,7 @@ from pyparsing import (
 from abc import ABC
 
 import sigma.exceptions as sigma_exceptions
+from sigma.conditions import unwrap_parse_result_operand
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
@@ -192,16 +193,37 @@ class CorrelationConditionItem(ABC):
         t: ParseResults | list[SigmaRuleReference | "CorrelationConditionItem"],
     ) -> list["CorrelationConditionItem"]:
         """Create condition object from parse result."""
+        args: list[SigmaRuleReference | CorrelationConditionItem]
         if cls.arg_count == 1:
             # Unary operator (NOT)
             if isinstance(t, ParseResults):
-                args = [t[0][-1]]
+                operand = unwrap_parse_result_operand(
+                    t[0][-1],
+                    error_class=sigma_exceptions.SigmaCorrelationConditionError,
+                    error_message="Invalid wrapped correlation condition operand",
+                )
+                if operand is None:
+                    raise sigma_exceptions.SigmaCorrelationConditionError(
+                        "Invalid wrapped correlation condition operand"
+                    )
+                args = [operand]
             else:
                 args = [t[-1]]
         elif cls.arg_count > 1:
             # Binary operators (AND, OR) - handle flat lists from pyparsing
             if isinstance(t, ParseResults):
-                args = t[0][0::2]  # Take every other element (skip operators)
+                args = []
+                for a in t[0][0::2]:
+                    operand = unwrap_parse_result_operand(
+                        a,
+                        error_class=sigma_exceptions.SigmaCorrelationConditionError,
+                        error_message="Invalid wrapped correlation condition operand",
+                    )
+                    if operand is None:
+                        raise sigma_exceptions.SigmaCorrelationConditionError(
+                            "Invalid wrapped correlation condition operand"
+                        )
+                    args.append(operand)
             else:
                 args = t[0::2]
         else:
@@ -274,7 +296,7 @@ class SigmaExtendedCorrelationCondition:
 
         # Define expression using infix notation
         # Precedence: not (highest) > and > or (lowest)
-        expr = infix_notation(
+        expr = infix_notation(  # type: ignore[no-untyped-call]
             rule_identifier,
             [
                 (Keyword("not"), 1, opAssoc.RIGHT, CorrelationConditionNOT.from_parsed),

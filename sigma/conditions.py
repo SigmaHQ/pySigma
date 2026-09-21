@@ -98,7 +98,7 @@ def _unwrap_operand(arg: "ConditionItem | ParseResults | None") -> "ConditionIte
         if len(arg) != 1:
             raise SigmaConditionError("Invalid wrapped condition operand")
         arg = arg[0]
-    return cast("ConditionItem | None", arg)
+    return arg
 
 
 @dataclass

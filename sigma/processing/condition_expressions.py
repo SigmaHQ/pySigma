@@ -279,7 +279,7 @@ def parse_condition_expression(
 ) -> ConditionExpression:
     identifier = Word(alphanums + "_-")
     identifier.set_parse_action(ConditionIdentifier.from_parsed)
-    condition_parser = infix_notation(
+    condition_parser = infix_notation(  # type: ignore[no-untyped-call]
         identifier,
         [
             ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),

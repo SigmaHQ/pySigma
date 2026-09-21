@@ -316,7 +316,7 @@ selector = quantifier + Keyword("of") + identifier_pattern
 selector.set_parse_action(ConditionSelector.from_parsed)
 
 operand = selector | identifier
-condition = infix_notation(
+condition = infix_notation(  # type: ignore[no-untyped-call]
     operand,
     [
         ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),

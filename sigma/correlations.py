@@ -296,7 +296,7 @@ class SigmaExtendedCorrelationCondition:
 
         # Define expression using infix notation
         # Precedence: not (highest) > and > or (lowest)
-        expr = infix_notation(
+        expr = infix_notation(  # type: ignore[no-untyped-call]
             rule_identifier,
             [
                 (Keyword("not"), 1, opAssoc.RIGHT, CorrelationConditionNOT.from_parsed),

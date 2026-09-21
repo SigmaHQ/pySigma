@@ -81,6 +81,26 @@ class ParentChainMixin:
         return cast("ConditionItem", self)
 
 
+def _unwrap_operand(arg: "ConditionItem | ParseResults | None") -> "ConditionItem | None":
+    """
+    Unwrap a ParseResults that contains exactly one operand.
+
+    pyparsing's infix_notation gives a higher-precedence sub-expression -- a negated
+    term, or a parenthesized group -- its own ParseResults when it appears as an
+    operand of a lower-precedence operator, so "a and not b" arrives in from_parsed
+    as [a, ParseResults([ConditionNOT([b])])] instead of [a, ConditionNOT([b])].
+
+    ConditionItem.postprocess() calls a method on each argument. ParseResults resolves
+    an unknown attribute to an empty string rather than raising AttributeError, so a
+    wrapper left in place turns that call into "'str' object is not callable".
+    """
+    while isinstance(arg, ParseResults):
+        if len(arg) != 1:
+            raise SigmaConditionError("Invalid wrapped condition operand")
+        arg = arg[0]
+    return arg
+
+
 @dataclass
 class ConditionItem(ParentChainMixin, ABC):
     arg_count: ClassVar[int]
@@ -113,6 +133,8 @@ class ConditionItem(ParentChainMixin, ABC):
                 args = t[0][0::2]
         else:  # pragma: no cover
             args = list()  # this case can only happen if broken classes are defined
+        if not cls.token_list:
+            args = [_unwrap_operand(arg) for arg in args]
         return [cls(args)]
 
     def postprocess(

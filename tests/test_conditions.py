@@ -1,4 +1,5 @@
 import pytest
+from pyparsing import ParseResults
 from sigma.conditions import (
     ConditionItem,
     SigmaCondition,
@@ -244,6 +245,29 @@ def test_precedence(sigma_simple_detections):
             ),
         ]
     )
+
+
+def test_boolean_operands_are_not_left_wrapped_in_parse_results(sigma_simple_detections):
+    """
+    pyparsing wraps a higher-precedence sub-expression -- a negated term, or a
+    parenthesized group -- in its own ParseResults when it becomes an operand of a
+    boolean operator. Those wrappers have to be unwrapped before they are stored as
+    condition arguments, because postprocess() calls a method on every argument and
+    ParseResults answers an unknown attribute with an empty string instead of
+    raising AttributeError, which fails with a confusing type error.
+    """
+    parsed = SigmaCondition(
+        "(detection1 or not detection2) and not (detection3 or detection_4)",
+        sigma_simple_detections,
+    ).parse(False)
+
+    def operands(item):
+        for arg in getattr(item, "args", None) or ():
+            yield arg
+            yield from operands(arg)
+
+    wrapped = [arg for arg in operands(parsed) if isinstance(arg, ParseResults)]
+    assert not wrapped, f"operands left wrapped in ParseResults: {wrapped}"
 
 
 def test_precedence_parent_chain_condition_classes(sigma_simple_detections):

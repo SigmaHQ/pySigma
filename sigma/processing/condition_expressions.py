@@ -188,11 +188,14 @@ class BinaryConditionOp(ConditionExpression):
     @classmethod
     def from_parsed(cls, s: str, l: int, t: ParseResults | list[Any]) -> "BinaryConditionOp":
         operands = t[0][0::2]  # extract operands, skipping operators
+        # In newer pyparsing l points to the operator token, not the expression start;
+        # use the leftmost operand's own location instead.
+        start = operands[0].location
         # Build left-associative binary tree: A op B op C -> cls(cls(A, B), C)
-        result = cls(l, operands[0], operands[1])
+        result = cls(start, operands[0], operands[1])
         result.set_expression(s)
         for operand in operands[2:]:
-            result = cls(l, result, operand)
+            result = cls(start, result, operand)
             result.set_expression(s)
         return result
 

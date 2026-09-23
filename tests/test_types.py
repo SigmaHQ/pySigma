@@ -177,16 +177,18 @@ def test_string_placeholders_replace():
 
 
 def test_string_placeholders_escape():
+    # Backslashes before % signs are kept as literal characters; the placeholder %var%
+    # is still found because it has no backslash before its closing %.
     assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == [
-        "%test1%test2%",
+        "\\%test1\\%test2\\%",
         Placeholder("var"),
-        "%test3%",
+        "\\%test3\\%",
     ]
 
 
 def test_string_placeholders_escape_percent():
-    """\\% in the Sigma rule escapes the percent sign to a literal %."""
-    assert SigmaString("\\%foo\\%").insert_placeholders().s == ["%foo%"]
+    """\\% keeps both the backslash and the percent as literals when the name is invalid."""
+    assert SigmaString("\\%foo\\%").insert_placeholders().s == ["\\%foo\\%"]
 
 
 def test_string_placeholders_escaped_backslash_before_placeholder():

@@ -17,6 +17,7 @@ from sigma.types import (
     SigmaFieldReference,
     SigmaRegularExpressionFlag,
     SigmaString,
+    EscapedPercent,
     Placeholder,
     SpecialChars,
     SigmaNumber,
@@ -182,6 +183,57 @@ def test_string_placeholders_escape():
         Placeholder("var"),
         "%test3%",
     ]
+
+
+def test_string_placeholders_escaped_percent():
+    """An escaped percent sign (\\%) is a literal percent sign, not a placeholder delimiter."""
+    assert SigmaString("\\%var%").insert_placeholders().s == ["%var%"]
+
+
+def test_string_placeholders_escaped_backslash():
+    """An escaped backslash (\\\\) preserves the placeholder semantics of a following %placeholder%."""
+    assert SigmaString("\\\\%var%").insert_placeholders().s == [
+        "\\",
+        Placeholder("var"),
+    ]
+
+
+def test_string_placeholders_escaped_backslash_before_placeholder():
+    """Escaped backslash followed by placeholder in the middle of a string."""
+    assert SigmaString("test\\\\%var%end").insert_placeholders().s == [
+        "test\\",
+        Placeholder("var"),
+        "end",
+    ]
+
+
+def test_string_placeholders_escaped_backslash_escaped_percent():
+    """An escaped backslash followed by an escaped percent sign (\\\\\\%) is fully literal."""
+    assert SigmaString("\\\\\\%var%").insert_placeholders().s == ["\\%var%"]
+
+
+def test_string_placeholders_double_escaped_backslash():
+    """Two escaped backslashes (\\\\\\\\) collapse to two literal backslashes, placeholder stays live."""
+    assert SigmaString("\\\\\\\\%var%").insert_placeholders().s == [
+        "\\\\",
+        Placeholder("var"),
+    ]
+
+
+def test_string_placeholders_escaped_percent_at_boundaries():
+    """Escaped percent signs at start and end of the string stay literal."""
+    assert SigmaString("\\%%var%\\%").insert_placeholders().s == [
+        "%",
+        Placeholder("var"),
+        "%",
+    ]
+
+
+def test_string_escaped_percent_tracked():
+    """The parser tracks escaped percent signs as EscapedPercent parts."""
+    s = SigmaString("test\\%test")
+    assert s.s == ["test", EscapedPercent("\\%"), "test"]
+    assert isinstance(s.s[1], str)  # behaves like a plain string for consumers
 
 
 def test_string_contains_placeholders():

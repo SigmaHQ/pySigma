@@ -55,6 +55,19 @@ class Placeholder:
     name: str
 
 
+class EscapedPercent(str):
+    """
+    A percent sign escaped with a backslash (``\\%``) in the parsed source string.
+
+    This is a ``str`` subclass and therefore behaves exactly like a plain string for all
+    consumers of ``SigmaString.s``. It additionally marks the percent sign as escaped, so
+    ``SigmaString.insert_placeholders()`` can distinguish it from a placeholder delimiter.
+    This distinction can't be derived from the parsed characters alone: an escaped
+    backslash (``\\\\``) followed by a placeholder collapses to the same ``\\%`` character
+    sequence during parsing (see SigmaHQ/pySigma#543).
+    """
+
+
 escape_char = "\\"
 char_mapping = {
     "*": SpecialChars.WILDCARD_MULTI,
@@ -131,6 +144,8 @@ class SigmaString(SigmaType):
         * characters from char_mapping are interpreted as special characters and interrupt the plain string in the resulting sequence
         * escape_char disables special character mapping in the next character
         * if escaping character is followed by a character without special meaning the escaping character is used as plain character
+        * an escaped percent sign (``\\%``) is tracked as EscapedPercent part to distinguish it from a placeholder
+          delimiter in insert_placeholders()
 
         :param s: string to be parsed
         :type s: str
@@ -151,6 +166,15 @@ class SigmaString(SigmaType):
                     c in char_mapping or c == escape_char
                 ):  # accumulate if character is special or escaping character
                     acc.append(c)
+                elif c == "%":
+                    # An escaped percent sign is a literal percent sign and must never be treated as
+                    # placeholder delimiter by insert_placeholders(). Track it as separate part: after
+                    # escape processing it is indistinguishable from an escaped backslash followed by a
+                    # placeholder (see SigmaHQ/pySigma#543).
+                    if acc:
+                        r.append("".join(acc))
+                        acc = []
+                    r.append(EscapedPercent(escape_char + c))
                 else:  # accumulate escaping and current character (this allows to use plain backslashes in values)
                     acc.append(escape_char)
                     acc.append(c)
@@ -275,13 +299,22 @@ class SigmaString(SigmaType):
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
+
+        Percent signs escaped with a backslash (``\\%``) are treated as literal percent signs and never as
+        placeholder delimiters. They are tracked as ``EscapedPercent`` parts during parsing because an escaped
+        backslash (``\\\\``) followed by a placeholder collapses to the same ``\\%`` character sequence, which
+        makes both cases indistinguishable after escape processing (see SigmaHQ/pySigma#543).
         """
         res: list[str | SpecialChars | Placeholder] = []
         for part in self.s:  # iterate over all parts and...
-            if isinstance(part, str):  # ...search in strings...
+            if isinstance(
+                part, EscapedPercent
+            ):  # ...escaped percent signs are always literal...
+                res.append("%")
+            elif isinstance(part, str):  # ...search in strings...
                 lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
-                    s = part[lastpos : m.start()].replace("\\%", "%")
+                for m in re.finditer("%(?P<name>[^%]+)%", part):  # ...for placeholders
+                    s = part[lastpos : m.start()]
                     if s != "":
                         res.append(
                             s
@@ -290,7 +323,7 @@ class SigmaString(SigmaType):
                         Placeholder(m["name"])
                     )  # insert placeholder stub at position of placeholder
                     lastpos = m.end()
-                s = part[lastpos:].replace("\\%", "%")
+                s = part[lastpos:]
                 if s != "":
                     res.append(
                         s
@@ -299,7 +332,7 @@ class SigmaString(SigmaType):
                 res.append(part)
         self.s = res  # finally replace the string with the result
 
-        return self
+        return self._merge_strs()
 
     def replace_with_placeholder(
         self, regex: re.Pattern[str], placeholder_name: str
@@ -346,7 +379,9 @@ class SigmaString(SigmaType):
             return self
         res: list[SigmaStringPartType] = [self.s[0]]
         for item in self.s[1:]:
-            if isinstance(res[-1], str) and isinstance(item, str):
+            # Only merge plain strings: merging str subclasses like EscapedPercent with plain
+            # strings would silently degrade them to str and lose the tracked information.
+            if type(res[-1]) is str and type(item) is str:
                 res[-1] += item
             else:
                 res.append(item)

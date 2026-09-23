@@ -275,29 +275,62 @@ class SigmaString(SigmaType):
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
+
+        Re-parses from the original string applying the following escaping rules:
+        - \\% escapes the percent sign (literal %, no placeholder)
+        - \\\\ escapes the backslash (literal \\), leaving a following % free to start a placeholder
+        - \\x for any other character x: the backslash is kept as-is (same as SigmaString constructor)
         """
         res: list[str | SpecialChars | Placeholder] = []
-        for part in self.s:  # iterate over all parts and...
-            if isinstance(part, str):  # ...search in strings...
-                lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
-                    s = part[lastpos : m.start()].replace("\\%", "%")
-                    if s != "":
-                        res.append(
-                            s
-                        )  # append everything until placeholder (if not empty) as string part to new string
-                    res.append(
-                        Placeholder(m["name"])
-                    )  # insert placeholder stub at position of placeholder
-                    lastpos = m.end()
-                s = part[lastpos:].replace("\\%", "%")
-                if s != "":
-                    res.append(
-                        s
-                    )  # append everything from end of last placeholder until end of string (if not empty) to result string
-            else:  # special characters are passed to the result
-                res.append(part)
-        self.s = res  # finally replace the string with the result
+        acc: list[str] = []
+        escaped = False
+        s = self.original
+        i = 0
+        while i < len(s):
+            c = s[i]
+            if escaped:
+                if c in char_mapping or c == escape_char or c == "%":
+                    # escaped wildcard, backslash, or percent: accumulate as literal character
+                    acc.append(c)
+                else:
+                    # backslash followed by a non-special character: keep both
+                    acc.append(escape_char)
+                    acc.append(c)
+                escaped = False
+                i += 1
+            elif c == escape_char:
+                escaped = True
+                i += 1
+            elif c in char_mapping:
+                # wildcard character
+                if acc:
+                    res.append("".join(acc))
+                    acc = []
+                res.append(char_mapping[c])
+                i += 1
+            elif c == "%":
+                # potential placeholder: look for closing %
+                end = s.find("%", i + 1)
+                if end != -1 and end > i + 1:
+                    name = s[i + 1 : end]
+                    if acc:
+                        res.append("".join(acc))
+                        acc = []
+                    res.append(Placeholder(name))
+                    i = end + 1
+                else:
+                    # lone % or empty name: treat as literal
+                    acc.append(c)
+                    i += 1
+            else:
+                acc.append(c)
+                i += 1
+
+        if escaped:  # string ended in escape mode: keep the escape character
+            acc.append(escape_char)
+        if acc:
+            res.append("".join(acc))
+        self.s = res
 
         return self
 

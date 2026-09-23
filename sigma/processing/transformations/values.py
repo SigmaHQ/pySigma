@@ -1,10 +1,12 @@
 from collections import defaultdict
 from sigma.conditions import ConditionAND, ConditionOR
 from typing import (
+    Any,
     ClassVar,
     Literal,
     Optional,
     Tuple,
+    TYPE_CHECKING,
     Union,
     cast,
 )
@@ -21,6 +23,7 @@ from sigma.exceptions import (
     SigmaValueError,
     SigmaConfigurationError,
 )
+from sigma.policy.regex_engine import RegexPattern
 from sigma.types import (
     Placeholder,
     SigmaBool,
@@ -33,6 +36,9 @@ from sigma.types import (
     SigmaType,
     SpecialChars,
 )
+
+if TYPE_CHECKING:
+    from sigma.policy.regex_engine import RegexEngine
 
 
 @dataclass
@@ -214,9 +220,10 @@ class ReplaceStringTransformation(StringValueTransformation):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        engine = self.resolve_regex_engine()
         try:
-            self.re = re.compile(self.regex)
-        except re.error as e:
+            self.compile_regex(self.regex)
+        except engine.error as e:
             raise SigmaRegularExpressionError(
                 f"Regular expression '{self.regex}' is invalid: {str(e)}"
             ) from e
@@ -232,15 +239,15 @@ class ReplaceStringTransformation(StringValueTransformation):
         if isinstance(val, SigmaString):
             if self.skip_special:
                 return val.map_parts(
-                    lambda s: self.re.sub(
-                        self.replacement, cast(str, s)
+                    lambda s: self.regex_sub(
+                        self.regex, self.replacement, cast(str, s)
                     ),  # filter function in second parameter ensures str type.
                     lambda p: isinstance(p, str),
                     self.interpret_special,
                 )
             else:
                 sigma_string_plain = str(val)
-                replaced = self.re.sub(self.replacement, sigma_string_plain)
+                replaced = self.regex_sub(self.regex, self.replacement, sigma_string_plain)
                 postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
                 if val.contains_placeholder():  # Preserve placeholders
                     return SigmaString(postprocessed_backslashes).insert_placeholders()
@@ -504,22 +511,25 @@ class ExtractFieldsTransformation(DetectionItemTransformation):
         if hasattr(super(), "__post_init__"):
             super().__post_init__()  # type: ignore[misc]
 
+        engine = self.resolve_regex_engine()
         try:
-            self.re = re.compile(self.regex)
-        except re.error as e:
+            compiled = self.compile_regex(self.regex)
+        except engine.error as e:
             raise SigmaRegularExpressionError(
                 f"Regular expression '{self.regex}' is invalid: {str(e)}"
             ) from e
 
-        if not self.re.groupindex:
+        if not compiled.groupindex:
             raise SigmaRegularExpressionError(
                 f"Regular expression '{self.regex}' must contain at least one named group"
             )
 
-        group_names = list(self.re.groupindex.keys())
+        import re as _re
+
+        group_names = _re.findall(r"\(\?P<([^>]+)>", self.regex)
         if len(group_names) != len(set(group_names)):
             raise SigmaRegularExpressionError(
-                f"Regular expression '{self.regex}' contains duplicate named groups"
+                f"Regular expression '{self.regex}' is invalid: contains duplicate named groups"
             )
 
     def _convert_value(self, value: str) -> SigmaType:
@@ -545,7 +555,7 @@ class ExtractFieldsTransformation(DetectionItemTransformation):
 
         for val in detection_item.value:
             plain = val.to_plain()
-            match = self.re.match(plain)
+            match = self.regex_match(self.regex, plain)
             if not match:
                 # Value doesn't match - handle based on preserve_unmatched setting
                 if self.preserve_unmatched:

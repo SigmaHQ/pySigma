@@ -43,6 +43,7 @@ from sigma.processing.conditions import (
 )
 from sigma.exceptions import (
     SigmaConfigurationError,
+    SigmaPolicyError,
     SigmaProcessingItemError,
     SigmaPipelineConditionError,
     SigmaTypeError,
@@ -51,6 +52,10 @@ from sigma.exceptions import (
 import yaml
 
 from sigma.types import SigmaFieldReference, SigmaType
+
+if TYPE_CHECKING:
+    from sigma.policy.regex_engine import RegexEngine
+    from sigma.policy import SigmaPolicy
 
 
 @dataclass
@@ -66,6 +71,7 @@ class ProcessingItemBase:
     )
 
     identifier: str | None = None
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
     _pipeline: "ProcessingPipeline" | None = field(init=False, compare=False, default=None)
 
     @classmethod
@@ -727,6 +733,7 @@ class ProcessingPipeline:
     allowed_backends: frozenset[str] = field(
         default_factory=frozenset
     )  # Set of identifiers of backends (from the backends mapping) that are allowed to use this processing pipeline. This can be used by frontends like Sigma CLI to warn the user about inappropriate usage.
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
     # The following items are reset for each invocation of apply().
     # TODO: move this to parameters or return values of apply().
     applied: list[bool] = field(
@@ -780,6 +787,20 @@ class ProcessingPipeline:
         for finalizer in self.finalizers:
             finalizer._pipeline = None
 
+    def resolve_policy(self) -> "SigmaPolicy":
+        """Return the effective policy for this pipeline.
+
+        Prefer the policy attached to this pipeline and fall back to the
+        global default policy only if no pipeline policy is set.
+        """
+        import sigma
+
+        return self.policy or sigma.default_policy
+
+    def resolve_regex_engine(self) -> "RegexEngine":
+        """Return the effective regex engine for this pipeline."""
+        return self.resolve_policy().regex_engine
+
     @classmethod
     def from_dict(
         cls,
@@ -787,6 +808,7 @@ class ProcessingPipeline:
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
         allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
 
@@ -879,6 +901,7 @@ class ProcessingPipeline:
             priority,
             name,
             allowed_backends,
+            policy,
         )
 
     @classmethod
@@ -889,6 +912,7 @@ class ProcessingPipeline:
         vars_allowed_paths: tuple[str, ...] | None = None,
         source_path: str | None = None,
         allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingPipeline":
         """Convert YAML input string into processing pipeline.
 
@@ -909,6 +933,7 @@ class ProcessingPipeline:
             allow_template_vars=allow_template_vars,
             vars_allowed_paths=vars_allowed_paths,
             allow_external_sources=allow_external_sources,
+            policy=policy,
         )
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule) -> SigmaRule | SigmaCorrelationRule:
@@ -974,6 +999,10 @@ class ProcessingPipeline:
             return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
+        if self.policy is not None and other.policy is not None and self.policy != other.policy:
+            raise SigmaPolicyError(
+                "Processing pipelines with different SigmaPolicy objects can't be merged."
+            )
 
         self._clear_pipeline()
         other._clear_pipeline()
@@ -983,6 +1012,7 @@ class ProcessingPipeline:
             postprocessing_items=self.postprocessing_items + other.postprocessing_items,
             finalizers=self.finalizers + other.finalizers,
             vars={**self.vars, **other.vars},
+            policy=self.policy or other.policy,
         )
 
     def __radd__(self, other: Literal[0]) -> "ProcessingPipeline":

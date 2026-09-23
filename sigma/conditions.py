@@ -218,10 +218,14 @@ class ConditionSelector(ConditionItem):
         """
         Resolve all detection identifiers referenced by the selector.
         """
+        import sigma
+
+        policy = detections.policy
+        engine = (policy or sigma.default_policy).regex_engine
         if self.pattern == "them":
-            r = re.compile(".*")
+            r = engine.compile(".*")
         else:
-            r = re.compile(self.pattern.replace("*", ".*"))
+            r = engine.compile(self.pattern.replace("*", ".*"))
 
         # When a filter is applied to a rule its detection identifiers are renamed to
         # start with a `_filt_<random>_` prefix, and its condition patterns receive the

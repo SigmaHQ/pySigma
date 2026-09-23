@@ -17,6 +17,7 @@ from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaS
 if TYPE_CHECKING:
     from sigma.conversion.state import ConversionState
     from sigma.exceptions import SigmaError, SigmaRuleLocation
+    from sigma.policy import SigmaPolicy
 
 
 class SigmaYAMLLoader(yaml.CSafeLoader):
@@ -57,6 +58,7 @@ class SigmaRuleBase:
     errors: list[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
     custom_attributes: dict[str, Any] = field(compare=False, default_factory=dict)
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
 
     _backreferences: list[SigmaRuleBase] = field(
         init=False, default_factory=list, repr=False, compare=False
@@ -87,6 +89,7 @@ class SigmaRuleBase:
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> tuple[dict[str, Any], list[SigmaError]]:
         """
         Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
@@ -396,25 +399,36 @@ class SigmaRuleBase:
                     not in set(cls.__dataclass_fields__.keys())
                     - {"errors", "source", "applied_processing_items"}
                 },
+                "policy": policy,
             },
             errors,
         )
 
     @classmethod
     @abstractmethod
-    def from_dict(cls: type[Self], rule: dict[str, Any], collect_errors: bool = False) -> Self:
+    def from_dict(
+        cls: type[Self],
+        rule: dict[str, Any],
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert dict input into SigmaRule object."""
         raise NotImplementedError(
             "from_dict method must be implemented in the derived class of SigmaRuleBase"
         )
 
     @classmethod
-    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls: type[Self],
+        rule: str,
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         if parsed_rule is None:
             parsed_rule = {}
-        return cls.from_dict(parsed_rule, collect_errors)
+        return cls.from_dict(parsed_rule, collect_errors, policy=policy)
 
     def to_dict(self: Self) -> dict[str, Any]:
         """Convert rule object into dict."""

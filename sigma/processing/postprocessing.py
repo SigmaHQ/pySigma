@@ -3,16 +3,17 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-import re
 from typing import Any, Type, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
+from sigma.policy.regex_engine import RegexPattern
 import sigma.processing.postprocessing
 from sigma.processing.templates import TemplateBase
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
 if TYPE_CHECKING:
+    from sigma.policy.regex_engine import RegexEngine
     from sigma.processing.pipeline import QueryPostprocessingItem, ProcessingPipeline
 
 
@@ -134,16 +135,17 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     replacement: str
 
     def __post_init__(self) -> None:
+        engine = self.resolve_regex_engine()
         try:
-            self.re = re.compile(self.pattern)
-        except re.error as e:
+            self.compile_regex(self.pattern)
+        except engine.error as e:
             raise SigmaConfigurationError(
                 f"Regular expression '{self.pattern}' is invalid: {str(e)}"
             ) from e
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
-        return self.re.sub(self.replacement, query)
+        return self.regex_sub(self.pattern, self.replacement, query)
 
 
 @dataclass

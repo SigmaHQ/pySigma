@@ -15,8 +15,12 @@ from typing import (
     Iterable,
     Callable,
     Iterator,
+    TYPE_CHECKING,
     cast,
 )
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 from sigma.exceptions import (
     SigmaPlaceholderError,
@@ -743,6 +747,7 @@ class SigmaRegularExpression(SigmaType):
     regexp: SigmaString = field(init=False)
     regexp_init: InitVar[SigmaString | str]
     flags: set[SigmaRegularExpressionFlag] = field(default_factory=set)
+    policy: SigmaPolicy | None = field(default=None, compare=False)
     sigma_to_python_flags: ClassVar[dict[SigmaRegularExpressionFlag, re.RegexFlag]] = {
         SigmaRegularExpressionFlag.IGNORECASE: re.IGNORECASE,
         SigmaRegularExpressionFlag.MULTILINE: re.MULTILINE,
@@ -769,12 +774,15 @@ class SigmaRegularExpression(SigmaType):
 
     def compile(self) -> None:
         """Verify if regular expression is valid by compiling it"""
+        import sigma
+
+        engine = (self.policy or sigma.default_policy).regex_engine
         try:
             flags = 0
             for flag in self.flags:
                 flags |= self.sigma_to_python_flags[flag]
-            re.compile(str(self.regexp), flags)
-        except re.error as e:
+            engine.compile(str(self.regexp), flags)
+        except engine.error as e:
             raise SigmaRegularExpressionError(
                 f"Regular expression '{str(self.regexp)}' is invalid: {str(e)}"
             ) from e

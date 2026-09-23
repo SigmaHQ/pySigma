@@ -19,6 +19,10 @@ from sigma.exceptions import (
 )
 from sigma.filters import SigmaFilter
 from sigma.rule import SigmaRule, SigmaRuleBase
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 NestedDict = dict[str, "str | int | float | bool | None | NestedDict"]
 
@@ -118,6 +122,7 @@ class SigmaCollection:
         source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Generate a rule collection from list of dicts containing parsed YAML content.
@@ -161,7 +166,10 @@ class SigmaCollection:
                         errors.extend(parsed_filter_rule.errors)  # Propagate errors from rule
                     else:  # merge with global rule and parse as simple rule
                         parsed_merged_rule = SigmaRule.from_dict(
-                            deep_dict_update(rule, global_rule), collect_errors, source
+                            deep_dict_update(rule, global_rule),
+                            collect_errors,
+                            source,
+                            policy=policy,
                         )
                         parsed_rules.append(parsed_merged_rule)
                         errors.extend(parsed_merged_rule.errors)  # Propagate errors from rule
@@ -176,7 +184,9 @@ class SigmaCollection:
                     action == "repeat"
                 ):  # add content of current rule to previous rule and parse it
                     prev_rule = deep_dict_update(prev_rule, rule)
-                    parsed_rule = SigmaRule.from_dict(prev_rule, collect_errors, source)
+                    parsed_rule = SigmaRule.from_dict(
+                        prev_rule, collect_errors, source, policy=policy
+                    )
                     parsed_rules.append(parsed_rule)
                     errors.extend(parsed_rule.errors)  # Propagate errors from rule
                 else:
@@ -204,6 +214,7 @@ class SigmaCollection:
         source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Generate a rule collection from a string containing one or multiple YAML documents.
@@ -219,6 +230,7 @@ class SigmaCollection:
             source,
             collect_filters,
             resolve_references,
+            policy=policy,
         )
 
     @classmethod

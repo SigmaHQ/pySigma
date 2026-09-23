@@ -32,6 +32,7 @@ from sigma.types import SigmaNull, SigmaString, SigmaType, sigma_type
 
 if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
+    from sigma.policy import SigmaPolicy
 
 # Type alias for plain detection types
 # SigmaPlainValue = str | int | float | bool | None
@@ -514,6 +515,7 @@ class SigmaDetections:
     detections: dict[str, SigmaDetection]
     condition: list[str]
     source: SigmaRuleLocation | None = field(default=None, compare=False)
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
 
     def __post_init__(self: Self) -> None:
         """Detections sanity checks"""
@@ -532,6 +534,7 @@ class SigmaDetections:
         cls: type[Self],
         detections: dict[str, Any],
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         try:
             if isinstance(detections["condition"], list):
@@ -551,6 +554,7 @@ class SigmaDetections:
             },
             condition=condition,
             source=source,
+            policy=policy,
         )
 
     def to_dict(self: Self) -> dict[str, Any]:

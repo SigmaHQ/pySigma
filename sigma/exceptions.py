@@ -166,6 +166,12 @@ class SigmaPipelineParsingError(SigmaError):
     pass
 
 
+class SigmaPolicyError(SigmaError):
+    """Error related to incompatible Sigma policy usage."""
+
+    pass
+
+
 class SigmaProcessingItemError(SigmaError):
     """Error in definition or state of processing item."""
 

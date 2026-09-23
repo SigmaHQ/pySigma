@@ -177,11 +177,33 @@ def test_string_placeholders_replace():
 
 
 def test_string_placeholders_escape():
+    # Backslashes before % signs are kept as literal characters; the placeholder %var%
+    # is still found because it has no backslash before its closing %.
     assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == [
-        "%test1%test2%",
+        "\\%test1\\%test2\\%",
         Placeholder("var"),
-        "%test3%",
+        "\\%test3\\%",
     ]
+
+
+def test_string_placeholders_escape_percent():
+    """\\% keeps both the backslash and the percent as literals when the name is invalid."""
+    assert SigmaString("\\%foo\\%").insert_placeholders().s == ["\\%foo\\%"]
+
+
+def test_string_placeholders_escaped_backslash_before_placeholder():
+    """\\\\% in the Sigma rule is a literal \\ followed by a placeholder."""
+    result = SigmaString("\\\\%foo%").insert_placeholders()
+    assert result.s == ["\\", Placeholder("foo")]
+
+
+def test_string_placeholders_escaped_backslash_in_value():
+    """\\\\%name% expands correctly when placeholder is replaced with values."""
+    result = SigmaString("\\\\%foo%").insert_placeholders()
+    expanded = result.replace_placeholders(
+        lambda ph: iter(["bar", "baz"]) if ph.name == "foo" else iter([ph])
+    )
+    assert [str(v) for v in expanded] == ["\\bar", "\\baz"]
 
 
 def test_string_contains_placeholders():

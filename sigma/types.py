@@ -275,29 +275,44 @@ class SigmaString(SigmaType):
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
+
+        Iterates over the parts in self.s. For plain string parts, scans for %name% patterns and
+        replaces them with Placeholder objects. Backslashes are treated as ordinary literal characters
+        — a backslash immediately before %name% is emitted as a literal backslash followed by the
+        placeholder. The placeholder name must be non-empty and must not contain backslashes or
+        percent signs; otherwise the opening % is treated as a literal character.
+
+        Non-string parts (special characters, existing placeholders) are preserved unchanged.
         """
         res: list[str | SpecialChars | Placeholder] = []
-        for part in self.s:  # iterate over all parts and...
-            if isinstance(part, str):  # ...search in strings...
-                lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
-                    s = part[lastpos : m.start()].replace("\\%", "%")
-                    if s != "":
-                        res.append(
-                            s
-                        )  # append everything until placeholder (if not empty) as string part to new string
-                    res.append(
-                        Placeholder(m["name"])
-                    )  # insert placeholder stub at position of placeholder
-                    lastpos = m.end()
-                s = part[lastpos:].replace("\\%", "%")
-                if s != "":
-                    res.append(
-                        s
-                    )  # append everything from end of last placeholder until end of string (if not empty) to result string
-            else:  # special characters are passed to the result
+        for part in self.s:
+            if not isinstance(part, str):
                 res.append(part)
-        self.s = res  # finally replace the string with the result
+                continue
+            acc: list[str] = []
+            i = 0
+            while i < len(part):
+                c = part[i]
+                if c == "%":
+                    end = part.find("%", i + 1)
+                    if end != -1 and end > i + 1:
+                        name = part[i + 1 : end]
+                        # Accept only non-empty names without backslashes
+                        if "\\" not in name:
+                            if acc:
+                                res.append("".join(acc))
+                                acc = []
+                            res.append(Placeholder(name))
+                            i = end + 1
+                            continue
+                    # lone %, empty name, or name containing backslash: treat % as literal
+                    acc.append(c)
+                else:
+                    acc.append(c)
+                i += 1
+            if acc:
+                res.append("".join(acc))
+        self.s = res
 
         return self
 

@@ -235,6 +235,13 @@ def test_string_placeholders_with_dot():
     ]
 
 
+def test_string_placeholders_after_slice():
+    assert SigmaString("prefix%var%suffix")[6:].insert_placeholders().s == [
+        Placeholder("var"),
+        "suffix",
+    ]
+
+
 def test_strings_equal():
     assert SigmaString("test*string") == SigmaString("test*string")
 

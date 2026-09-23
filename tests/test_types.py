@@ -235,6 +235,20 @@ def test_string_placeholders_with_dot():
     ]
 
 
+def test_string_placeholders_parse_current_parts():
+    s = SigmaString("original")
+    s.s = ["pre%first%post", SpecialChars.WILDCARD_MULTI, Placeholder("keep"), "%second%"]
+
+    assert s.insert_placeholders().s == [
+        "pre",
+        Placeholder("first"),
+        "post",
+        SpecialChars.WILDCARD_MULTI,
+        Placeholder("keep"),
+        Placeholder("second"),
+    ]
+
+
 def test_strings_equal():
     assert SigmaString("test*string") == SigmaString("test*string")
 

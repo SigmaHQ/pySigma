@@ -22,6 +22,7 @@ from sigma.types import (
     SigmaTimestampPart,
     TimestampPart,
     SigmaCompareExpression,
+    SpecialChars,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,
@@ -357,6 +358,50 @@ def test_sigmadetectionitem_key_value_single_string_modifier_to_plain():
     detection_item = SigmaDetectionItem("key", [SigmaContainsModifier], [SigmaString("value")])
     detection_item.apply_modifiers()
     assert detection_item.to_plain() == {"key|contains": "value"}
+
+
+@pytest.mark.parametrize(
+    "plain,expected_plain",
+    [
+        ("C:\\Temp\\\\*", "C:\\Temp\\\\*"),  # backslash followed by wildcard
+        ("C:\\Temp\\\\\\*", "C:\\Temp\\\\\\*"),  # backslash followed by literal asterisk
+        ("a\\\\?b", "a\\\\?b"),  # backslash followed by single-character wildcard
+        ("C:\\Temp\\foo", "C:\\Temp\\foo"),  # plain backslashes stay unescaped
+        ("C:\\Temp\\", "C:\\Temp\\"),  # trailing backslash
+        # UNC path with two leading backslashes: only the first one must be escaped
+        ("\\\\\\\\server\\share", "\\\\\\server\\share"),
+    ],
+)
+def test_sigmadetectionitem_key_value_backslash_to_plain_roundtrip(plain, expected_plain):
+    """Values parsed from the plain representation of a detection item are the original values."""
+    detection_item = SigmaDetectionItem.from_mapping("key", plain)
+    assert detection_item.to_plain() == {"key": expected_plain}
+    assert SigmaDetectionItem.from_mapping("key", expected_plain).value == detection_item.value
+
+
+def test_sigmadetectionitem_backslash_wildcard_to_plain():
+    """A backslash directly before a wildcard must be escaped, else it escapes the wildcard."""
+    detection_item = SigmaDetectionItem(
+        "key", [], [SigmaString("C:\\Temp\\\\") + SpecialChars.WILDCARD_MULTI]
+    )
+    assert detection_item.to_plain() == {"key": "C:\\Temp\\\\*"}
+
+
+def test_sigmarule_backslash_wildcard_to_dict_from_dict_roundtrip():
+    rule = SigmaRule.from_yaml("""
+title: Test
+logsource:
+    category: test
+detection:
+    sel:
+        Image: 'C:\\Temp\\\\*'
+    condition: sel
+""")
+    value = rule.detection.detections["sel"].detection_items[0].value
+    assert value == [SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI]
+    assert SigmaRule.from_dict(rule.to_dict()).detection.detections["sel"].detection_items[
+        0
+    ].value == [SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI]
 
 
 def test_sigmadetectionitem_key_value_single_int():

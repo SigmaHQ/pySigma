@@ -374,6 +374,33 @@ def test_strings_to_plain():
     assert SigmaString("test*?").to_plain() == "test*?"
 
 
+def test_strings_to_plain_escape_backslash():
+    s = SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI
+    assert s.to_plain() == "C:\\Temp\\*"  # default unchanged
+    assert s.to_plain(escape_backslash=True) == "C:\\Temp\\\\*"
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        ["a\\", SpecialChars.WILDCARD_MULTI],
+        ["a\\", SpecialChars.WILDCARD_SINGLE, "b"],
+        ["a\\*b"],
+        ["a\\?b"],
+        ["\\\\server\\share"],
+        ["a\\\\", SpecialChars.WILDCARD_MULTI],
+        ["C:\\Temp\\"],
+        ["\\"],
+        ["a\\", Placeholder("p"), "\\"],
+        [SpecialChars.WILDCARD_MULTI, "\\x\\", SpecialChars.WILDCARD_SINGLE],
+    ],
+)
+def test_strings_to_plain_escape_backslash_roundtrip(parts):
+    s = SigmaString()
+    s.s = parts
+    assert SigmaString(s.to_plain(escape_backslash=True)).insert_placeholders() == s
+
+
 def test_strings_to_bytes():
     assert bytes(SigmaString("test*?")) == b"test*?"
 

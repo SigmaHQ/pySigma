@@ -149,6 +149,64 @@ class SigmaListModifier(SigmaModifier[T, R]):
         """This method should be overridden with the modifier implementation."""
 
 
+### Helpers for regular expression modifiers ###
+def _regex_has_toplevel_alternation(regexp: str) -> bool:
+    """Check if a regular expression contains a | outside of groups and character classes."""
+    depth = 0
+    in_class = False
+    i = 0
+    while i < len(regexp):
+        c = regexp[i]
+        if c == "\\":  # skip escaped character
+            i += 2
+            continue
+        if in_class:
+            if c == "]":
+                in_class = False
+        elif c == "[":
+            in_class = True
+            if regexp[i + 1 : i + 2] == "^":  # negated character class
+                i += 1
+            if regexp[i + 1 : i + 2] == "]":  # ] directly after [ or [^ is a literal
+                i += 1
+        elif c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+        elif c == "|" and depth == 0:
+            return True
+        i += 1
+    return False
+
+
+def _regex_ends_with_unescaped(regexp: str, suffix: str) -> bool:
+    """Check if a regular expression ends with suffix that is not escaped by a backslash."""
+    if not regexp.endswith(suffix):
+        return False
+    head = regexp[: len(regexp) - len(suffix)]
+    return (len(head) - len(head.rstrip("\\"))) % 2 == 0
+
+
+def _regex_is_open_ended(regexp: str) -> bool:
+    """Check if a regular expression neither ends with a .* wildcard nor with an end anchor."""
+    return not _regex_ends_with_unescaped(regexp, ".*") and not _regex_ends_with_unescaped(
+        regexp, "$"
+    )
+
+
+def _group_regex_alternation(val: SigmaRegularExpression) -> str:
+    """
+    Wrap a regular expression with a top-level alternation into a non-capturing group, so that
+    wildcards prepended or appended by the contains/startswith/endswith modifiers apply to all
+    alternatives. Returns the resulting regular expression string.
+    """
+    regexp_str = str(val.regexp)
+    if _regex_has_toplevel_alternation(regexp_str):
+        val.regexp = SigmaString("(?:", escape=False) + val.regexp + SigmaString(")")
+        regexp_str = str(val.regexp)
+    return regexp_str
+
+
 ### Modifier Implementations ###
 class SigmaContainsModifier(
     SigmaValueModifier[
@@ -167,10 +225,10 @@ class SigmaContainsModifier(
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = str(val.regexp)
+            regexp_str = _group_regex_alternation(val)
             if regexp_str[:2] != ".*" and regexp_str[0] != "^":
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
-            if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
+            if _regex_is_open_ended(regexp_str):
                 val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
             val.compile()
         elif isinstance(val, SigmaFieldReference):
@@ -194,8 +252,8 @@ class SigmaStartswithModifier(
             if not val.endswith(SpecialChars.WILDCARD_MULTI):
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = str(val.regexp)
-            if regexp_str[-2:] != ".*" and regexp_str[-1] != "$":
+            regexp_str = _group_regex_alternation(val)
+            if _regex_is_open_ended(regexp_str):
                 val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
             val.compile()
         elif isinstance(val, SigmaFieldReference):
@@ -218,7 +276,7 @@ class SigmaEndswithModifier(
             if not val.startswith(SpecialChars.WILDCARD_MULTI):
                 val = SpecialChars.WILDCARD_MULTI + val
         elif isinstance(val, SigmaRegularExpression):
-            regexp_str = str(val.regexp)
+            regexp_str = _group_regex_alternation(val)
             if regexp_str[:2] != ".*" and regexp_str[0] != "^":
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             val.compile()

@@ -1,5 +1,6 @@
 import re
-from ipaddress import IPv4Network, IPv6Network
+from fnmatch import fnmatchcase
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 
 import pytest
 
@@ -870,12 +871,13 @@ def test_cidr_expand_ipv6_0():
 
 
 def test_cidr_expand_ipv6_56():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab*"]
+    # Group ab00-abff always has 4 digits: ab* would also match e.g. 1234:5678:0:ab:1::
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab??:*"]
 
 
-def test_cidr_expand_ipv6_64():
-    """The compressed broadcast address only extends the compressed network address: the wildcard belongs directly after it."""
-    assert SigmaCIDRExpression("2001:db8::/64").expand() == ["2001:db8::*"]
+def test_cidr_expand_ipv6_64_compressed():
+    """Addresses of the network are compressed at the network prefix or in the host part."""
+    assert SigmaCIDRExpression("2001:db8::/64").expand() == ["2001:db8:0:0:*", "2001:db8::*"]
 
 
 def test_cidr_expand_ipv6_112():
@@ -883,11 +885,69 @@ def test_cidr_expand_ipv6_112():
 
 
 def test_cidr_expand_ipv6_120():
-    assert SigmaCIDRExpression("2001:db8::/120").expand() == ["2001:db8::*"]
+    assert SigmaCIDRExpression("2001:db8::/120").expand() == [
+        "2001:db8::?",
+        "2001:db8::??",
+        "2001:db8::",
+    ]
 
 
-def test_cidr_expand_ipv6_128():
+def test_cidr_expand_ipv6_128_compressed():
     assert SigmaCIDRExpression("2001:db8::1/128").expand() == ["2001:db8::1"]
+
+
+@pytest.mark.parametrize(
+    "cidr,expected",
+    [
+        # zero groups compressed in network but not in all addresses
+        ("2001:db8:0:0:1::/80", ["2001:db8::1:*:*:*", "2001:db8:0:0:1::"]),
+        ("2001:0:0:1::/64", ["2001::1:*:*:*:*", "2001:0:0:1:*"]),
+        # leading zeros are not written, partially covered groups need an exact digit count
+        ("2001:db8:1000::/36", ["2001:db8:1???:*"]),
+        ("fe80::/10", ["fe8?:*", "fe9?:*", "fea?:*", "feb?:*"]),
+    ],
+)
+def test_cidr_expand_ipv6_prefix_not_truncated(cidr, expected):
+    assert SigmaCIDRExpression(cidr).expand() == expected
+
+
+@pytest.mark.parametrize(
+    "cidr,inside,outside",
+    [
+        (
+            "2001:db8:0:0:1::/80",
+            ["2001:db8::1:0:0:1", "2001:db8::1:a:b:c", "2001:db8:0:0:1::"],
+            ["2001:db8:ffff::1", "2001:db8::2:0:0:1", "2001:db8::1", "2001:db8:1::1"],
+        ),
+        (
+            "2001:0:0:1::/64",
+            ["2001:0:0:1::1", "2001:0:0:1::", "2001::1:0:1:0:1", "2001::1:a:b:c:d"],
+            ["2001:abcd::1", "2001::1", "2001:0:0:2::"],
+        ),
+        (
+            "2001:db8:1000::/36",
+            ["2001:db8:1000::", "2001:db8:1fff:ffff::1", "2001:db8:1abc:1:2:3:4:5"],
+            ["2001:db8:1::", "2001:db8:1:2:3:4:5:6", "2001:db8:160:1:2:3:4:5", "2001:db8:2000::"],
+        ),
+        (
+            "2001:db8::/64",
+            ["2001:db8::", "2001:db8::1", "2001:db8:0:0:1::", "2001:db8::1:2:3:4"],
+            ["2001:db8:1::", "2001:db9::1"],
+        ),
+    ],
+)
+def test_cidr_expand_ipv6_matches(cidr, inside, outside):
+    """Patterns match the RFC 5952 representation of addresses inside the network only."""
+    patterns = SigmaCIDRExpression(cidr).expand()
+    network = IPv6Network(cidr)
+    for address in inside:
+        assert str(IPv6Address(address)) == address  # RFC 5952 representation
+        assert IPv6Address(address) in network
+        assert any(fnmatchcase(address, pattern) for pattern in patterns), address
+    for address in outside:
+        assert str(IPv6Address(address)) == address
+        assert IPv6Address(address) not in network
+        assert not any(fnmatchcase(address, pattern) for pattern in patterns), address
 
 
 def test_cidr_expand_ipv6_without_wildcard():
@@ -900,15 +960,15 @@ def test_cidr_expand_ipv4_without_wildcard():
 
 def test_cidr_expand_ipv6_58():
     assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand() == [
-        "1234:5678:0:ab0*",
-        "1234:5678:0:ab1*",
-        "1234:5678:0:ab2*",
-        "1234:5678:0:ab3*",
+        "1234:5678:0:ab0?:*",
+        "1234:5678:0:ab1?:*",
+        "1234:5678:0:ab2?:*",
+        "1234:5678:0:ab3?:*",
     ]
 
 
 def test_cidr_expand_ipv6_60():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand() == ["1234:5678:0:ab0*"]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand() == ["1234:5678:0:ab0?:*"]
 
 
 def test_cidr_expand_ipv6_64():

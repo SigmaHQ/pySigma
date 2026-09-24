@@ -193,6 +193,26 @@ def test_base64(dummy_detection_item):
     ]
 
 
+def test_base64_escaped_wildcard(dummy_detection_item):
+    # "x\*y" is the literal value x*y
+    assert SigmaBase64Modifier(dummy_detection_item, []).apply(SigmaString("x\\*y")) == [
+        SigmaString("eCp5")
+    ]
+
+
+def test_base64offset_escaped_wildcard(dummy_detection_item):
+    # "cmd\?.exe" is the literal value cmd?.exe
+    assert SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("cmd\\?.exe")) == [
+        SigmaExpansion(
+            [
+                SigmaString("Y21kPy5leG"),
+                SigmaString("NtZD8uZXhl"),
+                SigmaString("jbWQ/LmV4Z"),
+            ]
+        )
+    ]
+
+
 def test_base64_wildcards(dummy_detection_item):
     with pytest.raises(SigmaValueError, match="wildcards is not allowed.*test.yml"):
         SigmaBase64Modifier(dummy_detection_item, [], SigmaRuleLocation("test.yml")).apply(

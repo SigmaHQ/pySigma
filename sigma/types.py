@@ -426,7 +426,9 @@ class SigmaString(SigmaType):
         return self.to_plain(regex=True)
 
     def __bytes__(self) -> bytes:
-        return str(self).encode()
+        # Plain parts are encoded as they are: the escaping of literal wildcard characters done by
+        # to_plain() is not part of the value.
+        return self.to_plain(regex=True).encode()
 
     def __len__(self) -> int:
         return sum(

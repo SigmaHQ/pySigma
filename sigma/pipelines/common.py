@@ -38,8 +38,17 @@ windows_logsource_mapping = {  # Mapping between Sigma log source services and W
     "bits-client": "Microsoft-Windows-Bits-Client/Operational",
     "windefend": "Microsoft-Windows-Windows Defender/Operational",
     "terminalservices-localsessionmanager": "Microsoft-Windows-TerminalServices-LocalSessionManager/Operational",
-    "microsoft-servicebus-client": "Microsoft-ServiceBus-Client",
-    "ldap_debug": "Microsoft-Windows-LDAP-Client/Debug",
+    "servicebus-client": [
+        "Microsoft-ServiceBus-Client/Operational",
+        "Microsoft-ServiceBus-Client/Admin",
+    ],
+    # Legacy key still used by SigmaHQ rules until they move to "servicebus-client".
+    "microsoft-servicebus-client": [
+        "Microsoft-ServiceBus-Client/Operational",
+        "Microsoft-ServiceBus-Client/Admin",
+    ],
+    "ldap": "Microsoft-Windows-LDAP-Client/Debug",
+    "ldap_debug": "Microsoft-Windows-LDAP-Client/Debug",  # legacy alias of "ldap"
     "security-mitigations": [
         "Microsoft-Windows-Security-Mitigations/Kernel Mode",
         "Microsoft-Windows-Security-Mitigations/User Mode",
@@ -56,6 +65,19 @@ windows_logsource_mapping = {  # Mapping between Sigma log source services and W
     "appmodel-runtime": "Microsoft-Windows-AppModel-Runtime/Admin",
     "capi2": "Microsoft-Windows-CAPI2/Operational",
     "certificateservicesclient-lifecycle-system": "Microsoft-Windows-CertificateServicesClient-Lifecycle-System/Operational",
+    "application-experience": [
+        "Microsoft-Windows-Application-Experience/Program-Telemetry",
+        "Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant",
+    ],
+    "hyper-v-worker": "Microsoft-Windows-Hyper-V-Worker",
+    "iis-configuration": "Microsoft-IIS-Configuration/Operational",
+    "kernel-event-tracing": "Microsoft-Windows-Kernel-EventTracing",
+    "kernel-shimengine": [
+        "Microsoft-Windows-Kernel-ShimEngine/Operational",
+        "Microsoft-Windows-Kernel-ShimEngine/Diagnostic",
+    ],
+    "ntfs": "Microsoft-Windows-Ntfs/Operational",
+    "sense": "Microsoft-Windows-SENSE/Operational",
 }
 
 

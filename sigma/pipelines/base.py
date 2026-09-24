@@ -42,9 +42,13 @@ class Pipeline:
 
     def __new__(cls, *args: list[Any], **kwargs: dict[str, Any]) -> "Pipeline":
         """
-        Use the singleton pattern to ensure that only one instance of the class
-        is created. This is necessary to ensure that the pipelines are registered
-        only once if the class is inherited.
+        Use the singleton pattern for subclasses to ensure that only one instance of
+        each class is created. This is necessary to ensure that the pipelines are
+        registered only once if the class is inherited.
+
+        When used as a decorator (``@Pipeline``), every decorated function gets its own
+        instance. Sharing one instance would make every decorated pipeline alias the
+        last decorated function.
 
         Args:
             cls ([type]): The class itself.
@@ -56,6 +60,11 @@ class Pipeline:
         Returns:
             Pipeline: The class instance.
         """
-        if cls._instance is None:
-            cls._instance = super(Pipeline, cls).__new__(cls)
-        return cls._instance
+        if cls is Pipeline:
+            return super(Pipeline, cls).__new__(cls)
+        # Look up the singleton on the class itself, not inherited from a base class.
+        instance: Pipeline | None = cls.__dict__.get("_instance")
+        if instance is None:
+            instance = super(Pipeline, cls).__new__(cls)
+            cls._instance = instance
+        return instance

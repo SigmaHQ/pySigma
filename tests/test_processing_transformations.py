@@ -2052,6 +2052,79 @@ def test_replace_string_backslashes(dummy_pipeline):
     )
 
 
+@pytest.mark.parametrize(
+    "regex,replacement,value,expected",
+    [
+        # Regular expression not matching: value must stay unchanged.
+        ("nomatch", "x", ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI], None),
+        (
+            "nomatch",
+            "x",
+            [SpecialChars.WILDCARD_MULTI, "\\Temp\\", SpecialChars.WILDCARD_MULTI],
+            None,
+        ),
+        ("nomatch", "x", ["C:\\Windows\\", SpecialChars.WILDCARD_SINGLE, "x"], None),
+        ("nomatch", "x", ["C:\\Windows\\*"], None),  # escaped literal asterisk
+        (
+            "^C:",
+            "%SystemDrive%",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI],
+            ["%SystemDrive%\\Windows\\", SpecialChars.WILDCARD_MULTI],
+        ),
+        (
+            "Windows",
+            "System32",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_SINGLE, "x"],
+            ["C:\\System32\\", SpecialChars.WILDCARD_SINGLE, "x"],
+        ),
+        # Literal backslash in the replacement followed by a wildcard of the original value
+        (
+            "s/",
+            "s\\\\",
+            ["C:/Windows/", SpecialChars.WILDCARD_MULTI],
+            ["C:/Windows\\", SpecialChars.WILDCARD_MULTI],
+        ),
+        # Replacement matching the backslash before the wildcard
+        (
+            "\\\\",
+            "/",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI],
+            ["C:/Windows/", SpecialChars.WILDCARD_MULTI],
+        ),
+    ],
+)
+def test_replace_string_backslash_before_wildcard(regex, replacement, value, expected):
+    s = SigmaString()
+    s.s = value
+    expected_s = SigmaString()
+    expected_s.s = value if expected is None else expected
+    transformation = ReplaceStringTransformation(regex, replacement)
+    assert transformation.apply_string_value("field", s) == expected_s
+
+
+def test_replace_string_backslash_before_wildcard_conversion():
+    rule = SigmaCollection.from_yaml(r"""
+title: Test
+status: test
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    sel:
+        Image|contains: '\Temp\'
+        CommandLine|startswith: 'C:\Windows\'
+    condition: sel
+""")
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ReplaceStringTransformation("nomatch", "replacement"))]
+    )
+    assert (
+        TextQueryTestBackend(pipeline).convert(rule)
+        == TextQueryTestBackend().convert(rule)
+        == ['Image contains "\\Temp\\" and CommandLine startswith "C\\:\\Windows\\"']
+    )
+
+
 def test_replace_string_invalid():
     with pytest.raises(SigmaRegularExpressionError, match="Regular expression.*invalid"):
         ReplaceStringTransformation("*", "test")

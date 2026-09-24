@@ -1,4 +1,5 @@
 import pytest
+from base64 import b64encode
 from typing import Union, Sequence, List
 from sigma.modifiers import (
     SigmaCaseSensitiveModifier,
@@ -207,6 +208,31 @@ def test_base64offset(dummy_detection_item):
                 SigmaString("Zm9vYmFy"),
                 SigmaString("Zvb2Jhc"),
                 SigmaString("mb29iYX"),
+            ]
+        )
+    ]
+
+
+@pytest.mark.parametrize("value", ["é", "aé", "C:\\Users\\Müller\\ärger.exe", "日本語"])
+def test_base64offset_nonascii(dummy_detection_item, value):
+    # Non-ASCII characters are encoded with multiple UTF-8 bytes. Each variant must occur in the
+    # Base64 encoding of data containing the value at the corresponding offset, and must not be
+    # empty.
+    (expansion,) = SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString(value))
+    assert isinstance(expansion, SigmaExpansion)
+    data = value.encode()
+    for i, variant in enumerate(expansion.values):
+        assert str(variant) != ""
+        assert str(variant) in b64encode(i * b"x" + data + b"yyy").decode()
+
+
+def test_base64offset_nonascii_expected(dummy_detection_item):
+    assert SigmaBase64OffsetModifier(dummy_detection_item, []).apply(SigmaString("é")) == [
+        SigmaExpansion(
+            [
+                SigmaString("w6"),
+                SigmaString("Op"),
+                SigmaString("Dq"),
             ]
         )
     ]

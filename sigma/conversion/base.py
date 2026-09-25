@@ -34,7 +34,13 @@ from sigma.correlations import (
     SigmaExtendedCorrelationCondition,
     SigmaRuleReference,
 )
-from sigma.exceptions import SigmaBackendError, SigmaConversionError, SigmaError, SigmaValueError
+from sigma.exceptions import (
+    SigmaBackendError,
+    SigmaConversionError,
+    SigmaError,
+    SigmaFeatureNotSupportedByBackendError,
+    SigmaValueError,
+)
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule
 from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
@@ -1603,20 +1609,40 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.or_token + self.token_separator
 
+            converted_args = [
+                (
+                    self.convert_condition(arg, state)
+                    if self.compare_precedence(cond, arg)
+                    else self.convert_condition_group(arg, state)
+                )
+                for arg in cond.args
+            ]
             args = [
                 converted
-                for converted in (
-                    (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
-                    )
-                    for arg in cond.args
-                )
+                for converted in converted_args
                 if converted is not None and not isinstance(converted, DeferredQueryExpression)
             ]
 
             if len(args) == 0:
+                deferred_args = [
+                    converted
+                    for converted in converted_args
+                    if isinstance(converted, DeferredQueryExpression)
+                ]
+                if len(deferred_args) == 1:
+                    # Only one deferred argument: pass it to the parent, so the rule is still
+                    # finished as deferred-only query instead of being dropped.
+                    return deferred_args[0]
+                elif len(deferred_args) > 1:
+                    # Deferred expressions are applied as additional filters on the result of
+                    # the main query, which can only express an AND of them. Dropping the OR
+                    # would silently drop the whole rule.
+                    raise SigmaFeatureNotSupportedByBackendError(
+                        "OR condition consisting only of deferred query expressions (e.g."
+                        " regular expressions or field references that are applied after the"
+                        " main query) is not supported by the backend",
+                        source=cond.source,
+                    )
                 return self.empty_or_expression
             else:
                 return joiner.join(args)

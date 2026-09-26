@@ -1,3 +1,4 @@
+import re
 import pytest
 from typing import Union, Sequence, List
 from sigma.modifiers import (
@@ -415,6 +416,81 @@ def test_re_startswith_endswith_wildcard(dummy_detection_item):
     assert SigmaStartswithModifier(dummy_detection_item, []).modify(
         SigmaRegularExpression("foo?bar.*")
     ) == SigmaRegularExpression("foo?bar.*")
+
+
+def test_re_contains_alternation(dummy_detection_item):
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("foo|bar")
+    ) == SigmaRegularExpression(".*(?:foo|bar).*")
+
+
+def test_re_startswith_alternation(dummy_detection_item):
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("foo|bar")
+    ) == SigmaRegularExpression("(?:foo|bar).*")
+
+
+def test_re_endswith_alternation(dummy_detection_item):
+    assert SigmaEndswithModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("foo|bar")
+    ) == SigmaRegularExpression(".*(?:foo|bar)")
+
+
+def test_re_contains_alternation_anchored_alternative(dummy_detection_item):
+    # Anchors belong to a single alternative: the other alternative must still match anywhere
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("^foo|bar")
+    ) == SigmaRegularExpression(".*(?:^foo|bar).*")
+
+
+@pytest.mark.parametrize(
+    "regexp",
+    ["(foo|bar)baz", "[|]foo", "[]|]foo", "[^]|]foo", "foo\\|bar"],
+)
+def test_re_contains_no_toplevel_alternation(dummy_detection_item, regexp):
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression(regexp)
+    ) == SigmaRegularExpression(".*" + regexp + ".*")
+
+
+@pytest.mark.parametrize(
+    "value,matching,non_matching",
+    [
+        ("foo|bar", ["xfooy", "xbar", "bary"], ["xbaz"]),
+        ("cost\\$", ["cost$ 5", "the cost$"], ["cost"]),
+        ("foo\\.*", ["xfoo.y", "xfooy"], ["xfo"]),
+    ],
+)
+def test_re_contains_whole_value_semantics(value, matching, non_matching):
+    # Backends with whole-value regular expression matching (e.g. Lucene regexp) rely on the added
+    # wildcards: the resulting expression must fully match all values containing a match.
+    (detection_item_value,) = SigmaDetectionItem.from_mapping("field|re|contains", value).value
+    assert isinstance(detection_item_value, SigmaRegularExpression)
+    regexp = re.compile(str(detection_item_value.regexp))
+    for s in matching:
+        assert regexp.fullmatch(s) is not None
+    for s in non_matching:
+        assert regexp.fullmatch(s) is None
+
+
+def test_re_contains_escaped_end_anchor(dummy_detection_item):
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("cost\\$")
+    ) == SigmaRegularExpression(".*cost\\$.*")
+
+
+def test_re_contains_escaped_backslash_end_anchor(dummy_detection_item):
+    # an escaped backslash followed by a real end anchor
+    assert SigmaContainsModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("cost\\\\$")
+    ) == SigmaRegularExpression(".*cost\\\\$")
+
+
+def test_re_startswith_escaped_wildcard(dummy_detection_item):
+    # foo\.* is foo followed by any number of literal dots, not by an arbitrary suffix
+    assert SigmaStartswithModifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("foo\\.*")
+    ) == SigmaRegularExpression("foo\\.*.*")
 
 
 def test_re_with_other(dummy_detection_item):

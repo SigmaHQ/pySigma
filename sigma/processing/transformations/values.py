@@ -30,6 +30,7 @@ from sigma.types import (
     SigmaRegularExpression,
     SigmaRegularExpressionFlag,
     SigmaString,
+    SigmaStringPartType,
     SigmaType,
     SpecialChars,
 )
@@ -239,13 +240,76 @@ class ReplaceStringTransformation(StringValueTransformation):
                     self.interpret_special,
                 )
             else:
-                sigma_string_plain = str(val)
-                replaced = self.re.sub(self.replacement, sigma_string_plain)
-                postprocessed_backslashes = re.sub(r"\\(?![*?])", r"\\\\", replaced)
-                if val.contains_placeholder():  # Preserve placeholders
-                    return SigmaString(postprocessed_backslashes).insert_placeholders()
-                else:
-                    return SigmaString(postprocessed_backslashes)
+                return self._replace_plain(val)
+
+    def _parse_plain(self, plain: str, placeholders: bool) -> list[SigmaStringPartType]:
+        """
+        Parse a fragment of the plain string representation that was produced by the replacement.
+        Backslashes are literal unless they escape a wildcard character.
+        """
+        s = SigmaString(re.sub(r"\\(?![*?])", r"\\\\", plain))
+        if placeholders:  # Preserve placeholders
+            s = s.insert_placeholders()
+        return s.s
+
+    def _replace_plain(self, val: SigmaString) -> SigmaString:
+        """
+        Apply the replacement to the plain string representation of val.
+
+        The plain representation is ambiguous: a literal backslash followed by a wildcard
+        (e.g. C:\\Windows\\*) is rendered like an escaped wildcard character. Therefore only the
+        replaced text is parsed from the plain representation, while all text not matched by the
+        regular expression is taken over from the original parts of val.
+        """
+        # Plain representation of val and the plain text span of each original part.
+        plain = ""
+        spans: list[tuple[int, int, SigmaStringPartType]] = []
+        for part in val.s:
+            if isinstance(part, str):
+                for c in part:
+                    text = "\\" + c if c in ("*", "?") else c
+                    spans.append((len(plain), len(plain) + len(text), c))
+                    plain += text
+            else:
+                part_string = SigmaString()
+                part_string.s = [part]
+                text = part_string.to_plain()
+                spans.append((len(plain), len(plain) + len(text), part))
+                plain += text
+
+        placeholders = val.contains_placeholder()
+        result: list[SigmaStringPartType] = []
+        pending = ""  # replaced plain text that still has to be parsed
+
+        def flush_pending() -> None:
+            nonlocal pending
+            if pending:
+                result.extend(self._parse_plain(pending, placeholders))
+                pending = ""
+
+        def keep_original(start: int, end: int) -> None:
+            """Take over the original parts between the plain string positions start and end."""
+            nonlocal pending
+            for span_start, span_end, part in spans:
+                if span_end <= start or span_start >= end:
+                    continue
+                if span_start >= start and span_end <= end:
+                    flush_pending()
+                    result.append(part)
+                else:  # part only partially outside of a match: parse with the replaced text
+                    pending += plain[max(span_start, start) : min(span_end, end)]
+
+        pos = 0
+        for match in self.re.finditer(plain):
+            keep_original(pos, match.start())
+            pending += match.expand(self.replacement)
+            pos = match.end()
+        keep_original(pos, len(plain))
+        flush_pending()
+
+        replaced = SigmaString()
+        replaced.s = result
+        return replaced._merge_strs()
 
 
 @dataclass

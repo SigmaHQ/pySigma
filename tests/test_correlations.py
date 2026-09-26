@@ -184,6 +184,23 @@ def test_correlation_wrong_type():
         )
 
 
+@pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
+def test_correlation_field_not_a_dict_raises(bad_correlation):
+    with pytest.raises(SigmaCorrelationRuleError, match="'correlation' field must be a dict"):
+        SigmaCorrelationRule.from_dict(
+            {"title": "Invalid correlation", "correlation": bad_correlation}
+        )
+
+
+@pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
+def test_correlation_field_not_a_dict_collect_errors(bad_correlation):
+    rule = SigmaCorrelationRule.from_dict(
+        {"title": "Invalid correlation", "correlation": bad_correlation},
+        collect_errors=True,
+    )
+    assert any("'correlation' field must be a dict" in str(error) for error in rule.errors)
+
+
 def test_correlation_without_type():
     with pytest.raises(SigmaCorrelationTypeError, match="Sigma correlation rule without type"):
         SigmaCorrelationRule.from_dict(
@@ -1413,4 +1430,38 @@ correlation:
     condition:
         - invalid
         - list_condition
+        """)
+
+
+def test_correlation_extended_condition_wrong_type_collect_errors():
+    """collect_errors=True must return the error instead of raising an UnboundLocalError
+    when an extended (string) condition is used with a non-temporal correlation type."""
+    rule = SigmaCorrelationRule.from_yaml(
+        """
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
+        """,
+        collect_errors=True,
+    )
+    assert {error.__class__ for error in rule.errors} == {SigmaCorrelationRuleError}
+
+
+def test_correlation_extended_condition_wrong_type_raises():
+    """Without collect_errors the error is raised instead of silently swallowed."""
+    with pytest.raises(SigmaCorrelationRuleError, match="only be used with temporal"):
+        SigmaCorrelationRule.from_yaml("""
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
         """)

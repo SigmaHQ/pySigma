@@ -227,6 +227,19 @@ class SigmaEndswithModifier(
         return val
 
 
+def _base64_input_bytes(val: SigmaString, applied_modifiers: SequenceABC[type]) -> bytes:
+    """
+    Byte sequence that is encoded by the base64 modifiers. The utf16 modifier prepends the byte
+    order mark as character U+FEFF, whose UTF-8 encoding is EF BB BF. After the utf16 modifier it
+    must be encoded as the UTF-16LE byte order mark FF FE instead.
+    """
+    data = bytes(val)
+    utf8_bom = "﻿".encode()
+    if SigmaUTF16Modifier in applied_modifiers and data.startswith(utf8_bom):
+        data = b"\xff\xfe" + data[len(utf8_bom) :]
+    return data
+
+
 class SigmaBase64Modifier(SigmaValueModifier[SigmaString, SigmaString]):
     """Encode string as Base64 value."""
 
@@ -236,7 +249,7 @@ class SigmaBase64Modifier(SigmaValueModifier[SigmaString, SigmaString]):
                 "Base64 encoding of strings with wildcards is not allowed",
                 source=self.source,
             )
-        return SigmaString(b64encode(bytes(val)).decode())
+        return SigmaString(b64encode(_base64_input_bytes(val, self.applied_modifiers)).decode())
 
 
 class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
@@ -254,11 +267,12 @@ class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion])
                 "Base64 encoding of strings with wildcards is not allowed",
                 source=self.source,
             )
+        data = _base64_input_bytes(val, self.applied_modifiers)
         return SigmaExpansion(
             [
                 SigmaString(
-                    b64encode(i * b" " + bytes(val))[
-                        self.start_offsets[i] : self.end_offsets[(len(val) + i) % 3]
+                    b64encode(i * b" " + data)[
+                        self.start_offsets[i] : self.end_offsets[(len(data) + i) % 3]
                     ].decode()
                 )
                 for i in range(3)

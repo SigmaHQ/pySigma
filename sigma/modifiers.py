@@ -254,11 +254,13 @@ class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion])
                 "Base64 encoding of strings with wildcards is not allowed",
                 source=self.source,
             )
+        data = bytes(val)
         return SigmaExpansion(
             [
                 SigmaString(
-                    b64encode(i * b" " + bytes(val))[
-                        self.start_offsets[i] : self.end_offsets[(len(val) + i) % 3]
+                    b64encode(i * b" " + data)[
+                        # the cut depends on the encoded byte length, not the character count
+                        self.start_offsets[i] : self.end_offsets[(len(data) + i) % 3]
                     ].decode()
                 )
                 for i in range(3)

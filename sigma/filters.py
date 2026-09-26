@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import copy
 import random
 import re
 import string
@@ -243,9 +244,11 @@ class SigmaFilter(SigmaRuleBase):
         # filter condition (e.g. "1 of selection_*") continue to work after renaming.
         prefix = "_filt_" + "".join(random.choices(string.ascii_lowercase, k=10))
 
-        # Rename every filter detection identifier with the shared prefix.
+        # Rename every filter detection identifier with the shared prefix. Each rule gets its own
+        # copy of the filter detections: processing pipelines modify detections in place, so a
+        # detection object shared between rules would be transformed again for every rule.
         for original_cond_name, condition in self.filter.detections.items():
-            rule.detection.detections[prefix + "_" + original_cond_name] = condition
+            rule.detection.detections[prefix + "_" + original_cond_name] = copy.deepcopy(condition)
 
         # Rewrite the filter condition string so that every identifier/pattern token is
         # prefixed.  This handles:

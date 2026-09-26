@@ -34,7 +34,13 @@ from sigma.correlations import (
     SigmaExtendedCorrelationCondition,
     SigmaRuleReference,
 )
-from sigma.exceptions import SigmaBackendError, SigmaConversionError, SigmaError, SigmaValueError
+from sigma.exceptions import (
+    SigmaBackendError,
+    SigmaConversionError,
+    SigmaError,
+    SigmaFeatureNotSupportedByBackendError,
+    SigmaValueError,
+)
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule
 from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
@@ -1603,16 +1609,18 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.or_token + self.token_separator
 
+            converted_args = [
+                (
+                    self.convert_condition(arg, state)
+                    if self.compare_precedence(cond, arg)
+                    else self.convert_condition_group(arg, state)
+                )
+                for arg in cond.args
+            ]
+            state.add_combined_deferred_expressions(converted_args)
             args = [
                 converted
-                for converted in (
-                    (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
-                    )
-                    for arg in cond.args
-                )
+                for converted in converted_args
                 if converted is not None and not isinstance(converted, DeferredQueryExpression)
             ]
 
@@ -1672,20 +1680,32 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.and_token + self.token_separator
 
+            converted_args = [
+                (
+                    self.convert_condition(arg, state)
+                    if self.compare_precedence(cond, arg)
+                    else self.convert_condition_group(arg, state)
+                )
+                for arg in cond.args
+            ]
+            state.add_combined_deferred_expressions(converted_args)
             args = [
                 converted
-                for converted in (
-                    (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
-                    )
-                    for arg in cond.args
-                )
+                for converted in converted_args
                 if converted is not None and not isinstance(converted, DeferredQueryExpression)
             ]
 
             if len(args) == 0:
+                deferred_args = [
+                    converted
+                    for converted in converted_args
+                    if isinstance(converted, DeferredQueryExpression)
+                ]
+                if deferred_args:
+                    # All arguments were deferred: they are already recorded in the conversion
+                    # state. Pass a deferred expression to the parent, so the rule is still
+                    # finished as deferred-only query instead of being dropped.
+                    return deferred_args[-1]
                 return self.empty_and_expression
             else:
                 return joiner.join(args)
@@ -1701,14 +1721,25 @@ class TextQueryBackend(Backend):
             return None
         try:
             if arg.__class__ in self.precedence:  # group if AND or OR condition is negated
+                combined_deferred_count = len(state.combined_deferred)
                 converted_group: str | DeferredQueryExpression | None = (
                     self.convert_condition_group(arg, state)
                 )
-                if (
-                    self.convert_not_as_not_eq
-                    or isinstance(converted_group, DeferredQueryExpression)
-                    or converted_group is None
-                ):
+                if len(state.combined_deferred) > combined_deferred_count:
+                    # Deferred expressions are applied as additional filters on the result of
+                    # the main query. Below a negated AND/OR this changes the meaning of the
+                    # condition (the negation would only apply to the main query part), and
+                    # an AND/OR of deferred expressions can't be negated as a whole.
+                    raise SigmaFeatureNotSupportedByBackendError(
+                        "Negation of an AND/OR condition containing deferred query expressions"
+                        " (e.g. regular expressions or field references that are applied after"
+                        " the main query) is not supported by the backend",
+                        source=cond.source,
+                    )
+                if isinstance(converted_group, DeferredQueryExpression):
+                    # Single negated deferred expression, e.g. "not (not sel)"
+                    return converted_group.negate()
+                if self.convert_not_as_not_eq or converted_group is None:
                     return converted_group
                 return self.not_token + self.token_separator + converted_group
             else:

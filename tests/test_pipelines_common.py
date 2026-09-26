@@ -161,5 +161,69 @@ def test_generate_windows_logsource_items():
     )
 
 
+# Windows services and channels from the Sigma specification taxonomy appendix
+# (SigmaHQ/sigma-specification, specification/sigma-appendix-taxonomy.md).
+@pytest.mark.parametrize(
+    ("service", "channel"),
+    [
+        (
+            "application-experience",
+            [
+                "Microsoft-Windows-Application-Experience/Program-Telemetry",
+                "Microsoft-Windows-Application-Experience/Program-Compatibility-Assistant",
+            ],
+        ),
+        ("hyper-v-worker", "Microsoft-Windows-Hyper-V-Worker"),
+        ("iis-configuration", "Microsoft-IIS-Configuration/Operational"),
+        ("kernel-event-tracing", "Microsoft-Windows-Kernel-EventTracing"),
+        (
+            "kernel-shimengine",
+            [
+                "Microsoft-Windows-Kernel-ShimEngine/Operational",
+                "Microsoft-Windows-Kernel-ShimEngine/Diagnostic",
+            ],
+        ),
+        ("ldap", "Microsoft-Windows-LDAP-Client/Debug"),
+        ("ntfs", "Microsoft-Windows-Ntfs/Operational"),
+        ("sense", "Microsoft-Windows-SENSE/Operational"),
+        (
+            "servicebus-client",
+            ["Microsoft-ServiceBus-Client/Operational", "Microsoft-ServiceBus-Client/Admin"],
+        ),
+        # legacy keys kept as aliases
+        ("ldap_debug", "Microsoft-Windows-LDAP-Client/Debug"),
+        (
+            "microsoft-servicebus-client",
+            ["Microsoft-ServiceBus-Client/Operational", "Microsoft-ServiceBus-Client/Admin"],
+        ),
+    ],
+)
+def test_windows_logsource_mapping_spec_services(service, channel):
+    assert windows_logsource_mapping[service] == channel
+
+
+def test_windows_logsource_items_scope_spec_service_rule():
+    """A rule with a spec-named service (here: ldap) must get its Channel condition."""
+    from sigma.backends.test import TextQueryTestBackend
+    from sigma.collection import SigmaCollection
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    pipeline = ProcessingPipeline(items=generate_windows_logsource_items("Channel", "{source}"))
+    rules = SigmaCollection.from_yaml("""
+title: LDAP recon
+status: test
+logsource:
+    product: windows
+    service: ldap
+detection:
+    selection:
+        EventID: 30
+    condition: selection
+""")
+    assert TextQueryTestBackend(pipeline).convert(rules) == [
+        'Channel="Microsoft-Windows-LDAP-Client/Debug" and EventID=30'
+    ]
+
+
 def test_logsource_category():
     assert logsource_category("test") == LogsourceCondition(category="test")

@@ -188,23 +188,21 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                 source=self.source,
             )
 
+        def value_to_plain(value: SigmaType) -> Any:
+            if isinstance(value, SigmaString):
+                if SigmaRegularExpressionModifier in self.modifiers:
+                    return value.to_plain(True)
+                # Escape backslashes that would be parsed as escape character when the value is
+                # parsed again, e.g. by SigmaRule.from_dict().
+                return value.to_plain(escape_backslash=True)
+            return value.to_plain()
+
         if len(self.original_value) > 1:
             value: str | int | float | bool | None | list[str | int | float | bool | None] = [
-                (
-                    value.to_plain(True)
-                    if isinstance(value, SigmaString)
-                    and SigmaRegularExpressionModifier in self.modifiers
-                    else value.to_plain()
-                )
-                for value in self.original_value
+                value_to_plain(value) for value in self.original_value
             ]
         else:
-            value = (
-                self.original_value[0].to_plain(True)
-                if isinstance(self.original_value[0], SigmaString)
-                and SigmaRegularExpressionModifier in self.modifiers
-                else self.original_value[0].to_plain()
-            )
+            value = value_to_plain(self.original_value[0])
 
         if (
             self.is_keyword() and len(self.modifiers) == 0

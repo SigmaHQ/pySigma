@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
+from itertools import product
 from math import inf, isfinite
 from typing import (
     ClassVar,
@@ -939,23 +940,110 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             for subnet_v6 in self.network.subnets(
                 prefix_diff
             ):  # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
-                first_addr = str(subnet_v6.network_address)
-                last_addr = str(subnet_v6.broadcast_address)
-                if (
-                    first_addr == last_addr
-                ):  # The /128 case - single address, use network_address not network (avoid "::1/128" literal)
-                    patterns.append(str(subnet_v6.network_address))
+                for pattern in self._expand_ipv6_subnet(subnet_v6, wildcard):
+                    if pattern not in patterns:
+                        patterns.append(pattern)
+            # Remove patterns that are covered by another pattern ending with a wildcard.
+            patterns = [
+                pattern
+                for pattern in patterns
+                if not any(
+                    other != pattern
+                    and other.endswith(wildcard)
+                    and pattern.startswith(other[: -len(wildcard)])
+                    for other in patterns
+                )
+            ]
+        return patterns
+
+    @staticmethod
+    def _expand_ipv6_subnet(subnet: IPv6Network, wildcard: str) -> list[str]:
+        """
+        Generate wildcard patterns that match the textual representation (RFC 5952: lower case,
+        no leading zeros, the longest run of at least two zero groups compressed to ::) of all
+        addresses of an IPv6 network whose prefix length is a multiple of 4.
+
+        The textual representation depends on which groups are zero, because of the :: compression.
+        Therefore, all possible combinations of zero and non-zero groups are enumerated and the
+        resulting pattern is generated for each of them. Groups covered completely by the prefix
+        are emitted as they are, a group covered partially by the prefix is emitted as fixed digits
+        followed by single-character wildcards for the remaining digits, and groups not covered by
+        the prefix are emitted as wildcard.
+
+        Wildcards can't express the number of groups compressed by :: and single-character
+        wildcards also match a colon. Therefore, the patterns still match some addresses outside
+        of the network, e.g. if the :: of a pattern must cover more than two zero groups. Backends
+        should prefer native CIDR matching where available.
+        """
+        if subnet.prefixlen == 128:  # single address
+            return [str(subnet.network_address)]
+
+        fixed_groups, rem = divmod(subnet.prefixlen, 16)
+        fixed_nibbles = rem // 4
+        exploded = subnet.network_address.exploded.split(":")
+
+        # For each group: list of possible textual representations if the group is not part of
+        # the compressed zero run and whether the group can be zero / non-zero.
+        group_texts: list[list[str]] = []
+        can_be_zero: list[bool] = []
+        can_be_nonzero: list[bool] = []
+        for i, group in enumerate(exploded):
+            if i < fixed_groups:  # group is completely covered by the prefix
+                value = int(group, 16)
+                group_texts.append([format(value, "x")])
+                can_be_zero.append(value == 0)
+                can_be_nonzero.append(value != 0)
+            elif i == fixed_groups and fixed_nibbles > 0:  # group is partially covered by prefix
+                nibbles = group[:fixed_nibbles]
+                free_digits = 4 - fixed_nibbles
+                if int(nibbles, 16) != 0:  # leading digits are fixed, group has always 4 digits
+                    group_texts.append([nibbles.lstrip("0") + "?" * free_digits])
+                    can_be_zero.append(False)
+                else:  # group value is below 16**free_digits: 1 up to free_digits digits
+                    group_texts.append(["?" * n for n in range(1, free_digits + 1)])
+                    can_be_zero.append(True)
+                can_be_nonzero.append(True)
+            else:  # group not covered by prefix
+                group_texts.append([wildcard])
+                can_be_zero.append(True)
+                can_be_nonzero.append(True)
+
+        patterns: list[str] = []
+        for zero_groups in product(*([False, True] for _ in range(8))):
+            if any(
+                (is_zero and not can_be_zero[i]) or (not is_zero and not can_be_nonzero[i])
+                for i, is_zero in enumerate(zero_groups)
+            ):
+                continue
+
+            # Determine the zero run that is compressed to :: (longest, first one on ties, at least
+            # two groups).
+            run_start, run_len = 0, 0
+            i = 0
+            while i < 8:
+                if zero_groups[i]:
+                    j = i
+                    while j < 8 and zero_groups[j]:
+                        j += 1
+                    if j - i > run_len:
+                        run_start, run_len = i, j - i
+                    i = j
                 else:
-                    for i in range(
-                        len(first_addr)
-                    ):  # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
-                        if first_addr[i] != last_addr[i]:
-                            break  # location found
-                    else:  # The compressed broadcast address only extends the compressed network address (e.g. 2001:db8::/64): the wildcard belongs directly after the network address
-                        i = len(first_addr)
-                    patterns.append(
-                        str(subnet_v6)[:i] + wildcard
-                    )  # Generate pattern by cutting of at first difference
+                    i += 1
+
+            for texts in product(*group_texts):
+                if run_len >= 2:
+                    pattern = (
+                        ":".join(texts[:run_start]) + "::" + ":".join(texts[run_start + run_len :])
+                    )
+                else:
+                    pattern = ":".join(texts)
+                # Everything after a wildcard that is not preceded by :: is covered by the wildcard.
+                wildcard_pos = pattern.find(wildcard)
+                if wildcard_pos >= 0 and "::" not in pattern[:wildcard_pos]:
+                    pattern = pattern[: wildcard_pos + len(wildcard)]
+                if pattern not in patterns:
+                    patterns.append(pattern)
         return patterns
 
 

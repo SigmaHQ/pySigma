@@ -4,6 +4,7 @@ from sigma.conversion.deferred import DeferredTextQueryExpression
 from sigma.conditions import ConditionFieldEqualsValueExpression
 from sigma.collection import SigmaCollection
 from sigma.backends.test import TextQueryTestBackend
+from sigma.exceptions import SigmaFeatureNotSupportedByBackendError
 
 
 ### Base Tests ###
@@ -178,3 +179,60 @@ correlation:
 | aggregate window=5min count() as event_count by fieldC
 | where event_count >= 10"""]
     )
+
+
+def deferred_or_rule(condition: str) -> SigmaCollection:
+    return SigmaCollection.from_yaml(f"""
+title: Test
+status: test
+logsource:
+    category: test_category
+    product: test_product
+detection:
+    sel1:
+        fieldA|re: foo.*bar
+    sel2:
+        fieldB|re: foo.*
+    sel3:
+        fieldC: bar
+    sel_list:
+        fieldA|re:
+            - foo.*
+            - bar.*
+    condition: {condition}
+""")
+
+
+@pytest.mark.parametrize(
+    "condition",
+    ["sel_list", "sel1 or sel2", "sel1 or sel_list", "sel3 and (sel1 or sel2)"],
+)
+def test_deferred_conversion_all_deferred_or_unsupported(
+    test_backend: TextQueryTestBackend, condition
+):
+    # An OR of deferred expressions can't be expressed by appending them to the main query
+    # (this would AND them). The rule must not be dropped silently.
+    with pytest.raises(SigmaFeatureNotSupportedByBackendError, match="OR condition"):
+        test_backend.convert(deferred_or_rule(condition))
+
+
+def test_deferred_conversion_all_deferred_or_collect_errors():
+    backend = DeferredTextQueryTestBackend(collect_errors=True)
+    assert backend.convert(deferred_or_rule("sel1 or sel2")) == []
+    assert len(backend.errors) == 1
+    assert isinstance(backend.errors[0][1], SigmaFeatureNotSupportedByBackendError)
+
+
+class DroppingDeferredTextQueryTestBackend(DeferredTextQueryTestBackend):
+    """Converts fieldC conditions into nothing."""
+
+    def convert_condition_field_eq_val_str(self, cond, state):
+        if cond.field == "fieldC":
+            return None
+        return super().convert_condition_field_eq_val_str(cond, state)
+
+
+def test_deferred_conversion_or_single_deferred_with_empty():
+    assert DroppingDeferredTextQueryTestBackend().convert(deferred_or_rule("sel1 or sel3")) == [
+        '* | mappedA="foo.*bar"'
+    ]

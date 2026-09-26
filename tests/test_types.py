@@ -378,6 +378,11 @@ def test_strings_to_bytes():
     assert bytes(SigmaString("test*?")) == b"test*?"
 
 
+def test_strings_to_bytes_escaped_wildcards():
+    # Escaped wildcards are literal characters of the value: the escaping is not encoded.
+    assert bytes(SigmaString("x\\*y\\?z")) == b"x*y?z"
+
+
 def test_strings_len(sigma_string):
     assert len(sigma_string) == 14
 

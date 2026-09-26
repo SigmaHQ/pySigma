@@ -107,8 +107,42 @@ class SigmaCollection:
             else self.rules
         )
 
-        # Sort rules by reference order
-        self.rules = list(sorted(self.rules))
+        # Order rules so that every rule comes after the rules it refers to
+        self.rules = self._referenced_first(self.rules)
+
+    @staticmethod
+    def _referenced_first(
+        rules: list[SigmaRule | SigmaCorrelationRule],
+    ) -> list[SigmaRule | SigmaCorrelationRule]:
+        """
+        Order rules so that every rule comes after the rules it refers to. A referenced rule moves up
+        to just before the first rule that refers to it; the order is otherwise kept.
+
+        Sorting by "is referenced by" is not enough: that comparison is only a partial order, and
+        a sort leaves e.g. [correlation, unrelated rule, rule referenced by the correlation] as it
+        is. The correlation is then converted before the rule it refers to, and conversion fails
+        with "Conversion result not available".
+        """
+        # Backreferences cover every way a rule refers to another (a correlation's rules and the
+        # rules named in an extended condition).
+        refers_to: dict[int, list[SigmaRule | SigmaCorrelationRule]] = {}
+        for rule in rules:
+            for referencing in rule._backreferences:
+                refers_to.setdefault(id(referencing), []).append(rule)
+        ordered: list[SigmaRule | SigmaCorrelationRule] = []
+        placed: set[int] = set()
+
+        def place(rule: SigmaRule | SigmaCorrelationRule) -> None:
+            if id(rule) in placed:
+                return
+            placed.add(id(rule))
+            for referenced in refers_to.get(id(rule), []):
+                place(referenced)
+            ordered.append(rule)
+
+        for rule in rules:
+            place(rule)
+        return ordered
 
     @classmethod
     def from_dicts(

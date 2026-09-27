@@ -522,7 +522,7 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         source: SigmaRuleLocation | None = None,
     ) -> Self:
         kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
-        correlation_rule = rule.get("correlation", dict())
+        correlation_rule: Any = rule.get("correlation", dict())
         if not isinstance(correlation_rule, dict):
             errors.append(
                 sigma_exceptions.SigmaCorrelationRuleError(

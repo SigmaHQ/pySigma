@@ -234,7 +234,7 @@ def _base64_input_bytes(val: SigmaString, applied_modifiers: SequenceABC[type]) 
     must be encoded as the UTF-16LE byte order mark FF FE instead.
     """
     data = bytes(val)
-    utf8_bom = "﻿".encode()
+    utf8_bom = "\ufeff".encode("utf-8")
     if SigmaUTF16Modifier in applied_modifiers and data.startswith(utf8_bom):
         data = b"\xff\xfe" + data[len(utf8_bom) :]
     return data

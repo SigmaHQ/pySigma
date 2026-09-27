@@ -1,4 +1,5 @@
 import pytest
+from base64 import b64encode
 from typing import Union, Sequence, List
 from sigma.modifiers import (
     SigmaCaseSensitiveModifier,
@@ -256,6 +257,33 @@ def test_utf16(dummy_detection_item):
     assert SigmaUTF16Modifier(dummy_detection_item, []).apply(SigmaString("*foobar*")) == [
         SigmaString("\ufeff*f\x00o\x00o\x00b\x00a\x00r\x00*")
     ]
+
+
+def test_utf16_base64():
+    # BOM must be encoded as UTF-16LE byte order mark FF FE, not as UTF-8 EF BB BF
+    assert SigmaDetectionItem.from_mapping("field|utf16|base64", "foobar").value == [
+        SigmaString(b64encode(b"\xff\xfe" + "foobar".encode("utf-16le")).decode())
+    ]
+    assert SigmaDetectionItem.from_mapping("field|utf16|base64", "foobar").value == [
+        SigmaString("//5mAG8AbwBiAGEAcgA=")
+    ]
+
+
+def test_utf16_base64offset():
+    variants = SigmaDetectionItem.from_mapping("field|utf16|base64offset", "foobar").value
+    assert variants == [
+        SigmaExpansion(
+            [
+                SigmaString("//5mAG8AbwBiAGEAcg"),
+                SigmaString("/+ZgBvAG8AYgBhAHIA"),
+                SigmaString("//mYAbwBvAGIAYQByA"),
+            ]
+        )
+    ]
+    # Each variant occurs in the Base64 encoding of UTF-16 content placed at the corresponding offset
+    data = b"\xff\xfe" + "foobar".encode("utf-16le")
+    for i, variant in enumerate(variants[0].values):
+        assert str(variant) in b64encode(i * b"x" + data + b"yyy").decode()
 
 
 def test_utf16_noascii(dummy_detection_item):

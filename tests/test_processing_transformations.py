@@ -2095,9 +2095,9 @@ def test_replace_string_backslashes(dummy_pipeline):
 )
 def test_replace_string_backslash_before_wildcard(regex, replacement, value, expected):
     s = SigmaString()
-    s.s = value
+    s.s = list(value)
     expected_s = SigmaString()
-    expected_s.s = value if expected is None else expected
+    expected_s.s = list(value) if expected is None else list(expected)
     transformation = ReplaceStringTransformation(regex, replacement)
     assert transformation.apply_string_value("field", s) == expected_s
 

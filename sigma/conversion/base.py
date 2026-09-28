@@ -1737,7 +1737,9 @@ class TextQueryBackend(Backend):
                         source=cond.source,
                     )
                 if isinstance(converted_group, DeferredQueryExpression):
-                    # Single negated deferred expression, e.g. "not (not sel)"
+                    # The group itself converted to a single deferred expression, e.g. the inner
+                    # "not sel" of "not (not sel)" (ConditionNOT is part of self.precedence, so a
+                    # negated NOT is handled by this branch): negate it in place.
                     return converted_group.negate()
                 if self.convert_not_as_not_eq or converted_group is None:
                     return converted_group

@@ -19,8 +19,12 @@ from sigma.exceptions import (
 
 from sigma.filters import SigmaFilter, SigmaGlobalFilter
 from sigma.processing.conditions import LogsourceCondition
-from sigma.processing.pipeline import ProcessingItem
-from sigma.processing.transformations import FieldMappingTransformation
+from sigma.backends.test import TextQueryTestBackend
+from sigma.processing.pipeline import ProcessingItem, ProcessingPipeline
+from sigma.processing.transformations import (
+    AddFieldnamePrefixTransformation,
+    FieldMappingTransformation,
+)
 from sigma.rule import SigmaLogSource
 from .test_conversion_base import test_backend
 
@@ -160,6 +164,67 @@ def test_filter_with_field_mapping_against_it(sigma_filter, test_backend, rule_c
 
     assert test_backend.convert(rule_collection) == [
         '(EventID=4625 or EventID2=4624) and not User123 startswith "adm_"'
+    ]
+
+
+_TWO_RULES_YAML = """
+title: Rule 1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image: a.exe
+    condition: selection
+---
+title: Rule 2
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        Image: b.exe
+    condition: selection
+"""
+
+_ANY_FILTER_YAML = """
+title: Filter SYSTEM
+logsource:
+    category: process_creation
+    product: windows
+filter:
+  rules: any
+  selection:
+      User: SYSTEM
+  condition: not selection
+"""
+
+
+def test_filter_detections_not_shared_between_rules():
+    rule_collection = SigmaCollection.from_yaml(_TWO_RULES_YAML)
+    rule_collection.apply_filters([SigmaFilter.from_yaml(_ANY_FILTER_YAML)])
+    filter_detections = [
+        detection
+        for rule in rule_collection.rules
+        for name, detection in rule.detection.detections.items()
+        if name.startswith("_filt_")
+    ]
+    assert len(filter_detections) == 2
+    assert filter_detections[0] == filter_detections[1]
+    assert filter_detections[0] is not filter_detections[1]
+
+
+def test_filter_with_non_idempotent_transformation_applied_to_several_rules():
+    # The field name prefix must be added once per rule, not once more for each further rule
+    # the filter is applied to.
+    rule_collection = SigmaCollection.from_yaml(_TWO_RULES_YAML)
+    rule_collection.apply_filters([SigmaFilter.from_yaml(_ANY_FILTER_YAML)])
+    backend = TextQueryTestBackend(
+        ProcessingPipeline([ProcessingItem(AddFieldnamePrefixTransformation("p."))])
+    )
+    assert backend.convert(rule_collection) == [
+        "'p.Image'=\"a.exe\" and not 'p.User'=\"SYSTEM\"",
+        "'p.Image'=\"b.exe\" and not 'p.User'=\"SYSTEM\"",
     ]
 
 

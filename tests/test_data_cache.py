@@ -182,12 +182,17 @@ def test_accepts_a_string_directory(tmp_path: Path) -> None:
 
 def test_expands_a_leading_tilde(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """A literal '~' directory must not appear in the working directory."""
-    monkeypatch.setenv("HOME", str(tmp_path))
-    monkeypatch.setattr(Path, "home", lambda: tmp_path)
+    home = tmp_path / "home"
+    home.mkdir()
+    # expanduser() reads HOME on POSIX but USERPROFILE on Windows.
+    monkeypatch.setenv("HOME", str(home))
+    monkeypatch.setenv("USERPROFILE", str(home))
+    monkeypatch.delenv("HOMEPATH", raising=False)
+    monkeypatch.delenv("HOMEDRIVE", raising=False)
 
     store = JsonFileCache("~/.cache/pysigma/example")
 
-    assert store.directory == tmp_path / ".cache" / "pysigma" / "example"
+    assert store.directory == home / ".cache" / "pysigma" / "example"
     assert store.directory.is_dir()
 
 

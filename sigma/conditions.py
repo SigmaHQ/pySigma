@@ -307,7 +307,8 @@ class ConditionValueExpression(ParentChainMixin):
     value: SigmaType
 
 
-identifier = Word(alphanums + "_-")
+identifier_chars = alphanums + "_-"
+identifier = Word(identifier_chars)
 identifier.set_parse_action(ConditionIdentifier.from_parsed)
 
 quantifier = Keyword("1") | Keyword("any") | Keyword("all")
@@ -319,9 +320,11 @@ operand = selector | identifier
 condition = infix_notation(  # type: ignore[no-untyped-call]
     operand,
     [
-        ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),
-        ("and", 2, opAssoc.LEFT, ConditionAND.from_parsed),
-        ("or", 2, opAssoc.LEFT, ConditionOR.from_parsed),
+        # Operators are keywords, not literals: otherwise identifiers starting with an
+        # operator name (e.g. "notsel", "notepad") are silently split ("not sel").
+        (Keyword("not", ident_chars=identifier_chars), 1, opAssoc.RIGHT, ConditionNOT.from_parsed),
+        (Keyword("and", ident_chars=identifier_chars), 2, opAssoc.LEFT, ConditionAND.from_parsed),
+        (Keyword("or", ident_chars=identifier_chars), 2, opAssoc.LEFT, ConditionOR.from_parsed),
     ],
 )
 

@@ -2,18 +2,17 @@
 MITRE D3FEND data loader for pySigma.
 
 This module provides on-demand access to MITRE D3FEND data by downloading it from
-the official D3FEND GitHub repository. Data is cached on disk using diskcache
+the official D3FEND GitHub repository. Data is cached on disk as JSON files
 to avoid repeated downloads across sessions.
 """
 
 import json
-import os
 from pathlib import Path
 from typing import Any, cast
 from urllib.error import URLError
 from urllib.request import urlopen
 
-import diskcache
+from sigma.data.cache import JsonFileCache
 
 # URLs for MITRE D3FEND data - using the GitHub repository
 MITRE_D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
@@ -24,19 +23,18 @@ MITRE_D3FEND_ONTOLOGY_FALLBACK_URL = "https://d3fend.mitre.org/ontologies/d3fend
 # Cache directory (in user's cache directory)
 _DEFAULT_CACHE_DIR = Path.home() / ".cache" / "pysigma" / "mitre_d3fend"
 
-# Disk cache instance
-_cache: diskcache.Cache | None = None
+# JSON file cache instance
+_cache: JsonFileCache | None = None
 _custom_url: str | None = None
 _custom_cache_dir: Path | None = None
 
 
-def _get_cache() -> diskcache.Cache:
+def _get_cache() -> JsonFileCache:
     """Get or initialize the disk cache."""
     global _cache
     if _cache is None:
         cache_dir = _custom_cache_dir if _custom_cache_dir is not None else _DEFAULT_CACHE_DIR
-        cache_dir.mkdir(parents=True, exist_ok=True)
-        _cache = diskcache.Cache(str(cache_dir))
+        _cache = JsonFileCache(cache_dir)
     return _cache
 
 

@@ -213,6 +213,61 @@ def test_not(sigma_simple_detections):
     )
 
 
+@pytest.fixture
+def sigma_operator_prefixed_detections():
+    return SigmaDetections(
+        {
+            name: SigmaDetection([SigmaDetectionItem(None, [], [SigmaString(name)])])
+            for name in ("sel", "notsel", "not-sel", "android", "order_filter")
+        },
+        condition=["any of them"],
+    )
+
+
+@pytest.mark.parametrize(
+    "condition,expected",
+    [
+        ("notsel", ConditionValueExpression(SigmaString("notsel"))),
+        ("not-sel", ConditionValueExpression(SigmaString("not-sel"))),
+        ("android", ConditionValueExpression(SigmaString("android"))),
+        ("order_filter", ConditionValueExpression(SigmaString("order_filter"))),
+        (
+            "sel and notsel",
+            ConditionAND(
+                [
+                    ConditionValueExpression(SigmaString("sel")),
+                    ConditionValueExpression(SigmaString("notsel")),
+                ]
+            ),
+        ),
+        (
+            "sel or not notsel",
+            ConditionOR(
+                [
+                    ConditionValueExpression(SigmaString("sel")),
+                    ConditionNOT([ConditionValueExpression(SigmaString("notsel"))]),
+                ]
+            ),
+        ),
+        (
+            "not(sel)",
+            ConditionNOT([ConditionValueExpression(SigmaString("sel"))]),
+        ),
+    ],
+)
+def test_identifier_starting_with_operator_name(
+    condition, expected, sigma_operator_prefixed_detections
+):
+    """Identifiers that start with not/and/or must not be split into operator + identifier."""
+    assert SigmaCondition(condition, sigma_operator_prefixed_detections).parsed == expected
+
+
+@pytest.mark.parametrize("condition", ["sel andnotsel", "sel ornotsel"])
+def test_operator_glued_to_identifier_is_error(condition, sigma_operator_prefixed_detections):
+    with pytest.raises(SigmaConditionError):
+        SigmaCondition(condition, sigma_operator_prefixed_detections).parsed
+
+
 def test_3or(sigma_simple_detections):
     assert SigmaCondition(
         "detection1 or detection2 or detection3", sigma_simple_detections

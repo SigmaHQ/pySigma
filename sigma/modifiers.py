@@ -226,7 +226,7 @@ class SigmaContainsModifier(
                 val += SpecialChars.WILDCARD_MULTI
         elif isinstance(val, SigmaRegularExpression):
             regexp_str = _group_regex_alternation(val)
-            if regexp_str[:2] != ".*" and regexp_str[0] != "^":
+            if not regexp_str.startswith((".*", "^")):
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             if _regex_is_open_ended(regexp_str):
                 val.regexp += SigmaString(".") + SpecialChars.WILDCARD_MULTI
@@ -277,7 +277,7 @@ class SigmaEndswithModifier(
                 val = SpecialChars.WILDCARD_MULTI + val
         elif isinstance(val, SigmaRegularExpression):
             regexp_str = _group_regex_alternation(val)
-            if regexp_str[:2] != ".*" and regexp_str[0] != "^":
+            if not regexp_str.startswith((".*", "^")):
                 val.regexp = SigmaString(".") + SpecialChars.WILDCARD_MULTI + val.regexp
             val.compile()
         elif isinstance(val, SigmaFieldReference):

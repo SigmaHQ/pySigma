@@ -436,6 +436,21 @@ def test_re_endswith_alternation(dummy_detection_item):
     ) == SigmaRegularExpression(".*(?:foo|bar)")
 
 
+@pytest.mark.parametrize(
+    "modifier,expected",
+    [
+        (SigmaContainsModifier, ".*.*"),
+        (SigmaStartswithModifier, ".*"),
+        (SigmaEndswithModifier, ".*"),
+    ],
+)
+def test_re_empty_regex(dummy_detection_item, modifier, expected):
+    # An empty regular expression is valid and must not crash the prefix/suffix checks
+    assert modifier(dummy_detection_item, []).modify(
+        SigmaRegularExpression("")
+    ) == SigmaRegularExpression(expected)
+
+
 def test_re_contains_alternation_anchored_alternative(dummy_detection_item):
     # Anchors belong to a single alternative: the other alternative must still match anywhere
     assert SigmaContainsModifier(dummy_detection_item, []).modify(

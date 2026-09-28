@@ -937,7 +937,11 @@ def test_cidr_expand_ipv6_prefix_not_truncated(cidr, expected):
     ],
 )
 def test_cidr_expand_ipv6_matches(cidr, inside, outside):
-    """Patterns match the RFC 5952 representation of addresses inside the network only."""
+    """
+    Patterns match the RFC 5952 representation of addresses inside the network and reject the
+    listed outside addresses. Wildcard patterns can still match some other outside addresses
+    (see SigmaCIDRExpression._expand_ipv6_subnet), so this is not a proof of strict correctness.
+    """
     patterns = SigmaCIDRExpression(cidr).expand()
     network = IPv6Network(cidr)
     for address in inside:

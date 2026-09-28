@@ -996,7 +996,9 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             elif i == fixed_groups and fixed_nibbles > 0:  # group is partially covered by prefix
                 nibbles = group[:fixed_nibbles]
                 free_digits = 4 - fixed_nibbles
-                if int(nibbles, 16) != 0:  # leading digits are fixed, group has always 4 digits
+                # Fixed digits are non-zero: the digit count is fixed, but leading zeros are
+                # omitted (e.g. fixed "0a" with two free digits is written as "a??")
+                if int(nibbles, 16) != 0:
                     group_texts.append([nibbles.lstrip("0") + "?" * free_digits])
                     can_be_zero.append(False)
                 else:  # group value is below 16**free_digits: 1 up to free_digits digits
@@ -1008,7 +1010,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                 can_be_zero.append(True)
                 can_be_nonzero.append(True)
 
-        patterns: list[str] = []
+        patterns: dict[str, None] = {}  # insertion-ordered de-duplication
         for zero_groups in product(*([False, True] for _ in range(8))):
             if any(
                 (is_zero and not can_be_zero[i]) or (not is_zero and not can_be_nonzero[i])
@@ -1042,9 +1044,8 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                 wildcard_pos = pattern.find(wildcard)
                 if wildcard_pos >= 0 and "::" not in pattern[:wildcard_pos]:
                     pattern = pattern[: wildcard_pos + len(wildcard)]
-                if pattern not in patterns:
-                    patterns.append(pattern)
-        return patterns
+                patterns[pattern] = None
+        return list(patterns)
 
 
 class CompareOperators(Enum):

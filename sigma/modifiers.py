@@ -272,6 +272,7 @@ class SigmaBase64OffsetModifier(SigmaValueModifier[SigmaString, SigmaExpansion])
             [
                 SigmaString(
                     b64encode(i * b" " + data)[
+                        # the cut depends on the encoded byte length, not the character count
                         self.start_offsets[i] : self.end_offsets[(len(data) + i) % 3]
                     ].decode()
                 )

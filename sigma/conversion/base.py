@@ -1627,6 +1627,25 @@ class TextQueryBackend(Backend):
             ]
 
             if len(args) == 0:
+                deferred_args = [
+                    converted
+                    for converted in converted_args
+                    if isinstance(converted, DeferredQueryExpression)
+                ]
+                if len(deferred_args) == 1:
+                    # Only one deferred argument: pass it to the parent, so the rule is still
+                    # finished as deferred-only query instead of being dropped.
+                    return deferred_args[0]
+                elif len(deferred_args) > 1:
+                    # Deferred expressions are applied as additional filters on the result of
+                    # the main query, which can only express an AND of them. Dropping the OR
+                    # would silently drop the whole rule.
+                    raise SigmaFeatureNotSupportedByBackendError(
+                        "OR condition consisting only of deferred query expressions (e.g."
+                        " regular expressions or field references that are applied after the"
+                        " main query) is not supported by the backend",
+                        source=cond.source,
+                    )
                 return self.empty_or_expression
             else:
                 return joiner.join(args)

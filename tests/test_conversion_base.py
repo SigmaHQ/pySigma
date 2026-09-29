@@ -18,6 +18,7 @@ from sigma.processing.transformations import (
 )
 from sigma.exceptions import (
     SigmaBackendError,
+    SigmaConditionError,
     SigmaPlaceholderError,
     SigmaTypeError,
     SigmaValueError,
@@ -2283,6 +2284,23 @@ def test_convert_dropped_detection_item_and_in_list():
                         - 789
                 condition: sel
         """)) == []
+
+
+@pytest.mark.parametrize("quantifier", ["1", "all"])
+def test_convert_selector_no_matching_detection(test_backend, quantifier):
+    # The selector must not be dropped silently, this would widen the query to 'fieldA="value"'.
+    with pytest.raises(SigmaConditionError, match="doesn't match any detection"):
+        test_backend.convert(SigmaCollection.from_yaml(f"""
+                title: Test
+                status: test
+                logsource:
+                    category: test_category
+                    product: test_product
+                detection:
+                    sel:
+                        fieldA: value
+                    condition: sel and {quantifier} of filter_*
+            """))
 
 
 def test_convert_dropped_detection_item_or_partial():

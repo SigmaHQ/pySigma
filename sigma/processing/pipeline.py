@@ -30,6 +30,7 @@ from sigma.rule import SigmaDetectionItem, SigmaRule
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
 from sigma.processing.postprocessing import (
+    NestedQueryPostprocessingTransformation,
     QueryPostprocessingTransformation,
     query_postprocessing_transformations,
 )
@@ -354,6 +355,22 @@ class ProcessingItemBase:
         if issubclass(transformation_class, ExternalSourceBaseTransformation):
             params["allow_external_sources"] = allow_external_sources
         try:
+            if (
+                transformation_class is NestedQueryPostprocessingTransformation
+                and "items" in params
+            ):
+                params["items"] = [
+                    (
+                        QueryPostprocessingItem.from_dict(
+                            item,
+                            allow_template_vars=allow_template_vars,
+                            vars_allowed_paths=vars_allowed_paths,
+                        )
+                        if isinstance(item, dict)
+                        else item
+                    )
+                    for item in params["items"]
+                ]
             return transformation_class(**params)
         except (SigmaConfigurationError, TypeError) as e:
             raise SigmaConfigurationError("Error in transformation: " + str(e)) from e
@@ -671,7 +688,11 @@ class QueryPostprocessingItem(ProcessingItemBase):
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
     ) -> "QueryPostprocessingItem":
-        """Instantiate processing item from parsed definition and variables."""
+        """Instantiate processing item from parsed definition and variables.
+
+        Nested post-processing definitions are parsed recursively. Already constructed
+        child items are retained.
+        """
         kwargs = super()._base_args_from_dict(
             d,
             cast(dict[str, Type[Transformation]], query_postprocessing_transformations),

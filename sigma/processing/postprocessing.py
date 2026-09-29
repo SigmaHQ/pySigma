@@ -28,6 +28,9 @@ class QueryPostprocessingTransformation(Transformation):
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
 
+        Record the processing item on the rule so later ``processing_item_applied`` conditions
+        can match it.
+
         :param pipeline: Processing pipeline this transformation was contained.
         :type pipeline: sigma.processing.pipeline.ProcessingPipeline
         :param rule: Sigma rule that is associated with the generated query.
@@ -70,6 +73,7 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
     template: str
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
+        super().apply(rule, query)
         return self.template.format(
             query=query,
             rule=rule,
@@ -96,6 +100,7 @@ class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBas
     """
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
+        super().apply(rule, query)
         return self.j2template.render(query=query, rule=rule, pipeline=self._pipeline)
 
 

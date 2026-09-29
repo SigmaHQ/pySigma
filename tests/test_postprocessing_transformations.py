@@ -58,6 +58,44 @@ state = teststate
     """
 
 
+@pytest.mark.parametrize(
+    "template_type, template",
+    [("simple_template", "[{query}]"), ("template", "[{{ query }}]")],
+)
+@pytest.mark.parametrize("nested", [False, True])
+@pytest.mark.parametrize("applies", [False, True])
+def test_query_templates_track_applied_items(sigma_rule, template_type, template, nested, applies):
+    items = [
+        {
+            "id": "rendered",
+            "type": template_type,
+            "template": template,
+            "rule_conditions": [{"type": "logsource", "category": "test" if applies else "other"}],
+        },
+        {
+            "type": "embed",
+            "prefix": "after:",
+            "rule_conditions": [
+                {"type": "processing_item_applied", "processing_item_id": "rendered"}
+            ],
+        },
+    ]
+    postprocessing_items = [QueryPostprocessingItem.from_dict(item) for item in items]
+    if nested:
+        postprocessing_items = [
+            QueryPostprocessingItem(NestedQueryPostprocessingTransformation(postprocessing_items))
+        ]
+    pipeline = ProcessingPipeline(postprocessing_items=postprocessing_items)
+    pipeline.apply(sigma_rule)
+
+    query = 'field="value"'
+    assert pipeline.postprocess_query(sigma_rule, query) == (
+        f"after:[{query}]" if applies else query
+    )
+    assert sigma_rule.was_processed_by("rendered") is applies
+    assert ("rendered" in pipeline.applied_ids) is applies
+
+
 def test_embed_query_in_json_transformation_dict(dummy_pipeline, sigma_rule):
     transformation = EmbedQueryInJSONTransformation('{ "field": "value", "query": "%QUERY%" }')
     transformation.set_pipeline(dummy_pipeline)

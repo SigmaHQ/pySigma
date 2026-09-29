@@ -531,12 +531,30 @@ def test_correlation_condition_invalid_item():
         SigmaCorrelationCondition.from_dict({"gte": 10, "test1": 20, "test2": 30})
 
 
-def test_correlation_condition_invalid_count():
+@pytest.mark.parametrize("value", ["test", "inf", "nan", None])
+def test_correlation_condition_invalid_count(value):
     with pytest.raises(
         SigmaCorrelationConditionError,
-        match="'test' is no valid Sigma correlation condition count",
+        match=f"'{value}' is no valid Sigma correlation condition count",
     ):
-        SigmaCorrelationCondition.from_dict({"gte": "test"})
+        SigmaCorrelationCondition.from_dict({"gte": value})
+
+
+@pytest.mark.parametrize(
+    "value,expected,expected_type",
+    [
+        (0.5, 0.5, float),
+        (10, 10, int),
+        (10.0, 10, int),
+        ("10", 10, int),
+        ("10.5", 10.5, float),
+        (2**53 + 1, 2**53 + 1, int),
+    ],
+)
+def test_correlation_condition_count_types(value, expected, expected_type):
+    count = SigmaCorrelationCondition.from_dict({"gte": value}).count
+    assert count == expected
+    assert type(count) is expected_type
 
 
 @pytest.mark.parametrize("count", [float("inf"), float("-inf")])
@@ -551,6 +569,8 @@ def test_correlation_condition_non_finite_count(count):
 def test_correlation_condition_to_dict():
     cond = SigmaCorrelationCondition.from_dict({"gte": 10})
     assert cond.to_dict() == {"gte": 10}
+    cond = SigmaCorrelationCondition.from_dict({"gt": 0.5, "field": "bytes_out"})
+    assert cond.to_dict() == {"gt": 0.5, "field": "bytes_out"}
 
 
 def test_correlation_resolve_rule_references(rule_collection, correlation_rule):

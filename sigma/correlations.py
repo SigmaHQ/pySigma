@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
@@ -103,7 +104,7 @@ class SigmaCorrelationConditionOperator(Enum):
 @dataclass
 class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
-    count: int
+    count: int | float
     fieldref: str | list[str] | None = field(default=None)
     percentile: int | None = field(default=None)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
@@ -135,9 +136,18 @@ class SigmaCorrelationCondition:
         ):  # It's already tested above if there's an operator.
             if op in d:
                 cond_op = SigmaCorrelationConditionOperator[op.upper()]
+                cond_count: int | float
                 try:
-                    cond_count = int(d[op])
-                except (ValueError, OverflowError):
+                    # integers stay exact; fractions are for metric thresholds
+                    if isinstance(d[op], int):
+                        cond_count = int(d[op])
+                    else:
+                        cond_count = float(d[op])
+                        if not math.isfinite(cond_count):
+                            raise ValueError
+                        if cond_count.is_integer():
+                            cond_count = int(cond_count)
+                except (TypeError, ValueError):
                     raise sigma_exceptions.SigmaCorrelationConditionError(
                         f"'{ d[op] }' is no valid Sigma correlation condition count", source=source
                     )

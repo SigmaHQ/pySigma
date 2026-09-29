@@ -321,7 +321,9 @@ class Backend(ABC):
             raise
 
     def _format_template(
-        self: Self, template: str, **kwargs: str | int | list[str] | SigmaCorrelationRule | None
+        self: Self,
+        template: str,
+        **kwargs: str | int | float | list[str] | SigmaCorrelationRule | None,
     ) -> str:
         """
         Ensure all template's variables are properly populated before generating the output.
@@ -329,11 +331,11 @@ class Backend(ABC):
         :param template: Templated string to format.
         :type cond: str
         :param kwargs: List of parameters to populate the template.
-        :type kwargs: str | int | list[str] | SigmaCorrelationRule | None
+        :type kwargs: str | int | float | list[str] | SigmaCorrelationRule | None
         :return: Templated string
         :rtype: str
         """
-        variables: list[tuple[str, str | int | list[str] | SigmaCorrelationRule | None]] = [
+        variables: list[tuple[str, str | int | float | list[str] | SigmaCorrelationRule | None]] = [
             (parsed_template[1], kwargs.get(parsed_template[1]))
             for parsed_template in string.Formatter().parse(template)
             if parsed_template[1]

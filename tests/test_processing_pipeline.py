@@ -1,4 +1,5 @@
 import pytest
+import yaml
 from dataclasses import dataclass
 import re
 from textwrap import dedent
@@ -864,6 +865,105 @@ def test_processingitem_wrong_field_name_condition_dict():
 
 def test_postprocessingitem_fromdict(postprocessing_item_dict, postprocessing_item):
     assert QueryPostprocessingItem.from_dict(postprocessing_item_dict) == postprocessing_item
+
+
+@pytest.mark.parametrize("depth", [1, 2])
+def test_processingpipeline_nested_postprocessing_fromyaml(sigma_rule, depth):
+    item = {"type": "embed", "prefix": "[", "suffix": "]"}
+    for _ in range(depth):
+        item = {"type": "nest", "items": [item]}
+    pipeline = ProcessingPipeline.from_yaml(yaml.safe_dump({"postprocessing": [item]}))
+    pipeline.apply(sigma_rule)
+
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "[field=value]"
+
+
+@pytest.mark.parametrize("include_mapping", [False, True])
+def test_processingpipeline_nested_postprocessing_typed_items(sigma_rule, include_mapping):
+    child = QueryPostprocessingItem(EmbedQueryTransformation("[", "]"))
+    children = [child]
+    if include_mapping:
+        children.append({"type": "embed", "prefix": "after:"})
+    pipeline = ProcessingPipeline.from_dict(
+        {"postprocessing": [{"type": "nest", "items": children}]}
+    )
+    pipeline.apply(sigma_rule)
+
+    assert pipeline.postprocessing_items[0].transformation.items[0] is child
+    expected = "after:[field=value]" if include_mapping else "[field=value]"
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == expected
+
+
+@pytest.mark.parametrize("condition_on", ["outer", "inner"])
+@pytest.mark.parametrize("matches", [False, True])
+def test_processingpipeline_nested_postprocessing_conditions(sigma_rule, condition_on, matches):
+    child = {"id": "inner", "type": "embed", "prefix": "[", "suffix": "]"}
+    outer = {"id": "outer", "type": "nest", "items": [child]}
+    conditioned = outer if condition_on == "outer" else child
+    conditioned["rule_conditions"] = [
+        {"type": "logsource", "category": "test" if matches else "other"}
+    ]
+    pipeline = ProcessingPipeline.from_dict({"postprocessing": [outer]})
+    pipeline.apply(sigma_rule)
+
+    expected = "[field=value]" if matches else "field=value"
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == expected
+    assert sigma_rule.was_processed_by("outer") is (condition_on == "inner" or matches)
+    assert sigma_rule.was_processed_by("inner") is matches
+
+
+@pytest.mark.parametrize("depth", [1, 2])
+@pytest.mark.parametrize("allow_template_vars", [False, True])
+def test_processingpipeline_nested_postprocessing_options(depth, allow_template_vars):
+    item = {
+        "type": "template",
+        "template": "{{ query }}",
+        "allow_template_vars": not allow_template_vars,
+        "vars_allowed_paths": ["ignored"],
+    }
+    for _ in range(depth):
+        item = {
+            "type": "nest",
+            "items": [item],
+            "allow_template_vars": not allow_template_vars,
+            "vars_allowed_paths": ["ignored"],
+        }
+    options = {"vars_allowed_paths": ("trusted",)}
+    if allow_template_vars:
+        options["allow_template_vars"] = True
+    pipeline = ProcessingPipeline.from_dict({"postprocessing": [item]}, **options)
+    transformation = pipeline.postprocessing_items[0].transformation
+    for _ in range(depth):
+        transformation = transformation.items[0].transformation
+
+    assert transformation.vars is None
+    assert transformation.allow_template_vars is allow_template_vars
+    assert transformation.vars_allowed_paths == ("trusted",)
+
+
+def test_processingpipeline_nested_postprocessing_empty(sigma_rule):
+    pipeline = ProcessingPipeline.from_dict({"postprocessing": [{"type": "nest", "items": []}]})
+    pipeline.apply(sigma_rule)
+
+    assert pipeline.postprocess_query(sigma_rule, "field=value") == "field=value"
+
+
+@pytest.mark.parametrize("child", [42, "invalid", None])
+def test_processingpipeline_nested_postprocessing_invalid_child(child):
+    with pytest.raises(SigmaConfigurationError, match="Each item in a postprocessing pipeline"):
+        ProcessingPipeline.from_dict({"postprocessing": [{"type": "nest", "items": [child]}]})
+
+
+def test_processingpipeline_nested_postprocessing_missing_items():
+    with pytest.raises(SigmaConfigurationError, match="items"):
+        ProcessingPipeline.from_dict({"postprocessing": [{"type": "nest"}]})
+
+
+def test_processingpipeline_nested_postprocessing_unknown_parameter():
+    with pytest.raises(SigmaConfigurationError, match="unexpected keyword argument"):
+        ProcessingPipeline.from_dict(
+            {"postprocessing": [{"type": "nest", "items": [], "invalid": True}]}
+        )
 
 
 def test_postprocessingitem_apply(postprocessing_item: QueryPostprocessingItem, sigma_rule):

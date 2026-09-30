@@ -26,13 +26,13 @@ Please include:
 
 pySigma turns Sigma rules and processing pipelines, which are often third-party or community content, into queries that run in a SIEM. The following are in scope:
 
-- **Query or configuration injection:** rule content (values, field names, titles, metadata) that can change the *structure* of a generated query or of backend output formats (for example extra search commands, or altered saved-search or alert configuration). This covers pySigma itself and the base classes that backends inherit.
 - **Code execution or file access:** loading rules, pipelines or plugins that leads to code execution, unsafe deserialisation, path traversal, or writes outside the intended location.
 - **Denial of service:** a small crafted rule or pipeline that causes excessive CPU or memory use (for example YAML alias expansion, or pathological regex or wildcard expansion).
 - **Plugin supply chain:** flaws in plugin discovery or installation that could install or load unintended code.
 
 **Out of scope (report publicly as bugs):**
 
+- Query or configuration injection: Sigma rules are not a security layer and were never designed to prevent harmful effects from injected or malicious rule content in a target system. Manipulating query structures or backend configurations through crafted rules is not part of this project’s security scope. Users are responsible for ensuring that the rules they use are trustworthy, and any potential impact must be controlled through proper permissions and safeguards in the target system.
 - Conversion errors that make a rule match more or fewer events than intended, without attacker-controlled input changing the query structure. These are important, but they are handled as normal issues and pull requests so fixes reach users quickly.
 - A systemic and severe detection gap (for example a whole modifier class never matching) may be reported privately; the maintainers decide whether it becomes an advisory.
 

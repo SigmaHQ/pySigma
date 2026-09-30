@@ -399,14 +399,24 @@ class SigmaString(SigmaType):
     def __str__(self) -> str:
         return self.to_plain()
 
-    def to_plain(self, regex: bool = False) -> str:
-        """Generate string representation of SigmaString with or without regex escaping."""
+    def to_plain(self, regex: bool = False, escape_backslash: bool = False) -> str:
+        """
+        Generate string representation of SigmaString with or without regex escaping.
+
+        If escape_backslash is set, backslashes that would be interpreted as escaping character
+        when the result is parsed again (a backslash followed by a wildcard or another backslash)
+        are escaped, so that parsing the result yields the same SigmaString.
+        """
         rs = ""
-        for s in self.s:
+        for i, s in enumerate(self.s):
             if isinstance(s, str):
                 if regex:
                     rs += s
                 else:
+                    if escape_backslash:
+                        s = self._escape_backslashes(
+                            s, self.s[i + 1] if i + 1 < len(self.s) else None
+                        )
                     rs += s.replace("*", "\\*").replace("?", "\\?")
             elif isinstance(s, SpecialChars):
                 rs += special_char_mapping[s]
@@ -417,6 +427,28 @@ class SigmaString(SigmaType):
                     "SigmaString can only consist of plain strings and instances of SpecialChars or Placeholder objects."
                 )
         return rs
+
+    @staticmethod
+    def _escape_backslashes(s: str, next_part: SigmaStringPartType | None) -> str:
+        """
+        Escape each backslash in the plain string part s that is followed by a character that
+        would turn it into an escaping character: a wildcard character (escaped or special) or
+        another backslash. next_part is the SigmaString part following s.
+        """
+        escaping_follower = (*char_mapping, escape_char)
+        r = ""
+        for j, c in enumerate(s):
+            if c == escape_char:
+                if j + 1 < len(s):
+                    followed = s[j + 1] in escaping_follower
+                else:
+                    followed = isinstance(next_part, SpecialChars) or (
+                        isinstance(next_part, str) and next_part[:1] in escaping_follower
+                    )
+                if followed:
+                    r += escape_char
+            r += c
+        return r
 
     def __repr__(self) -> str:
         return str(f"SigmaString({self.s})")

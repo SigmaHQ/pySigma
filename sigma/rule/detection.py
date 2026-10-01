@@ -28,6 +28,7 @@ from sigma.modifiers import (
     reverse_modifier_mapping,
 )
 from sigma.processing.tracking import ProcessingItemTrackingMixin
+from sigma.rule.base import check_alias_expansion
 from sigma.types import SigmaNull, SigmaString, SigmaType, sigma_type
 
 if TYPE_CHECKING:
@@ -541,6 +542,7 @@ class SigmaDetections:
                 "Sigma rule must contain at least one condition", source=source
             )
 
+        check_alias_expansion(detections, sigma_exceptions.SigmaDetectionError, source)
         return cls(
             detections={
                 name: SigmaDetection.from_definition(definition, source)

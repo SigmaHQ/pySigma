@@ -19,6 +19,7 @@ from sigma.exceptions import (
 )
 from sigma.filters import SigmaFilter
 from sigma.rule import SigmaRule, SigmaRuleBase
+from sigma.rule.base import check_alias_expansion
 
 NestedDict = dict[str, "str | int | float | bool | None | NestedDict"]
 
@@ -175,6 +176,13 @@ class SigmaCollection:
                 parsed_rules.append(rule)
                 rule.source = source
             else:
+                try:  # reject alias bombs before global/repeat merging walks the document
+                    check_alias_expansion(rule, SigmaCollectionError, source)
+                except SigmaCollectionError as expansion_error:
+                    if collect_errors:
+                        errors.append(expansion_error)
+                        continue
+                    raise
                 action = rule.get("action")
                 if action is None:  # no action defined
                     if "correlation" in rule:  # correlation rule - no global rule merge

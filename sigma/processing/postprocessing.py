@@ -8,7 +8,7 @@ from typing import Any, Type, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
 import sigma.processing.postprocessing
-from sigma.processing.templates import TemplateBase
+from sigma.processing.templates import TemplateBase, format_simple_template
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
@@ -67,14 +67,17 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
     * pipeline: the Sigma processing pipeline where this transformation is applied including all
       current state information in pipeline.state.
 
-    The Python format string syntax (str.format()) is used.
+    The Python format string syntax (str.format()) is used. Field lookups are sandboxed: access
+    to underscore-prefixed attributes (e.g. ``__globals__``) is denied and format specifications
+    with excessive widths or precisions are rejected.
     """
 
     template: str
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
-        return self.template.format(
+        return format_simple_template(
+            self.template,
             query=query,
             rule=rule,
             pipeline=self._pipeline,

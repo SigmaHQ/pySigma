@@ -1493,6 +1493,54 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
         transformation.apply(sigma_rule_placeholders)
 
 
+def _queryexpr_placeholder_rule(name: str) -> SigmaRule:
+    return SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {"field|expand": f"%{name}%"},
+                "condition": "test",
+            },
+        }
+    )
+
+
+@pytest.mark.parametrize("name", ["a b", 'say "hi"', "a(b)", "x,y"])
+def test_queryexpr_placeholders_unmapped_name_with_invalid_characters(dummy_pipeline, name):
+    transformation = QueryExpressionPlaceholderTransformation(expression="{field} in list({id})")
+    transformation.set_pipeline(dummy_pipeline)
+    with pytest.raises(SigmaValueError, match="Placeholder name .* not allowed"):
+        transformation.apply(_queryexpr_placeholder_rule(name))
+
+
+@pytest.mark.parametrize("name", ["var1", "Domain_Controllers", "list-1.v2"])
+def test_queryexpr_placeholders_unmapped_identifier_name(dummy_pipeline, name):
+    expr = "{field} in list({id})"
+    transformation = QueryExpressionPlaceholderTransformation(expression=expr)
+    transformation.set_pipeline(dummy_pipeline)
+    rule = _queryexpr_placeholder_rule(name)
+    transformation.apply(rule)
+    assert rule.detection.detections["test"].detection_items[0].value == [
+        SigmaQueryExpression(expr, name)
+    ]
+
+
+def test_queryexpr_placeholders_mapped_name_not_validated(dummy_pipeline):
+    # Only the mapped identifier is inserted into the expression, so any placeholder name works.
+    expr = "{field} in list({id})"
+    name = "Domain Controllers!"
+    transformation = QueryExpressionPlaceholderTransformation(
+        expression=expr, mapping={name: "domain_controllers"}
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    rule = _queryexpr_placeholder_rule(name)
+    transformation.apply(rule)
+    assert rule.detection.detections["test"].detection_items[0].value == [
+        SigmaQueryExpression(expr, "domain_controllers")
+    ]
+
+
 def test_queryexpr_placeholders_include_and_exclude_error():
     with pytest.raises(SigmaConfigurationError, match="exclusively"):
         QueryExpressionPlaceholderTransformation(

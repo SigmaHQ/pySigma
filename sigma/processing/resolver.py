@@ -52,7 +52,7 @@ class ProcessingPipelineResolver:
 
         If *target* is specified, an additional check of the compatibility of the specified backend
         to the resolved pipeline is conducted. A *SigmaPipelineNotAllowedForBackendError* is raised
-        if this check fails.
+        if this check fails. This check applies to registered pipelines and YAML files alike.
         """
         try:
             pipeline = self.pipelines[spec]
@@ -60,18 +60,19 @@ class ProcessingPipelineResolver:
                 resolved_pipeline = pipeline()
             else:
                 resolved_pipeline = pipeline
-            if target is not None and not (
-                len(resolved_pipeline.allowed_backends) == 0
-                or target in resolved_pipeline.allowed_backends
-            ):
-                raise SigmaPipelineNotAllowedForBackendError(spec, target)
-            return resolved_pipeline
         except KeyError:  # identifier not found, try it as path
             try:
                 with open(spec, "r") as f:
-                    return ProcessingPipeline.from_yaml(f.read(), source_path=spec)
+                    resolved_pipeline = ProcessingPipeline.from_yaml(f.read(), source_path=spec)
             except OSError as e:
                 raise SigmaPipelineNotFoundError(spec)
+
+        if target is not None and not (
+            len(resolved_pipeline.allowed_backends) == 0
+            or target in resolved_pipeline.allowed_backends
+        ):
+            raise SigmaPipelineNotAllowedForBackendError(spec, target)
+        return resolved_pipeline
 
     def resolve(self, pipeline_specs: list[str], target: str | None = None) -> ProcessingPipeline:
         """

@@ -12,6 +12,7 @@ from sigma.policy.profiles import SafePolicy, TrustedPolicy
 from sigma.policy.regex_engine import PythonRegexEngine, RE2RegexEngine
 from sigma.exceptions import SigmaPolicyError
 
+
 def test_python_engine_compile_and_match() -> None:
     engine = PythonRegexEngine()
     pat = engine.compile(r"foo.*bar")

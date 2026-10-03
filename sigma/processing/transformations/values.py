@@ -307,7 +307,7 @@ class ReplaceStringTransformation(StringValueTransformation):
                     pending += plain[max(span_start, start) : min(span_end, end)]
 
         pos = 0
-        for match in self.re.finditer(plain):
+        for match in self.regex_finditer(self.regex, plain):
             keep_original(pos, match.start())
             pending += match.expand(self.replacement)
             pos = match.end()

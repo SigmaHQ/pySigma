@@ -53,3 +53,7 @@ class ProcessingRegularExpressionMixin:
     def regex_sub(self, pattern: str, replacement: str, string: str) -> str:
         """Return *string* with all *pattern* matches replaced by *replacement*."""
         return self.compile_regex(pattern).sub(replacement, string)
+
+    def regex_finditer(self, pattern: str, string: str) -> Any:
+        """Return an iterator over all non-overlapping matches of *pattern* in *string*."""
+        return self.compile_regex(pattern).finditer(string)

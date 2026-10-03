@@ -18,6 +18,8 @@ class RegexPattern(Protocol):
 
     def sub(self, repl: Any, string: str, *args: Any, **kwargs: Any) -> str: ...
 
+    def finditer(self, string: str, *args: Any, **kwargs: Any) -> Any: ...
+
 
 class RegexEngine(ABC):
     """Strategy base class for regex engine implementations."""

@@ -1,6 +1,7 @@
 """Regression tests for template sandbox escapes from untrusted processing pipelines."""
 
 import os
+import platform
 
 import pytest
 from jinja2.exceptions import SecurityError
@@ -42,7 +43,7 @@ def nested_command_template(marker: str) -> str:
 def test_template_pipeline_classmethod_call_blocked(tmp_path, rule_collection, section):
     marker = tmp_path / "pwned"
     pipeline = ProcessingPipeline.from_dict(
-        {section: [{"type": "template", "template": nested_command_template(str(marker))}]}
+        {section: [{"type": "template", "template": nested_command_template(str(marker).replace("\\", "\\\\"))}]}
     )
     with pytest.raises(SecurityError, match="not safely callable"):
         convert(pipeline, rule_collection)
@@ -134,6 +135,7 @@ def test_template_path_restriction_not_overridable_from_yaml(secret_dir):
         )
 
 
+@pytest.mark.skipif(platform.system() == "Windows", reason="Symlink test not supported on Windows")
 def test_template_path_symlink_escape_blocked(secret_dir, pipeline_dir, rule_collection):
     os.symlink(secret_dir / "creds", pipeline_dir / "templates" / "link.j2")
     with pytest.raises(Exception, match="link.j2"):

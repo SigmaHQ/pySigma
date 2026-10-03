@@ -1251,7 +1251,7 @@ def test_convert_value_cidr_wildcard_expression_ipv6(test_backend, monkeypatch):
                         condition: sel
                 """))
         == [
-            'mappedA in ("1234:5678:0:ab0*", "1234:5678:0:ab1*", "1234:5678:0:ab2*", "1234:5678:0:ab3*")'
+            'mappedA in ("1234:5678:0:ab0?:*", "1234:5678:0:ab1?:*", "1234:5678:0:ab2?:*", "1234:5678:0:ab3?:*")'
         ]
     )
 

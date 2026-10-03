@@ -347,11 +347,13 @@ class ProcessingItemBase:
                 "allow_template_vars",
                 "vars_allowed_paths",
                 "allow_external_sources",
+                "restrict_template_path",
             }
         }
         if issubclass(transformation_class, TemplateBase):
             params["allow_template_vars"] = allow_template_vars
             params["vars_allowed_paths"] = vars_allowed_paths
+            params["restrict_template_path"] = not allow_external_sources
         if issubclass(transformation_class, ExternalSourceBaseTransformation):
             params["allow_external_sources"] = allow_external_sources
         try:
@@ -687,6 +689,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         d: dict[str, Any],
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        allow_external_sources: bool = False,
     ) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables.
 
@@ -698,6 +701,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
             cast(dict[str, Type[Transformation]], query_postprocessing_transformations),
             allow_template_vars=allow_template_vars,
             vars_allowed_paths=vars_allowed_paths,
+            allow_external_sources=allow_external_sources,
         )
         return cls(**kwargs)
 
@@ -850,6 +854,7 @@ class ProcessingPipeline:
                         item,
                         allow_template_vars=allow_template_vars,
                         vars_allowed_paths=vars_allowed_paths,
+                        allow_external_sources=allow_external_sources,
                     )
                 )
             except SigmaConfigurationError as e:
@@ -861,6 +866,7 @@ class ProcessingPipeline:
             fd.pop("allow_template_vars", None)  # Strip untrusted YAML value
             fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             fd.pop("allow_external_sources", None)  # Strip untrusted YAML value
+            fd.pop("restrict_template_path", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = fd.pop("type")
             except KeyError:
@@ -876,6 +882,7 @@ class ProcessingPipeline:
             if issubclass(finalizer_cls, TemplateBase):
                 fd["allow_template_vars"] = allow_template_vars
                 fd["vars_allowed_paths"] = vars_allowed_paths
+                fd["restrict_template_path"] = not allow_external_sources
                 fs.append(finalizer_cls.from_dict(fd))
             elif finalizer_cls is NestedFinalizer:
                 fs.append(
@@ -883,6 +890,7 @@ class ProcessingPipeline:
                         fd,
                         allow_template_vars=allow_template_vars,
                         vars_allowed_paths=vars_allowed_paths,
+                        allow_external_sources=allow_external_sources,
                     )
                 )
             else:

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from typing import Any
+from typing import Any, TYPE_CHECKING
 
 from typing_extensions import Self
 
@@ -11,6 +11,9 @@ from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule.base import SigmaRuleBase
 from sigma.rule.detection import EmptySigmaDetections, SigmaDetections
 from sigma.rule.logsource import EmptyLogSource, SigmaLogSource
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 
 @dataclass
@@ -23,11 +26,12 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
     detection: SigmaDetections = field(default_factory=EmptySigmaDetections)
 
     @classmethod
-    def from_dict(
+    def from_dict(  # type: ignore[override]
         cls: type[Self],
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Convert Sigma rule parsed in dict structure into SigmaRule object.
@@ -35,7 +39,9 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         if collect_errors is set to False exceptions are collected in the errors property of the resulting
         SigmaRule object. Else the first recognized error is raised as exception.
         """
-        kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(
+            rule, collect_errors, source, policy=policy
+        )
 
         # parse log source
         try:
@@ -60,7 +66,7 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
 
         # parse detections
         try:
-            detections = SigmaDetections.from_dict(rule["detection"], source)
+            detections = SigmaDetections.from_dict(rule["detection"], source, policy=policy)
         except KeyError:
             detections = EmptySigmaDetections()
             errors.append(
@@ -90,9 +96,14 @@ class SigmaRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         )
 
     @classmethod
-    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls: type[Self],
+        rule: str,
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
-        return super().from_yaml(rule, collect_errors)
+        return super().from_yaml(rule, collect_errors, policy=policy)
 
     def to_dict(self) -> dict[str, Any]:
         """Convert rule object into dict."""

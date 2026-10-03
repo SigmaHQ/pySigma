@@ -30,6 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from sigma.collection import SigmaCollection
+    from sigma.policy import SigmaPolicy
 
 
 class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
@@ -555,13 +556,16 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             )
 
     @classmethod
-    def from_dict(
+    def from_dict(  # type: ignore[override]
         cls,
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
-        kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(
+            rule, collect_errors, source, policy=policy
+        )
         correlation_rule: Any = rule.get("correlation", dict())
         if not isinstance(correlation_rule, dict):
             errors.append(
@@ -753,9 +757,11 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls, rule: str, collect_errors: bool = False, policy: "SigmaPolicy | None" = None
+    ) -> Self:
         """Convert YAML input string with single document into SigmaCorrelationRule object."""
-        return super().from_yaml(rule, collect_errors)
+        return super().from_yaml(rule, collect_errors, policy=policy)
 
     def to_dict(self: Self) -> dict[str, Any]:
         d = super().to_dict()

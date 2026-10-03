@@ -7,6 +7,7 @@ from typing import Any, Iterable, Union, get_type_hints, TYPE_CHECKING
 from dataclasses import dataclass, field
 from sigma.conditions import ConditionOR
 from sigma.correlations import SigmaCorrelationCondition, SigmaCorrelationRule
+from sigma.processing.regex import ProcessingRegularExpressionMixin
 from sigma.rule import SigmaRule, SigmaDetection, SigmaDetectionItem
 from sigma.exceptions import (
     SigmaConfigurationError,
@@ -26,7 +27,7 @@ if TYPE_CHECKING:
 
 ### Base Classes ###
 @dataclass
-class Transformation(ABC):
+class Transformation(ProcessingRegularExpressionMixin, ABC):
     """
     Base class for processing steps used in pipelines. Override `apply` with transformation that is
     applied to the whole rule.

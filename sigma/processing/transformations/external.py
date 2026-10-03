@@ -24,6 +24,7 @@ from typing import Any, Iterable
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
+from sigma.policy.regex_engine import RegexPattern
 from sigma.processing.transformations.placeholder import BasePlaceholderTransformation
 from sigma.types import Placeholder, SigmaString
 
@@ -69,7 +70,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     allow_external_sources: bool = False
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
-    _filter_pattern: re.Pattern[str] | None = field(
+    _filter_pattern: RegexPattern | None = field(
         init=False, default=None, repr=False, compare=False
     )
 
@@ -80,9 +81,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                 f"Supported formats: {', '.join(SUPPORTED_FORMATS)}."
             )
         if self.filter is not None:
+            engine = self.resolve_regex_engine()
             try:
-                self._filter_pattern = re.compile(self.filter)
-            except re.error as e:
+                self._filter_pattern = engine.compile(self.filter)
+            except engine.error as e:
                 raise SigmaConfigurationError(f"Invalid regex in 'filter': {e}") from e
         super().__post_init__()
 

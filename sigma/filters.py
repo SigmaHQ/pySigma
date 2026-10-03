@@ -16,6 +16,7 @@ from sigma.rule.logsource import EmptyLogSource
 
 if TYPE_CHECKING:
     from sigma.exceptions import SigmaRuleLocation
+    from sigma.policy import SigmaPolicy
 
 
 @dataclass
@@ -24,7 +25,10 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls: type[Self], detections: dict[str, Any], source: SigmaRuleLocation | None = None
+        cls: type[Self],
+        detections: dict[str, Any],
+        source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         try:
             if isinstance(detections["condition"], str):
@@ -122,16 +126,19 @@ class SigmaFilter(SigmaRuleBase):
     )
 
     @classmethod
-    def from_dict(
+    def from_dict(  # type: ignore[override]
         cls: type[Self],
         sigma_filter: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
-        kwargs, errors = super().from_dict_common_params(sigma_filter, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(
+            sigma_filter, collect_errors, source, policy=policy
+        )
 
         # parse log source
         try:
@@ -288,6 +295,11 @@ class SigmaFilter(SigmaRuleBase):
         return rule
 
     @classmethod
-    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls: type[Self],
+        rule: str,
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert YAML input string with single document into SigmaFilter object."""
-        return super().from_yaml(rule, collect_errors)
+        return super().from_yaml(rule, collect_errors, policy=policy)

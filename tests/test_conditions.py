@@ -571,6 +571,44 @@ def test_undefined_identifier(sigma_simple_detections):
         SigmaCondition("detection", sigma_simple_detections).parsed
 
 
+@pytest.mark.parametrize(
+    "condition",
+    [
+        "1 of nomatch*",
+        "any of nomatch*",
+        "all of nomatch*",
+        "detection1 and 1 of nomatch*",
+        "detection1 or all of nomatch*",
+        "detection1 and not 1 of nomatch*",
+    ],
+)
+def test_selector_no_matching_detection(condition, sigma_simple_detections):
+    with pytest.raises(SigmaConditionError, match="of nomatch\\*' doesn't match any detection"):
+        SigmaCondition(condition, sigma_simple_detections).parsed
+
+
+def test_selector_them_only_underscore_detections():
+    detections = SigmaDetections(
+        {
+            "_detection": SigmaDetection(
+                [
+                    SigmaDetectionItem(None, [], [SigmaString("val1")]),
+                ]
+            ),
+        },
+        condition=["1 of them"],
+    )
+    with pytest.raises(SigmaConditionError, match="'1 of them' doesn't match any detection"):
+        SigmaCondition("1 of them", detections).parsed
+
+
+def test_selector_no_matching_detection_unparsed(sigma_simple_detections):
+    """Without postprocessing the selector is kept, so validators can still inspect it."""
+    assert isinstance(
+        SigmaCondition("1 of nomatch*", sigma_simple_detections).parse(False), ConditionSelector
+    )
+
+
 def test_null_keyword(sigma_invalid_detections):
     with pytest.raises(SigmaConditionError):
         SigmaCondition("null-keyword", sigma_invalid_detections).parsed

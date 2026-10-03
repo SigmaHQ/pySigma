@@ -277,6 +277,11 @@ class ConditionSelector(ConditionItem):
         self.parent = parent
 
         ids = self.resolve_referenced_detections(detections)
+        if not ids:  # an empty selector would be dropped from the condition silently
+            raise SigmaConditionError(
+                f"Selector '{ self.args[0] } of { self.pattern }' doesn't match any detection",
+                source=source,
+            )
         cond = self.cond_class(
             cast(
                 list[

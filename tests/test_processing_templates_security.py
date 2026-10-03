@@ -43,7 +43,14 @@ def nested_command_template(marker: str) -> str:
 def test_template_pipeline_classmethod_call_blocked(tmp_path, rule_collection, section):
     marker = tmp_path / "pwned"
     pipeline = ProcessingPipeline.from_dict(
-        {section: [{"type": "template", "template": nested_command_template(str(marker).replace("\\", "\\\\"))}]}
+        {
+            section: [
+                {
+                    "type": "template",
+                    "template": nested_command_template(str(marker).replace("\\", "\\\\")),
+                }
+            ]
+        }
     )
     with pytest.raises(SecurityError, match="not safely callable"):
         convert(pipeline, rule_collection)

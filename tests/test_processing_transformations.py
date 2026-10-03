@@ -584,6 +584,64 @@ def field_function_transformation():
     )
 
 
+@pytest.mark.parametrize(
+    "field,mapped",
+    [
+        ("field1", "mapped_field1"),
+        ("field1", ["mapped_field1", "mapped_field2"]),
+        ("field1", []),
+        (None, "message"),
+    ],
+)
+def test_field_function_transformation_mapping_bypasses_function(field, mapped):
+    def transform_func(field):
+        pytest.fail("The function must not be called for an explicitly mapped field")
+
+    transformation = FieldFunctionTransformation(
+        mapping={field: mapped}, transform_func=transform_func, apply_keyword=field is None
+    )
+    assert transformation.apply_field_name(field) == mapped
+
+
+def test_field_function_transformation_mapping_with_partial_function():
+    def transform_func(field):
+        prefix, name = field.split(".", 1)
+        return name.lower()
+
+    pipeline = ProcessingPipeline(
+        [
+            ProcessingItem(
+                FieldFunctionTransformation(
+                    mapping={"LegacyField": "message"}, transform_func=transform_func
+                )
+            )
+        ]
+    )
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"LegacyField": "value1", "event.OTHER": "value2"},
+                "condition": "selection",
+            },
+            "fields": ["LegacyField", "event.OTHER"],
+        }
+    )
+    pipeline.apply(rule)
+    assert rule.fields == ["message", "other"]
+    assert rule.to_dict()["detection"]["selection"] == {"message": "value1", "other": "value2"}
+
+
+def test_field_function_transformation_propagates_function_error():
+    def transform_func(field):
+        raise KeyError("unknown field")
+
+    transformation = FieldFunctionTransformation(mapping={}, transform_func=transform_func)
+    with pytest.raises(KeyError, match="unknown field"):
+        transformation.apply_field_name("field1")
+
+
 def test_field_function_transformation(dummy_pipeline, field_function_transformation):
     sigma_rule = SigmaRule.from_dict(
         {

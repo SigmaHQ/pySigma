@@ -1402,6 +1402,11 @@ class TextQueryBackend(Backend):
     referenced_rules_expression: ClassVar[dict[str, str] | None] = None
     # All referenced rules expressions are joined with the following joiner:
     referenced_rules_expression_joiner: ClassVar[dict[str, str] | None] = None
+    # Rule names/ids matching this pattern are inserted into referenced_rules_expression as-is.
+    # All other names/ids are escaped and quoted like string values.
+    referenced_rules_plain_ruleid_pattern: ClassVar[re.Pattern[str]] = re.compile(
+        r"^[A-Za-z0-9_.\-]+$"
+    )
 
     # The following class variables defined the templates for the group by expression.
     # First an expression frame is definied:
@@ -2766,10 +2771,18 @@ class TextQueryBackend(Backend):
             or self.referenced_rules_expression_joiner is None
         ):
             return None
+        template = self.referenced_rules_expression[method]
+
+        def convert_ruleid(ruleid: str | object | None) -> str:
+            ruleid_str = str(ruleid)
+            if self.referenced_rules_plain_ruleid_pattern.fullmatch(ruleid_str):
+                return ruleid_str
+            return self.convert_correlation_ruleid(ruleid_str, template)
+
         return self.referenced_rules_expression_joiner[method].join(
             (
-                self.referenced_rules_expression[method].format(
-                    ruleid=rule_reference.rule.name or rule_reference.rule.id
+                template.format(
+                    ruleid=convert_ruleid(rule_reference.rule.name or rule_reference.rule.id)
                 )
                 for rule_reference in referenced_rules
             )

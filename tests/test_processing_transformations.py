@@ -584,6 +584,64 @@ def field_function_transformation():
     )
 
 
+@pytest.mark.parametrize(
+    "field,mapped",
+    [
+        ("field1", "mapped_field1"),
+        ("field1", ["mapped_field1", "mapped_field2"]),
+        ("field1", []),
+        (None, "message"),
+    ],
+)
+def test_field_function_transformation_mapping_bypasses_function(field, mapped):
+    def transform_func(field):
+        pytest.fail("The function must not be called for an explicitly mapped field")
+
+    transformation = FieldFunctionTransformation(
+        mapping={field: mapped}, transform_func=transform_func, apply_keyword=field is None
+    )
+    assert transformation.apply_field_name(field) == mapped
+
+
+def test_field_function_transformation_mapping_with_partial_function():
+    def transform_func(field):
+        prefix, name = field.split(".", 1)
+        return name.lower()
+
+    pipeline = ProcessingPipeline(
+        [
+            ProcessingItem(
+                FieldFunctionTransformation(
+                    mapping={"LegacyField": "message"}, transform_func=transform_func
+                )
+            )
+        ]
+    )
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {"LegacyField": "value1", "event.OTHER": "value2"},
+                "condition": "selection",
+            },
+            "fields": ["LegacyField", "event.OTHER"],
+        }
+    )
+    pipeline.apply(rule)
+    assert rule.fields == ["message", "other"]
+    assert rule.to_dict()["detection"]["selection"] == {"message": "value1", "other": "value2"}
+
+
+def test_field_function_transformation_propagates_function_error():
+    def transform_func(field):
+        raise KeyError("unknown field")
+
+    transformation = FieldFunctionTransformation(mapping={}, transform_func=transform_func)
+    with pytest.raises(KeyError, match="unknown field"):
+        transformation.apply_field_name("field1")
+
+
 def test_field_function_transformation(dummy_pipeline, field_function_transformation):
     sigma_rule = SigmaRule.from_dict(
         {
@@ -1493,6 +1551,54 @@ def test_queryexpr_placeholders_mixed_string(dummy_pipeline, sigma_rule_placehol
         transformation.apply(sigma_rule_placeholders)
 
 
+def _queryexpr_placeholder_rule(name: str) -> SigmaRule:
+    return SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": {"field|expand": f"%{name}%"},
+                "condition": "test",
+            },
+        }
+    )
+
+
+@pytest.mark.parametrize("name", ["a b", 'say "hi"', "a(b)", "x,y"])
+def test_queryexpr_placeholders_unmapped_name_with_invalid_characters(dummy_pipeline, name):
+    transformation = QueryExpressionPlaceholderTransformation(expression="{field} in list({id})")
+    transformation.set_pipeline(dummy_pipeline)
+    with pytest.raises(SigmaValueError, match="Placeholder name .* not allowed"):
+        transformation.apply(_queryexpr_placeholder_rule(name))
+
+
+@pytest.mark.parametrize("name", ["var1", "Domain_Controllers", "list-1.v2"])
+def test_queryexpr_placeholders_unmapped_identifier_name(dummy_pipeline, name):
+    expr = "{field} in list({id})"
+    transformation = QueryExpressionPlaceholderTransformation(expression=expr)
+    transformation.set_pipeline(dummy_pipeline)
+    rule = _queryexpr_placeholder_rule(name)
+    transformation.apply(rule)
+    assert rule.detection.detections["test"].detection_items[0].value == [
+        SigmaQueryExpression(expr, name)
+    ]
+
+
+def test_queryexpr_placeholders_mapped_name_not_validated(dummy_pipeline):
+    # Only the mapped identifier is inserted into the expression, so any placeholder name works.
+    expr = "{field} in list({id})"
+    name = "Domain Controllers!"
+    transformation = QueryExpressionPlaceholderTransformation(
+        expression=expr, mapping={name: "domain_controllers"}
+    )
+    transformation.set_pipeline(dummy_pipeline)
+    rule = _queryexpr_placeholder_rule(name)
+    transformation.apply(rule)
+    assert rule.detection.detections["test"].detection_items[0].value == [
+        SigmaQueryExpression(expr, "domain_controllers")
+    ]
+
+
 def test_queryexpr_placeholders_include_and_exclude_error():
     with pytest.raises(SigmaConfigurationError, match="exclusively"):
         QueryExpressionPlaceholderTransformation(
@@ -2049,6 +2155,79 @@ def test_replace_string_backslashes(dummy_pipeline):
                 ]
             )
         ]
+    )
+
+
+@pytest.mark.parametrize(
+    "regex,replacement,value,expected",
+    [
+        # Regular expression not matching: value must stay unchanged.
+        ("nomatch", "x", ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI], None),
+        (
+            "nomatch",
+            "x",
+            [SpecialChars.WILDCARD_MULTI, "\\Temp\\", SpecialChars.WILDCARD_MULTI],
+            None,
+        ),
+        ("nomatch", "x", ["C:\\Windows\\", SpecialChars.WILDCARD_SINGLE, "x"], None),
+        ("nomatch", "x", ["C:\\Windows\\*"], None),  # escaped literal asterisk
+        (
+            "^C:",
+            "%SystemDrive%",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI],
+            ["%SystemDrive%\\Windows\\", SpecialChars.WILDCARD_MULTI],
+        ),
+        (
+            "Windows",
+            "System32",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_SINGLE, "x"],
+            ["C:\\System32\\", SpecialChars.WILDCARD_SINGLE, "x"],
+        ),
+        # Literal backslash in the replacement followed by a wildcard of the original value
+        (
+            "s/",
+            "s\\\\",
+            ["C:/Windows/", SpecialChars.WILDCARD_MULTI],
+            ["C:/Windows\\", SpecialChars.WILDCARD_MULTI],
+        ),
+        # Replacement matching the backslash before the wildcard
+        (
+            "\\\\",
+            "/",
+            ["C:\\Windows\\", SpecialChars.WILDCARD_MULTI],
+            ["C:/Windows/", SpecialChars.WILDCARD_MULTI],
+        ),
+    ],
+)
+def test_replace_string_backslash_before_wildcard(regex, replacement, value, expected):
+    s = SigmaString()
+    s.s = list(value)
+    expected_s = SigmaString()
+    expected_s.s = list(value) if expected is None else list(expected)
+    transformation = ReplaceStringTransformation(regex, replacement)
+    assert transformation.apply_string_value("field", s) == expected_s
+
+
+def test_replace_string_backslash_before_wildcard_conversion():
+    rule = SigmaCollection.from_yaml(r"""
+title: Test
+status: test
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    sel:
+        Image|contains: '\Temp\'
+        CommandLine|startswith: 'C:\Windows\'
+    condition: sel
+""")
+    pipeline = ProcessingPipeline(
+        [ProcessingItem(ReplaceStringTransformation("nomatch", "replacement"))]
+    )
+    assert (
+        TextQueryTestBackend(pipeline).convert(rule)
+        == TextQueryTestBackend().convert(rule)
+        == ['Image contains "\\Temp\\" and CommandLine startswith "C\\:\\Windows\\"']
     )
 
 

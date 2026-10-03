@@ -5,6 +5,7 @@ from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
 from ipaddress import IPv4Network, IPv6Network, ip_network
+from itertools import product
 from math import inf, isfinite
 from typing import (
     ClassVar,
@@ -235,7 +236,11 @@ class SigmaString(SigmaType):
                 if e_len > start:
                     # else:
                     if end < e_len:  # end lies within this string part
-                        return self.__class__(e[start : cast(int, end)])
+                        s = self.__class__()
+                        s.s = [
+                            e[start : cast(int, end)]
+                        ]  # don't re-parse the cut-out substring: plain wildcard characters from escaped sequences would be interpreted as special characters again
+                        return s
                     else:  # end lies behind the current string part
                         result.append(e[start:])
                         # end -= start
@@ -275,29 +280,44 @@ class SigmaString(SigmaType):
         """
         Replace %something% placeholders with Placeholder stub objects that can be later handled by the processing
         pipeline. This implements the expand modifier.
+
+        Iterates over the parts in self.s. For plain string parts, scans for %name% patterns and
+        replaces them with Placeholder objects. Backslashes are treated as ordinary literal characters
+        — a backslash immediately before %name% is emitted as a literal backslash followed by the
+        placeholder. The placeholder name must be non-empty and must not contain backslashes or
+        percent signs; otherwise the opening % is treated as a literal character.
+
+        Non-string parts (special characters, existing placeholders) are preserved unchanged.
         """
         res: list[str | SpecialChars | Placeholder] = []
-        for part in self.s:  # iterate over all parts and...
-            if isinstance(part, str):  # ...search in strings...
-                lastpos = 0
-                for m in re.finditer("(?<!\\\\)%(?P<name>[^%]+)%", part):  # ...for placeholders
-                    s = part[lastpos : m.start()].replace("\\%", "%")
-                    if s != "":
-                        res.append(
-                            s
-                        )  # append everything until placeholder (if not empty) as string part to new string
-                    res.append(
-                        Placeholder(m["name"])
-                    )  # insert placeholder stub at position of placeholder
-                    lastpos = m.end()
-                s = part[lastpos:].replace("\\%", "%")
-                if s != "":
-                    res.append(
-                        s
-                    )  # append everything from end of last placeholder until end of string (if not empty) to result string
-            else:  # special characters are passed to the result
+        for part in self.s:
+            if not isinstance(part, str):
                 res.append(part)
-        self.s = res  # finally replace the string with the result
+                continue
+            acc: list[str] = []
+            i = 0
+            while i < len(part):
+                c = part[i]
+                if c == "%":
+                    end = part.find("%", i + 1)
+                    if end != -1 and end > i + 1:
+                        name = part[i + 1 : end]
+                        # Accept only non-empty names without backslashes
+                        if "\\" not in name:
+                            if acc:
+                                res.append("".join(acc))
+                                acc = []
+                            res.append(Placeholder(name))
+                            i = end + 1
+                            continue
+                    # lone %, empty name, or name containing backslash: treat % as literal
+                    acc.append(c)
+                else:
+                    acc.append(c)
+                i += 1
+            if acc:
+                res.append("".join(acc))
+        self.s = res
 
         return self
 
@@ -384,14 +404,24 @@ class SigmaString(SigmaType):
     def __str__(self) -> str:
         return self.to_plain()
 
-    def to_plain(self, regex: bool = False) -> str:
-        """Generate string representation of SigmaString with or without regex escaping."""
+    def to_plain(self, regex: bool = False, escape_backslash: bool = False) -> str:
+        """
+        Generate string representation of SigmaString with or without regex escaping.
+
+        If escape_backslash is set, backslashes that would be interpreted as escaping character
+        when the result is parsed again (a backslash followed by a wildcard or another backslash)
+        are escaped, so that parsing the result yields the same SigmaString.
+        """
         rs = ""
-        for s in self.s:
+        for i, s in enumerate(self.s):
             if isinstance(s, str):
                 if regex:
                     rs += s
                 else:
+                    if escape_backslash:
+                        s = self._escape_backslashes(
+                            s, self.s[i + 1] if i + 1 < len(self.s) else None
+                        )
                     rs += s.replace("*", "\\*").replace("?", "\\?")
             elif isinstance(s, SpecialChars):
                 rs += special_char_mapping[s]
@@ -403,6 +433,28 @@ class SigmaString(SigmaType):
                 )
         return rs
 
+    @staticmethod
+    def _escape_backslashes(s: str, next_part: SigmaStringPartType | None) -> str:
+        """
+        Escape each backslash in the plain string part s that is followed by a character that
+        would turn it into an escaping character: a wildcard character (escaped or special) or
+        another backslash. next_part is the SigmaString part following s.
+        """
+        escaping_follower = (*char_mapping, escape_char)
+        r = ""
+        for j, c in enumerate(s):
+            if c == escape_char:
+                if j + 1 < len(s):
+                    followed = s[j + 1] in escaping_follower
+                else:
+                    followed = isinstance(next_part, SpecialChars) or (
+                        isinstance(next_part, str) and next_part[:1] in escaping_follower
+                    )
+                if followed:
+                    r += escape_char
+            r += c
+        return r
+
     def __repr__(self) -> str:
         return str(f"SigmaString({self.s})")
 
@@ -411,7 +463,9 @@ class SigmaString(SigmaType):
         return self.to_plain(regex=True)
 
     def __bytes__(self) -> bytes:
-        return str(self).encode()
+        # Plain parts are encoded as they are: the escaping of literal wildcard characters done by
+        # to_plain() is not part of the value.
+        return self.to_plain(regex=True).encode()
 
     def __len__(self) -> int:
         return sum(
@@ -888,6 +942,11 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         Setting wildcard to None indicates that this feature is not need and the query language handles CIDR notation properly.
         """
+        if (
+            wildcard is None
+        ):  # The query language handles CIDR notation properly: return the network itself in CIDR notation
+            return [str(self.network)]
+
         patterns = []
         if isinstance(
             self.network, IPv4Network
@@ -923,22 +982,112 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
             for subnet_v6 in self.network.subnets(
                 prefix_diff
             ):  # Generate all the subnetworks where the prefix ends at the next 4 bit boundary
-                first_addr = str(subnet_v6.network_address)
-                last_addr = str(subnet_v6.broadcast_address)
-                wildcard_required = False  # There's the possibility that no wildcard is required at all if the prefix is /128 (e.g. localhost)
-                for i in range(
-                    len(first_addr)
-                ):  # Determine the first char that differs between the first and last network address of the network. This is the location where the wildcard has to be placed.
-                    if first_addr[i] != last_addr[i]:
-                        wildcard_required = True
-                        break  # location found
-                if wildcard_required:
-                    patterns.append(
-                        str(subnet_v6)[:i] + wildcard
-                    )  # Generate pattern by cutting of at first difference
-                else:  # The /128 case - single address, use network_address not network (avoid "::1/128" literal)
-                    patterns.append(str(subnet_v6.network_address))
+                for pattern in self._expand_ipv6_subnet(subnet_v6, wildcard):
+                    if pattern not in patterns:
+                        patterns.append(pattern)
+            # Remove patterns that are covered by another pattern ending with a wildcard.
+            patterns = [
+                pattern
+                for pattern in patterns
+                if not any(
+                    other != pattern
+                    and other.endswith(wildcard)
+                    and pattern.startswith(other[: -len(wildcard)])
+                    for other in patterns
+                )
+            ]
         return patterns
+
+    @staticmethod
+    def _expand_ipv6_subnet(subnet: IPv6Network, wildcard: str) -> list[str]:
+        """
+        Generate wildcard patterns that match the textual representation (RFC 5952: lower case,
+        no leading zeros, the longest run of at least two zero groups compressed to ::) of all
+        addresses of an IPv6 network whose prefix length is a multiple of 4.
+
+        The textual representation depends on which groups are zero, because of the :: compression.
+        Therefore, all possible combinations of zero and non-zero groups are enumerated and the
+        resulting pattern is generated for each of them. Groups covered completely by the prefix
+        are emitted as they are, a group covered partially by the prefix is emitted as fixed digits
+        followed by single-character wildcards for the remaining digits, and groups not covered by
+        the prefix are emitted as wildcard.
+
+        Wildcards can't express the number of groups compressed by :: and single-character
+        wildcards also match a colon. Therefore, the patterns still match some addresses outside
+        of the network, e.g. if the :: of a pattern must cover more than two zero groups. Backends
+        should prefer native CIDR matching where available.
+        """
+        if subnet.prefixlen == 128:  # single address
+            return [str(subnet.network_address)]
+
+        fixed_groups, rem = divmod(subnet.prefixlen, 16)
+        fixed_nibbles = rem // 4
+        exploded = subnet.network_address.exploded.split(":")
+
+        # For each group: list of possible textual representations if the group is not part of
+        # the compressed zero run and whether the group can be zero / non-zero.
+        group_texts: list[list[str]] = []
+        can_be_zero: list[bool] = []
+        can_be_nonzero: list[bool] = []
+        for i, group in enumerate(exploded):
+            if i < fixed_groups:  # group is completely covered by the prefix
+                value = int(group, 16)
+                group_texts.append([format(value, "x")])
+                can_be_zero.append(value == 0)
+                can_be_nonzero.append(value != 0)
+            elif i == fixed_groups and fixed_nibbles > 0:  # group is partially covered by prefix
+                nibbles = group[:fixed_nibbles]
+                free_digits = 4 - fixed_nibbles
+                # Fixed digits are non-zero: the digit count is fixed, but leading zeros are
+                # omitted (e.g. fixed "0a" with two free digits is written as "a??")
+                if int(nibbles, 16) != 0:
+                    group_texts.append([nibbles.lstrip("0") + "?" * free_digits])
+                    can_be_zero.append(False)
+                else:  # group value is below 16**free_digits: 1 up to free_digits digits
+                    group_texts.append(["?" * n for n in range(1, free_digits + 1)])
+                    can_be_zero.append(True)
+                can_be_nonzero.append(True)
+            else:  # group not covered by prefix
+                group_texts.append([wildcard])
+                can_be_zero.append(True)
+                can_be_nonzero.append(True)
+
+        patterns: dict[str, None] = {}  # insertion-ordered de-duplication
+        for zero_groups in product(*([False, True] for _ in range(8))):
+            if any(
+                (is_zero and not can_be_zero[i]) or (not is_zero and not can_be_nonzero[i])
+                for i, is_zero in enumerate(zero_groups)
+            ):
+                continue
+
+            # Determine the zero run that is compressed to :: (longest, first one on ties, at least
+            # two groups).
+            run_start, run_len = 0, 0
+            i = 0
+            while i < 8:
+                if zero_groups[i]:
+                    j = i
+                    while j < 8 and zero_groups[j]:
+                        j += 1
+                    if j - i > run_len:
+                        run_start, run_len = i, j - i
+                    i = j
+                else:
+                    i += 1
+
+            for texts in product(*group_texts):
+                if run_len >= 2:
+                    pattern = (
+                        ":".join(texts[:run_start]) + "::" + ":".join(texts[run_start + run_len :])
+                    )
+                else:
+                    pattern = ":".join(texts)
+                # Everything after a wildcard that is not preceded by :: is covered by the wildcard.
+                wildcard_pos = pattern.find(wildcard)
+                if wildcard_pos >= 0 and "::" not in pattern[:wildcard_pos]:
+                    pattern = pattern[: wildcard_pos + len(wildcard)]
+                patterns[pattern] = None
+        return list(patterns)
 
 
 class CompareOperators(Enum):

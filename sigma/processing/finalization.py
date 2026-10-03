@@ -114,6 +114,7 @@ class NestedFinalizer(Finalizer):
         d: dict[str, Any],
         allow_template_vars: bool = False,
         vars_allowed_paths: tuple[str, ...] | None = None,
+        allow_external_sources: bool = False,
     ) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
@@ -121,6 +122,8 @@ class NestedFinalizer(Finalizer):
         for finalizer in d["finalizers"]:
             finalizer.pop("allow_template_vars", None)  # Strip untrusted YAML value
             finalizer.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
+            finalizer.pop("allow_external_sources", None)  # Strip untrusted YAML value
+            finalizer.pop("restrict_template_path", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = finalizer.pop("type")
             except KeyError:
@@ -130,6 +133,7 @@ class NestedFinalizer(Finalizer):
             if issubclass(finalizer_cls, TemplateBase):
                 finalizer["allow_template_vars"] = allow_template_vars
                 finalizer["vars_allowed_paths"] = vars_allowed_paths
+                finalizer["restrict_template_path"] = not allow_external_sources
                 fs.append(finalizer_cls.from_dict(finalizer))
             elif finalizer_cls is cls:
                 fs.append(
@@ -137,6 +141,7 @@ class NestedFinalizer(Finalizer):
                         finalizer,
                         allow_template_vars=allow_template_vars,
                         vars_allowed_paths=vars_allowed_paths,
+                        allow_external_sources=allow_external_sources,
                     )
                 )
             else:

@@ -1031,6 +1031,66 @@ correlation:
     assert '"bad\\"name2"' in result_with_typing[0]
 
 
+def temporal_correlation_with_rule_names(
+    correlation_type: str, first_name: str, second_name: str
+) -> SigmaCollection:
+    return SigmaCollection.from_yaml(f"""
+title: Rule one
+name: '{first_name}'
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 1
+    condition: selection
+---
+title: Rule two
+name: '{second_name}'
+status: test
+logsource:
+    product: windows
+    service: security
+detection:
+    selection:
+        EventID: 2
+    condition: selection
+---
+title: Temporal correlation
+status: test
+correlation:
+    type: {correlation_type}
+    rules:
+        - '{first_name}'
+        - '{second_name}'
+    group-by:
+        - User
+    timespan: 5m
+""")
+
+
+@pytest.mark.parametrize(
+    "correlation_type,expected_prefix",
+    [
+        ("temporal", "| temporal window=5min"),
+        ("temporal_ordered", "| temporal ordered=true window=5min"),
+    ],
+)
+def test_correlation_referenced_rules_are_escaped(test_backend, correlation_type, expected_prefix):
+    result = test_backend.convert(
+        temporal_correlation_with_rule_names(correlation_type, 'bad"name', "rule two")
+    )
+    assert f'{expected_prefix} eventtypes="bad\\"name","rule two" by User' in result[0]
+
+
+def test_correlation_referenced_rules_plain_names_unchanged(test_backend):
+    result = test_backend.convert(
+        temporal_correlation_with_rule_names("temporal", "rule-one_1.a", "rule_two")
+    )
+    assert "| temporal window=5min eventtypes=rule-one_1.a,rule_two by User" in result[0]
+
+
 def test_correlation_condition_fieldref_is_escaped(test_backend):
     rule_collection = SigmaCollection.from_yaml("""
 title: API response event

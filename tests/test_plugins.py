@@ -130,6 +130,7 @@ def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, 
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
 
 
+@pytest.mark.online
 @pytest.mark.xfail(
     condition=re.match(r"^\d+\.\d+\.\d+\w+\d+$", importlib.metadata.version("pysigma")),
     reason="pysigma version is release candidate or other special version.",
@@ -314,6 +315,7 @@ def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     ) == SigmaPluginDirectory(note="Test", plugins={sigma_plugin.uuid: sigma_plugin})
 
 
+@pytest.mark.online
 def test_sigma_plugin_directory_default():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()
     assert plugin_dir.plugin_count() > 10
@@ -391,6 +393,7 @@ def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory: SigmaPlug
     assert plugins[0].id == "test"
 
 
+@pytest.mark.online
 def test_sigma_plugin_directory_get_plugins_compatible(
     plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: dict[str, Any]
 ):

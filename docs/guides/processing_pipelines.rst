@@ -730,7 +730,7 @@ To create a custom transformation, subclass the appropriate base class:
 
        def apply_string_value(self, field: str, val: SigmaString) -> SigmaString | None:
            # Return transformed value, or None to keep original
-           return SigmaString(val.plain + "_modified")
+           return val + "_modified"
 
 Pipeline Variables
 ------------------

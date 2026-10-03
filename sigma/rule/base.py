@@ -35,6 +35,63 @@ class SigmaYAMLLoader(yaml.CSafeLoader):
         return super().construct_mapping(node, deep)
 
 
+# Maximum number of nodes that YAML anchors/aliases may add on top of the parsed document when it
+# is expanded into a tree. Parsed YAML keeps aliases as shared references, but rule parsing walks
+# the structure as a tree, so a chain of aliases ("billion laughs") expands exponentially.
+MAX_ALIAS_EXPANSION = 10000
+
+
+def check_alias_expansion(
+    obj: Any,
+    error_class: type[sigma_exceptions.SigmaError] = sigma_exceptions.SigmaError,
+    source: sigma_exceptions.SigmaRuleLocation | None = None,
+    max_expansion: int | None = None,
+) -> None:
+    """
+    Raise error_class if the parsed YAML structure obj contains reference cycles or if expanding
+    shared (aliased) lists and mappings into a tree adds more than max_expansion nodes
+    (default: MAX_ALIAS_EXPANSION). Structures without shared references always pass. Runs in
+    time linear in the number of distinct containers.
+    """
+    if max_expansion is None:
+        max_expansion = MAX_ALIAS_EXPANSION
+    expanded: dict[int, int] = {}  # id of container -> size of its expansion as a tree
+    unique = 0  # size of the structure counting every distinct container only once
+    on_stack: set[int] = set()
+    stack: list[tuple[Any, bool]] = [(obj, False)]
+    while stack:
+        node, children_done = stack.pop()
+        if not isinstance(node, (dict, list)):
+            continue
+        children = list(node.values()) if isinstance(node, dict) else node
+        node_id = id(node)
+        if children_done:
+            size = 1
+            for child in children:
+                size += expanded[id(child)] if isinstance(child, (dict, list)) else 1
+            expanded[node_id] = size
+            on_stack.discard(node_id)
+            unique += 1 + sum(1 for child in children if not isinstance(child, (dict, list)))
+            if size - unique > max_expansion:
+                raise error_class(
+                    "YAML aliases expand to too many nodes (possible 'billion laughs' attack)",
+                    source=source,
+                )
+        elif node_id not in expanded:
+            if node_id in on_stack:
+                raise error_class("Recursive YAML structure is not supported", source=source)
+            on_stack.add(node_id)
+            stack.append((node, True))
+            for child in children:
+                if isinstance(child, (dict, list)):
+                    if id(child) in on_stack:
+                        raise error_class(
+                            "Recursive YAML structure is not supported", source=source
+                        )
+                    if id(child) not in expanded:
+                        stack.append((child, False))
+
+
 @dataclass
 class SigmaRuleBase:
     title: str = ""

@@ -35,6 +35,22 @@ def test_single_rule():
     assert SigmaCollection.from_dicts([rule]) == SigmaCollection([SigmaRule.from_dict(rule)])
 
 
+@pytest.mark.parametrize("trailer", ["---\n", "---\n# only a comment\n", "---\n---\n"])
+def test_from_yaml_skips_empty_documents(trailer):
+    rule = """
+title: Test
+logsource:
+    category: test
+detection:
+    test:
+        field: value
+    condition: test
+"""
+    collection = SigmaCollection.from_yaml(rule + trailer)
+    assert len(collection) == 1
+    assert collection.errors == []
+
+
 def test_merge():
     rules = [
         {
@@ -393,6 +409,100 @@ def test_get_unreferenced_rules(rules_with_correlation):
     output_rules = list(rules_with_correlation.get_unreferenced_rules())
     assert len(output_rules) == 1
     assert isinstance(output_rules[0], SigmaCorrelationRule)
+
+
+def test_correlation_comes_after_referenced_rules_with_unrelated_rule_between():
+    # A correlation, an unrelated rule, then the rules the correlation refers to: the order files
+    # can come in when a directory is read. Sorting by "is referenced by" (a partial order) left
+    # this order unchanged, so the correlation was converted before the rules it refers to.
+    rule_collection = SigmaCollection.from_yaml("""
+title: Correlating 1+2
+name: corr-1-2
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+        - rule-2
+    group-by: user
+    timespan: 5m
+---
+title: Unrelated
+name: unrelated
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\x.exe'
+    condition: selection
+---
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\a.exe'
+    condition: selection
+---
+title: Rule 2
+name: rule-2
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\b.exe'
+    condition: selection
+""")
+    titles = [rule.title for rule in rule_collection.rules]
+    assert titles.index("Correlating 1+2") > titles.index("Rule 1")
+    assert titles.index("Correlating 1+2") > titles.index("Rule 2")
+
+
+def test_correlation_of_correlation_comes_after_both():
+    rule_collection = SigmaCollection.from_yaml("""
+title: Outer
+name: outer
+correlation:
+    type: event_count
+    rules:
+        - inner
+    timespan: 1h
+    condition:
+        gte: 2
+---
+title: Inner
+name: inner
+correlation:
+    type: temporal
+    rules:
+        - rule-1
+    timespan: 5m
+---
+title: Unrelated
+name: unrelated
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\x.exe'
+    condition: selection
+---
+title: Rule 1
+name: rule-1
+logsource:
+    category: process_creation
+    product: windows
+detection:
+    selection:
+        ImageFile|endswith: '\\\\a.exe'
+    condition: selection
+""")
+    titles = [rule.title for rule in rule_collection.rules]
+    assert titles.index("Rule 1") < titles.index("Inner") < titles.index("Outer")
 
 
 def test_load_ruleset_with_correlation_referencing_nonexistent_rule():

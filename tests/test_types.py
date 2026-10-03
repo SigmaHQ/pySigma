@@ -1,5 +1,6 @@
 import re
-from ipaddress import IPv4Network, IPv6Network
+from fnmatch import fnmatchcase
+from ipaddress import IPv4Network, IPv6Address, IPv6Network
 
 import pytest
 
@@ -177,11 +178,33 @@ def test_string_placeholders_replace():
 
 
 def test_string_placeholders_escape():
+    # Backslashes before % signs are kept as literal characters; the placeholder %var%
+    # is still found because it has no backslash before its closing %.
     assert SigmaString("\\%test1\\%test2\\%%var%\\%test3\\%").insert_placeholders().s == [
-        "%test1%test2%",
+        "\\%test1\\%test2\\%",
         Placeholder("var"),
-        "%test3%",
+        "\\%test3\\%",
     ]
+
+
+def test_string_placeholders_escape_percent():
+    """\\% keeps both the backslash and the percent as literals when the name is invalid."""
+    assert SigmaString("\\%foo\\%").insert_placeholders().s == ["\\%foo\\%"]
+
+
+def test_string_placeholders_escaped_backslash_before_placeholder():
+    """\\\\% in the Sigma rule is a literal \\ followed by a placeholder."""
+    result = SigmaString("\\\\%foo%").insert_placeholders()
+    assert result.s == ["\\", Placeholder("foo")]
+
+
+def test_string_placeholders_escaped_backslash_in_value():
+    """\\\\%name% expands correctly when placeholder is replaced with values."""
+    result = SigmaString("\\\\%foo%").insert_placeholders()
+    expanded = result.replace_placeholders(
+        lambda ph: iter(["bar", "baz"]) if ph.name == "foo" else iter([ph])
+    )
+    assert [str(v) for v in expanded] == ["\\bar", "\\baz"]
 
 
 def test_string_contains_placeholders():
@@ -352,8 +375,40 @@ def test_strings_to_plain():
     assert SigmaString("test*?").to_plain() == "test*?"
 
 
+def test_strings_to_plain_escape_backslash():
+    s = SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI
+    assert s.to_plain() == "C:\\Temp\\*"  # default unchanged
+    assert s.to_plain(escape_backslash=True) == "C:\\Temp\\\\*"
+
+
+@pytest.mark.parametrize(
+    "parts",
+    [
+        ["a\\", SpecialChars.WILDCARD_MULTI],
+        ["a\\", SpecialChars.WILDCARD_SINGLE, "b"],
+        ["a\\*b"],
+        ["a\\?b"],
+        ["\\\\server\\share"],
+        ["a\\\\", SpecialChars.WILDCARD_MULTI],
+        ["C:\\Temp\\"],
+        ["\\"],
+        ["a\\", Placeholder("p"), "\\"],
+        [SpecialChars.WILDCARD_MULTI, "\\x\\", SpecialChars.WILDCARD_SINGLE],
+    ],
+)
+def test_strings_to_plain_escape_backslash_roundtrip(parts):
+    s = SigmaString()
+    s.s = parts
+    assert SigmaString(s.to_plain(escape_backslash=True)).insert_placeholders() == s
+
+
 def test_strings_to_bytes():
     assert bytes(SigmaString("test*?")) == b"test*?"
+
+
+def test_strings_to_bytes_escaped_wildcards():
+    # Escaped wildcards are literal characters of the value: the escaping is not encoded.
+    assert bytes(SigmaString("x\\*y\\?z")) == b"x*y?z"
 
 
 def test_strings_len(sigma_string):
@@ -439,6 +494,22 @@ def test_string_index_slice_with_escaped(sigma_string):
 
 def test_string_index_slice_start_and_end_in_same_string_part(sigma_string):
     assert sigma_string[2:4] == SigmaString("es")
+
+
+def test_string_index_slice_cut_out_escaped_wildcard(sigma_string):
+    """The escaped wildcard at index 9 is a plain character and must not become special when cut out by a slice."""
+    assert sigma_string[9:11] == SigmaString("\\*i")
+
+
+def test_string_index_slice_cut_out_only_escaped_wildcard():
+    s = SigmaString("a\\*b")
+    assert s[1:2] == SigmaString("\\*")
+
+
+def test_string_index_slice_cut_out_escaped_wildcard_cased():
+    s = SigmaCasedString("a\\*b")
+    assert type(s[1:2]) is SigmaCasedString
+    assert s[1:2] == SigmaCasedString("\\*")
 
 
 def test_string_index_slice_negative_end(sigma_string):
@@ -832,20 +903,108 @@ def test_cidr_expand_ipv6_0():
 
 
 def test_cidr_expand_ipv6_56():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab*"]
+    # Group ab00-abff always has 4 digits: ab* would also match e.g. 1234:5678:0:ab:1::
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/56").expand() == ["1234:5678:0:ab??:*"]
+
+
+def test_cidr_expand_ipv6_64_compressed():
+    """Addresses of the network are compressed at the network prefix or in the host part."""
+    assert SigmaCIDRExpression("2001:db8::/64").expand() == ["2001:db8:0:0:*", "2001:db8::*"]
+
+
+def test_cidr_expand_ipv6_112():
+    assert SigmaCIDRExpression("2001:db8::/112").expand() == ["2001:db8::*"]
+
+
+def test_cidr_expand_ipv6_120():
+    assert SigmaCIDRExpression("2001:db8::/120").expand() == [
+        "2001:db8::?",
+        "2001:db8::??",
+        "2001:db8::",
+    ]
+
+
+def test_cidr_expand_ipv6_128_compressed():
+    assert SigmaCIDRExpression("2001:db8::1/128").expand() == ["2001:db8::1"]
+
+
+@pytest.mark.parametrize(
+    "cidr,expected",
+    [
+        # zero groups compressed in network but not in all addresses
+        ("2001:db8:0:0:1::/80", ["2001:db8::1:*:*:*", "2001:db8:0:0:1::"]),
+        ("2001:0:0:1::/64", ["2001::1:*:*:*:*", "2001:0:0:1:*"]),
+        # leading zeros are not written, partially covered groups need an exact digit count
+        ("2001:db8:1000::/36", ["2001:db8:1???:*"]),
+        ("fe80::/10", ["fe8?:*", "fe9?:*", "fea?:*", "feb?:*"]),
+    ],
+)
+def test_cidr_expand_ipv6_prefix_not_truncated(cidr, expected):
+    assert SigmaCIDRExpression(cidr).expand() == expected
+
+
+@pytest.mark.parametrize(
+    "cidr,inside,outside",
+    [
+        (
+            "2001:db8:0:0:1::/80",
+            ["2001:db8::1:0:0:1", "2001:db8::1:a:b:c", "2001:db8:0:0:1::"],
+            ["2001:db8:ffff::1", "2001:db8::2:0:0:1", "2001:db8::1", "2001:db8:1::1"],
+        ),
+        (
+            "2001:0:0:1::/64",
+            ["2001:0:0:1::1", "2001:0:0:1::", "2001::1:0:1:0:1", "2001::1:a:b:c:d"],
+            ["2001:abcd::1", "2001::1", "2001:0:0:2::"],
+        ),
+        (
+            "2001:db8:1000::/36",
+            ["2001:db8:1000::", "2001:db8:1fff:ffff::1", "2001:db8:1abc:1:2:3:4:5"],
+            ["2001:db8:1::", "2001:db8:1:2:3:4:5:6", "2001:db8:160:1:2:3:4:5", "2001:db8:2000::"],
+        ),
+        (
+            "2001:db8::/64",
+            ["2001:db8::", "2001:db8::1", "2001:db8:0:0:1::", "2001:db8::1:2:3:4"],
+            ["2001:db8:1::", "2001:db9::1"],
+        ),
+    ],
+)
+def test_cidr_expand_ipv6_matches(cidr, inside, outside):
+    """
+    Patterns match the RFC 5952 representation of addresses inside the network and reject the
+    listed outside addresses. Wildcard patterns can still match some other outside addresses
+    (see SigmaCIDRExpression._expand_ipv6_subnet), so this is not a proof of strict correctness.
+    """
+    patterns = SigmaCIDRExpression(cidr).expand()
+    network = IPv6Network(cidr)
+    for address in inside:
+        assert str(IPv6Address(address)) == address  # RFC 5952 representation
+        assert IPv6Address(address) in network
+        assert any(fnmatchcase(address, pattern) for pattern in patterns), address
+    for address in outside:
+        assert str(IPv6Address(address)) == address
+        assert IPv6Address(address) not in network
+        assert not any(fnmatchcase(address, pattern) for pattern in patterns), address
+
+
+def test_cidr_expand_ipv6_without_wildcard():
+    assert SigmaCIDRExpression("2001:db8::/64").expand(wildcard=None) == ["2001:db8::/64"]
+
+
+def test_cidr_expand_ipv4_without_wildcard():
+    assert SigmaCIDRExpression("192.168.1.0/24").expand(wildcard=None) == ["192.168.1.0/24"]
 
 
 def test_cidr_expand_ipv6_58():
     assert SigmaCIDRExpression("1234:5678:0:ab00::/58").expand() == [
-        "1234:5678:0:ab0*",
-        "1234:5678:0:ab1*",
-        "1234:5678:0:ab2*",
-        "1234:5678:0:ab3*",
+        "1234:5678:0:ab0?:*",
+        "1234:5678:0:ab1?:*",
+        "1234:5678:0:ab2?:*",
+        "1234:5678:0:ab3?:*",
     ]
 
 
 def test_cidr_expand_ipv6_60():
-    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand() == ["1234:5678:0:ab0*"]
+    assert SigmaCIDRExpression("1234:5678:0:ab00::/60").expand() == ["1234:5678:0:ab0?:*"]
 
 
 def test_cidr_expand_ipv6_64():

@@ -16,7 +16,7 @@ from pyparsing import (
     ParseException,
     ParserElement,
 )
-from typing import ClassVar, Type, cast, TYPE_CHECKING
+from typing import ClassVar, Type, TypeVar, cast, TYPE_CHECKING
 from sigma.types import SigmaType
 from sigma.exceptions import SigmaConditionError, SigmaRuleLocation
 
@@ -25,6 +25,9 @@ ParserElement.enable_packrat(cache_size_limit=128)
 
 if TYPE_CHECKING:
     from sigma.rule.detection import SigmaDetection, SigmaDetectionItem, SigmaDetections
+
+
+OperandType = TypeVar("OperandType")
 
 
 @dataclass
@@ -81,6 +84,31 @@ class ParentChainMixin:
         return cast("ConditionItem", self)
 
 
+def unwrap_parse_result_operand(
+    arg: OperandType | ParseResults | None,
+    *,
+    error_class: type[Exception] = SigmaConditionError,
+    error_message: str = "Invalid wrapped condition operand",
+) -> OperandType | None:
+    """
+    Unwrap a ParseResults that contains exactly one operand.
+
+    pyparsing's infix_notation gives a higher-precedence sub-expression -- a negated
+    term, or a parenthesized group -- its own ParseResults when it appears as an
+    operand of a lower-precedence operator, so "a and not b" arrives in from_parsed
+    as [a, ParseResults([ConditionNOT([b])])] instead of [a, ConditionNOT([b])].
+
+    ConditionItem.postprocess() calls a method on each argument. ParseResults resolves
+    an unknown attribute to an empty string rather than raising AttributeError, so a
+    wrapper left in place turns that call into "'str' object is not callable".
+    """
+    while isinstance(arg, ParseResults):
+        if len(arg) != 1:
+            raise error_class(error_message)
+        arg = arg[0]
+    return arg
+
+
 @dataclass
 class ConditionItem(ParentChainMixin, ABC):
     arg_count: ClassVar[int]
@@ -113,6 +141,8 @@ class ConditionItem(ParentChainMixin, ABC):
                 args = t[0][0::2]
         else:  # pragma: no cover
             args = list()  # this case can only happen if broken classes are defined
+        if not cls.token_list:
+            args = [unwrap_parse_result_operand(arg) for arg in args]
         return [cls(args)]
 
     def postprocess(
@@ -251,6 +281,11 @@ class ConditionSelector(ConditionItem):
         self.parent = parent
 
         ids = self.resolve_referenced_detections(detections)
+        if not ids:  # an empty selector would be dropped from the condition silently
+            raise SigmaConditionError(
+                f"Selector '{ self.args[0] } of { self.pattern }' doesn't match any detection",
+                source=source,
+            )
         cond = self.cond_class(
             cast(
                 list[
@@ -281,7 +316,8 @@ class ConditionValueExpression(ParentChainMixin):
     value: SigmaType
 
 
-identifier = Word(alphanums + "_-")
+identifier_chars = alphanums + "_-"
+identifier = Word(identifier_chars)
 identifier.set_parse_action(ConditionIdentifier.from_parsed)
 
 quantifier = Keyword("1") | Keyword("any") | Keyword("all")
@@ -290,12 +326,14 @@ selector = quantifier + Keyword("of") + identifier_pattern
 selector.set_parse_action(ConditionSelector.from_parsed)
 
 operand = selector | identifier
-condition = infix_notation(
+condition = infix_notation(  # type: ignore[no-untyped-call]
     operand,
     [
-        ("not", 1, opAssoc.RIGHT, ConditionNOT.from_parsed),
-        ("and", 2, opAssoc.LEFT, ConditionAND.from_parsed),
-        ("or", 2, opAssoc.LEFT, ConditionOR.from_parsed),
+        # Operators are keywords, not literals: otherwise identifiers starting with an
+        # operator name (e.g. "notsel", "notepad") are silently split ("not sel").
+        (Keyword("not", ident_chars=identifier_chars), 1, opAssoc.RIGHT, ConditionNOT.from_parsed),
+        (Keyword("and", ident_chars=identifier_chars), 2, opAssoc.LEFT, ConditionAND.from_parsed),
+        (Keyword("or", ident_chars=identifier_chars), 2, opAssoc.LEFT, ConditionOR.from_parsed),
     ],
 )
 

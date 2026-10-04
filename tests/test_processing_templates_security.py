@@ -163,9 +163,13 @@ def test_template_path_below_pipeline_dir_allowed(pipeline_dir, rule_collection)
 
 
 def test_template_path_allowed_with_external_sources_opt_in(secret_dir, rule_collection):
+    from sigma.policy import SigmaPolicy
+    from sigma.policy.regex_engine import RE2RegexEngine
+
+    policy = SigmaPolicy(regex_engine=RE2RegexEngine(), allow_external_sources=True)
     pipeline = ProcessingPipeline.from_yaml(
         f"postprocessing:\n  - type: template\n    path: {secret_dir}\n    template: creds\n",
-        allow_external_sources=True,
+        policy=policy,
     )
     assert convert(pipeline, rule_collection) == ["SECRET=hunter2"]
 

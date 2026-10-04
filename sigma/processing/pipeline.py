@@ -80,9 +80,7 @@ class ProcessingItemBase:
         cls,
         d: dict[str, Any],
         transformations: dict[str, Type[Transformation]],
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
-        allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> dict[str, Any]:
         """Return class instantiation parameters for attributes contained in base class for further
         usage in similar methods of classes inherited from this class."""
@@ -110,9 +108,7 @@ class ProcessingItemBase:
             "transformation": cls._instantiate_transformation(
                 d,
                 transformations,
-                allow_template_vars=allow_template_vars,
-                vars_allowed_paths=vars_allowed_paths,
-                allow_external_sources=allow_external_sources,
+                policy=policy,
             ),
         }
 
@@ -315,9 +311,7 @@ class ProcessingItemBase:
         cls,
         d: dict[str, Any],
         transformations: dict[str, Type[Transformation]],
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
-        allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> Transformation:
         try:
             transformation_class_name = d["type"]
@@ -354,14 +348,17 @@ class ProcessingItemBase:
                 "vars_allowed_paths",
                 "allow_external_sources",
                 "restrict_template_path",
+                "policy",
             }
         }
+        import sigma as _sigma
+
+        effective_policy = policy or _sigma.default_policy
         if issubclass(transformation_class, TemplateBase):
-            params["allow_template_vars"] = allow_template_vars
-            params["vars_allowed_paths"] = vars_allowed_paths
-            params["restrict_template_path"] = not allow_external_sources
+            params["policy"] = policy
+            params["restrict_template_path"] = not effective_policy.allow_external_sources
         if issubclass(transformation_class, ExternalSourceBaseTransformation):
-            params["allow_external_sources"] = allow_external_sources
+            params["policy"] = policy
         try:
             if (
                 transformation_class is NestedQueryPostprocessingTransformation
@@ -371,8 +368,7 @@ class ProcessingItemBase:
                     (
                         QueryPostprocessingItem.from_dict(
                             item,
-                            allow_template_vars=allow_template_vars,
-                            vars_allowed_paths=vars_allowed_paths,
+                            policy=policy,
                         )
                         if isinstance(item, dict)
                         else item
@@ -455,13 +451,13 @@ class ProcessingItem(ProcessingItemBase):
     def from_dict(
         cls,
         d: dict[str, Any],
-        allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingItem":
         """Instantiate processing item from parsed definition and variables."""
         kwargs = super()._base_args_from_dict(
             d,
             transformations,
-            allow_external_sources=allow_external_sources,
+            policy=policy,
         )
 
         detection_item_conds = cls._parse_conditions(
@@ -693,9 +689,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
     def from_dict(
         cls,
         d: dict[str, Any],
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
-        allow_external_sources: bool = False,
+        policy: "SigmaPolicy | None" = None,
     ) -> "QueryPostprocessingItem":
         """Instantiate processing item from parsed definition and variables.
 
@@ -705,9 +699,7 @@ class QueryPostprocessingItem(ProcessingItemBase):
         kwargs = super()._base_args_from_dict(
             d,
             cast(dict[str, Type[Transformation]], query_postprocessing_transformations),
-            allow_template_vars=allow_template_vars,
-            vars_allowed_paths=vars_allowed_paths,
-            allow_external_sources=allow_external_sources,
+            policy=policy,
         )
         return cls(**kwargs)
 
@@ -830,9 +822,6 @@ class ProcessingPipeline:
     def from_dict(
         cls,
         d: dict[str, Any],
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
-        allow_external_sources: bool = False,
         policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
@@ -854,15 +843,17 @@ class ProcessingPipeline:
         if custom_keys:
             raise SigmaConfigurationError(f"Unkown keys {custom_keys}")
 
+        import sigma as _sigma
+
+        effective_policy = policy or _sigma.default_policy
+
         vars = d.get("vars", dict())  # default: no variables
 
         items = d.get("transformations", list())  # default: no transformation
         processing_items = list()
         for i, item in enumerate(items):
             try:
-                processing_item = ProcessingItem.from_dict(
-                    item, allow_external_sources=allow_external_sources
-                )
+                processing_item = ProcessingItem.from_dict(item, policy=policy)
                 processing_items.append(processing_item)
             except SigmaConfigurationError as e:
                 raise SigmaConfigurationError(f"Error in processing rule {i + 1}: {str(e)}") from e
@@ -874,9 +865,7 @@ class ProcessingPipeline:
                 postprocessing_items.append(
                     QueryPostprocessingItem.from_dict(
                         item,
-                        allow_template_vars=allow_template_vars,
-                        vars_allowed_paths=vars_allowed_paths,
-                        allow_external_sources=allow_external_sources,
+                        policy=policy,
                     )
                 )
             except SigmaConfigurationError as e:
@@ -889,6 +878,7 @@ class ProcessingPipeline:
             fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             fd.pop("allow_external_sources", None)  # Strip untrusted YAML value
             fd.pop("restrict_template_path", None)  # Strip untrusted YAML value
+            fd.pop("policy", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = fd.pop("type")
             except KeyError:
@@ -902,17 +892,14 @@ class ProcessingPipeline:
                 raise SigmaConfigurationError(f"Finalizer '{finalizer_type}' is unknown")
 
             if issubclass(finalizer_cls, TemplateBase):
-                fd["allow_template_vars"] = allow_template_vars
-                fd["vars_allowed_paths"] = vars_allowed_paths
-                fd["restrict_template_path"] = not allow_external_sources
+                fd["policy"] = policy
+                fd["restrict_template_path"] = not effective_policy.allow_external_sources
                 fs.append(finalizer_cls.from_dict(fd))
             elif finalizer_cls is NestedFinalizer:
                 fs.append(
                     NestedFinalizer.from_dict(
                         fd,
-                        allow_template_vars=allow_template_vars,
-                        vars_allowed_paths=vars_allowed_paths,
-                        allow_external_sources=allow_external_sources,
+                        policy=policy,
                     )
                 )
             else:
@@ -937,31 +924,32 @@ class ProcessingPipeline:
     def from_yaml(
         cls,
         processing_pipeline: str,
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
         source_path: str | None = None,
-        allow_external_sources: bool = False,
         policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingPipeline":
         """Convert YAML input string into processing pipeline.
 
-        If *source_path* is provided and *vars_allowed_paths* is ``None``, the
+        If *source_path* is provided and *policy.vars_allowed_paths* is ``None``, the
         directory containing *source_path* is automatically used as the only
         allowed base directory for template vars files. This prevents a
         pipeline YAML from referencing vars files outside its own directory
         tree.
         """
-        if vars_allowed_paths is None and source_path is not None:
-            vars_allowed_paths = (os.path.dirname(os.path.realpath(source_path)),)
+        import dataclasses
+        import sigma as _sigma
+
+        effective_policy = policy or _sigma.default_policy
+        if effective_policy.vars_allowed_paths is None and source_path is not None:
+            policy = dataclasses.replace(
+                effective_policy,
+                vars_allowed_paths=(os.path.dirname(os.path.realpath(source_path)),),
+            )
         try:
             parsed_pipeline = yaml.safe_load(processing_pipeline)
         except yaml.parser.ParserError as e:
             raise SigmaPipelineParsingError("Error in parsing of a Sigma processing pipeline")
         return cls.from_dict(
             parsed_pipeline,
-            allow_template_vars=allow_template_vars,
-            vars_allowed_paths=vars_allowed_paths,
-            allow_external_sources=allow_external_sources,
             policy=policy,
         )
 

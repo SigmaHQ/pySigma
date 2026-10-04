@@ -1,12 +1,16 @@
 import pytest
 import os
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaTransformationError
+from sigma.policy import SigmaPolicy
+from sigma.policy.regex_engine import RE2RegexEngine
 from sigma.processing.finalization import (
     ConcatenateQueriesFinalizer,
     NestedFinalizer,
     TemplateFinalizer,
 )
 from .test_processing_transformations import dummy_pipeline, sigma_rule
+
+_ALLOW_VARS_POLICY = SigmaPolicy(regex_engine=RE2RegexEngine(), allow_template_vars=True)
 
 
 def test_finalization_multiple_pipeline_set(dummy_pipeline):
@@ -137,7 +141,7 @@ def test_template_finalizer_with_vars(dummy_pipeline):
     transformation = TemplateFinalizer(
         template='value = {{ parse_json(\'{"key": "value"}\').key }}',
         vars="tests/files/template_vars.py",
-        allow_template_vars=True,
+        policy=_ALLOW_VARS_POLICY,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "value = value"
@@ -148,7 +152,7 @@ def test_template_finalizer_with_vars_and_queries(dummy_pipeline):
     transformation = TemplateFinalizer(
         template="{% for query in queries %}{{ parse_json('{\"index\": ' ~ loop.index ~ '}').index }}{% if not loop.last %}, {% endif %}{% endfor %}",
         vars="tests/files/template_vars.py",
-        allow_template_vars=True,
+        policy=_ALLOW_VARS_POLICY,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2", "query3"]) == "1, 2, 3"
@@ -159,7 +163,7 @@ def test_template_finalizer_with_json_helper(dummy_pipeline):
     transformation = TemplateFinalizer(
         template='{{ parse_json(\'{"queries": ["q1", "q2"]}\').queries | join(", ") }}',
         vars="tests/files/template_vars.py",
-        allow_template_vars=True,
+        policy=_ALLOW_VARS_POLICY,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1", "query2"]) == "q1, q2"
@@ -171,21 +175,27 @@ def test_template_finalizer_with_invalid_vars_file(dummy_pipeline):
         TemplateFinalizer(
             template="test",
             vars="tests/files/invalid_template_vars.py",
-            allow_template_vars=True,
+            policy=_ALLOW_VARS_POLICY,
         )
 
 
 def test_template_finalizer_from_dict_with_vars(dummy_pipeline):
-    """Test that vars parameter works when loading from dict (YAML pipeline)."""
-    transformation = TemplateFinalizer.from_dict(
+    """Test that vars parameter works when loading from pipeline dict with policy."""
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    pipeline = ProcessingPipeline.from_dict(
         {
-            "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}',
-            "vars": "tests/files/template_vars.py",
-            "allow_template_vars": True,
-        }
+            "finalizers": [
+                {
+                    "type": "template",
+                    "template": 'value = {{ parse_json(\'{"key": "value"}\').key }}',
+                    "vars": "tests/files/template_vars.py",
+                }
+            ]
+        },
+        policy=_ALLOW_VARS_POLICY,
     )
-    transformation.set_pipeline(dummy_pipeline)
-    assert transformation.apply(["query1", "query2"]) == "value = value"
+    assert pipeline.finalize(["query1", "query2"]) == "value = value"
 
 
 def test_finalizer_from_dict_invalid_params():
@@ -231,7 +241,7 @@ def test_template_finalizer_with_nonexistent_vars_file():
     """Test that a non-existent vars file raises ValueError."""
     with pytest.raises(ValueError, match="Could not load vars file"):
         TemplateFinalizer(
-            template="test", vars="/nonexistent/path/vars.py", allow_template_vars=True
+            template="test", vars="/nonexistent/path/vars.py", policy=_ALLOW_VARS_POLICY
         )
 
 
@@ -275,11 +285,15 @@ def test_template_finalizer_no_vars_no_error(dummy_pipeline):
 
 def test_template_finalizer_vars_allowed_path(dummy_pipeline):
     """Test that vars file under an allowed base path is accepted."""
+    policy = SigmaPolicy(
+        regex_engine=RE2RegexEngine(),
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests/files"),),
+    )
     transformation = TemplateFinalizer(
         template='value = {{ parse_json(\'{"key": "value"}\').key }}',
         vars="tests/files/template_vars.py",
-        allow_template_vars=True,
-        vars_allowed_paths=(os.path.realpath("tests/files"),),
+        policy=policy,
     )
     transformation.set_pipeline(dummy_pipeline)
     assert transformation.apply(["query1"]) == "value = value"
@@ -287,12 +301,16 @@ def test_template_finalizer_vars_allowed_path(dummy_pipeline):
 
 def test_template_finalizer_vars_blocked_by_path_allowlist(dummy_pipeline):
     """Test that vars file outside allowed base paths raises SigmaSecurityError."""
+    policy = SigmaPolicy(
+        regex_engine=RE2RegexEngine(),
+        allow_template_vars=True,
+        vars_allowed_paths=("/some/other/directory",),
+    )
     with pytest.raises(SigmaSecurityError, match="outside the allowed base directories"):
         TemplateFinalizer(
             template="test",
             vars="tests/files/template_vars.py",
-            allow_template_vars=True,
-            vars_allowed_paths=("/some/other/directory",),
+            policy=policy,
         )
 
 
@@ -320,8 +338,8 @@ def test_template_finalizer_vars_source_path_default_allowed(dummy_pipeline):
         "  - type: template\n"
         "    template: \"{{ queries | join(', ') }}\"\n"
         '    vars: "tests/files/template_vars.py"\n',
-        allow_template_vars=True,
         source_path="tests/files/pipeline.yml",
+        policy=_ALLOW_VARS_POLICY,
     )
     assert pipeline.finalizers[0].j2template.globals["parse_json"] is not None
 
@@ -338,8 +356,8 @@ finalizers:
     template: "test"
     vars: "tests/files/template_vars.py"
             """,
-            allow_template_vars=True,
             source_path="some/other/dir/pipeline.yml",
+            policy=_ALLOW_VARS_POLICY,
         )
 
 
@@ -347,13 +365,17 @@ def test_template_finalizer_vars_explicit_allowed_paths_not_overridden(dummy_pip
     """Test that explicit vars_allowed_paths is not overridden by source_path."""
     from sigma.processing.pipeline import ProcessingPipeline
 
+    policy = SigmaPolicy(
+        regex_engine=RE2RegexEngine(),
+        allow_template_vars=True,
+        vars_allowed_paths=(os.path.realpath("tests/files"),),
+    )
     pipeline = ProcessingPipeline.from_yaml(
         "finalizers:\n"
         "  - type: template\n"
         "    template: \"{{ queries | join(', ') }}\"\n"
         '    vars: "tests/files/template_vars.py"\n',
-        allow_template_vars=True,
-        vars_allowed_paths=(os.path.realpath("tests/files"),),
         source_path="some/other/dir/pipeline.yml",
+        policy=policy,
     )
     assert pipeline.finalizers[0].j2template.globals["parse_json"] is not None

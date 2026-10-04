@@ -23,16 +23,12 @@ from sigma.processing.transformations.external import (
 )
 from sigma.rule.rule import SigmaRule
 from sigma.types import SigmaString
-from sigma.policy import SigmaPolicy
-from sigma.policy.regex_engine import RE2RegexEngine
 
 FILES_DIR = Path(__file__).parent / "files"
 PLAINTEXT_FILE = str(FILES_DIR / "placeholder_values.txt")
 CSV_FILE = str(FILES_DIR / "placeholder_values.csv")
 JSON_FILE = str(FILES_DIR / "placeholder_values.json")
 YAML_FILE = str(FILES_DIR / "placeholder_values.yaml")
-
-_ALLOW_EXTERNAL_POLICY = SigmaPolicy(regex_engine=RE2RegexEngine(), allow_external_sources=True)
 
 
 def _streaming_response(body: bytes, *, chunk_size: int = 8192) -> MagicMock:
@@ -69,19 +65,19 @@ def sigma_rule_with_placeholder():
 
 class TestExternalValueSourceParsers:
     def test_plaintext_basic(self):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t._values_cache = None
         values = t._parse_data("alpha\nbeta\ngamma\n")
         assert values == ["alpha", "beta", "gamma"]
 
     def test_plaintext_empty_lines_skipped(self):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         values = t._parse_data("\nalpha\n\nbeta\n")
         assert values == ["alpha", "beta"]
 
     def test_plaintext_filter_regex(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, filter=r"^\d+"
+            path=PLAINTEXT_FILE, allow_external_sources=True, filter=r"^\d+"
         )
         t.set_pipeline(dummy_pipeline)
         with patch.object(t, "_fetch_data", return_value="123abc\nhello\n456def\n"):
@@ -91,14 +87,14 @@ class TestExternalValueSourceParsers:
     def test_csv_by_column_name(self):
         data = "name,score\nalice,10\nbob,20\n"
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="csv", csv_column="score"
+            path=PLAINTEXT_FILE, allow_external_sources=True, format="csv", csv_column="score"
         )
         assert t._parse_data(data) == ["10", "20"]
 
     def test_csv_by_column_index(self):
         data = "name,score\nalice,10\nbob,20\n"
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="csv", csv_column=1
+            path=PLAINTEXT_FILE, allow_external_sources=True, format="csv", csv_column=1
         )
         # Header row is skipped by default, consistent with column-name mode.
         assert t._parse_data(data) == ["10", "20"]
@@ -107,7 +103,7 @@ class TestExternalValueSourceParsers:
         data = "alice,10\nbob,20\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column=1,
             csv_has_header=False,
@@ -118,7 +114,7 @@ class TestExternalValueSourceParsers:
         data = "alice,10\nbob,20\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column="score",
             csv_has_header=False,
@@ -130,7 +126,7 @@ class TestExternalValueSourceParsers:
         data = "name,score\nalice,10\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column="missing",
         )
@@ -140,7 +136,7 @@ class TestExternalValueSourceParsers:
     def test_csv_no_column_raises(self):
         data = "a,b\n1,2\n"
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="csv"
+            path=PLAINTEXT_FILE, allow_external_sources=True, format="csv"
         )
         with pytest.raises(SigmaConfigurationError, match="csv_column"):
             t._parse_data(data)
@@ -149,7 +145,7 @@ class TestExternalValueSourceParsers:
         data = "val\nkeep_this\nskip\nkeep_too\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column="val",
             filter=r"^keep",
@@ -163,13 +159,13 @@ class TestExternalValueSourceParsers:
         with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'filter'"):
             FilePlaceholderTransformation(
                 path=PLAINTEXT_FILE,
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 filter="[unclosed",
             )
 
     def test_filter_pattern_compiled_at_init(self):
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, filter=r"^\d+"
+            path=PLAINTEXT_FILE, allow_external_sources=True, filter=r"^\d+"
         )
         assert t._filter_pattern is not None
         assert t._filter_pattern.pattern == r"^\d+"
@@ -178,7 +174,7 @@ class TestExternalValueSourceParsers:
         data = json.dumps({"values": ["a", "b", "c"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".values[]",
         )
@@ -188,7 +184,7 @@ class TestExternalValueSourceParsers:
         data = json.dumps({"items": ["a", "b"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".items",
         )
@@ -199,7 +195,7 @@ class TestExternalValueSourceParsers:
         data = json.dumps({"items": [{"a": 1}, {"a": 2}]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".items[]",
         )
@@ -208,7 +204,7 @@ class TestExternalValueSourceParsers:
 
     def test_json_no_expression_raises(self):
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="json"
+            path=PLAINTEXT_FILE, allow_external_sources=True, format="json"
         )
         with pytest.raises(SigmaConfigurationError, match="jq_expression"):
             t._parse_data('{"x": 1}')
@@ -216,7 +212,7 @@ class TestExternalValueSourceParsers:
     def test_json_invalid_raises(self):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".x",
         )
@@ -227,7 +223,7 @@ class TestExternalValueSourceParsers:
         data = yaml.dump({"hosts": ["host1", "host2"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="yaml",
             jq_expression=".hosts[]",
         )
@@ -235,7 +231,7 @@ class TestExternalValueSourceParsers:
 
     def test_yaml_no_expression_raises(self):
         t = FilePlaceholderTransformation(
-            path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="yaml"
+            path=PLAINTEXT_FILE, allow_external_sources=True, format="yaml"
         )
         with pytest.raises(SigmaConfigurationError, match="jq_expression"):
             t._parse_data("key: val")
@@ -243,13 +239,13 @@ class TestExternalValueSourceParsers:
     def test_unknown_format_raises(self):
         with pytest.raises(SigmaConfigurationError, match="Unknown external source format"):
             FilePlaceholderTransformation(
-                path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="xml"
+                path=PLAINTEXT_FILE, allow_external_sources=True, format="xml"
             )
 
 
 class TestSecurityFlag:
     def test_security_error_when_disabled(self, dummy_pipeline):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=False)
         t.set_pipeline(dummy_pipeline)
         with pytest.raises(SigmaSecurityError, match="disabled by default"):
             t._get_values()
@@ -261,28 +257,28 @@ class TestSecurityFlag:
             t._get_values()
 
     def test_allowed_via_parameter(self, dummy_pipeline):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
 
     def test_allowed_via_env_var(self, dummy_pipeline, monkeypatch):
         monkeypatch.setenv(PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV, "1")
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=False)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
 
     def test_allowed_via_env_var_true_string(self, dummy_pipeline, monkeypatch):
         monkeypatch.setenv(PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV, "true")
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=False)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
 
     def test_env_var_case_insensitive(self, dummy_pipeline, monkeypatch):
         monkeypatch.setenv(PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV, "TRUE")
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=False)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
@@ -290,7 +286,7 @@ class TestSecurityFlag:
 
 class TestFilePlaceholderTransformation:
     def test_read_plaintext(self, dummy_pipeline):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "value1" in values
@@ -300,7 +296,7 @@ class TestFilePlaceholderTransformation:
     def test_read_csv_by_name(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=CSV_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column="value",
         )
@@ -312,7 +308,7 @@ class TestFilePlaceholderTransformation:
     def test_read_json(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=JSON_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".items[]",
         )
@@ -323,7 +319,7 @@ class TestFilePlaceholderTransformation:
     def test_read_yaml(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=YAML_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="yaml",
             jq_expression=".items[]",
         )
@@ -332,7 +328,7 @@ class TestFilePlaceholderTransformation:
         assert values == ["yaml_val1", "yaml_val2", "yaml_val3"]
 
     def test_values_are_cached(self, dummy_pipeline):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         first = t._get_values()
         t._values_cache = ["cached_only"]
@@ -341,7 +337,7 @@ class TestFilePlaceholderTransformation:
 
     def test_missing_path_raises(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
-            path="/nonexistent/path/to/file.txt", policy=_ALLOW_EXTERNAL_POLICY
+            path="/nonexistent/path/to/file.txt", allow_external_sources=True
         )
         t.set_pipeline(dummy_pipeline)
         with pytest.raises(SigmaValueError, match="failed to read"):
@@ -352,7 +348,7 @@ class TestFilePlaceholderTransformation:
             FilePlaceholderTransformation(path="")
 
     def test_placeholder_replacements(self, dummy_pipeline):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         from sigma.types import Placeholder
 
@@ -361,7 +357,7 @@ class TestFilePlaceholderTransformation:
         assert SigmaString("value2") in replacements
 
     def test_apply_to_rule(self, dummy_pipeline, sigma_rule_with_placeholder):
-        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(path=PLAINTEXT_FILE, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         t.apply(sigma_rule_with_placeholder)
         detection = sigma_rule_with_placeholder.detection.detections["test"]
@@ -379,7 +375,7 @@ class TestFilePlaceholderTransformation:
     def test_filter_applied(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             filter=r"^value[12]$",
         )
         t.set_pipeline(dummy_pipeline)
@@ -397,7 +393,7 @@ class TestHTTPPlaceholderTransformation:
             return_value="http_val1\nhttp_val2\n",
         ):
             t = HTTPPlaceholderTransformation(
-                url="http://example.com/values", policy=_ALLOW_EXTERNAL_POLICY
+                url="http://example.com/values", allow_external_sources=True
             )
             t.set_pipeline(dummy_pipeline)
             values = t._get_values()
@@ -412,7 +408,7 @@ class TestHTTPPlaceholderTransformation:
 
         with patch("requests.request", side_effect=requests.RequestException("conn error")):
             t = HTTPPlaceholderTransformation(
-                url="http://bad-host.invalid/", policy=_ALLOW_EXTERNAL_POLICY
+                url="http://bad-host.invalid/", allow_external_sources=True
             )
             t.set_pipeline(dummy_pipeline)
             with pytest.raises(SigmaValueError, match="failed to fetch"):
@@ -432,7 +428,7 @@ class TestHTTPPlaceholderTransformation:
         ):
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 format="json",
                 jq_expression=".hosts[]",
             )
@@ -445,7 +441,7 @@ class TestHTTPPlaceholderTransformation:
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/api",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 method="POST",
                 json_body={"query": "all"},
             )
@@ -469,7 +465,7 @@ class TestHTTPPlaceholderTransformation:
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/form",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 method="POST",
                 form_data={"token": "secret"},
             )
@@ -492,7 +488,7 @@ class TestHTTPPlaceholderTransformation:
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 headers={"Authorization": "******"},
             )
             t.set_pipeline(dummy_pipeline)
@@ -514,7 +510,7 @@ class TestHTTPPlaceholderTransformation:
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/search",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 params={"type": "ip", "limit": "100"},
             )
             t.set_pipeline(dummy_pipeline)
@@ -536,7 +532,7 @@ class TestHTTPPlaceholderTransformation:
 
             t = HTTPPlaceholderTransformation(
                 url="http://example.com/big",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 max_body_size=2000,
             )
             t.set_pipeline(dummy_pipeline)
@@ -552,7 +548,7 @@ class TestCommandPlaceholderTransformation:
             if sys.platform == "win32"
             else "printf 'cmd_val1\\ncmd_val2\\n'"
         )
-        t = CommandPlaceholderTransformation(cmd=cmd, policy=_ALLOW_EXTERNAL_POLICY)
+        t = CommandPlaceholderTransformation(cmd=cmd, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "cmd_val1" in values
@@ -565,7 +561,7 @@ class TestCommandPlaceholderTransformation:
             if sys.platform == "win32"
             else ["printf", "a\nb\nc\n"]
         )
-        t = CommandPlaceholderTransformation(cmd=cmd, policy=_ALLOW_EXTERNAL_POLICY)
+        t = CommandPlaceholderTransformation(cmd=cmd, allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         values = t._get_values()
         assert "a" in values
@@ -575,7 +571,7 @@ class TestCommandPlaceholderTransformation:
             CommandPlaceholderTransformation(cmd="")
 
     def test_nonzero_exit_raises(self, dummy_pipeline):
-        t = CommandPlaceholderTransformation(cmd="exit 1", policy=_ALLOW_EXTERNAL_POLICY)
+        t = CommandPlaceholderTransformation(cmd="exit 1", allow_external_sources=True)
         t.set_pipeline(dummy_pipeline)
         with pytest.raises(SigmaValueError, match="exited with code"):
             t._get_values()
@@ -592,7 +588,7 @@ class TestCommandPlaceholderTransformation:
             side_effect=subprocess.TimeoutExpired("sleep", 0.001),
         ):
             t = CommandPlaceholderTransformation(
-                cmd="sleep 999", policy=_ALLOW_EXTERNAL_POLICY, timeout=1
+                cmd="sleep 999", allow_external_sources=True, timeout=1
             )
             t.set_pipeline(dummy_pipeline)
             with pytest.raises(SigmaValueError, match="timed out"):
@@ -606,7 +602,7 @@ class TestCommandPlaceholderTransformation:
         ):
             t = CommandPlaceholderTransformation(
                 cmd="echo",
-                policy=_ALLOW_EXTERNAL_POLICY,
+                allow_external_sources=True,
                 format="json",
                 jq_expression=".items[]",
             )
@@ -622,7 +618,7 @@ class TestCommandPlaceholderTransformation:
         )
         t = CommandPlaceholderTransformation(
             cmd=cmd,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             max_stdout=1000,
         )
         t.set_pipeline(dummy_pipeline)
@@ -650,14 +646,16 @@ transformations:
 """
 
     def test_pipeline_without_allow_external_sources_raises(self):
-        pipeline = ProcessingPipeline.from_yaml(self._pipeline_yaml(PLAINTEXT_FILE))
+        pipeline = ProcessingPipeline.from_yaml(
+            self._pipeline_yaml(PLAINTEXT_FILE), allow_external_sources=False
+        )
         rule = SigmaRule.from_yaml(self._rule_yaml())
         with pytest.raises(SigmaSecurityError):
             pipeline.apply(rule)
 
     def test_pipeline_with_allow_external_sources(self):
         pipeline = ProcessingPipeline.from_yaml(
-            self._pipeline_yaml(PLAINTEXT_FILE), policy=_ALLOW_EXTERNAL_POLICY
+            self._pipeline_yaml(PLAINTEXT_FILE), allow_external_sources=True
         )
         rule = SigmaRule.from_yaml(self._rule_yaml())
         pipeline.apply(rule)
@@ -676,7 +674,7 @@ transformations:
     def test_include_exclude_still_work(self, dummy_pipeline):
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             include=["var1"],
         )
         t.set_pipeline(dummy_pipeline)
@@ -705,7 +703,7 @@ class TestFilter:
         raw = json.dumps({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".hosts[]",
             filter=r"^\d{1,3}(\.\d{1,3}){3}$",
@@ -720,7 +718,7 @@ class TestFilter:
         raw = yaml.dump({"hosts": ["192.168.1.1", "fe80::1", "10.0.0.1"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="yaml",
             jq_expression=".hosts[]",
             filter=r"^\d{1,3}(\.\d{1,3}){3}$",
@@ -734,7 +732,7 @@ class TestFilter:
         """filter applied after plaintext parsing keeps only matching lines."""
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="plaintext",
             filter=r"^keep",
         )
@@ -748,7 +746,7 @@ class TestFilter:
         data = "val\nkeep_this\nskip\nkeep_too\n"
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="csv",
             csv_column="val",
             filter=r"^keep",
@@ -763,7 +761,7 @@ class TestFilter:
         data = json.dumps({"values": ["alpha", "beta", "gamma"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".values[]",
         )
@@ -778,7 +776,7 @@ class TestFilter:
         data = json.dumps({"hosts": ["fe80::1", "::1", "2001:db8::"]})
         t = FilePlaceholderTransformation(
             path=PLAINTEXT_FILE,
-            policy=_ALLOW_EXTERNAL_POLICY,
+            allow_external_sources=True,
             format="json",
             jq_expression=".hosts[]",
             filter=r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$",
@@ -787,3 +785,4 @@ class TestFilter:
         with patch.object(t, "_fetch_data", return_value=data):
             values = t._get_values()
         assert values == []
+

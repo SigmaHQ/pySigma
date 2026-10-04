@@ -112,7 +112,7 @@ def sigma_plugin():
         project_url="https://github.com/SigmaHQ/pySigma-backend-splunk",
         report_issue_url="https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         state=SigmaPluginState.TESTING,
-        pysigma_version=Specifier(">=1.0.0"),
+        pysigma_version=Specifier(">=2.0.0"),
         capabilities={
             SigmaPluginCapability.EVENT_COUNT_CORRELATION_CONVERSION,
             SigmaPluginCapability.VALUE_COUNT_CORRELATION_CONVERSION,

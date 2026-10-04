@@ -1,4 +1,4 @@
-﻿"""Tests for external data source placeholder transformations."""
+"""Tests for external data source placeholder transformations."""
 
 from __future__ import annotations
 

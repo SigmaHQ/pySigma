@@ -133,7 +133,7 @@ def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, 
 
 @pytest.mark.online
 @pytest.mark.xfail(
-    condition=re.match(r"^\d+\.\d+\.\d+\w+\d+$", importlib.metadata.version("pysigma")),
+    condition=re.match(r"^\d+\.(?:0\.0|\d+\.\d+\w+\d+)$", importlib.metadata.version("pysigma")),
     reason="pysigma version is release candidate or other special version.",
 )
 def test_sigma_plugin_version_compatible(sigma_plugin):

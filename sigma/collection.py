@@ -8,7 +8,7 @@ from typing import IO, Any, Callable, cast
 from uuid import UUID
 
 import yaml
-from typing_extensions import Self
+from typing import Self
 
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import (

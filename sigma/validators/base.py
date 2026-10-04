@@ -5,7 +5,7 @@ from dataclasses import dataclass, fields
 from enum import Enum, auto
 from typing import ClassVar
 
-from typing_extensions import Self
+from typing import Self
 
 from sigma.correlations import SigmaCorrelationRule
 from sigma.rule import SigmaDetection, SigmaDetectionItem, SigmaRule, SigmaRuleBase, SigmaRuleTag

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from itertools import pairwise
 from typing import Any, Callable, ClassVar, Iterator, cast
 
-from typing_extensions import Self
+from typing import Self
 
 from sigma.collection import SigmaCollection
 from sigma.conditions import (

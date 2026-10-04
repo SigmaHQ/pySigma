@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import yaml
-from typing_extensions import Self
+from typing import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus

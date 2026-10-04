@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Literal
 
-from typing_extensions import Self
+from typing import Self
 from typing import ClassVar, cast
 from pyparsing import (
     Word,

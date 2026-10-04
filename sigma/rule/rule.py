@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, TYPE_CHECKING
 
-from typing_extensions import Self
+from typing import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.exceptions import SigmaError, SigmaRuleLocation

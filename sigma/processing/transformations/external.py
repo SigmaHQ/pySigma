@@ -4,8 +4,9 @@ These transformations replace Sigma placeholders with values fetched from extern
 such as local files, HTTP endpoints, or command output.
 
 Security note: Because these transformations access external sources, they are **disabled by
-default** and must be explicitly enabled by passing ``allow_external_sources=True`` when
-loading a :class:`~sigma.processing.pipeline.ProcessingPipeline` or by setting the
+default** and must be explicitly enabled by using a
+:class:`~sigma.policy.SigmaPolicy` with ``allow_external_sources=True`` when loading a
+:class:`~sigma.processing.pipeline.ProcessingPipeline` or by setting the
 environment variable ``PYSIGMA_ALLOW_EXTERNAL_SOURCES=1``.
 """
 
@@ -27,6 +28,10 @@ from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaV
 from sigma.policy.regex_engine import RegexPattern
 from sigma.processing.transformations.placeholder import BasePlaceholderTransformation
 from sigma.types import Placeholder, SigmaString
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV = "PYSIGMA_ALLOW_EXTERNAL_SOURCES"
 
@@ -57,9 +62,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     :class:`~sigma.exceptions.SigmaConfigurationError` at pipeline-load time.
 
     **Security**: external-source transformations are disabled by default.
-    Enable them by passing ``allow_external_sources=True`` when loading the
-    pipeline or by setting the environment variable
-    ``PYSIGMA_ALLOW_EXTERNAL_SOURCES=1``.
+    Enable them by setting ``allow_external_sources=True`` in the
+    :class:`~sigma.policy.SigmaPolicy` used for the pipeline or by setting the environment
+    variable ``PYSIGMA_ALLOW_EXTERNAL_SOURCES=1``.
     """
 
     format: str = "plaintext"
@@ -67,7 +72,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     csv_column: str | int | None = None
     csv_has_header: bool = True
     jq_expression: str | None = None
-    allow_external_sources: bool = False
+    policy: "SigmaPolicy | None" = None
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
     _filter_pattern: RegexPattern | None = field(
@@ -90,7 +95,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
 
     def _external_sources_allowed(self) -> bool:
         """Return *True* if external data sources are permitted."""
-        if self.allow_external_sources:
+        if self.policy is not None and self.policy.allow_external_sources:
             return True
         return os.environ.get(PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV, "").lower() in (
             "1",
@@ -116,8 +121,8 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         if not self._external_sources_allowed():
             raise SigmaSecurityError(
                 "External data source transformations are disabled by default for security "
-                "reasons. Enable them with allow_external_sources=True when loading the "
-                "pipeline or by setting the environment variable "
+                "reasons. Enable them by setting allow_external_sources=True in the SigmaPolicy "
+                "used for the pipeline or by setting the environment variable "
                 f"{PYSIGMA_ALLOW_EXTERNAL_SOURCES_ENV}=1."
             )
 

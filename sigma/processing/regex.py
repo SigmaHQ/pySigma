@@ -28,6 +28,9 @@ class ProcessingRegularExpressionMixin:
 
         _pipeline = getattr(self, "_pipeline", None)
         if _pipeline is None:
+            _policy = getattr(self, "policy", None)
+            if _policy is not None:
+                return _policy.regex_engine  # type: ignore[no-any-return]
             return sigma.default_policy.regex_engine
         return _pipeline.resolve_regex_engine()  # type: ignore[no-any-return]
 

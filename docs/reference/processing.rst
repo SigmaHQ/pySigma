@@ -4,6 +4,12 @@ Processing Pipeline
 The processing pipeline module provides the infrastructure for transforming Sigma rules
 before conversion.
 
+.. seealso::
+
+   :doc:`../guides/sigma_policy` documents the effective
+   ``SigmaPolicy`` object, its security-sensitive settings, and how pipeline loaders
+   sanitize untrusted dictionary and YAML input.
+
 ProcessingPipeline
 ------------------
 

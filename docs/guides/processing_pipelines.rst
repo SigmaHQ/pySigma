@@ -40,6 +40,10 @@ When to Use YAML vs Python
 
 Both approaches use the same underlying ``ProcessingPipeline`` class and can be combined.
 
+Security-sensitive runtime options such as template vars execution, allowed vars paths,
+external source access, and regex engine selection are carried by
+:doc:`sigma_policy`, not by YAML keys inside a pipeline definition.
+
 Pipeline Priorities
 -------------------
 
@@ -219,7 +223,35 @@ Loading Pipelines from YAML
 
    # From a file
    with open("pipeline.yml") as f:
-       pipeline = ProcessingPipeline.from_yaml(f.read())
+       pipeline = ProcessingPipeline.from_yaml(f.read(), source_path="pipeline.yml")
+
+  To opt into security-sensitive behavior, pass a ``SigmaPolicy`` explicitly:
+
+  .. code-block:: python
+
+     from sigma.policy import SigmaPolicy
+     from sigma.policy.regex_engine import RE2RegexEngine
+     from sigma.processing.pipeline import ProcessingPipeline
+
+     policy = SigmaPolicy(
+       regex_engine=RE2RegexEngine(),
+       allow_template_vars=True,
+     )
+
+     with open("pipeline.yml") as f:
+       pipeline = ProcessingPipeline.from_yaml(
+         f.read(),
+         source_path="pipeline.yml",
+         policy=policy,
+       )
+
+  .. note::
+
+     ``policy``, ``allow_template_vars``, ``vars_allowed_paths``,
+     ``allow_external_sources``, and ``restrict_template_path`` are not part of the
+     trusted YAML schema for pipeline items. pySigma sanitizes these keys when nested
+     transformation or finalizer definitions are loaded from dictionaries or YAML.
+     See :doc:`sigma_policy` for the effective policy model.
 
 Combining Pipelines
 ^^^^^^^^^^^^^^^^^^^

@@ -915,6 +915,9 @@ def test_processingpipeline_nested_postprocessing_conditions(sigma_rule, conditi
 @pytest.mark.parametrize("depth", [1, 2])
 @pytest.mark.parametrize("allow_template_vars", [False, True])
 def test_processingpipeline_nested_postprocessing_options(depth, allow_template_vars):
+    from sigma.policy import SigmaPolicy
+    from sigma.policy.regex_engine import RE2RegexEngine
+
     item = {
         "type": "template",
         "template": "{{ query }}",
@@ -928,17 +931,20 @@ def test_processingpipeline_nested_postprocessing_options(depth, allow_template_
             "allow_template_vars": not allow_template_vars,
             "vars_allowed_paths": ["ignored"],
         }
-    options = {"vars_allowed_paths": ("trusted",)}
-    if allow_template_vars:
-        options["allow_template_vars"] = True
-    pipeline = ProcessingPipeline.from_dict({"postprocessing": [item]}, **options)
+    policy = SigmaPolicy(
+        regex_engine=RE2RegexEngine(),
+        vars_allowed_paths=("trusted",),
+        allow_template_vars=allow_template_vars,
+    )
+    pipeline = ProcessingPipeline.from_dict({"postprocessing": [item]}, policy=policy)
     transformation = pipeline.postprocessing_items[0].transformation
     for _ in range(depth):
         transformation = transformation.items[0].transformation
 
     assert transformation.vars is None
-    assert transformation.allow_template_vars is allow_template_vars
-    assert transformation.vars_allowed_paths == ("trusted",)
+    assert transformation.policy is not None
+    assert transformation.policy.allow_template_vars is allow_template_vars
+    assert transformation.policy.vars_allowed_paths == ("trusted",)
 
 
 def test_processingpipeline_nested_postprocessing_empty(sigma_rule):

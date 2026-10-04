@@ -7,13 +7,16 @@ import sys
 import types
 import uuid
 from string import Formatter
-from typing import Any, Callable, Dict, Iterable, Mapping, Sequence
+from typing import Any, Callable, Dict, Iterable, Mapping, Sequence, TYPE_CHECKING
 
 from jinja2.sandbox import SandboxedEnvironment, SandboxedFormatter
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from jinja2.exceptions import SecurityError, UndefinedError
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 PYSIGMA_ALLOW_VARS_EXECUTION_ENV = "PYSIGMA_ALLOW_VARS_EXECUTION"
 
@@ -67,7 +70,7 @@ class SigmaSandboxedEnvironment(SandboxedEnvironment):
     The standard sandbox only blocks access to underscore-prefixed attributes and to callables that
     are explicitly marked as unsafe. Templates in pySigma get live objects (the processing pipeline,
     rules) passed in their context, and calling their public methods or classmethods (e.g.
-    ``pipeline.from_yaml(..., allow_external_sources=True)``) escapes the sandbox. Therefore, this
+    ``pipeline.from_yaml(..., policy=SigmaPolicy(...))``) escapes the sandbox. Therefore, this
     environment only allows calling:
 
     * Jinja2 globals and internals (``range``, ``dict``, ``namespace``, macros, loop helpers, ...)
@@ -162,22 +165,24 @@ class TemplateBase:
 
     **Security warning:** The *vars* feature executes arbitrary Python code from the
     specified file. It is disabled by default and must be explicitly enabled via the
-    *allow_template_vars* parameter or by setting the environment variable
+    ``SigmaPolicy.allow_template_vars`` or by setting the environment variable
     ``PYSIGMA_ALLOW_VARS_EXECUTION=1``.
 
-    When enabled, the resolved vars file path is checked against *vars_allowed_paths*.
-    The file must reside under (or in a subdirectory of) one of the listed base
-    directories. If *vars_allowed_paths* is ``None`` no path restriction is applied.
+    When enabled, the resolved vars file path is checked against
+    ``SigmaPolicy.vars_allowed_paths``. The file must reside under (or in a subdirectory
+    of) one of the listed base directories. If ``vars_allowed_paths`` is ``None`` no path
+    restriction is applied.
 
     Templates are rendered in :class:`SigmaSandboxedEnvironment`, which only allows calling
     methods of plain data types, Jinja2 helpers and functions from an opted-in vars file.
     Methods of the live pipeline and rule objects passed into the template context are not
     callable.
 
-    If *restrict_template_path* is set (the default for pipelines loaded from YAML/dicts without
-    *allow_external_sources*), the template directory *path* must resolve to a location below one
-    of *vars_allowed_paths* (by default the directory of the pipeline file), and template files
-    resolving outside of it (e.g. via symbolic links) are refused.
+    If *restrict_template_path* is set (the default for pipelines loaded from YAML or
+    dictionaries unless ``SigmaPolicy.allow_external_sources`` is enabled), the template
+    directory *path* must resolve to a location below one of ``vars_allowed_paths`` (by
+    default the directory of the pipeline file), and template files resolving outside of it
+    (e.g. via symbolic links) are refused.
 
     Example Python vars file:
         def format_price(amount, currency='€'):
@@ -192,8 +197,7 @@ class TemplateBase:
     path: str | None = None
     autoescape: bool = False
     vars: str | None = None
-    allow_template_vars: bool = False
-    vars_allowed_paths: tuple[str, ...] | None = None
+    policy: "SigmaPolicy | None" = None
     restrict_template_path: bool = False
 
     def __post_init__(self) -> None:
@@ -213,8 +217,8 @@ class TemplateBase:
             if not self._vars_execution_allowed():
                 raise SigmaSecurityError(
                     "The 'vars' feature executes Python code from an external file and is "
-                    "disabled by default for security reasons. To enable it, pass "
-                    "allow_template_vars=True when constructing the pipeline or set the environment "
+                    "disabled by default for security reasons. To enable it, set "
+                    "allow_template_vars=True in the SigmaPolicy used for the pipeline or set the environment "
                     f"variable {PYSIGMA_ALLOW_VARS_EXECUTION_ENV}=1."
                 )
             custom_vars = self._load_vars_from_file(self.vars)
@@ -225,25 +229,26 @@ class TemplateBase:
         """Template directories from untrusted pipeline definitions must reside below one of the
         allowed base directories (by default the directory of the pipeline file)."""
         real_path = os.path.realpath(path)
-        if self.vars_allowed_paths is None:
+        vars_allowed_paths = self.policy.vars_allowed_paths if self.policy is not None else None
+        if vars_allowed_paths is None:
             raise SigmaSecurityError(
                 f"Template path '{path}' is not allowed because no allowed base directory is "
-                "known. Load the pipeline with source_path or vars_allowed_paths, or pass "
-                "allow_external_sources=True to allow arbitrary template directories."
+                "known. Load the pipeline with source_path or policy.vars_allowed_paths, or pass "
+                "a policy with allow_external_sources=True to allow arbitrary template directories."
             )
         if not any(
             real_path == os.path.realpath(base)
             or real_path.startswith(os.path.realpath(base) + os.sep)
-            for base in self.vars_allowed_paths
+            for base in vars_allowed_paths
         ):
             raise SigmaSecurityError(
                 f"Template path '{real_path}' is outside the allowed base directories: "
-                f"{', '.join(os.path.realpath(p) for p in self.vars_allowed_paths)}"
+                f"{', '.join(os.path.realpath(p) for p in vars_allowed_paths)}"
             )
 
     def _vars_execution_allowed(self) -> bool:
-        """Check if vars execution is allowed via parameter or environment variable."""
-        if self.allow_template_vars:
+        """Check if vars execution is allowed via policy or environment variable."""
+        if self.policy is not None and self.policy.allow_template_vars:
             return True
         return os.environ.get(PYSIGMA_ALLOW_VARS_EXECUTION_ENV, "").lower() in ("1", "true")
 
@@ -257,16 +262,17 @@ class TemplateBase:
         :return: Dictionary of variables to add to template globals
         """
         vars_path = os.path.realpath(vars_path)
+        vars_allowed_paths = self.policy.vars_allowed_paths if self.policy is not None else None
 
-        if self.vars_allowed_paths is not None:
+        if vars_allowed_paths is not None:
             if not any(
                 vars_path.startswith(os.path.realpath(base) + os.sep)
                 or vars_path == os.path.realpath(base)
-                for base in self.vars_allowed_paths
+                for base in vars_allowed_paths
             ):
                 raise SigmaSecurityError(
                     f"Vars file '{vars_path}' is outside the allowed base directories: "
-                    f"{', '.join(os.path.realpath(p) for p in self.vars_allowed_paths)}"
+                    f"{', '.join(os.path.realpath(p) for p in vars_allowed_paths)}"
                 )
 
         try:

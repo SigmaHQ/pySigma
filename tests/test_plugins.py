@@ -82,6 +82,7 @@ def test_installed_sigma_plugins_get_pipeline_resolver():
     assert pipeline_resolver.resolve_pipeline("test") == pipeline
 
 
+# The following two tests must be adapted for major releases.
 @pytest.fixture
 def sigma_plugin_dict():
     return {
@@ -93,7 +94,7 @@ def sigma_plugin_dict():
         "project_url": "https://github.com/SigmaHQ/pySigma-backend-splunk",
         "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         "state": "testing",
-        "pysigma_version": ">=1.0.0",
+        "pysigma_version": ">=2.0.0",
         "capabilities": [
             "event_count_correlation_conversion",
             "value_count_correlation_conversion",

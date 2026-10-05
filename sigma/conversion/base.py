@@ -767,8 +767,10 @@ class Backend(ABC):
         ]
         rule.set_conversion_result(finalized_queries)
         rule.set_conversion_states(states)
-
-        return finalized_queries
+        if rule._output:
+            return finalized_queries
+        else:
+            return []
 
     @abstractmethod
     def convert_correlation_event_count_rule(

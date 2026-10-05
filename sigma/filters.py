@@ -71,7 +71,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
         return cls(
             detections={
-                name: SigmaDetection.from_definition(definition, source)
+                name: SigmaDetection.from_definition(definition, source, policy)
                 for name, definition in detections.items()
                 if name
                 not in (

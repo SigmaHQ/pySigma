@@ -445,7 +445,7 @@ class SigmaRegularExpressionModifier(SigmaValueModifier[SigmaString, SigmaRegula
                 "Regular expression modifier only applicable to unmodified values",
                 source=self.source,
             )
-        return SigmaRegularExpression(val.original)
+        return SigmaRegularExpression(val.original, policy=self.detection_item.policy)
 
 
 class SigmaRegularExpressionFlagModifier(

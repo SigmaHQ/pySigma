@@ -123,6 +123,76 @@ Example: Field Mapping Pipeline
            category: process_creation
            product: windows
 
+Example: Rejecting Unmapped Fields
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Field mapping is permissive by default: a detection field that has no mapping is left unchanged.
+To reject such fields, add the existing ``strict_field_mapping_failure`` transformation after
+the field mapping steps. This can help catch misspelled field names before a query reaches a SIEM.
+
+For example, save this pipeline as ``strict-fields.yml``:
+
+.. code-block:: yaml
+
+   name: strict_windows_fields
+   priority: 20
+   transformations:
+     - id: map_fields
+       type: field_name_mapping
+       mapping:
+         CommandLine: process.command_line
+         User: user.name
+     - id: require_mapped_fields
+       type: strict_field_mapping_failure
+
+Save this synthetic rule as ``test-rule.yml``:
+
+.. code-block:: yaml
+
+   title: Strict Field Mapping Example
+   status: test
+   logsource:
+       category: process_creation
+       product: windows
+   detection:
+       selection:
+           CommandLine: whoami.exe
+           User: example-user
+       condition: selection
+
+The test backend makes the conversion result reproducible without connecting to a SIEM:
+
+.. code-block:: python
+
+   from pathlib import Path
+   from sigma.backends.test import TextQueryTestBackend
+   from sigma.collection import SigmaCollection
+   from sigma.processing.pipeline import ProcessingPipeline
+
+   pipeline = ProcessingPipeline.from_yaml(Path("strict-fields.yml").read_text(encoding="utf-8"))
+   rules = SigmaCollection.from_yaml(Path("test-rule.yml").read_text(encoding="utf-8"))
+   queries = TextQueryTestBackend(pipeline).convert(rules)
+   print(queries[0])
+
+Output:
+
+.. code-block:: text
+
+   'process.command_line'="whoami.exe" and 'user.name'="example-user"
+
+Both detection fields have mappings, so conversion succeeds. If ``CommandLine`` is misspelled as
+``CommandLin`` in the rule, conversion instead raises ``SigmaTransformationError`` with
+``The following fields are not mapped: CommandLin``. Removing the ``require_mapped_fields`` step
+restores permissive conversion: ``CommandLin`` is left unchanged while ``User`` is still mapped.
+
+Place the strict check after all field mapping steps that should count toward validation. If those
+steps use ``rule_conditions``, apply the same scope to the strict check so that unrelated rules
+are not rejected. Detection fields introduced by earlier transformations also need mappings.
+
+This transformation checks whether detection item field names in a normal Sigma rule were mapped;
+it does **not** verify that target fields exist in the backend's schema. Keyword searches without
+field names and fields of correlation rules are not checked by this transformation.
+
 Example: Log Source Transformation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -3089,6 +3089,92 @@ def test_case_transformation_error():
         transformation = CaseTransformation(method="SnakeCase")
 
 
+@pytest.fixture
+def strict_field_mapping_example_pipeline():
+    return ProcessingPipeline.from_yaml("""
+        name: strict_windows_fields
+        priority: 20
+        transformations:
+          - id: map_fields
+            type: field_name_mapping
+            mapping:
+              CommandLine: process.command_line
+              User: user.name
+          - id: require_mapped_fields
+            type: strict_field_mapping_failure
+        """)
+
+
+def test_strict_field_mapping_yaml_example_converts_mapped_fields(
+    strict_field_mapping_example_pipeline,
+):
+    rules = SigmaCollection.from_yaml("""
+        title: Strict Field Mapping Example
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLine: whoami.exe
+                User: example-user
+            condition: selection
+        """)
+
+    assert TextQueryTestBackend(strict_field_mapping_example_pipeline).convert(rules) == [
+        "'process.command_line'=\"whoami.exe\" and 'user.name'=\"example-user\""
+    ]
+
+
+def test_strict_field_mapping_yaml_example_rejects_unmapped_field(
+    strict_field_mapping_example_pipeline,
+):
+    rules = SigmaCollection.from_yaml("""
+        title: Strict Field Mapping Example
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLin: whoami.exe
+                User: example-user
+            condition: selection
+        """)
+
+    with pytest.raises(SigmaTransformationError, match="not mapped: CommandLin"):
+        TextQueryTestBackend(strict_field_mapping_example_pipeline).convert(rules)
+
+
+def test_field_mapping_yaml_example_without_strict_check_preserves_unmapped_field():
+    pipeline = ProcessingPipeline.from_yaml("""
+        name: permissive_windows_fields
+        priority: 20
+        transformations:
+          - id: map_fields
+            type: field_name_mapping
+            mapping:
+              CommandLine: process.command_line
+              User: user.name
+        """)
+    rules = SigmaCollection.from_yaml("""
+        title: Strict Field Mapping Example
+        status: test
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            selection:
+                CommandLin: whoami.exe
+                User: example-user
+            condition: selection
+        """)
+
+    assert TextQueryTestBackend(pipeline).convert(rules) == [
+        'CommandLin="whoami.exe" and \'user.name\'="example-user"'
+    ]
+
+
 def test_strict_mapped_fields_throws_exception():
     test_backend = TextQueryTestBackend(
         ProcessingPipeline(

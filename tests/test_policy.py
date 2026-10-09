@@ -69,8 +69,10 @@ def test_default_policy_uses_re2_engine() -> None:
 
 def test_set_default_policy_to_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
     import sigma.policy
+
     monkeypatch.setattr(sigma.policy, "default_policy", TrustedPolicy)
     from sigma.policy import default_policy as updated_policy
+
     assert updated_policy is TrustedPolicy
     assert isinstance(updated_policy.regex_engine, PythonRegexEngine)
 

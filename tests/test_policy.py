@@ -151,6 +151,19 @@ detection:
 """
 
 
+SIMPLE_FILTER_RULE = """
+title: Test Filter
+status: test
+logsource:
+    category: test
+filter:
+    rules: any
+    selection:
+        field: value
+    condition: selection
+"""
+
+
 def test_sigma_rule_from_yaml_accepts_policy() -> None:
     from sigma.rule import SigmaRule
 
@@ -193,3 +206,23 @@ detection:
     # Parse the condition — this will call resolve_referenced_detections
     parsed = rule.detection.parsed_condition[0].parse()
     assert parsed is not None
+
+
+def test_sigma_filter_from_yaml_propagates_policy_to_global_filter() -> None:
+    from sigma.filters import SigmaFilter
+
+    sigma_filter = SigmaFilter.from_yaml(SIMPLE_FILTER_RULE, policy=TrustedPolicy)
+    assert sigma_filter.filter.policy is TrustedPolicy
+
+
+def test_sigma_collection_filter_path_propagates_policy_to_global_filter() -> None:
+    from sigma.collection import SigmaCollection
+
+    coll = SigmaCollection.from_yaml(
+        SIMPLE_FILTER_RULE,
+        collect_filters=True,
+        resolve_references=False,
+        policy=TrustedPolicy,
+    )
+    assert len(coll.filters) == 1
+    assert coll.filters[0].filter.policy is TrustedPolicy

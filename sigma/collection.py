@@ -205,6 +205,7 @@ class SigmaCollection:
                             rule,
                             collect_errors,
                             source,
+                            policy=policy,
                         )
                         parsed_rules.append(parsed_filter_rule)
                         errors.extend(parsed_filter_rule.errors)  # Propagate errors from rule

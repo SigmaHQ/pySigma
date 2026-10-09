@@ -82,6 +82,7 @@ class SigmaGlobalFilter(SigmaDetections):
             rules=rules,
             condition=condition,
             source=source,
+            policy=policy,
         )
 
     def to_dict(self: Self) -> dict[str, Any]:
@@ -163,7 +164,7 @@ class SigmaFilter(SigmaRuleBase):
 
         # parse detections
         try:
-            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source)
+            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source, policy=policy)
         except KeyError:
             filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(

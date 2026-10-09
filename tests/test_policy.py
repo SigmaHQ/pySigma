@@ -197,3 +197,38 @@ detection:
     # Parse the condition — this will call resolve_referenced_detections
     parsed = rule.detection.parsed_condition[0].parse()
     assert parsed is not None
+
+
+lookahead_rule_yaml = """
+title: Test
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        field|re|i: 'foo(?=bar)'
+    condition: selection
+"""
+
+
+def test_re_modifier_uses_rule_policy() -> None:
+    """Regular expressions of |re detection items are compiled with the policy of the rule."""
+    from sigma.collection import SigmaCollection
+    from sigma.rule import SigmaRule
+    from sigma.types import SigmaRegularExpression
+
+    rule = SigmaRule.from_yaml(lookahead_rule_yaml, policy=TrustedPolicy)
+    value = rule.detection.detections["selection"].detection_items[0].value[0]
+    assert isinstance(value, SigmaRegularExpression)
+    assert value.policy is TrustedPolicy
+
+    collection = SigmaCollection.from_yaml(lookahead_rule_yaml, policy=TrustedPolicy)
+    assert len(collection.rules) == 1
+
+
+def test_re_modifier_default_policy_rejects_lookahead() -> None:
+    from sigma.exceptions import SigmaRegularExpressionError
+    from sigma.rule import SigmaRule
+
+    with pytest.raises(SigmaRegularExpressionError):
+        SigmaRule.from_yaml(lookahead_rule_yaml)

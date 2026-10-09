@@ -76,6 +76,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         init=False, repr=False, hash=False, compare=False
     )  # Copy of original values for conversion back to data structures (and YAML/JSON)
     auto_modifiers: bool = dataclasses.field(default=True, compare=False, repr=False)
+    policy: "SigmaPolicy | None" = dataclasses.field(default=None, compare=False, repr=False)
 
     def __post_init__(self: Self) -> None:
         if not isinstance(self.value, list) or not all(
@@ -116,6 +117,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         key: str | None,
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Constructs SigmaDetectionItem object from a mapping between field name containing
@@ -155,16 +157,17 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             for v in val_list
         ]
 
-        return cls(field, modifiers, sigma_val, source=source)
+        return cls(field, modifiers, sigma_val, source=source, policy=policy)
 
     @classmethod
     def from_value(
         cls: type[Self],
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """Convenience method for from_mapping(None, value)."""
-        return cls.from_mapping(None, val, source=source)
+        return cls.from_mapping(None, val, source=source, policy=policy)
 
     def disable_conversion_to_plain(self: Self) -> None:
         """
@@ -315,19 +318,20 @@ class SigmaDetection(ParentChainMixin):
             Mapping[str, Any] | list[int | float | str | bool | None] | float | str | bool | None
         ),
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """Instantiate an appropriate SigmaDetection object from a parsed Sigma detection definition."""
         if isinstance(definition, Mapping):  # key-value-definition (case 1)
             return cls(
                 detection_items=[
-                    SigmaDetectionItem.from_mapping(key, val, source)
+                    SigmaDetectionItem.from_mapping(key, val, source, policy)
                     for key, val in definition.items()
                 ],
                 source=source,
             )
         elif isinstance(definition, (str, int, float, bool, type(None))):  # plain value (case 2)
             return cls(
-                detection_items=[SigmaDetectionItem.from_value(definition, source)],
+                detection_items=[SigmaDetectionItem.from_value(definition, source, policy)],
                 source=source,
             )
         elif isinstance(definition, list):  # list of items (case 3)
@@ -335,14 +339,14 @@ class SigmaDetection(ParentChainMixin):
                 {str, int, float, bool, type(None)}
             ):  # list of values: create one detection item containing all values
                 return cls(
-                    detection_items=[SigmaDetectionItem.from_value(definition, source)],
+                    detection_items=[SigmaDetectionItem.from_value(definition, source, policy)],
                     source=source,
                 )
             else:
                 return cls(
                     detection_items=[
                         SigmaDetection.from_definition(
-                            item, source
+                            item, source, policy
                         )  # nested SigmaDetection in other cases
                         for item in definition
                     ],
@@ -548,7 +552,7 @@ class SigmaDetections:
         check_alias_expansion(detections, sigma_exceptions.SigmaDetectionError, source)
         return cls(
             detections={
-                name: SigmaDetection.from_definition(definition, source)
+                name: SigmaDetection.from_definition(definition, source, policy)
                 for name, definition in detections.items()
                 if name not in ("condition",)
             },

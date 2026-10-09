@@ -164,7 +164,9 @@ class SigmaFilter(SigmaRuleBase):
 
         # parse detections
         try:
-            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source, policy=policy)
+            filter_global_filter = SigmaGlobalFilter.from_dict(
+                sigma_filter["filter"], source, policy=policy
+            )
         except KeyError:
             filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(

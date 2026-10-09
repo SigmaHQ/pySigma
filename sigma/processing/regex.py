@@ -24,14 +24,14 @@ class ProcessingRegularExpressionMixin:
 
     def resolve_regex_engine(self) -> RegexEngine:
         """Return the effective regex engine for this processing context."""
-        import sigma
+        from sigma.policy import default_policy
 
         _pipeline = getattr(self, "_pipeline", None)
         if _pipeline is None:
             _policy = getattr(self, "policy", None)
             if _policy is not None:
                 return _policy.regex_engine  # type: ignore[no-any-return]
-            return sigma.default_policy.regex_engine
+            return default_policy.regex_engine
         return _pipeline.resolve_regex_engine()  # type: ignore[no-any-return]
 
     def compile_regex(self, pattern: str) -> RegexPattern:

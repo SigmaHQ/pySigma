@@ -61,7 +61,7 @@ Effective Policy Resolution
 ---------------------------
 
 Processing components prefer the policy attached to the active
-``ProcessingPipeline`` and fall back to ``sigma.default_policy`` only when no explicit policy
+``ProcessingPipeline`` and fall back to ``sigma.policy.default_policy`` only when no explicit policy
 was provided.
 
 pySigma ships with these predefined profiles:

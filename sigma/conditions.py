@@ -248,10 +248,10 @@ class ConditionSelector(ConditionItem):
         """
         Resolve all detection identifiers referenced by the selector.
         """
-        import sigma
+        from sigma.policy import default_policy
 
         policy = detections.policy
-        engine = (policy or sigma.default_policy).regex_engine
+        engine = (policy or default_policy).regex_engine
         if self.pattern == "them":
             r = engine.compile(".*")
         else:

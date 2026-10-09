@@ -828,9 +828,9 @@ class SigmaRegularExpression(SigmaType):
 
     def compile(self) -> None:
         """Verify if regular expression is valid by compiling it"""
-        import sigma
+        from sigma.policy import default_policy
 
-        engine = (self.policy or sigma.default_policy).regex_engine
+        engine = (self.policy or default_policy).regex_engine
         try:
             flags = 0
             for flag in self.flags:

@@ -7,7 +7,7 @@ import time
 import pytest
 
 import sigma
-from sigma.policy import SigmaPolicy
+from sigma.policy import SigmaPolicy, default_policy
 from sigma.policy.profiles import SafePolicy, TrustedPolicy
 from sigma.policy.regex_engine import PythonRegexEngine, RE2RegexEngine
 from sigma.exceptions import SigmaPolicyError
@@ -60,17 +60,19 @@ def test_redos_poc_completes_instantly_with_safe_policy() -> None:
 
 
 def test_default_policy_is_safe_policy() -> None:
-    assert sigma.default_policy is SafePolicy
+    assert default_policy is SafePolicy
 
 
 def test_default_policy_uses_re2_engine() -> None:
-    assert isinstance(sigma.default_policy.regex_engine, RE2RegexEngine)
+    assert isinstance(default_policy.regex_engine, RE2RegexEngine)
 
 
 def test_set_default_policy_to_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sigma, "default_policy", TrustedPolicy)
-    assert sigma.default_policy is TrustedPolicy
-    assert isinstance(sigma.default_policy.regex_engine, PythonRegexEngine)
+    import sigma.policy
+    monkeypatch.setattr(sigma.policy, "default_policy", TrustedPolicy)
+    from sigma.policy import default_policy as updated_policy
+    assert updated_policy is TrustedPolicy
+    assert isinstance(updated_policy.regex_engine, PythonRegexEngine)
 
 
 def test_processing_pipeline_stores_policy() -> None:

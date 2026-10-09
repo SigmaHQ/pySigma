@@ -18,3 +18,8 @@ class SigmaPolicy:
     allow_template_vars: bool = False
     vars_allowed_paths: tuple[str, ...] | None = None
     allow_external_sources: bool = False
+
+
+from sigma.policy.profiles import SafePolicy  # noqa: E402
+
+default_policy: SigmaPolicy = SafePolicy

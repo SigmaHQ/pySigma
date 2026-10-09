@@ -132,7 +132,7 @@ class NestedFinalizer(Finalizer):
             finalizer_cls = finalizers[finalizer_type]
             import sigma as _sigma
 
-            effective_policy = policy or _sigma.default_policy
+            effective_policy = policy or _sigma.policy.default_policy
             if issubclass(finalizer_cls, TemplateBase):
                 finalizer["policy"] = policy
                 finalizer["restrict_template_path"] = not effective_policy.allow_external_sources

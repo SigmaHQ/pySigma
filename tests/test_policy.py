@@ -7,7 +7,7 @@ import time
 import pytest
 
 import sigma
-from sigma.policy import SigmaPolicy
+from sigma.policy import SigmaPolicy, default_policy
 from sigma.policy.profiles import SafePolicy, TrustedPolicy
 from sigma.policy.regex_engine import PythonRegexEngine, RE2RegexEngine
 from sigma.exceptions import SigmaPolicyError
@@ -60,17 +60,21 @@ def test_redos_poc_completes_instantly_with_safe_policy() -> None:
 
 
 def test_default_policy_is_safe_policy() -> None:
-    assert sigma.default_policy is SafePolicy
+    assert default_policy is SafePolicy
 
 
 def test_default_policy_uses_re2_engine() -> None:
-    assert isinstance(sigma.default_policy.regex_engine, RE2RegexEngine)
+    assert isinstance(default_policy.regex_engine, RE2RegexEngine)
 
 
 def test_set_default_policy_to_trusted(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(sigma, "default_policy", TrustedPolicy)
-    assert sigma.default_policy is TrustedPolicy
-    assert isinstance(sigma.default_policy.regex_engine, PythonRegexEngine)
+    import sigma.policy
+
+    monkeypatch.setattr(sigma.policy, "default_policy", TrustedPolicy)
+    from sigma.policy import default_policy as updated_policy
+
+    assert updated_policy is TrustedPolicy
+    assert isinstance(updated_policy.regex_engine, PythonRegexEngine)
 
 
 def test_processing_pipeline_stores_policy() -> None:
@@ -226,3 +230,38 @@ def test_sigma_collection_filter_path_propagates_policy_to_global_filter() -> No
     )
     assert len(coll.filters) == 1
     assert coll.filters[0].filter.policy is TrustedPolicy
+
+
+lookahead_rule_yaml = """
+title: Test
+status: test
+logsource:
+    category: test
+detection:
+    selection:
+        field|re|i: 'foo(?=bar)'
+    condition: selection
+"""
+
+
+def test_re_modifier_uses_rule_policy() -> None:
+    """Regular expressions of |re detection items are compiled with the policy of the rule."""
+    from sigma.collection import SigmaCollection
+    from sigma.rule import SigmaRule
+    from sigma.types import SigmaRegularExpression
+
+    rule = SigmaRule.from_yaml(lookahead_rule_yaml, policy=TrustedPolicy)
+    value = rule.detection.detections["selection"].detection_items[0].value[0]
+    assert isinstance(value, SigmaRegularExpression)
+    assert value.policy is TrustedPolicy
+
+    collection = SigmaCollection.from_yaml(lookahead_rule_yaml, policy=TrustedPolicy)
+    assert len(collection.rules) == 1
+
+
+def test_re_modifier_default_policy_rejects_lookahead() -> None:
+    from sigma.exceptions import SigmaRegularExpressionError
+    from sigma.rule import SigmaRule
+
+    with pytest.raises(SigmaRegularExpressionError):
+        SigmaRule.from_yaml(lookahead_rule_yaml)

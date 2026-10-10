@@ -128,6 +128,7 @@ class SigmaString(SigmaType):
     s: list[
         SigmaStringPartType
     ]  # the string is represented as sequence of strings and characters with special meaning
+    max_placeholder_expansions: ClassVar[int] = 200
 
     def __init__(self, s: str | None = None, escape: bool = True):
         """
@@ -544,6 +545,8 @@ class SigmaString(SigmaType):
 
         The callback can return a plain string, a SpecialChars instance (for insertion of wildcards) or a Placeholder (e.g. to keep
         the placeholder for later processing pipeline items).
+
+        The total number of expanded strings is limited to max_placeholder_expansions.
         """
         if (
             not self.contains_placeholder()
@@ -558,15 +561,20 @@ class SigmaString(SigmaType):
                 placeholder = s[i]
                 suffix = SigmaString()
                 suffix.s = s[i + 1 :]
-                return [
-                    prefix + replacement + result_suffix
-                    for replacement in callback(
-                        cast(Placeholder, placeholder)
-                    )  # iterate over all callback result values
+                results: list[SigmaString] = []
+                for replacement in callback(
+                    cast(Placeholder, placeholder)
+                ):  # iterate over all callback result values
                     for result_suffix in suffix.replace_placeholders(
                         callback
-                    )  # iterate over all result values of calling this method with the SigmaString remainder
-                ]
+                    ):  # iterate over all result values of calling this method with the SigmaString remainder
+                        results.append(prefix + replacement + result_suffix)
+                        if len(results) > self.max_placeholder_expansions:
+                            raise SigmaValueError(
+                                "Placeholder expansion exceeds maximum of "
+                                f"{self.max_placeholder_expansions} items"
+                            )
+                return results
         return [self]
 
     def __iter__(self) -> Iterable[SigmaStringPartType]:

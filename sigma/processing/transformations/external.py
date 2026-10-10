@@ -27,6 +27,7 @@ import yaml
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
 from sigma.policy.regex_engine import RegexPattern
 from sigma.processing.transformations.placeholder import BasePlaceholderTransformation
+from sigma.rule.base import check_alias_expansion
 from sigma.types import Placeholder, SigmaString
 from typing import TYPE_CHECKING
 
@@ -207,6 +208,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
             parsed = yaml.safe_load(data)
         except yaml.YAMLError as e:
             raise SigmaValueError(f"Failed to parse YAML data: {e}") from e
+        check_alias_expansion(parsed, SigmaValueError)
         try:
             result = jq.all(self.jq_expression, parsed)
         except ValueError as e:

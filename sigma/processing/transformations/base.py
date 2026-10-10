@@ -133,20 +133,22 @@ class DetectionItemTransformation(PreprocessingTransformation):
                 self.apply_detection(detection)
 
 
-@dataclass
+@dataclass(kw_only=True)
 class FieldMappingTransformationBase(DetectionItemTransformation):
     """
     Transformation that is applied to detection items and additionally the field list of a Sigma
     rule.
     """
 
+    strict: bool = field(default=False)
+
     @abstractmethod
     def apply_field_name(self, field: str | None) -> None | str | list[str]:
         """
         Map a field name to one or multiple field names. The result is used in detection items, references
         as well as in the field list of the Sigma rule. If the result is None, the field name is
-        passed through unchanged. If the result is an empty list, the field name is dropped from the
-        transformed result.
+        passed through unchanged (unless strict mode is enabled). If the result is an empty list,
+        the field name is dropped from the transformed result.
         """
 
     def _add_wildcards_to_value(self, value: SigmaString) -> SigmaString:
@@ -181,6 +183,14 @@ class FieldMappingTransformationBase(DetectionItemTransformation):
                     field, result, self.processing_item.identifier
                 )
             return result
+        elif (
+            result is None
+            and self.strict
+            and (self.processing_item is None or self.processing_item.match_field_name(field))
+        ):
+            raise SigmaTransformationError(
+                f"Field '{field}' does not have a mapping in strict mode."
+            )
         else:
             return [field]
 

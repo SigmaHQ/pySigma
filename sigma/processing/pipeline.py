@@ -27,6 +27,7 @@ from sigma.processing.tracking import FieldMappingTracking
 from sigma.processing.transformations import transformations
 from sigma.processing.transformations.external import ExternalSourceBaseTransformation
 from sigma.rule import SigmaDetectionItem, SigmaRule
+from sigma.rule.base import check_alias_expansion
 from sigma.correlations import SigmaCorrelationRule
 from sigma.processing.transformations.base import PreprocessingTransformation, Transformation
 from sigma.processing.postprocessing import (
@@ -825,6 +826,10 @@ class ProcessingPipeline:
         policy: "SigmaPolicy | None" = None,
     ) -> "ProcessingPipeline":
         """Instantiate processing pipeline from a parsed processing item description."""
+
+        # Validate aliases once at the pipeline root so nested from_dict calls don't
+        # repeatedly traverse already checked substructures.
+        check_alias_expansion(d, SigmaConfigurationError)
 
         custom_keys = [
             k

@@ -177,6 +177,15 @@ def test_string_placeholders_replace():
     ]
 
 
+def test_string_placeholders_replace_max_expansion():
+    with pytest.raises(SigmaValueError, match="Placeholder expansion exceeds maximum of 200 items"):
+        (
+            SigmaString("%a%%b%%c%%d%")
+            .insert_placeholders()
+            .replace_placeholders(lambda p: iter(["0", "1", "2", "3"]))
+        )
+
+
 def test_string_placeholders_escape():
     # Backslashes before % signs are kept as literal characters; the placeholder %var%
     # is still found because it has no backslash before its closing %.

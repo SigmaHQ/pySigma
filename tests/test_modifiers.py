@@ -56,7 +56,7 @@ from sigma.types import (
     SigmaTimestampPart,
 )
 from sigma.conditions import ConditionAND
-from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
+from sigma.exceptions import SigmaModifiedError, SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
 
 @pytest.fixture
@@ -371,6 +371,14 @@ def test_windash(dummy_detection_item):
             SigmaString("―param-1 ―param2"),
         ]
     )
+
+
+def test_windash_max_expanded_dashes(dummy_detection_item):
+    with pytest.raises(
+        SigmaModifiedError,
+        match="split multiple dash expansions into separate ORed string match conditions with one dash expanded",
+    ):
+        SigmaWindowsDashModifier(dummy_detection_item, []).modify(SigmaString("-a -b -c -d"))
 
 
 def test_re(dummy_detection_item):

@@ -40,7 +40,7 @@ from sigma.types import (
     TimestampPart,
     SigmaStringPartType,
 )
-from sigma.exceptions import SigmaRuleLocation, SigmaTypeError, SigmaValueError
+from sigma.exceptions import SigmaModifiedError, SigmaRuleLocation, SigmaTypeError, SigmaValueError
 
 if TYPE_CHECKING:
     from .rule import SigmaDetectionItem
@@ -418,6 +418,7 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
     en_dash = chr(int("2013", 16))
     em_dash = chr(int("2014", 16))
     horizontal_bar = chr(int("2015", 16))
+    max_expanded_dashes = 3
 
     def modify(self, val: SigmaString) -> SigmaExpansion:
         def callback(p: Placeholder) -> Iterator[str | Placeholder]:
@@ -426,12 +427,24 @@ class SigmaWindowsDashModifier(SigmaValueModifier[SigmaString, SigmaExpansion]):
             else:
                 yield p
 
+        with_placeholders = val.replace_with_placeholder(re.compile("\\B[-/]\\b"), "_windash")
+        expanded_dashes = sum(
+            1
+            for part in with_placeholders.s
+            if isinstance(part, Placeholder) and part.name == "_windash"
+        )
+        if expanded_dashes > self.max_expanded_dashes:
+            raise SigmaModifiedError(
+                "windash modifier expands at most three dash occurrences in one value; "
+                "split multiple dash expansions into separate ORed string match conditions "
+                "with one dash expanded",
+                source=self.source,
+            )
+
         return SigmaExpansion(
             cast(
                 list[SigmaType],
-                val.replace_with_placeholder(
-                    re.compile("\\B[-/]\\b"), "_windash"
-                ).replace_placeholders(callback),
+                with_placeholders.replace_placeholders(callback),
             )
         )
 

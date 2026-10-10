@@ -240,6 +240,21 @@ class TestExternalValueSourceParsers:
         with pytest.raises(SigmaConfigurationError, match="jq_expression"):
             t._parse_data("key: val")
 
+    def test_yaml_alias_bomb_raises(self):
+        lines = ["v0: &v0 [host1]", "hosts: &hosts0 [*v0, *v0]"]
+        lines += [f"hosts{i}: &hosts{i} [*hosts{i-1}, *hosts{i-1}]" for i in range(1, 20)]
+        lines.append("hosts: *hosts19")
+        data = "\n".join(lines)
+
+        t = FilePlaceholderTransformation(
+            path=PLAINTEXT_FILE,
+            policy=_ALLOW_EXTERNAL_POLICY,
+            format="yaml",
+            jq_expression=".hosts[]",
+        )
+        with pytest.raises(SigmaValueError, match="YAML aliases expand"):
+            t._parse_data(data)
+
     def test_unknown_format_raises(self):
         with pytest.raises(SigmaConfigurationError, match="Unknown external source format"):
             FilePlaceholderTransformation(

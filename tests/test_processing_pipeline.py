@@ -1126,6 +1126,15 @@ def test_processingpipeline_fromyaml_unknown(
             """)
 
 
+def test_processingpipeline_fromyaml_alias_bomb_rejected():
+    lines = ["vars:", "  v0: &v0 [x]"]
+    lines += [f"  v{i}: &v{i} [*v{i-1}, *v{i-1}]" for i in range(1, 20)]
+    lines.append("transformations: []")
+
+    with pytest.raises(SigmaConfigurationError, match="YAML aliases expand"):
+        ProcessingPipeline.from_yaml("\n".join(lines))
+
+
 def test_processingpipeline_fromdict_error(processing_item_dict_with_error):
     with pytest.raises(SigmaConfigurationError, match="Error in processing rule 1:.*2"):
         ProcessingPipeline.from_dict(

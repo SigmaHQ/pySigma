@@ -131,17 +131,12 @@ def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, 
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
 
 
-@pytest.mark.online
-@pytest.mark.xfail(
-    condition=re.match(r"^\d+\.(?:0\.0|\d+\.\d+\w+\d+)$", importlib.metadata.version("pysigma")),
-    reason="pysigma version is release candidate or other special version.",
-)
 def test_sigma_plugin_version_compatible(sigma_plugin):
     pysigma_version = importlib.metadata.version("pysigma")
     sigma_plugin.pysigma_version = Specifier(
         "~=" + (".".join(pysigma_version.split(".")[:-1] + ["0"]))
     )
-    assert sigma_plugin.is_compatible()
+    assert sigma_plugin.is_compatible(directory_version=True)
 
 
 def test_sigma_plugin_version_incompatible(sigma_plugin):

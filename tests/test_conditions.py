@@ -498,6 +498,32 @@ def test_selector_invalid_quantifier(sigma_simple_detections):
         ConditionSelector("invalid", "them")
 
 
+@pytest.mark.parametrize(
+    "quantifier,cond_class",
+    [("1", ConditionOR), ("any", ConditionOR), ("all", ConditionAND)],
+)
+def test_selector_pattern_with_dash(quantifier, cond_class, sigma_detections):
+    """Identifiers may contain dashes, so selector patterns must accept them too."""
+    assert SigmaCondition(
+        f"{quantifier} of field-valuelist-*", sigma_detections
+    ).parsed == cond_class(
+        [
+            ConditionOR(
+                [
+                    ConditionFieldEqualsValueExpression("field", SigmaString("simple-value")),
+                    ConditionFieldEqualsValueExpression("field", SigmaString("*wildcards*")),
+                ]
+            ),
+            ConditionOR(
+                [
+                    ConditionFieldEqualsValueExpression("field", SigmaString("simple-value")),
+                    ConditionFieldEqualsValueExpression("field", SigmaRegularExpression("reg.*ex")),
+                ]
+            ),
+        ]
+    )
+
+
 def test_keyword_detection(sigma_detections):
     assert SigmaCondition("keywords", sigma_detections).parsed == ConditionOR(
         [

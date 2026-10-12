@@ -321,7 +321,7 @@ identifier = Word(identifier_chars)
 identifier.set_parse_action(ConditionIdentifier.from_parsed)
 
 quantifier = Keyword("1") | Keyword("any") | Keyword("all")
-identifier_pattern = Word(alphanums + "*_")
+identifier_pattern = Word(identifier_chars + "*")  # same characters as identifiers plus wildcard
 selector = quantifier + Keyword("of") + identifier_pattern
 selector.set_parse_action(ConditionSelector.from_parsed)
 

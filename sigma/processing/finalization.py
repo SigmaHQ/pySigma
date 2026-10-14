@@ -119,6 +119,7 @@ class NestedFinalizer(Finalizer):
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
         fs: list[Finalizer] = []
         for finalizer in d["finalizers"]:
+            finalizer = finalizer.copy()
             finalizer.pop("allow_template_vars", None)  # Strip untrusted YAML value
             finalizer.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             finalizer.pop("allow_external_sources", None)  # Strip untrusted YAML value

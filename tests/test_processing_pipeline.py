@@ -1,5 +1,6 @@
 import pytest
 import yaml
+from copy import deepcopy
 from dataclasses import dataclass
 import re
 from textwrap import dedent
@@ -1582,6 +1583,32 @@ def test_processingpipeline_fromdict_missing_finalizer_type():
                 "finalizers": [{"prefix": "test"}],
             }
         )
+
+
+@pytest.mark.parametrize(
+    "finalizer",
+    [
+        {"type": "concat", "separator": "|"},
+        {"type": "template", "template": "{{ queries | join('|') }}"},
+        {"type": "nested", "finalizers": [{"type": "concat", "separator": "|"}]},
+        {
+            "type": "nested",
+            "finalizers": [
+                {"type": "nested", "finalizers": [{"type": "concat", "separator": "|"}]}
+            ],
+        },
+    ],
+    ids=["concat", "template", "nested", "recursive-nested"],
+)
+def test_processingpipeline_fromdict_preserves_finalizer_configuration(finalizer):
+    config = {"finalizers": [finalizer]}
+    original = deepcopy(config)
+
+    for _ in range(2):
+        pipeline = ProcessingPipeline.from_dict(config)
+        assert pipeline.finalize(["first query", "second query"]) == "first query|second query"
+
+    assert config == original
 
 
 def test_processingpipeline_fromdict_unknown_finalizer_type():

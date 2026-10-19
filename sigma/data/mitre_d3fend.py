@@ -13,7 +13,7 @@ from typing import Any, cast
 from urllib.error import URLError
 from urllib.request import urlopen
 
-import diskcache
+import diskcache_community as diskcache
 
 # URLs for MITRE D3FEND data - using the GitHub repository
 MITRE_D3FEND_ONTOLOGY_URL = "https://d3fend.mitre.org/ontologies/d3fend.json"
@@ -36,7 +36,7 @@ def _get_cache() -> diskcache.Cache:
     if _cache is None:
         cache_dir = _custom_cache_dir if _custom_cache_dir is not None else _DEFAULT_CACHE_DIR
         cache_dir.mkdir(parents=True, exist_ok=True)
-        _cache = diskcache.Cache(str(cache_dir))
+        _cache = diskcache.Cache(str(cache_dir), disk=diskcache.SafeDisk)
     return _cache
 
 

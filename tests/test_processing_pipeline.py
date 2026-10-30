@@ -1530,6 +1530,28 @@ def test_processingpipeline_invalid_concatenation_left():
         )
 
 
+def test_processingpipeline_concatenation_different_vars_allowed_paths():
+    """Merging pipelines from different directories should combine vars_allowed_paths."""
+    from sigma.policy import SigmaPolicy
+
+    p1 = ProcessingPipeline(policy=SigmaPolicy(vars_allowed_paths=("/dir/a",)))
+    p2 = ProcessingPipeline(policy=SigmaPolicy(vars_allowed_paths=("/dir/b",)))
+    merged = p1 + p2
+    assert merged.policy is not None
+    assert set(merged.policy.vars_allowed_paths) == {"/dir/a", "/dir/b"}
+
+
+def test_processingpipeline_concatenation_incompatible_policy():
+    """Merging pipelines with incompatible non-path policy fields should raise SigmaPolicyError."""
+    from sigma.exceptions import SigmaPolicyError
+    from sigma.policy import SigmaPolicy
+
+    p1 = ProcessingPipeline(policy=SigmaPolicy(allow_template_vars=True))
+    p2 = ProcessingPipeline(policy=SigmaPolicy(allow_template_vars=False))
+    with pytest.raises(SigmaPolicyError):
+        p1 + p2
+
+
 def test_processingitem_match_detection_item_with_field_name_condition_expression(detection_item):
     processing_item = ProcessingItem(
         transformation=TransformationAppend(s="Test"),

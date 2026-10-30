@@ -1021,10 +1021,37 @@ class ProcessingPipeline:
             return self
         if not isinstance(other, self.__class__):
             raise TypeError("Processing pipeline must be merged with another one.")
-        if self.policy is not None and other.policy is not None and self.policy != other.policy:
-            raise SigmaPolicyError(
-                "Processing pipelines with different SigmaPolicy objects can't be merged."
-            )
+        merged_policy: "SigmaPolicy | None"
+        if self.policy is not None and other.policy is not None:
+            if self.policy == other.policy:
+                merged_policy = self.policy
+            else:
+                # Allow merging when the only difference is vars_allowed_paths; combine the paths.
+                import dataclasses
+
+                p1, p2 = self.policy, other.policy
+                if (
+                    p1.regex_engine == p2.regex_engine
+                    and p1.allow_template_vars == p2.allow_template_vars
+                    and p1.allow_external_sources == p2.allow_external_sources
+                ):
+                    # Merge vars_allowed_paths: union of both (None means "no restriction").
+                    if p1.vars_allowed_paths is None or p2.vars_allowed_paths is None:
+                        merged_paths = None
+                    else:
+                        seen: set[str] = set()
+                        merged_paths = tuple(
+                            p
+                            for p in p1.vars_allowed_paths + p2.vars_allowed_paths
+                            if not (p in seen or seen.add(p))  # type: ignore[func-returns-value]
+                        )
+                    merged_policy = dataclasses.replace(p1, vars_allowed_paths=merged_paths)
+                else:
+                    raise SigmaPolicyError(
+                        "Processing pipelines with different SigmaPolicy objects can't be merged."
+                    )
+        else:
+            merged_policy = self.policy or other.policy
 
         self._clear_pipeline()
         other._clear_pipeline()
@@ -1034,7 +1061,7 @@ class ProcessingPipeline:
             postprocessing_items=self.postprocessing_items + other.postprocessing_items,
             finalizers=self.finalizers + other.finalizers,
             vars={**self.vars, **other.vars},
-            policy=self.policy or other.policy,
+            policy=merged_policy,
         )
 
     def __radd__(self, other: Literal[0]) -> "ProcessingPipeline":

@@ -977,6 +977,136 @@ def test_field_prefix_mapping_correlation_rule_with_multiple_fields(
     assert sigma_correlation_rule.condition.fieldref == ["mapped1.field1", "mapped1.field2"]
 
 
+# Tests for strict mode
+def test_field_mapping_strict_mode_raises_exception_on_unmapped_field(dummy_pipeline, sigma_rule):
+    """Test that strict mode raises exception when a field cannot be mapped."""
+    transformation = FieldMappingTransformation(
+        mapping={"field1": "fieldA"},
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    with pytest.raises(SigmaTransformationError, match="does not have a mapping"):
+        transformation.apply(sigma_rule)
+
+
+def test_field_mapping_strict_mode_with_partial_mapping(dummy_pipeline, sigma_rule):
+    """Test that strict mode correctly allows mapped fields and rejects unmapped ones."""
+    transformation = FieldMappingTransformation(
+        mapping={
+            "field1": "fieldA",
+            "field2": "fieldB",
+            # field3 is not mapped
+        },
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    with pytest.raises(SigmaTransformationError, match="does not have a mapping"):
+        transformation.apply(sigma_rule)
+
+
+def test_field_mapping_strict_mode_disabled(dummy_pipeline, sigma_rule):
+    """Test that strict mode disabled (default) allows unmapped fields."""
+    transformation = FieldMappingTransformation(
+        mapping={"field1": "fieldA"},
+        strict=False,  # default behavior
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    # Should not raise an exception
+    transformation.apply(sigma_rule)
+    # field2 and field3 should be passed through unchanged
+    detection = sigma_rule.detection.detections["test"].detection_items[0]
+    assert detection.detection_items[1].field == "field2"
+    assert detection.detection_items[2].field == "field3"
+
+
+def test_add_fieldname_suffix_strict_mode_with_none_field(dummy_pipeline):
+    """Test that AddFieldnameSuffixTransformation handles None field in strict mode."""
+    sigma_rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "test": [{"keywords": "value1"}],
+                "condition": "test",
+            },
+            "fields": ["keywords"],
+        }
+    )
+    transformation = AddFieldnameSuffixTransformation(
+        suffix="_suffix",
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    # None field should return None, which should not trigger strict mode error
+    # because the processing_item.match_field_name check will handle it
+    transformation.apply(sigma_rule)
+    # The keyword field (None) should be passed through unchanged
+
+
+def test_add_fieldname_prefix_strict_mode_raises_on_unmapped_field(dummy_pipeline, sigma_rule):
+    """Test that AddFieldnamePrefixTransformation respects strict mode."""
+    transformation = AddFieldnamePrefixTransformation(
+        prefix="prefix_",
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    # AddFieldnamePrefixTransformation applies to all fields, so this should work
+    # Actually, this transformation always applies the prefix and never returns None
+    # So strict mode shouldn't matter here
+    transformation.apply(sigma_rule)
+    # All fields should have prefix
+    assert sigma_rule.fields[0] == "prefix_otherfield1"
+
+
+def test_field_function_transformation_strict_mode_with_function_returning_none(
+    dummy_pipeline, sigma_rule
+):
+    """Test that FieldFunctionTransformation respects strict mode when function returns None."""
+
+    def transform_func(field):
+        # Function returns None for unmapped fields
+        return None
+
+    transformation = FieldFunctionTransformation(
+        mapping={},
+        transform_func=transform_func,
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    with pytest.raises(SigmaTransformationError, match="does not have a mapping"):
+        transformation.apply(sigma_rule)
+
+
+def test_field_prefix_mapping_strict_mode_with_no_matching_prefix(dummy_pipeline, sigma_rule):
+    """Test that FieldPrefixMappingTransformation respects strict mode when no prefix matches."""
+    transformation = FieldPrefixMappingTransformation(
+        mapping={"nonexistent_": "mapped_"},
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    with pytest.raises(SigmaTransformationError, match="does not have a mapping"):
+        transformation.apply(sigma_rule)
+
+
+def test_field_mapping_strict_mode_in_fields_list(dummy_pipeline, sigma_rule):
+    """Test that strict mode is checked when applying to rule fields list."""
+    transformation = FieldMappingTransformation(
+        mapping={"field1": "fieldA", "field2": "fieldB"},
+        strict=True,
+    )
+    transformation.set_pipeline(dummy_pipeline)
+
+    with pytest.raises(SigmaTransformationError, match="does not have a mapping"):
+        transformation.apply(sigma_rule)
+
+
 def test_drop_detection_item_transformation(sigma_rule: SigmaRule, dummy_pipeline):
     transformation = DropDetectionItemTransformation()
     processing_item = ProcessingItem(

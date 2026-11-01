@@ -260,3 +260,11 @@ validators:
     """,
             validators,
         )
+
+
+def test_sigmavalidator_from_yaml_alias_bomb_rejected(validators):
+    lines = ["validators: [all]", "boom:", "  d0: &d0 {a: 1, b: 2}"]
+    lines += [f"  d{i}: &d{i} {{a: *d{i-1}, b: *d{i-1}}}" for i in range(1, 20)]
+
+    with pytest.raises(SigmaConfigurationError, match="YAML aliases expand"):
+        SigmaValidator.from_yaml("\n".join(lines), validators)

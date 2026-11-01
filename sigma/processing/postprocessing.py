@@ -3,16 +3,17 @@ from __future__ import annotations
 from abc import abstractmethod
 from dataclasses import dataclass, field
 import json
-import re
 from typing import Any, Type, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import SigmaConfigurationError
+from sigma.policy.regex_engine import RegexPattern
 import sigma.processing.postprocessing
-from sigma.processing.templates import TemplateBase
+from sigma.processing.templates import TemplateBase, format_simple_template
 from sigma.processing.transformations import Transformation
 from sigma.rule import SigmaRule
 
 if TYPE_CHECKING:
+    from sigma.policy.regex_engine import RegexEngine
     from sigma.processing.pipeline import QueryPostprocessingItem, ProcessingPipeline
 
 
@@ -27,6 +28,9 @@ class QueryPostprocessingTransformation(Transformation):
     @abstractmethod
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         """Applies post-processing transformation to arbitrary typed query.
+
+        Record the processing item on the rule so later ``processing_item_applied`` conditions
+        can match it.
 
         :param pipeline: Processing pipeline this transformation was contained.
         :type pipeline: sigma.processing.pipeline.ProcessingPipeline
@@ -64,13 +68,17 @@ class QuerySimpleTemplateTransformation(QueryPostprocessingTransformation):
     * pipeline: the Sigma processing pipeline where this transformation is applied including all
       current state information in pipeline.state.
 
-    The Python format string syntax (str.format()) is used.
+    The Python format string syntax (str.format()) is used. Field lookups are sandboxed: access
+    to underscore-prefixed attributes (e.g. ``__globals__``) is denied and format specifications
+    with excessive widths or precisions are rejected.
     """
 
     template: str
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
-        return self.template.format(
+        super().apply(rule, query)
+        return format_simple_template(
+            self.template,
             query=query,
             rule=rule,
             pipeline=self._pipeline,
@@ -96,6 +104,7 @@ class QueryTemplateTransformation(QueryPostprocessingTransformation, TemplateBas
     """
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
+        super().apply(rule, query)
         return self.j2template.render(query=query, rule=rule, pipeline=self._pipeline)
 
 
@@ -134,16 +143,17 @@ class ReplaceQueryTransformation(QueryPostprocessingTransformation):
     replacement: str
 
     def __post_init__(self) -> None:
+        engine = self.resolve_regex_engine()
         try:
-            self.re = re.compile(self.pattern)
-        except re.error as e:
+            self.compile_regex(self.pattern)
+        except engine.error as e:
             raise SigmaConfigurationError(
                 f"Regular expression '{self.pattern}' is invalid: {str(e)}"
             ) from e
 
     def apply(self, rule: SigmaRule | SigmaCorrelationRule, query: Any) -> Any:
         super().apply(rule, query)
-        return self.re.sub(self.replacement, query)
+        return self.regex_sub(self.pattern, self.replacement, query)
 
 
 @dataclass

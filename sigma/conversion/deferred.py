@@ -7,7 +7,7 @@ from typing import Any, TYPE_CHECKING, ClassVar
 from sigma.conditions import ParentChainMixin
 
 if TYPE_CHECKING:
-    from typing_extensions import Self
+    from typing import Self
 
     from sigma.conversion.state import ConversionState
 

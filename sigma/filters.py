@@ -1,19 +1,22 @@
 from __future__ import annotations
 
+import copy
 import random
 import re
 import string
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
-from typing_extensions import Self
+from typing import Self
 
 from sigma import exceptions as sigma_exceptions
 from sigma.correlations import SigmaCorrelationRule, SigmaRuleReference
 from sigma.rule import SigmaDetection, SigmaDetections, SigmaLogSource, SigmaRule, SigmaRuleBase
+from sigma.rule.logsource import EmptyLogSource
 
 if TYPE_CHECKING:
     from sigma.exceptions import SigmaRuleLocation
+    from sigma.policy import SigmaPolicy
 
 
 @dataclass
@@ -22,7 +25,10 @@ class SigmaGlobalFilter(SigmaDetections):
 
     @classmethod
     def from_dict(
-        cls: type[Self], detections: dict[str, Any], source: SigmaRuleLocation | None = None
+        cls: type[Self],
+        detections: dict[str, Any],
+        source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         try:
             if isinstance(detections["condition"], str):
@@ -65,7 +71,7 @@ class SigmaGlobalFilter(SigmaDetections):
 
         return cls(
             detections={
-                name: SigmaDetection.from_definition(definition, source)
+                name: SigmaDetection.from_definition(definition, source, policy)
                 for name, definition in detections.items()
                 if name
                 not in (
@@ -76,6 +82,7 @@ class SigmaGlobalFilter(SigmaDetections):
             rules=rules,
             condition=condition,
             source=source,
+            policy=policy,
         )
 
     def to_dict(self: Self) -> dict[str, Any]:
@@ -94,6 +101,21 @@ class SigmaGlobalFilter(SigmaDetections):
 
 
 @dataclass
+class EmptySigmaGlobalFilter(SigmaGlobalFilter):
+    """
+    Empty Sigma global filter used as a placeholder for error handling purposes.
+    """
+
+    detections: dict[str, SigmaDetection] = field(default_factory=dict)
+    condition: list[str] = field(default_factory=list)
+    rules: list[SigmaRuleReference] | str = field(default_factory=list)
+
+    def __post_init__(self: Self) -> None:
+        # Skip all checks and initializations
+        pass
+
+
+@dataclass
 class SigmaFilter(SigmaRuleBase):
     """
     SigmaFilter class is used to represent a Sigma filter object.
@@ -105,51 +127,62 @@ class SigmaFilter(SigmaRuleBase):
     )
 
     @classmethod
-    def from_dict(
+    def from_dict(  # type: ignore[override]
         cls: type[Self],
         sigma_filter: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Converts from a dictionary object to a SigmaFilter object.
         """
-        kwargs, errors = super().from_dict_common_params(sigma_filter, collect_errors, source)
+        kwargs, errors = super().from_dict_common_params(
+            sigma_filter, collect_errors, source, policy=policy
+        )
 
         # parse log source
         try:
             filter_logsource = SigmaLogSource.from_dict(sigma_filter["logsource"], source)
         except KeyError:
+            filter_logsource = EmptyLogSource()
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma filter must have a log source", source=source
                 )
             )
         except AttributeError:
+            filter_logsource = EmptyLogSource()
             errors.append(
                 sigma_exceptions.SigmaLogsourceError(
                     "Sigma logsource must be a valid YAML map", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
+            filter_logsource = EmptyLogSource()
             errors.append(e)
 
         # parse detections
         try:
-            filter_global_filter = SigmaGlobalFilter.from_dict(sigma_filter["filter"], source)
+            filter_global_filter = SigmaGlobalFilter.from_dict(
+                sigma_filter["filter"], source, policy=policy
+            )
         except KeyError:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(
                 sigma_exceptions.SigmaFilterError(
                     "Sigma filter must have a filter defined", source=source
                 )
             )
         except TypeError:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(
                 sigma_exceptions.SigmaFilterError(
                     "Sigma filter must be a dictionary", source=source
                 )
             )
         except sigma_exceptions.SigmaError as e:
+            filter_global_filter = EmptySigmaGlobalFilter()
             errors.append(e)
 
         if not collect_errors and errors:
@@ -221,9 +254,11 @@ class SigmaFilter(SigmaRuleBase):
         # filter condition (e.g. "1 of selection_*") continue to work after renaming.
         prefix = "_filt_" + "".join(random.choices(string.ascii_lowercase, k=10))
 
-        # Rename every filter detection identifier with the shared prefix.
+        # Rename every filter detection identifier with the shared prefix. Each rule gets its own
+        # copy of the filter detections: processing pipelines modify detections in place, so a
+        # detection object shared between rules would be transformed again for every rule.
         for original_cond_name, condition in self.filter.detections.items():
-            rule.detection.detections[prefix + "_" + original_cond_name] = condition
+            rule.detection.detections[prefix + "_" + original_cond_name] = copy.deepcopy(condition)
 
         # Rewrite the filter condition string so that every identifier/pattern token is
         # prefixed.  This handles:
@@ -263,6 +298,11 @@ class SigmaFilter(SigmaRuleBase):
         return rule
 
     @classmethod
-    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls: type[Self],
+        rule: str,
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert YAML input string with single document into SigmaFilter object."""
-        return super().from_yaml(rule, collect_errors)
+        return super().from_yaml(rule, collect_errors, policy=policy)

@@ -5,7 +5,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any, cast
 
-from typing_extensions import Self
+from typing import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.conditions import (
@@ -28,10 +28,12 @@ from sigma.modifiers import (
     reverse_modifier_mapping,
 )
 from sigma.processing.tracking import ProcessingItemTrackingMixin
+from sigma.rule.base import check_alias_expansion
 from sigma.types import SigmaNull, SigmaString, SigmaType, sigma_type
 
 if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingItemBase
+    from sigma.policy import SigmaPolicy
 
 # Type alias for plain detection types
 # SigmaPlainValue = str | int | float | bool | None
@@ -74,6 +76,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         init=False, repr=False, hash=False, compare=False
     )  # Copy of original values for conversion back to data structures (and YAML/JSON)
     auto_modifiers: bool = dataclasses.field(default=True, compare=False, repr=False)
+    policy: "SigmaPolicy | None" = dataclasses.field(default=None, compare=False, repr=False)
 
     def __post_init__(self: Self) -> None:
         if not isinstance(self.value, list) or not all(
@@ -114,6 +117,7 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
         key: str | None,
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Constructs SigmaDetectionItem object from a mapping between field name containing
@@ -153,16 +157,17 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
             for v in val_list
         ]
 
-        return cls(field, modifiers, sigma_val, source=source)
+        return cls(field, modifiers, sigma_val, source=source, policy=policy)
 
     @classmethod
     def from_value(
         cls: type[Self],
         val: list[float | str | bool | None] | float | str | bool | None,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """Convenience method for from_mapping(None, value)."""
-        return cls.from_mapping(None, val, source=source)
+        return cls.from_mapping(None, val, source=source, policy=policy)
 
     def disable_conversion_to_plain(self: Self) -> None:
         """
@@ -188,23 +193,21 @@ class SigmaDetectionItem(ProcessingItemTrackingMixin, ParentChainMixin):
                 source=self.source,
             )
 
+        def value_to_plain(value: SigmaType) -> Any:
+            if isinstance(value, SigmaString):
+                if SigmaRegularExpressionModifier in self.modifiers:
+                    return value.to_plain(True)
+                # Escape backslashes that would be parsed as escape character when the value is
+                # parsed again, e.g. by SigmaRule.from_dict().
+                return value.to_plain(escape_backslash=True)
+            return value.to_plain()
+
         if len(self.original_value) > 1:
             value: str | int | float | bool | None | list[str | int | float | bool | None] = [
-                (
-                    value.to_plain(True)
-                    if isinstance(value, SigmaString)
-                    and SigmaRegularExpressionModifier in self.modifiers
-                    else value.to_plain()
-                )
-                for value in self.original_value
+                value_to_plain(value) for value in self.original_value
             ]
         else:
-            value = (
-                self.original_value[0].to_plain(True)
-                if isinstance(self.original_value[0], SigmaString)
-                and SigmaRegularExpressionModifier in self.modifiers
-                else self.original_value[0].to_plain()
-            )
+            value = value_to_plain(self.original_value[0])
 
         if (
             self.is_keyword() and len(self.modifiers) == 0
@@ -315,19 +318,20 @@ class SigmaDetection(ParentChainMixin):
             Mapping[str, Any] | list[int | float | str | bool | None] | float | str | bool | None
         ),
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """Instantiate an appropriate SigmaDetection object from a parsed Sigma detection definition."""
         if isinstance(definition, Mapping):  # key-value-definition (case 1)
             return cls(
                 detection_items=[
-                    SigmaDetectionItem.from_mapping(key, val, source)
+                    SigmaDetectionItem.from_mapping(key, val, source, policy)
                     for key, val in definition.items()
                 ],
                 source=source,
             )
         elif isinstance(definition, (str, int, float, bool, type(None))):  # plain value (case 2)
             return cls(
-                detection_items=[SigmaDetectionItem.from_value(definition, source)],
+                detection_items=[SigmaDetectionItem.from_value(definition, source, policy)],
                 source=source,
             )
         elif isinstance(definition, list):  # list of items (case 3)
@@ -335,14 +339,14 @@ class SigmaDetection(ParentChainMixin):
                 {str, int, float, bool, type(None)}
             ):  # list of values: create one detection item containing all values
                 return cls(
-                    detection_items=[SigmaDetectionItem.from_value(definition, source)],
+                    detection_items=[SigmaDetectionItem.from_value(definition, source, policy)],
                     source=source,
                 )
             else:
                 return cls(
                     detection_items=[
                         SigmaDetection.from_definition(
-                            item, source
+                            item, source, policy
                         )  # nested SigmaDetection in other cases
                         for item in definition
                     ],
@@ -514,6 +518,7 @@ class SigmaDetections:
     detections: dict[str, SigmaDetection]
     condition: list[str]
     source: SigmaRuleLocation | None = field(default=None, compare=False)
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
 
     def __post_init__(self: Self) -> None:
         """Detections sanity checks"""
@@ -532,6 +537,7 @@ class SigmaDetections:
         cls: type[Self],
         detections: dict[str, Any],
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         try:
             if isinstance(detections["condition"], list):
@@ -543,14 +549,16 @@ class SigmaDetections:
                 "Sigma rule must contain at least one condition", source=source
             )
 
+        check_alias_expansion(detections, sigma_exceptions.SigmaDetectionError, source)
         return cls(
             detections={
-                name: SigmaDetection.from_definition(definition, source)
+                name: SigmaDetection.from_definition(definition, source, policy)
                 for name, definition in detections.items()
                 if name not in ("condition",)
             },
             condition=condition,
             source=source,
+            policy=policy,
         )
 
     def to_dict(self: Self) -> dict[str, Any]:

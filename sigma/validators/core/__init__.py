@@ -16,7 +16,7 @@ validators = {
     validator_classname_to_identifier(name): cls
     for _, submodule, _ in iter_modules(
         [str(Path(__file__).resolve().parent)]
-    )  # Iterate over modules, str around Path is due to issue with PosixPath from Python 3.10
+    )  # Convert Path to str for compatibility with iter_modules
     for name, cls in getmembers(
         import_module(__name__ + "." + submodule), isclass
     )  # Iterate over classes

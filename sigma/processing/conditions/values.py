@@ -1,10 +1,16 @@
-from dataclasses import dataclass
+from __future__ import annotations
+
+from dataclasses import dataclass, field
+from typing import TYPE_CHECKING
+from sigma.policy.regex_engine import RegexPattern
 from sigma.processing.conditions.base import (
     ValueProcessingCondition,
 )
 from sigma.types import SigmaNull, SigmaString, SigmaType
-import re
 from sigma.exceptions import SigmaRegularExpressionError
+
+if TYPE_CHECKING:
+    from sigma.policy.regex_engine import RegexEngine
 
 
 @dataclass
@@ -20,16 +26,17 @@ class MatchStringCondition(ValueProcessingCondition):
 
     def __post_init__(self) -> None:
         super().__post_init__()
+        engine = self.resolve_regex_engine()
         try:
-            self.re = re.compile(self.pattern)
-        except re.error as e:
+            self.compile_regex(self.pattern)
+        except engine.error as e:
             raise SigmaRegularExpressionError(
                 f"Regular expression '{self.pattern}' is invalid: {str(e)}"
             ) from e
 
     def match_value(self, value: SigmaType) -> bool:
         if isinstance(value, SigmaString):
-            result = bool(self.re.match(str(value)))
+            result = bool(self.regex_match(self.pattern, str(value)))
         else:
             result = False
 

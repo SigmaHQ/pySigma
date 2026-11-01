@@ -184,6 +184,23 @@ def test_correlation_wrong_type():
         )
 
 
+@pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
+def test_correlation_field_not_a_dict_raises(bad_correlation):
+    with pytest.raises(SigmaCorrelationRuleError, match="'correlation' field must be a dict"):
+        SigmaCorrelationRule.from_dict(
+            {"title": "Invalid correlation", "correlation": bad_correlation}
+        )
+
+
+@pytest.mark.parametrize("bad_correlation", [None, "not-a-dict", 123, []])
+def test_correlation_field_not_a_dict_collect_errors(bad_correlation):
+    rule = SigmaCorrelationRule.from_dict(
+        {"title": "Invalid correlation", "correlation": bad_correlation},
+        collect_errors=True,
+    )
+    assert any("'correlation' field must be a dict" in str(error) for error in rule.errors)
+
+
 def test_correlation_without_type():
     with pytest.raises(SigmaCorrelationTypeError, match="Sigma correlation rule without type"):
         SigmaCorrelationRule.from_dict(
@@ -290,6 +307,68 @@ def test_correlation_timespan():
     assert timespan.count == 10
     assert timespan.unit == "m"
     assert timespan.seconds == 600
+
+
+@pytest.mark.parametrize(
+    ("spec", "count", "unit", "seconds"),
+    [
+        ("30s", 30, "s", 30),
+        ("10m", 10, "m", 600),
+        ("2h", 2, "h", 7200),
+        ("3d", 3, "d", 259200),
+        ("4w", 4, "w", 2419200),
+        ("5M", 5, "M", 13148730),
+        ("6y", 6, "y", 189341712),
+    ],
+)
+def test_correlation_timespan_units(spec, count, unit, seconds):
+    timespan = SigmaCorrelationTimespan(spec)
+    assert timespan.count == count
+    assert timespan.unit == unit
+    assert timespan.seconds == seconds
+
+
+@pytest.mark.parametrize(
+    "spec",
+    [
+        "-10m",  # negative count
+        "+10m",  # sign is not part of the specification
+        " 10m",  # leading whitespace
+        "10m ",  # trailing whitespace
+        "1_0m",  # Python integer literal underscore separator
+        "\u0661\u0662m",  # non-ASCII digits
+        "10x",  # unknown unit
+        "10",  # unit missing
+        "m",  # count missing
+        "",  # empty
+        10,  # not a string
+    ],
+)
+def test_correlation_invalid_timespan_spec(spec):
+    with pytest.raises(SigmaTimespanError, match="is invalid"):
+        SigmaCorrelationTimespan(spec)
+
+
+@pytest.mark.parametrize("spec", ["0s", "0m", "00h"])
+def test_correlation_zero_timespan(spec):
+    with pytest.raises(SigmaTimespanError, match="must be greater than zero"):
+        SigmaCorrelationTimespan(spec)
+
+
+def test_correlation_negative_timespan_rule():
+    with pytest.raises(SigmaTimespanError, match="Timespan '-5m' is invalid."):
+        SigmaCorrelationRule.from_dict(
+            {
+                "title": "Negative time span",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": "failed_login",
+                    "group-by": ["user"],
+                    "timespan": "-5m",
+                    "condition": {"gte": 10},
+                },
+            }
+        )
 
 
 def test_correlation_without_timespan():
@@ -469,17 +548,46 @@ def test_correlation_condition_invalid_item():
         SigmaCorrelationCondition.from_dict({"gte": 10, "test1": 20, "test2": 30})
 
 
-def test_correlation_condition_invalid_count():
+@pytest.mark.parametrize("value", ["test", "inf", "nan", None])
+def test_correlation_condition_invalid_count(value):
     with pytest.raises(
         SigmaCorrelationConditionError,
-        match="'test' is no valid Sigma correlation condition count",
+        match=f"'{value}' is no valid Sigma correlation condition count",
     ):
-        SigmaCorrelationCondition.from_dict({"gte": "test"})
+        SigmaCorrelationCondition.from_dict({"gte": value})
+
+
+@pytest.mark.parametrize(
+    "value,expected,expected_type",
+    [
+        (0.5, 0.5, float),
+        (10, 10, int),
+        (10.0, 10, int),
+        ("10", 10, int),
+        ("10.5", 10.5, float),
+        (2**53 + 1, 2**53 + 1, int),
+    ],
+)
+def test_correlation_condition_count_types(value, expected, expected_type):
+    count = SigmaCorrelationCondition.from_dict({"gte": value}).count
+    assert count == expected
+    assert type(count) is expected_type
+
+
+@pytest.mark.parametrize("count", [float("inf"), float("-inf")])
+def test_correlation_condition_non_finite_count(count):
+    with pytest.raises(
+        SigmaCorrelationConditionError,
+        match="is no valid Sigma correlation condition count",
+    ):
+        SigmaCorrelationCondition.from_dict({"gte": count})
 
 
 def test_correlation_condition_to_dict():
     cond = SigmaCorrelationCondition.from_dict({"gte": 10})
     assert cond.to_dict() == {"gte": 10}
+    cond = SigmaCorrelationCondition.from_dict({"gt": 0.5, "field": "bytes_out"})
+    assert cond.to_dict() == {"gt": 0.5, "field": "bytes_out"}
 
 
 def test_correlation_resolve_rule_references(rule_collection, correlation_rule):
@@ -1342,4 +1450,38 @@ correlation:
     condition:
         - invalid
         - list_condition
+        """)
+
+
+def test_correlation_extended_condition_wrong_type_collect_errors():
+    """collect_errors=True must return the error instead of raising an UnboundLocalError
+    when an extended (string) condition is used with a non-temporal correlation type."""
+    rule = SigmaCorrelationRule.from_yaml(
+        """
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
+        """,
+        collect_errors=True,
+    )
+    assert {error.__class__ for error in rule.errors} == {SigmaCorrelationRuleError}
+
+
+def test_correlation_extended_condition_wrong_type_raises():
+    """Without collect_errors the error is raised instead of silently swallowed."""
+    with pytest.raises(SigmaCorrelationRuleError, match="only be used with temporal"):
+        SigmaCorrelationRule.from_yaml("""
+title: Test correlation
+status: test
+correlation:
+    type: event_count
+    rules:
+        - test_rule
+    timespan: 5m
+    condition: "count() > 5"
         """)

@@ -82,6 +82,7 @@ def test_installed_sigma_plugins_get_pipeline_resolver():
     assert pipeline_resolver.resolve_pipeline("test") == pipeline
 
 
+# The following two tests must be adapted for major releases.
 @pytest.fixture
 def sigma_plugin_dict():
     return {
@@ -93,7 +94,7 @@ def sigma_plugin_dict():
         "project_url": "https://github.com/SigmaHQ/pySigma-backend-splunk",
         "report_issue_url": "https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         "state": "testing",
-        "pysigma_version": ">=1.0.0",
+        "pysigma_version": ">=2.0.0",
         "capabilities": [
             "event_count_correlation_conversion",
             "value_count_correlation_conversion",
@@ -112,7 +113,7 @@ def sigma_plugin():
         project_url="https://github.com/SigmaHQ/pySigma-backend-splunk",
         report_issue_url="https://github.com/SigmaHQ/pySigma-backend-splunk/issues/new",
         state=SigmaPluginState.TESTING,
-        pysigma_version=Specifier(">=1.0.0"),
+        pysigma_version=Specifier(">=2.0.0"),
         capabilities={
             SigmaPluginCapability.EVENT_COUNT_CORRELATION_CONVERSION,
             SigmaPluginCapability.VALUE_COUNT_CORRELATION_CONVERSION,
@@ -130,16 +131,12 @@ def test_sigma_plugin_from_dict_without_capabilities(monkeypatch, sigma_plugin, 
     assert SigmaPlugin.from_dict(sigma_plugin_dict) == sigma_plugin
 
 
-@pytest.mark.xfail(
-    condition=re.match(r"^\d+\.\d+\.\d+\w+\d+$", importlib.metadata.version("pysigma")),
-    reason="pysigma version is release candidate or other special version.",
-)
 def test_sigma_plugin_version_compatible(sigma_plugin):
     pysigma_version = importlib.metadata.version("pysigma")
     sigma_plugin.pysigma_version = Specifier(
         "~=" + (".".join(pysigma_version.split(".")[:-1] + ["0"]))
     )
-    assert sigma_plugin.is_compatible()
+    assert sigma_plugin.is_compatible(directory_version=True)
 
 
 def test_sigma_plugin_version_incompatible(sigma_plugin):
@@ -314,6 +311,7 @@ def test_sigma_plugin_directory_from_dict(sigma_plugin, sigma_plugin_dict):
     ) == SigmaPluginDirectory(note="Test", plugins={sigma_plugin.uuid: sigma_plugin})
 
 
+@pytest.mark.online
 def test_sigma_plugin_directory_default():
     plugin_dir = SigmaPluginDirectory.default_plugin_directory()
     assert plugin_dir.plugin_count() > 10
@@ -391,6 +389,7 @@ def test_sigma_plugin_directory_get_plugins_filtered(plugin_directory: SigmaPlug
     assert plugins[0].id == "test"
 
 
+@pytest.mark.online
 def test_sigma_plugin_directory_get_plugins_compatible(
     plugin_directory: SigmaPluginDirectory, sigma_plugin_dict: dict[str, Any]
 ):

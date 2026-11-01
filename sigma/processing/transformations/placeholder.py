@@ -1,5 +1,7 @@
 from abc import abstractmethod
+import re
 from typing import (
+    ClassVar,
     Iterable,
     Optional,
     Union,
@@ -147,11 +149,14 @@ class QueryExpressionPlaceholderTransformation(
     * expression: string that contains query expression with {field} and {id} placeholder
     where placeholder identifier or a mapped identifier is inserted.
     * mapping: Mapping between placeholders and identifiers that should be used in the expression.
-    If no mapping is provided the placeholder name is used.
+    If no mapping is provided the placeholder name is used. In this case the placeholder name is
+    inserted into the expression unchanged and must therefore only consist of letters, digits, '_',
+    '.' and '-', otherwise a SigmaValueError is raised.
     """
 
     expression: str = ""
     mapping: dict[str, str] = field(default_factory=dict)
+    unmapped_name_pattern: ClassVar[re.Pattern[str]] = re.compile(r"[A-Za-z0-9_.\-]+")
 
     def __post_init__(self) -> None:
         self.check_exclusivity()
@@ -164,7 +169,17 @@ class QueryExpressionPlaceholderTransformation(
             ):  # Sigma string must only contain placeholder, nothing else.
                 p = val.s[0]
                 if self.is_handled_placeholder(p):
-                    return SigmaQueryExpression(self.expression, self.mapping.get(p.name) or p.name)
+                    mapped_id = self.mapping.get(p.name)
+                    if mapped_id:  # Identifier is taken from the pipeline configuration as given.
+                        return SigmaQueryExpression(self.expression, mapped_id)
+                    if not self.unmapped_name_pattern.fullmatch(p.name):
+                        raise SigmaValueError(
+                            f"Placeholder name '{p.name}' contains characters that are not allowed "
+                            "in query expressions without a mapping (allowed: letters, digits, "
+                            "'_', '.', '-'). Use a mapping to provide an identifier for this "
+                            "placeholder."
+                        )
+                    return SigmaQueryExpression(self.expression, p.name)
             else:  # SigmaString contains placeholder as well as other parts
                 raise SigmaValueError(
                     "Placeholder query expression transformation only allows placeholder-only strings."

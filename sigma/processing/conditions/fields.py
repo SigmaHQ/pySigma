@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 
 from sigma.processing.conditions.base import FieldNameProcessingCondition
 from typing import Literal
-import re
+from sigma.policy.regex_engine import RegexPattern
 from sigma.rule import SigmaDetectionItem
 from sigma.exceptions import SigmaConfigurationError
 
@@ -16,20 +16,18 @@ class IncludeFieldCondition(FieldNameProcessingCondition):
 
     fields: list[str]
     mode: Literal["plain", "re"] = field(default="plain")
-    patterns: list[re.Pattern[str]] = field(init=False, repr=False, default_factory=list)
+    patterns: list[RegexPattern] = field(init=False, repr=False, default_factory=list)
 
     def __post_init__(self) -> None:
-        """
-        Check if format is known and pre-compile regular expressions.
-        """
         if self.mode == "plain":
             pass
         elif self.mode == "re":
+            engine = self.resolve_regex_engine()
             compiled = []
             for field_pattern in self.fields:
                 try:
-                    compiled.append(re.compile(field_pattern))
-                except re.error as e:
+                    compiled.append(engine.compile(field_pattern))
+                except engine.error as e:
                     raise SigmaConfigurationError(
                         f"Regular expression '{field_pattern}' in field name condition is invalid: {e}"
                     ) from e

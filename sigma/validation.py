@@ -3,6 +3,7 @@ from typing import Any, DefaultDict, Iterable, Iterator, Type
 from uuid import UUID
 from sigma.exceptions import SigmaConfigurationError, SigmaValidatorConfigurationParsingError
 from sigma.rule import SigmaRule
+from sigma.rule.base import check_alias_expansion
 from sigma.validators.base import SigmaRuleValidator, SigmaValidationIssue
 import yaml
 
@@ -56,6 +57,8 @@ class SigmaValidator:
         :return: Instantiated SigmaValidator
         :rtype: SigmaValidator
         """
+        check_alias_expansion(d, SigmaConfigurationError)
+
         # Build validator class set
         vs = set()
         for v in d.get("validators", []):

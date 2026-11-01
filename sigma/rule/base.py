@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
 import yaml
-from typing_extensions import Self
+from typing import Self
 
 import sigma.exceptions as sigma_exceptions
 from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaStatus
@@ -17,6 +17,7 @@ from sigma.rule.attributes import SigmaLevel, SigmaRelated, SigmaRuleTag, SigmaS
 if TYPE_CHECKING:
     from sigma.conversion.state import ConversionState
     from sigma.exceptions import SigmaError, SigmaRuleLocation
+    from sigma.policy import SigmaPolicy
 
 
 class SigmaYAMLLoader(yaml.CSafeLoader):
@@ -32,6 +33,84 @@ class SigmaYAMLLoader(yaml.CSafeLoader):
                 keys.add(key)
 
         return super().construct_mapping(node, deep)
+
+
+# Maximum number of nodes that YAML anchors/aliases may add on top of the parsed document when it
+# is expanded into a tree. Parsed YAML keeps aliases as shared references, but rule parsing walks
+# the structure as a tree, so a chain of aliases ("billion laughs") expands exponentially.
+MAX_ALIAS_EXPANSION = 10000
+
+
+METADATA_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F-\x9F\u2028\u2029]")
+
+
+def sanitize_metadata_string(value: str) -> str:
+    """Remove control characters from metadata strings to prevent structural injection."""
+    return METADATA_CONTROL_CHARS_RE.sub("", value)
+
+
+def sanitize_metadata_value(value: Any) -> Any:
+    """Recursively sanitize string values in metadata containers."""
+    if isinstance(value, str):
+        return sanitize_metadata_string(value)
+    if isinstance(value, list):
+        return [sanitize_metadata_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_metadata_value(item) for item in value)
+    if isinstance(value, dict):
+        return {key: sanitize_metadata_value(item) for key, item in value.items()}
+    return value
+
+
+def check_alias_expansion(
+    obj: Any,
+    error_class: type[sigma_exceptions.SigmaError] = sigma_exceptions.SigmaError,
+    source: sigma_exceptions.SigmaRuleLocation | None = None,
+    max_expansion: int | None = None,
+) -> None:
+    """
+    Raise error_class if the parsed YAML structure obj contains reference cycles or if expanding
+    shared (aliased) lists and mappings into a tree adds more than max_expansion nodes
+    (default: MAX_ALIAS_EXPANSION). Structures without shared references always pass. Runs in
+    time linear in the number of distinct containers.
+    """
+    if max_expansion is None:
+        max_expansion = MAX_ALIAS_EXPANSION
+    expanded: dict[int, int] = {}  # id of container -> size of its expansion as a tree
+    unique = 0  # size of the structure counting every distinct container only once
+    on_stack: set[int] = set()
+    stack: list[tuple[Any, bool]] = [(obj, False)]
+    while stack:
+        node, children_done = stack.pop()
+        if not isinstance(node, (dict, list)):
+            continue
+        children = list(node.values()) if isinstance(node, dict) else node
+        node_id = id(node)
+        if children_done:
+            size = 1
+            for child in children:
+                size += expanded[id(child)] if isinstance(child, (dict, list)) else 1
+            expanded[node_id] = size
+            on_stack.discard(node_id)
+            unique += 1 + sum(1 for child in children if not isinstance(child, (dict, list)))
+            if size - unique > max_expansion:
+                raise error_class(
+                    "YAML aliases expand to too many nodes (possible 'billion laughs' attack)",
+                    source=source,
+                )
+        elif node_id not in expanded:
+            if node_id in on_stack:
+                raise error_class("Recursive YAML structure is not supported", source=source)
+            on_stack.add(node_id)
+            stack.append((node, True))
+            for child in children:
+                if isinstance(child, (dict, list)):
+                    if id(child) in on_stack:
+                        raise error_class(
+                            "Recursive YAML structure is not supported", source=source
+                        )
+                    if id(child) not in expanded:
+                        stack.append((child, False))
 
 
 @dataclass
@@ -57,6 +136,7 @@ class SigmaRuleBase:
     errors: list[sigma_exceptions.SigmaError] = field(default_factory=list)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
     custom_attributes: dict[str, Any] = field(compare=False, default_factory=dict)
+    policy: "SigmaPolicy | None" = field(default=None, compare=False)
 
     _backreferences: list[SigmaRuleBase] = field(
         init=False, default_factory=list, repr=False, compare=False
@@ -81,12 +161,43 @@ class SigmaRuleBase:
             except ValueError:
                 pass
 
+        # Sanitize all metadata strings once at rule creation.
+        for field in (
+            "title",
+            "name",
+            "taxonomy",
+            "description",
+            "license",
+            "references",
+            "author",
+            "fields",
+            "falsepositives",
+            "scope",
+        ):
+            self.__setattr__(field, sanitize_metadata_value(self.__getattribute__(field)))
+
+        self.tags = [
+            (
+                SigmaRuleTag(
+                    namespace=sanitize_metadata_string(tag.namespace),
+                    name=sanitize_metadata_string(tag.name),
+                    source=tag.source,
+                )
+                if isinstance(tag, SigmaRuleTag)
+                else tag
+            )
+            for tag in self.tags
+        ]
+
+        self.custom_attributes = sanitize_metadata_value(self.custom_attributes)
+
     @classmethod
     def from_dict_common_params(
         cls: type[Self],
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> tuple[dict[str, Any], list[SigmaError]]:
         """
         Convert Sigma rule base parsed in dict structure into kwargs dict that can be passed to the
@@ -396,51 +507,62 @@ class SigmaRuleBase:
                     not in set(cls.__dataclass_fields__.keys())
                     - {"errors", "source", "applied_processing_items"}
                 },
+                "policy": policy,
             },
             errors,
         )
 
     @classmethod
     @abstractmethod
-    def from_dict(cls: type[Self], rule: dict[str, Any], collect_errors: bool = False) -> Self:
+    def from_dict(
+        cls: type[Self],
+        rule: dict[str, Any],
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert dict input into SigmaRule object."""
         raise NotImplementedError(
             "from_dict method must be implemented in the derived class of SigmaRuleBase"
         )
 
     @classmethod
-    def from_yaml(cls: type[Self], rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls: type[Self],
+        rule: str,
+        collect_errors: bool = False,
+        policy: "SigmaPolicy | None" = None,
+    ) -> Self:
         """Convert YAML input string with single document into SigmaRule object."""
         parsed_rule = yaml.load(rule, SigmaYAMLLoader)
         if parsed_rule is None:
             parsed_rule = {}
-        return cls.from_dict(parsed_rule, collect_errors)
+        return cls.from_dict(parsed_rule, collect_errors, policy=policy)
 
     def to_dict(self: Self) -> dict[str, Any]:
         """Convert rule object into dict."""
         d: dict[str, Any] = {
-            "title": self.title,
+            "title": sanitize_metadata_value(self.title),
         }
         # Convert to string where possible
         for field in ("id", "status", "level", "author", "description", "name"):
             if (s := self.__getattribute__(field)) is not None:
-                d[field] = str(s)
+                d[field] = sanitize_metadata_string(str(s))
 
         # copy list of strings
         for field in ("references", "fields", "falsepositives", "scope"):
             if (l := self.__getattribute__(field)) is not None and len(l) > 0:
-                d[field] = l.copy()
+                d[field] = sanitize_metadata_value(l.copy())
 
         # the special cases
         if len(self.tags) > 0:
-            d["tags"] = [str(tag) for tag in self.tags]
+            d["tags"] = [sanitize_metadata_string(str(tag)) for tag in self.tags]
         if self.date is not None:
             d["date"] = self.date.isoformat()
         if self.modified is not None:
             d["modified"] = self.modified.isoformat()
 
         # custom attributes
-        d.update(self.custom_attributes)
+        d.update(sanitize_metadata_value(self.custom_attributes))
 
         return d
 

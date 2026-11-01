@@ -22,6 +22,7 @@ from sigma.types import (
     SigmaTimestampPart,
     TimestampPart,
     SigmaCompareExpression,
+    SpecialChars,
 )
 from sigma.modifiers import (
     SigmaBase64Modifier,
@@ -40,6 +41,7 @@ from sigma.conditions import (
     ConditionNOT,
 )
 import sigma.exceptions as sigma_exceptions
+from sigma.rule.base import sanitize_metadata_string
 from tests.test_processing_conditions import detection_item
 from tests.test_processing_pipeline import processing_item
 from yaml.error import YAMLError
@@ -357,6 +359,50 @@ def test_sigmadetectionitem_key_value_single_string_modifier_to_plain():
     detection_item = SigmaDetectionItem("key", [SigmaContainsModifier], [SigmaString("value")])
     detection_item.apply_modifiers()
     assert detection_item.to_plain() == {"key|contains": "value"}
+
+
+@pytest.mark.parametrize(
+    "plain,expected_plain",
+    [
+        ("C:\\Temp\\\\*", "C:\\Temp\\\\*"),  # backslash followed by wildcard
+        ("C:\\Temp\\\\\\*", "C:\\Temp\\\\\\*"),  # backslash followed by literal asterisk
+        ("a\\\\?b", "a\\\\?b"),  # backslash followed by single-character wildcard
+        ("C:\\Temp\\foo", "C:\\Temp\\foo"),  # plain backslashes stay unescaped
+        ("C:\\Temp\\", "C:\\Temp\\"),  # trailing backslash
+        # UNC path with two leading backslashes: only the first one must be escaped
+        ("\\\\\\\\server\\share", "\\\\\\server\\share"),
+    ],
+)
+def test_sigmadetectionitem_key_value_backslash_to_plain_roundtrip(plain, expected_plain):
+    """Values parsed from the plain representation of a detection item are the original values."""
+    detection_item = SigmaDetectionItem.from_mapping("key", plain)
+    assert detection_item.to_plain() == {"key": expected_plain}
+    assert SigmaDetectionItem.from_mapping("key", expected_plain).value == detection_item.value
+
+
+def test_sigmadetectionitem_backslash_wildcard_to_plain():
+    """A backslash directly before a wildcard must be escaped, else it escapes the wildcard."""
+    detection_item = SigmaDetectionItem(
+        "key", [], [SigmaString("C:\\Temp\\\\") + SpecialChars.WILDCARD_MULTI]
+    )
+    assert detection_item.to_plain() == {"key": "C:\\Temp\\\\*"}
+
+
+def test_sigmarule_backslash_wildcard_to_dict_from_dict_roundtrip():
+    rule = SigmaRule.from_yaml("""
+title: Test
+logsource:
+    category: test
+detection:
+    sel:
+        Image: 'C:\\Temp\\\\*'
+    condition: sel
+""")
+    value = rule.detection.detections["sel"].detection_items[0].value
+    assert value == [SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI]
+    assert SigmaRule.from_dict(rule.to_dict()).detection.detections["sel"].detection_items[
+        0
+    ].value == [SigmaString("C:\\Temp\\") + SpecialChars.WILDCARD_MULTI]
 
 
 def test_sigmadetectionitem_key_value_single_int():
@@ -1678,6 +1724,63 @@ def test_sigmarule_to_dict(sigma_rule: SigmaRule):
         ],
         "level": "low",
         "scope": ["scope1", "scope2"],
+    }
+
+
+def test_sanitize_metadata_string_removes_control_characters():
+    assert sanitize_metadata_string("line\nwith\rcontrols\t") == "linewithcontrols"
+    assert sanitize_metadata_string("left\u2028right\u2029") == "leftright"
+
+
+def test_sigmarule_metadata_sanitization_from_dict():
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Ti\ntle",
+            "name": "na\rme",
+            "taxonomy": "si\x00gma",
+            "description": "de\nsc",
+            "license": "MI\rT",
+            "references": ["re\nf1", "re\tf2"],
+            "tags": ["attack.ex\necution"],
+            "author": "Th\romas",
+            "fields": ["Com\nmandLine"],
+            "falsepositives": ["Every\nthing"],
+            "scope": ["scope\n1"],
+            "custom": "va\nlue",
+            "nested_custom": {
+                "text": "line\nline",
+                "list": ["a\rb", 1],
+                "inner": {"x": "y\tz"},
+            },
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "CommandLine|contains": "test.exe",
+                },
+                "condition": "selection",
+            },
+        }
+    )
+
+    assert rule.title == "Title"
+    assert rule.name == "name"
+    assert rule.taxonomy == "sigma"
+    assert rule.description == "desc"
+    assert rule.license == "MIT"
+    assert rule.references == ["ref1", "ref2"]
+    assert rule.tags == [SigmaRuleTag("attack", "execution")]
+    assert rule.author == "Thomas"
+    assert rule.fields == ["CommandLine"]
+    assert rule.falsepositives == ["Everything"]
+    assert rule.scope == ["scope1"]
+    assert rule.custom_attributes["custom"] == "value"
+    assert rule.custom_attributes["nested_custom"] == {
+        "text": "lineline",
+        "list": ["ab", 1],
+        "inner": {"x": "yz"},
     }
 
 

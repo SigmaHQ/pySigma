@@ -12,6 +12,7 @@ from sigma.processing.templates import TemplateBase
 
 if TYPE_CHECKING:
     from sigma.processing.pipeline import ProcessingPipeline
+    from sigma.policy import SigmaPolicy
 
 
 @dataclass
@@ -112,8 +113,7 @@ class NestedFinalizer(Finalizer):
     def from_dict(
         cls,
         d: dict[str, Any],
-        allow_template_vars: bool = False,
-        vars_allowed_paths: tuple[str, ...] | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> "NestedFinalizer":
         if "finalizers" not in d:
             raise SigmaConfigurationError("Nested finalizer requires a 'finalizers' key.")
@@ -121,22 +121,27 @@ class NestedFinalizer(Finalizer):
         for finalizer in d["finalizers"]:
             finalizer.pop("allow_template_vars", None)  # Strip untrusted YAML value
             finalizer.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
+            finalizer.pop("allow_external_sources", None)  # Strip untrusted YAML value
+            finalizer.pop("restrict_template_path", None)  # Strip untrusted YAML value
+            finalizer.pop("policy", None)  # Strip untrusted YAML value
             try:
                 finalizer_type = finalizer.pop("type")
             except KeyError:
                 raise SigmaConfigurationError("Finalizer type not specified for: " + str(finalizer))
 
             finalizer_cls = finalizers[finalizer_type]
+            import sigma as _sigma
+
+            effective_policy = policy or _sigma.policy.default_policy
             if issubclass(finalizer_cls, TemplateBase):
-                finalizer["allow_template_vars"] = allow_template_vars
-                finalizer["vars_allowed_paths"] = vars_allowed_paths
+                finalizer["policy"] = policy
+                finalizer["restrict_template_path"] = not effective_policy.allow_external_sources
                 fs.append(finalizer_cls.from_dict(finalizer))
             elif finalizer_cls is cls:
                 fs.append(
                     cls.from_dict(
                         finalizer,
-                        allow_template_vars=allow_template_vars,
-                        vars_allowed_paths=vars_allowed_paths,
+                        policy=policy,
                     )
                 )
             else:

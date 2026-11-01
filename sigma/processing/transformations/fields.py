@@ -49,7 +49,7 @@ class FieldPrefixMappingTransformation(FieldMappingTransformation):
 @dataclass
 class FieldFunctionTransformation(FieldMappingTransformation):
     """Map a field name to another using provided transformation function.
-    You can overwrite transformation by providing explicit mapping for a field."""
+    An explicit mapping overrides the function, which is only called for unmapped fields."""
 
     transform_func: Callable[[str | None], str]
     apply_keyword: bool = False
@@ -57,7 +57,9 @@ class FieldFunctionTransformation(FieldMappingTransformation):
     def apply_field_name(self, field: str | None) -> None | str | list[str]:
         if field is None and not self.apply_keyword:
             return None
-        return self.mapping.get(field, self.transform_func(field))
+        if field in self.mapping:
+            return self.mapping[field]
+        return self.transform_func(field)
 
 
 @dataclass

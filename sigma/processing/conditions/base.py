@@ -4,6 +4,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 from typing import Literal, TYPE_CHECKING
 from sigma.correlations import SigmaCorrelationRule
+from sigma.processing.regex import ProcessingRegularExpressionMixin
 from sigma.types import SigmaFieldReference, SigmaType
 from sigma.rule import (
     SigmaDetection,
@@ -20,7 +21,7 @@ if TYPE_CHECKING:
 
 
 @dataclass
-class ProcessingCondition(ABC):
+class ProcessingCondition(ProcessingRegularExpressionMixin, ABC):
     """Anchor base class for all processing condition types."""
 
     _pipeline: "ProcessingPipeline" | None = field(init=False, compare=False, default=None)

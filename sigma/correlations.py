@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import math
 import re
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from typing import TYPE_CHECKING, Any, Literal
 
-from typing_extensions import Self
+from typing import Self
 from typing import ClassVar, cast
 from pyparsing import (
     Word,
@@ -20,6 +21,7 @@ from pyparsing import (
 from abc import ABC
 
 import sigma.exceptions as sigma_exceptions
+from sigma.conditions import unwrap_parse_result_operand
 from sigma.exceptions import SigmaRuleLocation, SigmaTimespanError
 from sigma.processing.tracking import ProcessingItemTrackingMixin
 from sigma.rule import EnumLowercaseStringMixin, SigmaRule, SigmaRuleBase
@@ -28,6 +30,7 @@ if TYPE_CHECKING:
     from collections.abc import Iterator
 
     from sigma.collection import SigmaCollection
+    from sigma.policy import SigmaPolicy
 
 
 class SigmaCorrelationType(EnumLowercaseStringMixin, Enum):
@@ -102,7 +105,7 @@ class SigmaCorrelationConditionOperator(Enum):
 @dataclass
 class SigmaCorrelationCondition:
     op: SigmaCorrelationConditionOperator
-    count: int
+    count: int | float
     fieldref: str | list[str] | None = field(default=None)
     percentile: int | None = field(default=None)
     source: SigmaRuleLocation | None = field(default=None, compare=False)
@@ -134,9 +137,18 @@ class SigmaCorrelationCondition:
         ):  # It's already tested above if there's an operator.
             if op in d:
                 cond_op = SigmaCorrelationConditionOperator[op.upper()]
+                cond_count: int | float
                 try:
-                    cond_count = int(d[op])
-                except ValueError:
+                    # integers stay exact; fractions are for metric thresholds
+                    if isinstance(d[op], int):
+                        cond_count = int(d[op])
+                    else:
+                        cond_count = float(d[op])
+                        if not math.isfinite(cond_count):
+                            raise ValueError
+                        if cond_count.is_integer():
+                            cond_count = int(cond_count)
+                except (TypeError, ValueError):
                     raise sigma_exceptions.SigmaCorrelationConditionError(
                         f"'{ d[op] }' is no valid Sigma correlation condition count", source=source
                     )
@@ -192,16 +204,37 @@ class CorrelationConditionItem(ABC):
         t: ParseResults | list[SigmaRuleReference | "CorrelationConditionItem"],
     ) -> list["CorrelationConditionItem"]:
         """Create condition object from parse result."""
+        args: list[SigmaRuleReference | CorrelationConditionItem]
         if cls.arg_count == 1:
             # Unary operator (NOT)
             if isinstance(t, ParseResults):
-                args = [t[0][-1]]
+                operand = unwrap_parse_result_operand(
+                    t[0][-1],
+                    error_class=sigma_exceptions.SigmaCorrelationConditionError,
+                    error_message="Invalid wrapped correlation condition operand",
+                )
+                if operand is None:
+                    raise sigma_exceptions.SigmaCorrelationConditionError(
+                        "Invalid wrapped correlation condition operand"
+                    )
+                args = [operand]
             else:
                 args = [t[-1]]
         elif cls.arg_count > 1:
             # Binary operators (AND, OR) - handle flat lists from pyparsing
             if isinstance(t, ParseResults):
-                args = t[0][0::2]  # Take every other element (skip operators)
+                args = []
+                for a in t[0][0::2]:
+                    operand = unwrap_parse_result_operand(
+                        a,
+                        error_class=sigma_exceptions.SigmaCorrelationConditionError,
+                        error_message="Invalid wrapped correlation condition operand",
+                    )
+                    if operand is None:
+                        raise sigma_exceptions.SigmaCorrelationConditionError(
+                            "Invalid wrapped correlation condition operand"
+                        )
+                    args.append(operand)
             else:
                 args = t[0::2]
         else:
@@ -274,7 +307,7 @@ class SigmaExtendedCorrelationCondition:
 
         # Define expression using infix notation
         # Precedence: not (highest) > and > or (lowest)
-        expr = infix_notation(
+        expr = infix_notation(  # type: ignore[no-untyped-call]
             rule_identifier,
             [
                 (Keyword("not"), 1, opAssoc.RIGHT, CorrelationConditionNOT.from_parsed),
@@ -329,30 +362,38 @@ class SigmaCorrelationTimespan:
     count: int = field(init=False)
     unit: str = field(init=False)
 
+    timespan_re: ClassVar[re.Pattern[str]] = re.compile("(?P<count>[0-9]+)(?P<unit>[smhdwMy])")
+    unit_seconds: ClassVar[dict[str, int]] = {
+        "s": 1,
+        "m": 60,
+        "h": 3600,
+        "d": 86400,
+        "w": 604800,
+        "M": 2629746,
+        "y": 31556952,
+    }
+
     def __post_init__(self: Self) -> None:
         """
         Parses a string representing a time span and stores the equivalent number of seconds.
 
+        A time span must be a positive integer count followed by one of the unit characters
+        s, m, h, d, w, M or y.
+
         Raises:
             sigma_exceptions.SigmaTimespanError: If the given time span is invalid.
         """
-        try:
-            self.count = int(self.spec[:-1])
-            self.unit = self.spec[-1]
-            self.seconds = (
-                self.count
-                * {
-                    "s": 1,
-                    "m": 60,
-                    "h": 3600,
-                    "d": 86400,
-                    "w": 604800,
-                    "M": 2629746,
-                    "y": 31556952,
-                }[self.unit]
-            )
-        except (ValueError, KeyError):
+        parsed = self.timespan_re.fullmatch(self.spec) if isinstance(self.spec, str) else None
+        if parsed is None:
             raise sigma_exceptions.SigmaTimespanError(f"Timespan '{ self.spec }' is invalid.")
+        count = int(parsed.group("count"))
+        if count <= 0:
+            raise sigma_exceptions.SigmaTimespanError(
+                f"Timespan '{ self.spec }' must be greater than zero."
+            )
+        self.count = count
+        self.unit = parsed.group("unit")
+        self.seconds = self.count * self.unit_seconds[self.unit]
 
 
 @dataclass
@@ -515,14 +556,26 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
             )
 
     @classmethod
-    def from_dict(
+    def from_dict(  # type: ignore[override]
         cls,
         rule: dict[str, Any],
         collect_errors: bool = False,
         source: SigmaRuleLocation | None = None,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
-        kwargs, errors = super().from_dict_common_params(rule, collect_errors, source)
-        correlation_rule = rule.get("correlation", dict())
+        kwargs, errors = super().from_dict_common_params(
+            rule, collect_errors, source, policy=policy
+        )
+        correlation_rule: Any = rule.get("correlation", dict())
+        if not isinstance(correlation_rule, dict):
+            errors.append(
+                sigma_exceptions.SigmaCorrelationRuleError(
+                    "Sigma correlation rule 'correlation' field must be a dict", source=source
+                )
+            )
+            if not collect_errors:
+                raise errors[0]
+            correlation_rule = dict()
 
         # Correlation type
         correlation_type = correlation_rule.get("type")
@@ -625,7 +678,9 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
 
         # Condition - can be either a dict (basic condition) or a string (extended condition)
         condition_value = correlation_rule.get("condition")
-        condition: SigmaCorrelationCondition | SigmaExtendedCorrelationCondition
+        condition: SigmaCorrelationCondition | SigmaExtendedCorrelationCondition = (
+            SigmaCorrelationCondition(SigmaCorrelationConditionOperator.GTE, 1)
+        )
 
         if condition_value is not None:
             if isinstance(condition_value, dict):
@@ -702,9 +757,11 @@ class SigmaCorrelationRule(SigmaRuleBase, ProcessingItemTrackingMixin):
         )
 
     @classmethod
-    def from_yaml(cls, rule: str, collect_errors: bool = False) -> Self:
+    def from_yaml(
+        cls, rule: str, collect_errors: bool = False, policy: "SigmaPolicy | None" = None
+    ) -> Self:
         """Convert YAML input string with single document into SigmaCorrelationRule object."""
-        return super().from_yaml(rule, collect_errors)
+        return super().from_yaml(rule, collect_errors, policy=policy)
 
     def to_dict(self: Self) -> dict[str, Any]:
         d = super().to_dict()

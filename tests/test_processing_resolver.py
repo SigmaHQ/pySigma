@@ -61,6 +61,56 @@ def test_resolve_file(processing_pipeline_resolver: ProcessingPipelineResolver):
     )
 
 
+@pytest.fixture
+def restricted_pipeline_file(tmp_path):
+    pipeline_file = tmp_path / "pipeline.yml"
+    pipeline_file.write_text(
+        "name: restricted\nallowed_backends: [some_backend]\ntransformations: []\n",
+        encoding="utf-8",
+    )
+    return pipeline_file
+
+
+@pytest.mark.parametrize("source", ["single_file", "file_list", "directory"])
+def test_resolve_file_backend_incompatible(restricted_pipeline_file, source):
+    resolver = ProcessingPipelineResolver()
+    spec = str(restricted_pipeline_file)
+    with pytest.raises(SigmaPipelineNotAllowedForBackendError) as exc:
+        if source == "single_file":
+            resolver.resolve_pipeline(spec, "other_backend")
+        elif source == "file_list":
+            resolver.resolve([spec], "other_backend")
+        else:
+            resolver.resolve([str(restricted_pipeline_file.parent)], "other_backend")
+    assert exc.value.wrong_pipeline == spec
+    assert exc.value.backend == "other_backend"
+
+
+@pytest.mark.parametrize("source", ["single_file", "file_list", "directory"])
+@pytest.mark.parametrize("target", ["some_backend", None])
+def test_resolve_file_backend_compatible(restricted_pipeline_file, source, target):
+    resolver = ProcessingPipelineResolver()
+    spec = str(restricted_pipeline_file)
+    if source == "single_file":
+        pipeline = resolver.resolve_pipeline(spec, target)
+    elif source == "file_list":
+        pipeline = resolver.resolve([spec], target)
+    else:
+        pipeline = resolver.resolve([str(restricted_pipeline_file.parent)], target)
+    assert pipeline.name == "restricted"
+
+
+@pytest.mark.parametrize("allowed_backends", ["", "allowed_backends: []\n"])
+def test_resolve_file_backend_unrestricted(tmp_path, allowed_backends):
+    pipeline_file = tmp_path / "pipeline.yml"
+    pipeline_file.write_text(
+        "name: unrestricted\n" + allowed_backends + "transformations: []\n",
+        encoding="utf-8",
+    )
+    pipeline = ProcessingPipelineResolver().resolve_pipeline(str(pipeline_file), "any_backend")
+    assert pipeline.name == "unrestricted"
+
+
 def test_resolve_directory(processing_pipeline_resolver):
     assert processing_pipeline_resolver.resolve(["tests/files/pipelines"]) == ProcessingPipeline(
         items=[
@@ -92,6 +142,20 @@ def test_resolve_callable():
         }
     )
     assert resolver.resolve_pipeline("test") == pipeline
+
+
+def test_resolve_callable_backend_incompatible():
+    resolver = ProcessingPipelineResolver(
+        {
+            "restricted": lambda: ProcessingPipeline(
+                name="restricted", allowed_backends={"some_backend"}
+            )
+        }
+    )
+    with pytest.raises(SigmaPipelineNotAllowedForBackendError) as exc:
+        resolver.resolve_pipeline("restricted", "other_backend")
+    assert exc.value.wrong_pipeline == "restricted"
+    assert exc.value.backend == "other_backend"
 
 
 def test_resolve_failed_not_found(

@@ -6,7 +6,7 @@ from contextlib import contextmanager
 from itertools import pairwise
 from typing import Any, Callable, ClassVar, Iterator, cast
 
-from typing_extensions import Self
+from typing import Self
 
 from sigma.collection import SigmaCollection
 from sigma.conditions import (
@@ -34,7 +34,13 @@ from sigma.correlations import (
     SigmaExtendedCorrelationCondition,
     SigmaRuleReference,
 )
-from sigma.exceptions import SigmaBackendError, SigmaConversionError, SigmaError, SigmaValueError
+from sigma.exceptions import (
+    SigmaBackendError,
+    SigmaConversionError,
+    SigmaError,
+    SigmaFeatureNotSupportedByBackendError,
+    SigmaValueError,
+)
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule import SigmaRule
 from sigma.rule.detection import SigmaDetection, SigmaDetectionItem
@@ -315,7 +321,9 @@ class Backend(ABC):
             raise
 
     def _format_template(
-        self: Self, template: str, **kwargs: str | int | list[str] | SigmaCorrelationRule | None
+        self: Self,
+        template: str,
+        **kwargs: str | int | float | list[str] | SigmaCorrelationRule | None,
     ) -> str:
         """
         Ensure all template's variables are properly populated before generating the output.
@@ -323,11 +331,11 @@ class Backend(ABC):
         :param template: Templated string to format.
         :type cond: str
         :param kwargs: List of parameters to populate the template.
-        :type kwargs: str | int | list[str] | SigmaCorrelationRule | None
+        :type kwargs: str | int | float | list[str] | SigmaCorrelationRule | None
         :return: Templated string
         :rtype: str
         """
-        variables: list[tuple[str, str | int | list[str] | SigmaCorrelationRule | None]] = [
+        variables: list[tuple[str, str | int | float | list[str] | SigmaCorrelationRule | None]] = [
             (parsed_template[1], kwargs.get(parsed_template[1]))
             for parsed_template in string.Formatter().parse(template)
             if parsed_template[1]
@@ -759,8 +767,10 @@ class Backend(ABC):
         ]
         rule.set_conversion_result(finalized_queries)
         rule.set_conversion_states(states)
-
-        return finalized_queries
+        if rule._output:
+            return finalized_queries
+        else:
+            return []
 
     @abstractmethod
     def convert_correlation_event_count_rule(
@@ -1394,6 +1404,11 @@ class TextQueryBackend(Backend):
     referenced_rules_expression: ClassVar[dict[str, str] | None] = None
     # All referenced rules expressions are joined with the following joiner:
     referenced_rules_expression_joiner: ClassVar[dict[str, str] | None] = None
+    # Rule names/ids matching this pattern are inserted into referenced_rules_expression as-is.
+    # All other names/ids are escaped and quoted like string values.
+    referenced_rules_plain_ruleid_pattern: ClassVar[re.Pattern[str]] = re.compile(
+        r"^[A-Za-z0-9_.\-]+$"
+    )
 
     # The following class variables defined the templates for the group by expression.
     # First an expression frame is definied:
@@ -1603,20 +1618,41 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.or_token + self.token_separator
 
+            converted_args = [
+                (
+                    self.convert_condition(arg, state)
+                    if self.compare_precedence(cond, arg)
+                    else self.convert_condition_group(arg, state)
+                )
+                for arg in cond.args
+            ]
+            state.add_combined_deferred_expressions(converted_args)
             args = [
                 converted
-                for converted in (
-                    (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
-                    )
-                    for arg in cond.args
-                )
+                for converted in converted_args
                 if converted is not None and not isinstance(converted, DeferredQueryExpression)
             ]
 
             if len(args) == 0:
+                deferred_args = [
+                    converted
+                    for converted in converted_args
+                    if isinstance(converted, DeferredQueryExpression)
+                ]
+                if len(deferred_args) == 1:
+                    # Only one deferred argument: pass it to the parent, so the rule is still
+                    # finished as deferred-only query instead of being dropped.
+                    return deferred_args[0]
+                elif len(deferred_args) > 1:
+                    # Deferred expressions are applied as additional filters on the result of
+                    # the main query, which can only express an AND of them. Dropping the OR
+                    # would silently drop the whole rule.
+                    raise SigmaFeatureNotSupportedByBackendError(
+                        "OR condition consisting only of deferred query expressions (e.g."
+                        " regular expressions or field references that are applied after the"
+                        " main query) is not supported by the backend",
+                        source=cond.source,
+                    )
                 return self.empty_or_expression
             else:
                 return joiner.join(args)
@@ -1672,20 +1708,32 @@ class TextQueryBackend(Backend):
             else:
                 joiner = self.token_separator + self.and_token + self.token_separator
 
+            converted_args = [
+                (
+                    self.convert_condition(arg, state)
+                    if self.compare_precedence(cond, arg)
+                    else self.convert_condition_group(arg, state)
+                )
+                for arg in cond.args
+            ]
+            state.add_combined_deferred_expressions(converted_args)
             args = [
                 converted
-                for converted in (
-                    (
-                        self.convert_condition(arg, state)
-                        if self.compare_precedence(cond, arg)
-                        else self.convert_condition_group(arg, state)
-                    )
-                    for arg in cond.args
-                )
+                for converted in converted_args
                 if converted is not None and not isinstance(converted, DeferredQueryExpression)
             ]
 
             if len(args) == 0:
+                deferred_args = [
+                    converted
+                    for converted in converted_args
+                    if isinstance(converted, DeferredQueryExpression)
+                ]
+                if deferred_args:
+                    # All arguments were deferred: they are already recorded in the conversion
+                    # state. Pass a deferred expression to the parent, so the rule is still
+                    # finished as deferred-only query instead of being dropped.
+                    return deferred_args[-1]
                 return self.empty_and_expression
             else:
                 return joiner.join(args)
@@ -1701,14 +1749,27 @@ class TextQueryBackend(Backend):
             return None
         try:
             if arg.__class__ in self.precedence:  # group if AND or OR condition is negated
+                combined_deferred_count = len(state.combined_deferred)
                 converted_group: str | DeferredQueryExpression | None = (
                     self.convert_condition_group(arg, state)
                 )
-                if (
-                    self.convert_not_as_not_eq
-                    or isinstance(converted_group, DeferredQueryExpression)
-                    or converted_group is None
-                ):
+                if len(state.combined_deferred) > combined_deferred_count:
+                    # Deferred expressions are applied as additional filters on the result of
+                    # the main query. Below a negated AND/OR this changes the meaning of the
+                    # condition (the negation would only apply to the main query part), and
+                    # an AND/OR of deferred expressions can't be negated as a whole.
+                    raise SigmaFeatureNotSupportedByBackendError(
+                        "Negation of an AND/OR condition containing deferred query expressions"
+                        " (e.g. regular expressions or field references that are applied after"
+                        " the main query) is not supported by the backend",
+                        source=cond.source,
+                    )
+                if isinstance(converted_group, DeferredQueryExpression):
+                    # The group itself converted to a single deferred expression, e.g. the inner
+                    # "not sel" of "not (not sel)" (ConditionNOT is part of self.precedence, so a
+                    # negated NOT is handled by this branch): negate it in place.
+                    return converted_group.negate()
+                if self.convert_not_as_not_eq or converted_group is None:
                     return converted_group
                 return self.not_token + self.token_separator + converted_group
             else:
@@ -2471,7 +2532,10 @@ class TextQueryBackend(Backend):
                     (
                         self.correlation_search_multi_rule_query_expression.format(
                             rule=rule_reference.rule,
-                            ruleid=rule_reference.rule.name or rule_reference.rule.id,
+                            ruleid=self.convert_correlation_ruleid(
+                                rule_reference.rule.name or rule_reference.rule.id,
+                                self.correlation_search_multi_rule_query_expression,
+                            ),
                             query=self.convert_correlation_search_multi_rule_query_postprocess(
                                 query
                             ),
@@ -2494,6 +2558,31 @@ class TextQueryBackend(Backend):
         """This function is called for each query in the multi-rule correlation search phase. It can be used to postprocess the query before it is joined with the other queries."""
         return query
 
+    def convert_correlation_ruleid(self, ruleid: str | object | None, template: str) -> str:
+        """Convert rule identifier into a safe template value."""
+        if ruleid is None:
+            return ""
+
+        converted_ruleid = self.convert_value_str(SigmaString(str(ruleid)), ConversionState())
+
+        # If the template already surrounds {ruleid} with the configured quote character,
+        # remove outer quotes to avoid duplicated quoting while keeping escaping intact.
+        if self.str_quote and f"{self.str_quote}{{ruleid}}{self.str_quote}" in template:
+            if converted_ruleid.startswith(self.str_quote) and converted_ruleid.endswith(
+                self.str_quote
+            ):
+                return converted_ruleid[len(self.str_quote) : -len(self.str_quote)]
+
+        return converted_ruleid
+
+    def convert_correlation_fieldref(self, fieldref: str | list[str] | None) -> str:
+        """Convert correlation field reference into escaped/quoted field representation."""
+        if fieldref is None:
+            return ""
+        if isinstance(fieldref, list):
+            return ", ".join(self.escape_and_quote_field(field) for field in fieldref)
+        return self.escape_and_quote_field(fieldref)
+
     def convert_correlation_search_field_normalization_expression(
         self,
         aliases: SigmaCorrelationFieldAliases,
@@ -2512,8 +2601,8 @@ class TextQueryBackend(Backend):
             return self.correlation_search_field_normalization_expression_joiner.join(
                 (
                     self.correlation_search_field_normalization_expression.format(
-                        alias=alias.alias,
-                        field=field,
+                        alias=self.escape_and_quote_field(alias.alias),
+                        field=self.escape_and_quote_field(field),
                     )
                     for alias in aliases
                     for alias_rule_reference, field in alias.mapping.items()
@@ -2539,7 +2628,10 @@ class TextQueryBackend(Backend):
                     (
                         self.typing_rule_query_expression.format(
                             rule=rule_reference.rule,
-                            ruleid=rule_reference.rule.name or rule_reference.rule.id,
+                            ruleid=self.convert_correlation_ruleid(
+                                rule_reference.rule.name or rule_reference.rule.id,
+                                self.typing_rule_query_expression,
+                            ),
                             query=self.convert_correlation_typing_query_postprocess(query),
                         )
                         for rule_reference in rule.referenced_rules
@@ -2589,7 +2681,7 @@ class TextQueryBackend(Backend):
             rule=rule,
             referenced_rules=self.convert_referenced_rules(rule.referenced_rules, method),
             field=(
-                rule.condition.fieldref
+                self.convert_correlation_fieldref(rule.condition.fieldref)
                 if isinstance(rule.condition, SigmaCorrelationCondition)
                 else ""
             ),
@@ -2681,10 +2773,18 @@ class TextQueryBackend(Backend):
             or self.referenced_rules_expression_joiner is None
         ):
             return None
+        template = self.referenced_rules_expression[method]
+
+        def convert_ruleid(ruleid: str | object | None) -> str:
+            ruleid_str = str(ruleid)
+            if self.referenced_rules_plain_ruleid_pattern.fullmatch(ruleid_str):
+                return ruleid_str
+            return self.convert_correlation_ruleid(ruleid_str, template)
+
         return self.referenced_rules_expression_joiner[method].join(
             (
-                self.referenced_rules_expression[method].format(
-                    ruleid=rule_reference.rule.name or rule_reference.rule.id
+                template.format(
+                    ruleid=convert_ruleid(rule_reference.rule.name or rule_reference.rule.id)
                 )
                 for rule_reference in referenced_rules
             )
@@ -2709,7 +2809,7 @@ class TextQueryBackend(Backend):
         if isinstance(cond, SigmaCorrelationCondition):
             return self._format_template(
                 template,
-                field=cond.fieldref,
+                field=self.convert_correlation_fieldref(cond.fieldref),
                 op=self.correlation_condition_mapping[cond.op],
                 count=cond.count,
                 referenced_rules=self.convert_referenced_rules(referenced_rules, method),

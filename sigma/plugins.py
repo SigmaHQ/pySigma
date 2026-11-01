@@ -147,7 +147,11 @@ class InstalledSigmaPlugins:
                             # OR'd condition ensures backwards compatibility with older plugins
                             if is_pipeline(possible_obj) or inspect.isfunction(possible_obj):
                                 # Instantiate the pipeline if it is a class.
-                                if inspect.isclass(possible_obj) and issubclass(
+                                if possible_obj is Pipeline:
+                                    # The base class itself (e.g. imported into a plugin
+                                    # module to decorate its pipelines) is not a pipeline.
+                                    continue
+                                elif inspect.isclass(possible_obj) and issubclass(
                                     possible_obj, Pipeline
                                 ):
                                     result[obj_id] = possible_obj()

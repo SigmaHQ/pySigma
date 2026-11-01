@@ -8,6 +8,7 @@ These guides provide step-by-step instructions for common tasks with pySigma.
 
    converting_rules
    building_backends
+   sigma_policy
    processing_pipelines
    rule_validation
    plugin_system

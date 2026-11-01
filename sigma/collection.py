@@ -8,7 +8,7 @@ from typing import IO, Any, Callable, cast
 from uuid import UUID
 
 import yaml
-from typing_extensions import Self
+from typing import Self
 
 from sigma.correlations import SigmaCorrelationRule
 from sigma.exceptions import (
@@ -19,6 +19,11 @@ from sigma.exceptions import (
 )
 from sigma.filters import SigmaFilter
 from sigma.rule import SigmaRule, SigmaRuleBase
+from sigma.rule.base import check_alias_expansion
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
 
 NestedDict = dict[str, "str | int | float | bool | None | NestedDict"]
 
@@ -107,8 +112,42 @@ class SigmaCollection:
             else self.rules
         )
 
-        # Sort rules by reference order
-        self.rules = list(sorted(self.rules))
+        # Order rules so that every rule comes after the rules it refers to
+        self.rules = self._referenced_first(self.rules)
+
+    @staticmethod
+    def _referenced_first(
+        rules: list[SigmaRule | SigmaCorrelationRule],
+    ) -> list[SigmaRule | SigmaCorrelationRule]:
+        """
+        Order rules so that every rule comes after the rules it refers to. A referenced rule moves up
+        to just before the first rule that refers to it; the order is otherwise kept.
+
+        Sorting by "is referenced by" is not enough: that comparison is only a partial order, and
+        a sort leaves e.g. [correlation, unrelated rule, rule referenced by the correlation] as it
+        is. The correlation is then converted before the rule it refers to, and conversion fails
+        with "Conversion result not available".
+        """
+        # Backreferences cover every way a rule refers to another (a correlation's rules and the
+        # rules named in an extended condition).
+        refers_to: dict[int, list[SigmaRule | SigmaCorrelationRule]] = {}
+        for rule in rules:
+            for referencing in rule._backreferences:
+                refers_to.setdefault(id(referencing), []).append(rule)
+        ordered: list[SigmaRule | SigmaCorrelationRule] = []
+        placed: set[int] = set()
+
+        def place(rule: SigmaRule | SigmaCorrelationRule) -> None:
+            if id(rule) in placed:
+                return
+            placed.add(id(rule))
+            for referenced in refers_to.get(id(rule), []):
+                place(referenced)
+            ordered.append(rule)
+
+        for rule in rules:
+            place(rule)
+        return ordered
 
     @classmethod
     def from_dicts(
@@ -118,6 +157,7 @@ class SigmaCollection:
         source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Generate a rule collection from list of dicts containing parsed YAML content.
@@ -133,12 +173,21 @@ class SigmaCollection:
         global_rule: NestedDict = dict()
 
         for i, rule in zip(range(1, len(rules) + 1), rules):
+            if rule is None:  # empty YAML document, e.g. from a trailing '---'
+                continue
             if isinstance(
                 rule, SigmaRule
             ):  # Included rules are already parsed, skip collection action processing
                 parsed_rules.append(rule)
                 rule.source = source
             else:
+                try:  # reject alias bombs before global/repeat merging walks the document
+                    check_alias_expansion(rule, SigmaCollectionError, source)
+                except SigmaCollectionError as expansion_error:
+                    if collect_errors:
+                        errors.append(expansion_error)
+                        continue
+                    raise
                 action = rule.get("action")
                 if action is None:  # no action defined
                     if "correlation" in rule:  # correlation rule - no global rule merge
@@ -156,12 +205,16 @@ class SigmaCollection:
                             rule,
                             collect_errors,
                             source,
+                            policy=policy,
                         )
                         parsed_rules.append(parsed_filter_rule)
                         errors.extend(parsed_filter_rule.errors)  # Propagate errors from rule
                     else:  # merge with global rule and parse as simple rule
                         parsed_merged_rule = SigmaRule.from_dict(
-                            deep_dict_update(rule, global_rule), collect_errors, source
+                            deep_dict_update(rule, global_rule),
+                            collect_errors,
+                            source,
+                            policy=policy,
                         )
                         parsed_rules.append(parsed_merged_rule)
                         errors.extend(parsed_merged_rule.errors)  # Propagate errors from rule
@@ -176,7 +229,9 @@ class SigmaCollection:
                     action == "repeat"
                 ):  # add content of current rule to previous rule and parse it
                     prev_rule = deep_dict_update(prev_rule, rule)
-                    parsed_rule = SigmaRule.from_dict(prev_rule, collect_errors, source)
+                    parsed_rule = SigmaRule.from_dict(
+                        prev_rule, collect_errors, source, policy=policy
+                    )
                     parsed_rules.append(parsed_rule)
                     errors.extend(parsed_rule.errors)  # Propagate errors from rule
                 else:
@@ -204,6 +259,7 @@ class SigmaCollection:
         source: SigmaRuleLocation | None = None,
         collect_filters: bool = False,
         resolve_references: bool = True,
+        policy: "SigmaPolicy | None" = None,
     ) -> Self:
         """
         Generate a rule collection from a string containing one or multiple YAML documents.
@@ -219,6 +275,7 @@ class SigmaCollection:
             source,
             collect_filters,
             resolve_references,
+            policy=policy,
         )
 
     @classmethod

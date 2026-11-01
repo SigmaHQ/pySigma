@@ -4,7 +4,7 @@ Getting Started
 Requirements
 ------------
 
-pySigma requires Python 3.10 or later.
+pySigma requires Python 3.11 or later.
 
 Installation
 ------------

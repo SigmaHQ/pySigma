@@ -1,4 +1,5 @@
 import pytest
+from pyparsing import ParseResults
 from sigma.conditions import (
     ConditionItem,
     SigmaCondition,
@@ -212,6 +213,61 @@ def test_not(sigma_simple_detections):
     )
 
 
+@pytest.fixture
+def sigma_operator_prefixed_detections():
+    return SigmaDetections(
+        {
+            name: SigmaDetection([SigmaDetectionItem(None, [], [SigmaString(name)])])
+            for name in ("sel", "notsel", "not-sel", "android", "order_filter")
+        },
+        condition=["any of them"],
+    )
+
+
+@pytest.mark.parametrize(
+    "condition,expected",
+    [
+        ("notsel", ConditionValueExpression(SigmaString("notsel"))),
+        ("not-sel", ConditionValueExpression(SigmaString("not-sel"))),
+        ("android", ConditionValueExpression(SigmaString("android"))),
+        ("order_filter", ConditionValueExpression(SigmaString("order_filter"))),
+        (
+            "sel and notsel",
+            ConditionAND(
+                [
+                    ConditionValueExpression(SigmaString("sel")),
+                    ConditionValueExpression(SigmaString("notsel")),
+                ]
+            ),
+        ),
+        (
+            "sel or not notsel",
+            ConditionOR(
+                [
+                    ConditionValueExpression(SigmaString("sel")),
+                    ConditionNOT([ConditionValueExpression(SigmaString("notsel"))]),
+                ]
+            ),
+        ),
+        (
+            "not(sel)",
+            ConditionNOT([ConditionValueExpression(SigmaString("sel"))]),
+        ),
+    ],
+)
+def test_identifier_starting_with_operator_name(
+    condition, expected, sigma_operator_prefixed_detections
+):
+    """Identifiers that start with not/and/or must not be split into operator + identifier."""
+    assert SigmaCondition(condition, sigma_operator_prefixed_detections).parsed == expected
+
+
+@pytest.mark.parametrize("condition", ["sel andnotsel", "sel ornotsel"])
+def test_operator_glued_to_identifier_is_error(condition, sigma_operator_prefixed_detections):
+    with pytest.raises(SigmaConditionError):
+        SigmaCondition(condition, sigma_operator_prefixed_detections).parsed
+
+
 def test_3or(sigma_simple_detections):
     assert SigmaCondition(
         "detection1 or detection2 or detection3", sigma_simple_detections
@@ -244,6 +300,29 @@ def test_precedence(sigma_simple_detections):
             ),
         ]
     )
+
+
+def test_boolean_operands_are_not_left_wrapped_in_parse_results(sigma_simple_detections):
+    """
+    pyparsing wraps a higher-precedence sub-expression -- a negated term, or a
+    parenthesized group -- in its own ParseResults when it becomes an operand of a
+    boolean operator. Those wrappers have to be unwrapped before they are stored as
+    condition arguments, because postprocess() calls a method on every argument and
+    ParseResults answers an unknown attribute with an empty string instead of
+    raising AttributeError, which fails with a confusing type error.
+    """
+    parsed = SigmaCondition(
+        "(detection1 or not detection2) and not (detection3 or detection_4)",
+        sigma_simple_detections,
+    ).parse(False)
+
+    def operands(item):
+        for arg in getattr(item, "args", None) or ():
+            yield arg
+            yield from operands(arg)
+
+    wrapped = [arg for arg in operands(parsed) if isinstance(arg, ParseResults)]
+    assert not wrapped, f"operands left wrapped in ParseResults: {wrapped}"
 
 
 def test_precedence_parent_chain_condition_classes(sigma_simple_detections):
@@ -490,6 +569,44 @@ def test_empty_field_detection(sigma_detections):
 def test_undefined_identifier(sigma_simple_detections):
     with pytest.raises(SigmaConditionError):
         SigmaCondition("detection", sigma_simple_detections).parsed
+
+
+@pytest.mark.parametrize(
+    "condition",
+    [
+        "1 of nomatch*",
+        "any of nomatch*",
+        "all of nomatch*",
+        "detection1 and 1 of nomatch*",
+        "detection1 or all of nomatch*",
+        "detection1 and not 1 of nomatch*",
+    ],
+)
+def test_selector_no_matching_detection(condition, sigma_simple_detections):
+    with pytest.raises(SigmaConditionError, match="of nomatch\\*' doesn't match any detection"):
+        SigmaCondition(condition, sigma_simple_detections).parsed
+
+
+def test_selector_them_only_underscore_detections():
+    detections = SigmaDetections(
+        {
+            "_detection": SigmaDetection(
+                [
+                    SigmaDetectionItem(None, [], [SigmaString("val1")]),
+                ]
+            ),
+        },
+        condition=["1 of them"],
+    )
+    with pytest.raises(SigmaConditionError, match="'1 of them' doesn't match any detection"):
+        SigmaCondition("1 of them", detections).parsed
+
+
+def test_selector_no_matching_detection_unparsed(sigma_simple_detections):
+    """Without postprocessing the selector is kept, so validators can still inspect it."""
+    assert isinstance(
+        SigmaCondition("1 of nomatch*", sigma_simple_detections).parse(False), ConditionSelector
+    )
 
 
 def test_null_keyword(sigma_invalid_detections):

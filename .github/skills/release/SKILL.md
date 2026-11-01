@@ -119,6 +119,7 @@ Compose release notes in Markdown with the following structure:
 
 Rules for generating notes:
 - Use PR titles and descriptions as the primary source for each entry.
+- PR titles and descriptions often contain quotes, backticks, `$` signs and code snippets. Never put them, or release notes built from them, on a shell command line, not even inside double quotes: the shell still interprets backticks, `$(...)` and `$VAR` there, which truncates or changes the notes or makes the command fail.
 - Link each entry to its PR: `(#N)` where N is the PR number.
 - Omit empty sections.
 - If a PR addresses a GitHub issue, mention it: `Fixes #N`.
@@ -129,16 +130,14 @@ Present the draft to the user and let them **review and amend** the release note
 ### Step 9: Create GitHub Release
 
 1. **Ask the user for final confirmation** before creating the release.
-2. Create the release:
-   ```
-   gh release create v<new_version> --title "v<new_version>" --notes "<release_notes>"
-   ```
-   If notes are long, write them to a temp file and use:
+2. Write the approved release notes to a temporary file (e.g. `release-notes-v<new_version>.md` outside the repository) with a **file-write tool**. Do not create it with `echo`, `printf`, `cat <<EOF` or any other shell construct that puts the notes on a command line.
+3. Create the release, always passing the notes via `--notes-file` (never with inline `--notes "..."`):
    ```
    gh release create v<new_version> --title "v<new_version>" --notes-file <tempfile>
    ```
-3. Inform the user: "GitHub release created. This triggers the production PyPI deployment."
-4. Provide the release URL: `https://github.com/SigmaHQ/pySigma/releases/tag/v<new_version>`
+4. Delete the temporary notes file.
+5. Inform the user: "GitHub release created. This triggers the production PyPI deployment."
+6. Provide the release URL: `https://github.com/SigmaHQ/pySigma/releases/tag/v<new_version>`
 
 ### Step 10: Post-Release Verification
 

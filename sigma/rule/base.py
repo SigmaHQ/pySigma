@@ -189,6 +189,8 @@ class SigmaRuleBase:
             for tag in self.tags
         ]
 
+        self.custom_attributes = sanitize_metadata_value(self.custom_attributes)
+
     @classmethod
     def from_dict_common_params(
         cls: type[Self],

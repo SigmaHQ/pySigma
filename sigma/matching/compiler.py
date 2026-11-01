@@ -62,18 +62,18 @@ class MatchCompiler:
         namespace.update(closures)
         code_obj = compile(func_code, "<sigma_matcher>", "exec")
         exec(code_obj, namespace)  # noqa: S102
-        return namespace["_match"]
+        return namespace["_match"]  # type: ignore[no-any-return]
 
     def _compile_node(self, node: Any, closures: dict[str, Any]) -> str:
         if isinstance(node, ConditionAND):
-            sub = [self._compile_node(arg, closures) for arg in node.args]
-            return "(" + " and ".join(sub) + ")"
+            sub_list = [self._compile_node(arg, closures) for arg in node.args]
+            return "(" + " and ".join(sub_list) + ")"
         elif isinstance(node, ConditionOR):
-            sub = [self._compile_node(arg, closures) for arg in node.args]
-            return "(" + " or ".join(sub) + ")"
+            sub_list = [self._compile_node(arg, closures) for arg in node.args]
+            return "(" + " or ".join(sub_list) + ")"
         elif isinstance(node, ConditionNOT):
-            sub = self._compile_node(node.args[0], closures)
-            return f"(not {sub})"
+            sub_str = self._compile_node(node.args[0], closures)
+            return f"(not {sub_str})"
         elif isinstance(node, ConditionFieldEqualsValueExpression):
             return self._compile_field_value(node.field, node.value, closures)
         elif isinstance(node, ConditionValueExpression):

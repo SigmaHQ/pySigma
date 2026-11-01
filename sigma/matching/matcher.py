@@ -36,7 +36,8 @@ class SigmaMatcher:
 
         # Apply pipeline if provided
         if pipeline is not None:
-            pipeline.apply(collection)
+            for rule in collection.rules:
+                pipeline.apply(rule)
 
         # Build dispatch table and correlation matchers
         self._dispatch: dict[tuple[str | None, str | None, str | None], list[SigmaRuleMatcher]] = (

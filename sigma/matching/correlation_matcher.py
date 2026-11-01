@@ -101,7 +101,9 @@ class SigmaCorrelationRuleMatcher:
             )
         return []
 
-    def _compare(self, op: SigmaCorrelationConditionOperator, value: Any, threshold: int) -> bool:
+    def _compare(
+        self, op: SigmaCorrelationConditionOperator, value: Any, threshold: int | float
+    ) -> bool:
         """Compare a value against a threshold using the given operator."""
         if value is None:
             return False
@@ -113,7 +115,7 @@ class SigmaCorrelationRuleMatcher:
             SigmaCorrelationConditionOperator.EQ: lambda a, b: a == b,
             SigmaCorrelationConditionOperator.NEQ: lambda a, b: a != b,
         }
-        return op_map[op](value, threshold)
+        return bool(op_map[op](value, threshold))
 
     def _collect_events(self, matches: list[SigmaMatch]) -> list[Event]:
         """Collect events from matches, respecting the max_events_per_match limit."""

@@ -41,6 +41,27 @@ class SigmaYAMLLoader(yaml.CSafeLoader):
 MAX_ALIAS_EXPANSION = 10000
 
 
+METADATA_CONTROL_CHARS_RE = re.compile(r"[\x00-\x1F\x7F-\x9F\u2028\u2029]")
+
+
+def sanitize_metadata_string(value: str) -> str:
+    """Remove control characters from metadata strings to prevent structural injection."""
+    return METADATA_CONTROL_CHARS_RE.sub("", value)
+
+
+def sanitize_metadata_value(value: Any) -> Any:
+    """Recursively sanitize string values in metadata containers."""
+    if isinstance(value, str):
+        return sanitize_metadata_string(value)
+    if isinstance(value, list):
+        return [sanitize_metadata_value(item) for item in value]
+    if isinstance(value, tuple):
+        return tuple(sanitize_metadata_value(item) for item in value)
+    if isinstance(value, dict):
+        return {key: sanitize_metadata_value(item) for key, item in value.items()}
+    return value
+
+
 def check_alias_expansion(
     obj: Any,
     error_class: type[sigma_exceptions.SigmaError] = sigma_exceptions.SigmaError,
@@ -139,6 +160,36 @@ class SigmaRuleBase:
                 self.id = UUID(self.id)
             except ValueError:
                 pass
+
+        # Sanitize all metadata strings once at rule creation.
+        for field in (
+            "title",
+            "name",
+            "taxonomy",
+            "description",
+            "license",
+            "references",
+            "author",
+            "fields",
+            "falsepositives",
+            "scope",
+        ):
+            self.__setattr__(field, sanitize_metadata_value(self.__getattribute__(field)))
+
+        self.tags = [
+            (
+                SigmaRuleTag(
+                    namespace=sanitize_metadata_string(tag.namespace),
+                    name=sanitize_metadata_string(tag.name),
+                    source=tag.source,
+                )
+                if isinstance(tag, SigmaRuleTag)
+                else tag
+            )
+            for tag in self.tags
+        ]
+
+        self.custom_attributes = sanitize_metadata_value(self.custom_attributes)
 
     @classmethod
     def from_dict_common_params(
@@ -490,28 +541,28 @@ class SigmaRuleBase:
     def to_dict(self: Self) -> dict[str, Any]:
         """Convert rule object into dict."""
         d: dict[str, Any] = {
-            "title": self.title,
+            "title": sanitize_metadata_value(self.title),
         }
         # Convert to string where possible
         for field in ("id", "status", "level", "author", "description", "name"):
             if (s := self.__getattribute__(field)) is not None:
-                d[field] = str(s)
+                d[field] = sanitize_metadata_string(str(s))
 
         # copy list of strings
         for field in ("references", "fields", "falsepositives", "scope"):
             if (l := self.__getattribute__(field)) is not None and len(l) > 0:
-                d[field] = l.copy()
+                d[field] = sanitize_metadata_value(l.copy())
 
         # the special cases
         if len(self.tags) > 0:
-            d["tags"] = [str(tag) for tag in self.tags]
+            d["tags"] = [sanitize_metadata_string(str(tag)) for tag in self.tags]
         if self.date is not None:
             d["date"] = self.date.isoformat()
         if self.modified is not None:
             d["modified"] = self.modified.isoformat()
 
         # custom attributes
-        d.update(self.custom_attributes)
+        d.update(sanitize_metadata_value(self.custom_attributes))
 
         return d
 

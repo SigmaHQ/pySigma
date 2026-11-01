@@ -41,6 +41,7 @@ from sigma.conditions import (
     ConditionNOT,
 )
 import sigma.exceptions as sigma_exceptions
+from sigma.rule.base import sanitize_metadata_string
 from tests.test_processing_conditions import detection_item
 from tests.test_processing_pipeline import processing_item
 from yaml.error import YAMLError
@@ -1723,6 +1724,63 @@ def test_sigmarule_to_dict(sigma_rule: SigmaRule):
         ],
         "level": "low",
         "scope": ["scope1", "scope2"],
+    }
+
+
+def test_sanitize_metadata_string_removes_control_characters():
+    assert sanitize_metadata_string("line\nwith\rcontrols\t") == "linewithcontrols"
+    assert sanitize_metadata_string("left\u2028right\u2029") == "leftright"
+
+
+def test_sigmarule_metadata_sanitization_from_dict():
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Ti\ntle",
+            "name": "na\rme",
+            "taxonomy": "si\x00gma",
+            "description": "de\nsc",
+            "license": "MI\rT",
+            "references": ["re\nf1", "re\tf2"],
+            "tags": ["attack.ex\necution"],
+            "author": "Th\romas",
+            "fields": ["Com\nmandLine"],
+            "falsepositives": ["Every\nthing"],
+            "scope": ["scope\n1"],
+            "custom": "va\nlue",
+            "nested_custom": {
+                "text": "line\nline",
+                "list": ["a\rb", 1],
+                "inner": {"x": "y\tz"},
+            },
+            "logsource": {
+                "category": "process_creation",
+                "product": "windows",
+            },
+            "detection": {
+                "selection": {
+                    "CommandLine|contains": "test.exe",
+                },
+                "condition": "selection",
+            },
+        }
+    )
+
+    assert rule.title == "Title"
+    assert rule.name == "name"
+    assert rule.taxonomy == "sigma"
+    assert rule.description == "desc"
+    assert rule.license == "MIT"
+    assert rule.references == ["ref1", "ref2"]
+    assert rule.tags == [SigmaRuleTag("attack", "execution")]
+    assert rule.author == "Thomas"
+    assert rule.fields == ["CommandLine"]
+    assert rule.falsepositives == ["Everything"]
+    assert rule.scope == ["scope1"]
+    assert rule.custom_attributes["custom"] == "value"
+    assert rule.custom_attributes["nested_custom"] == {
+        "text": "lineline",
+        "list": ["ab", 1],
+        "inner": {"x": "yz"},
     }
 
 

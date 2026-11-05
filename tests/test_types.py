@@ -922,7 +922,10 @@ def test_cidr_expand_ipv6_64_compressed():
 
 
 def test_cidr_expand_ipv6_112():
-    assert SigmaCIDRExpression("2001:db8::/112").expand() == ["2001:db8::*"]
+    assert SigmaCIDRExpression("2001:db8::/112").expand() == [
+        "2001:db8::*",
+        "2001:db8:0:0:0:0:0:*",
+    ]
 
 
 def test_cidr_expand_ipv6_120():
@@ -930,18 +933,47 @@ def test_cidr_expand_ipv6_120():
         "2001:db8::?",
         "2001:db8::??",
         "2001:db8::",
+        "2001:db8:0:0:0:0:0:?",
+        "2001:db8:0:0:0:0:0:??",
     ]
 
 
 def test_cidr_expand_ipv6_128_compressed():
-    assert SigmaCIDRExpression("2001:db8::1/128").expand() == ["2001:db8::1"]
+    assert SigmaCIDRExpression("2001:db8::1/128").expand() == [
+        "2001:db8::1",
+        "2001:db8:0:0:0:0:0:1",
+    ]
+
+
+def test_cidr_expand_ipv6_128_not_compressed():
+    assert SigmaCIDRExpression("2001:db8:1:2:3:4:5:6/128").expand() == ["2001:db8:1:2:3:4:5:6"]
+
+
+@pytest.mark.parametrize(
+    "cidr,expected",
+    [
+        ("::1/128", ["::1", "0:0:0:0:0:0:0:1"]),
+        ("::ffff:0:0/96", ["::ffff:*:*", "0:0:0:0:0:ffff:*"]),
+        ("64:ff9b::/96", ["64:ff9b::*", "64:ff9b:0:0:0:0:*"]),
+        ("100::/64", ["100::*", "100:0:0:0:*"]),
+        # uncompressed form already covered by the RFC 5952 patterns
+        ("2001:db8::/64", ["2001:db8:0:0:*", "2001:db8::*"]),
+        ("fe80::/10", ["fe8?:*", "fe9?:*", "fea?:*", "feb?:*"]),
+    ],
+)
+def test_cidr_expand_ipv6_uncompressed(cidr, expected):
+    """Sysmon network events write IPv6 addresses without :: compression."""
+    assert SigmaCIDRExpression(cidr).expand() == expected
 
 
 @pytest.mark.parametrize(
     "cidr,expected",
     [
         # zero groups compressed in network but not in all addresses
-        ("2001:db8:0:0:1::/80", ["2001:db8::1:*:*:*", "2001:db8:0:0:1::"]),
+        (
+            "2001:db8:0:0:1::/80",
+            ["2001:db8::1:*:*:*", "2001:db8:0:0:1::", "2001:db8:0:0:1:*"],
+        ),
         ("2001:0:0:1::/64", ["2001::1:*:*:*:*", "2001:0:0:1:*"]),
         # leading zeros are not written, partially covered groups need an exact digit count
         ("2001:db8:1000::/36", ["2001:db8:1???:*"]),
@@ -995,6 +1027,55 @@ def test_cidr_expand_ipv6_matches(cidr, inside, outside):
         assert not any(fnmatchcase(address, pattern) for pattern in patterns), address
 
 
+def _uncompressed(address):
+    """Uncompressed representation, as written by Sysmon: 0:0:0:0:0:0:0:1 for ::1"""
+    return ":".join(format(int(group, 16), "x") for group in address.exploded.split(":"))
+
+
+@pytest.mark.parametrize(
+    "cidr,inside,outside",
+    [
+        ("::1/128", ["::1"], ["::", "::2", "::1:0", "1::1"]),
+        ("2620:1ec:4::152/128", ["2620:1ec:4::152"], ["2620:1ec:4::153", "2620:1ec:4:0:1::152"]),
+        (
+            "64:ff9b::/96",
+            ["64:ff9b::", "64:ff9b::102:304", "64:ff9b::ffff:ffff"],
+            ["64:ff9b:1::", "64:ff9a::102:304", "::102:304"],
+        ),
+        (
+            "2001:db8:0:0:1::/80",
+            ["2001:db8::1:0:0:1", "2001:db8::1:a:b:c", "2001:db8:0:0:1::"],
+            ["2001:db8:ffff::1", "2001:db8::2:0:0:1", "2001:db8::1", "2001:db8:1::1"],
+        ),
+        (
+            "2001:db8::/120",
+            ["2001:db8::", "2001:db8::1", "2001:db8::ff"],
+            ["2001:db8::100", "2001:db8::1:0", "2001:db8:1::"],
+        ),
+        (
+            "2001:db8:1000::/36",
+            ["2001:db8:1000::", "2001:db8:1fff:ffff::1", "2001:db8:1abc:1:2:3:4:5"],
+            ["2001:db8:1::", "2001:db8:1:2:3:4:5:6", "2001:db8:160:1:2:3:4:5", "2001:db8:2000::"],
+        ),
+    ],
+)
+def test_cidr_expand_ipv6_matches_uncompressed(cidr, inside, outside):
+    """
+    Patterns match the RFC 5952 and the uncompressed representation of addresses inside the
+    network and reject both representations of the listed outside addresses.
+    """
+    patterns = SigmaCIDRExpression(cidr).expand()
+    network = IPv6Network(cidr)
+    for address in inside:
+        assert IPv6Address(address) in network
+        for text in (str(IPv6Address(address)), _uncompressed(IPv6Address(address))):
+            assert any(fnmatchcase(text, pattern) for pattern in patterns), text
+    for address in outside:
+        assert IPv6Address(address) not in network
+        for text in (str(IPv6Address(address)), _uncompressed(IPv6Address(address))):
+            assert not any(fnmatchcase(text, pattern) for pattern in patterns), text
+
+
 def test_cidr_expand_ipv6_without_wildcard():
     assert SigmaCIDRExpression("2001:db8::/64").expand(wildcard=None) == ["2001:db8::/64"]
 
@@ -1021,7 +1102,7 @@ def test_cidr_expand_ipv6_64():
 
 
 def test_cidr_expand_ipv6_128():
-    assert SigmaCIDRExpression("::1/128").expand() == ["::1"]
+    assert SigmaCIDRExpression("::1/128").expand() == ["::1", "0:0:0:0:0:0:0:1"]
 
 
 def test_cidr_invalid():

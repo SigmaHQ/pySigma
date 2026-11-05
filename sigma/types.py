@@ -1004,7 +1004,55 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                     for other in patterns
                 )
             ]
+            # Some log sources, e.g. Sysmon network events, write IPv6 addresses uncompressed.
+            # Add patterns for this representation that are not already covered by the RFC 5952
+            # patterns above.
+            uncompressed: list[str] = []
+            for subnet_v6 in self.network.subnets(prefix_diff):
+                for pattern in self._expand_ipv6_subnet_uncompressed(subnet_v6, wildcard):
+                    if pattern not in uncompressed:
+                        uncompressed.append(pattern)
+            patterns += [
+                pattern
+                for pattern in uncompressed
+                if pattern not in patterns
+                and not any(
+                    other != pattern
+                    and other.endswith(wildcard)
+                    and pattern.startswith(other[: -len(wildcard)])
+                    for other in patterns + uncompressed
+                )
+            ]
         return patterns
+
+    @staticmethod
+    def _expand_ipv6_subnet_uncompressed(subnet: IPv6Network, wildcard: str) -> list[str]:
+        """
+        Generate wildcard patterns that match the uncompressed textual representation written
+        by some log sources, e.g. Sysmon network events (all eight groups, lower case, no
+        leading zeros, no :: compression, e.g. 0:0:0:0:0:0:0:1 for ::1), of all addresses of an
+        IPv6 network whose prefix length is a multiple of 4. Groups are handled like in
+        _expand_ipv6_subnet.
+        """
+        fixed_groups, rem = divmod(subnet.prefixlen, 16)
+        fixed_nibbles = rem // 4
+        exploded = subnet.network_address.exploded.split(":")
+        fixed = [format(int(group, 16), "x") for group in exploded[:fixed_groups]]
+        if fixed_groups == 8:  # single address
+            return [":".join(fixed)]
+
+        if fixed_nibbles == 0:  # first group not covered by prefix
+            partial = [wildcard]
+        else:  # group partially covered by prefix
+            nibbles = exploded[fixed_groups][:fixed_nibbles]
+            free_digits = 4 - fixed_nibbles
+            if int(nibbles, 16) != 0:
+                partial = [nibbles.lstrip("0") + "?" * free_digits]
+            else:
+                partial = ["?" * n for n in range(1, free_digits + 1)]
+        # Everything after the first group not covered completely by the prefix is a wildcard.
+        rest = [wildcard] if fixed_nibbles > 0 and fixed_groups < 7 else []
+        return [":".join(fixed + [group] + rest) for group in partial]
 
     @staticmethod
     def _expand_ipv6_subnet(subnet: IPv6Network, wildcard: str) -> list[str]:

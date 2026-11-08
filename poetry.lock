@@ -1332,14 +1332,14 @@ re2 = ["google-re2 (>=1.1)"]
 
 [[package]]
 name = "pip"
-version = "26.2.2"
+version = "26.3"
 description = "The PyPA recommended tool for installing Python packages."
 optional = false
 python-versions = ">=3.10"
 groups = ["dev"]
 files = [
-    {file = "pip-26.2.2-py3-none-any.whl", hash = "sha256:fd7f4dfa8190e014013b9f08f3e973f4e4c26ffd179a204895533a7254813a70"},
-    {file = "pip-26.2.2.tar.gz", hash = "sha256:3a8e5c800492787f33a4114ef54444546c340df428974ebba17e0fd47e11af2f"},
+    {file = "pip-26.3-py3-none-any.whl", hash = "sha256:f3b60b20ffaadd4415ed7957212a38ac63fa4c5fa375bd0f4a797777940fad13"},
+    {file = "pip-26.3.tar.gz", hash = "sha256:6c36ae7da8695be67e3cd9f7d87919667ced53f57ce2ede75d89b5912ed2bc4c"},
 ]
 
 [[package]]
@@ -1925,4 +1925,4 @@ python-discovery = ">=1.6.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "291617426ded9efc2d535a539a7c24ab3b951b0824d8aba75aba82a220e70240"
+content-hash = "d2f34844511dbbdf4e924354be45d9737e2a814162b669d9bb8b63df7619b676"

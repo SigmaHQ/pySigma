@@ -22,6 +22,7 @@ windows_logsource_mapping = {  # Mapping between Sigma log source services and W
     "dns-server-analytic": "Microsoft-Windows-DNS-Server/Analytical",
     "driver-framework": "Microsoft-Windows-DriverFrameworks-UserMode/Operational",
     "ntlm": "Microsoft-Windows-NTLM/Operational",
+    "adfs": "AD FS/Admin",
     "dhcp": "Microsoft-Windows-DHCP-Server/Operational",
     "msexchange-management": "MSExchange Management",
     "applocker": [

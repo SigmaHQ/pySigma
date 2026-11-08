@@ -4,7 +4,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
-from ipaddress import IPv4Network, IPv6Network, ip_network
+from ipaddress import IPv4Network, IPv6Address, IPv6Network, ip_network
 from itertools import product
 from math import inf, isfinite
 from typing import (
@@ -1004,7 +1004,66 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
                     for other in patterns
                 )
             ]
+            # Some log sources, e.g. Sysmon network events, write IPv6 addresses uncompressed.
+            # Add patterns for this representation that are not already covered by the RFC 5952
+            # patterns above.
+            uncompressed: list[str] = []
+            for subnet_v6 in self.network.subnets(prefix_diff):
+                for pattern in self._expand_ipv6_subnet_uncompressed(subnet_v6, wildcard):
+                    if pattern not in uncompressed:
+                        uncompressed.append(pattern)
+            patterns += [
+                pattern
+                for pattern in uncompressed
+                if pattern not in patterns
+                and not any(
+                    other != pattern
+                    and other.endswith(wildcard)
+                    and pattern.startswith(other[: -len(wildcard)])
+                    for other in patterns + uncompressed
+                )
+            ]
         return patterns
+
+    @staticmethod
+    def _ipv6_groups(address: IPv6Address) -> list[str]:
+        """
+        Return the eight groups of an IPv6 address as four-digit hexadecimal strings.
+
+        IPv6Address.exploded can't be used for this, because current Python versions write the
+        last 32 bits of IPv4-mapped addresses in dotted notation.
+        """
+        digits = format(int(address), "032x")
+        return [digits[i : i + 4] for i in range(0, 32, 4)]
+
+    @staticmethod
+    def _expand_ipv6_subnet_uncompressed(subnet: IPv6Network, wildcard: str) -> list[str]:
+        """
+        Generate wildcard patterns that match the uncompressed textual representation written
+        by some log sources, e.g. Sysmon network events (all eight groups, lower case, no
+        leading zeros, no :: compression, e.g. 0:0:0:0:0:0:0:1 for ::1), of all addresses of an
+        IPv6 network whose prefix length is a multiple of 4. Groups are handled like in
+        _expand_ipv6_subnet.
+        """
+        fixed_groups, rem = divmod(subnet.prefixlen, 16)
+        fixed_nibbles = rem // 4
+        exploded = SigmaCIDRExpression._ipv6_groups(subnet.network_address)
+        fixed = [format(int(group, 16), "x") for group in exploded[:fixed_groups]]
+        if fixed_groups == 8:  # single address
+            return [":".join(fixed)]
+
+        if fixed_nibbles == 0:  # first group not covered by prefix
+            partial = [wildcard]
+        else:  # group partially covered by prefix
+            nibbles = exploded[fixed_groups][:fixed_nibbles]
+            free_digits = 4 - fixed_nibbles
+            if int(nibbles, 16) != 0:
+                partial = [nibbles.lstrip("0") + "?" * free_digits]
+            else:
+                partial = ["?" * n for n in range(1, free_digits + 1)]
+        # Everything after the first group not covered completely by the prefix is a wildcard.
+        rest = [wildcard] if fixed_nibbles > 0 and fixed_groups < 7 else []
+        return [":".join(fixed + [group] + rest) for group in partial]
 
     @staticmethod
     def _expand_ipv6_subnet(subnet: IPv6Network, wildcard: str) -> list[str]:
@@ -1030,7 +1089,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         fixed_groups, rem = divmod(subnet.prefixlen, 16)
         fixed_nibbles = rem // 4
-        exploded = subnet.network_address.exploded.split(":")
+        exploded = SigmaCIDRExpression._ipv6_groups(subnet.network_address)
 
         # For each group: list of possible textual representations if the group is not part of
         # the compressed zero run and whether the group can be zero / non-zero.

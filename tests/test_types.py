@@ -954,6 +954,10 @@ def test_cidr_expand_ipv6_128_not_compressed():
     [
         ("::1/128", ["::1", "0:0:0:0:0:0:0:1"]),
         ("::ffff:0:0/96", ["::ffff:*:*", "0:0:0:0:0:ffff:*"]),
+        (
+            "::ffff:0:0/104",
+            ["::ffff:?:*", "::ffff:??:*", "0:0:0:0:0:ffff:?:*", "0:0:0:0:0:ffff:??:*"],
+        ),
         ("64:ff9b::/96", ["64:ff9b::*", "64:ff9b:0:0:0:0:*"]),
         ("100::/64", ["100::*", "100:0:0:0:*"]),
         # uncompressed form already covered by the RFC 5952 patterns
@@ -1025,6 +1029,11 @@ def test_cidr_expand_ipv6_matches(cidr, inside, outside):
         assert str(IPv6Address(address)) == address
         assert IPv6Address(address) not in network
         assert not any(fnmatchcase(address, pattern) for pattern in patterns), address
+
+
+def test_cidr_expand_ipv6_128_ipv4_mapped_uncompressed():
+    """Current Python versions write the last groups of IPv4-mapped addresses as dotted quad."""
+    assert "0:0:0:0:0:ffff:102:304" in SigmaCIDRExpression("::ffff:102:304/128").expand()
 
 
 def _uncompressed(address):

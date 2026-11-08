@@ -4,7 +4,7 @@ import re
 from abc import ABC, abstractmethod
 from dataclasses import InitVar, dataclass, field
 from enum import Enum, auto
-from ipaddress import IPv4Network, IPv6Network, ip_network
+from ipaddress import IPv4Network, IPv6Address, IPv6Network, ip_network
 from itertools import product
 from math import inf, isfinite
 from typing import (
@@ -1026,6 +1026,17 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         return patterns
 
     @staticmethod
+    def _ipv6_groups(address: IPv6Address) -> list[str]:
+        """
+        Return the eight groups of an IPv6 address as four-digit hexadecimal strings.
+
+        IPv6Address.exploded can't be used for this, because current Python versions write the
+        last 32 bits of IPv4-mapped addresses in dotted notation.
+        """
+        digits = format(int(address), "032x")
+        return [digits[i : i + 4] for i in range(0, 32, 4)]
+
+    @staticmethod
     def _expand_ipv6_subnet_uncompressed(subnet: IPv6Network, wildcard: str) -> list[str]:
         """
         Generate wildcard patterns that match the uncompressed textual representation written
@@ -1036,7 +1047,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
         """
         fixed_groups, rem = divmod(subnet.prefixlen, 16)
         fixed_nibbles = rem // 4
-        exploded = subnet.network_address.exploded.split(":")
+        exploded = SigmaCIDRExpression._ipv6_groups(subnet.network_address)
         fixed = [format(int(group, 16), "x") for group in exploded[:fixed_groups]]
         if fixed_groups == 8:  # single address
             return [":".join(fixed)]
@@ -1078,7 +1089,7 @@ class SigmaCIDRExpression(NoPlainConversionMixin, SigmaType):
 
         fixed_groups, rem = divmod(subnet.prefixlen, 16)
         fixed_nibbles = rem // 4
-        exploded = subnet.network_address.exploded.split(":")
+        exploded = SigmaCIDRExpression._ipv6_groups(subnet.network_address)
 
         # For each group: list of possible textual representations if the group is not part of
         # the compressed zero run and whether the group can be zero / non-zero.

@@ -879,6 +879,7 @@ class ProcessingPipeline:
         fds = d.get("finalizers", list())  # no default transformation
         fs: list[Finalizer] = list()
         for fd in fds:
+            fd = fd.copy()
             fd.pop("allow_template_vars", None)  # Strip untrusted YAML value
             fd.pop("vars_allowed_paths", None)  # Strip untrusted YAML value
             fd.pop("allow_external_sources", None)  # Strip untrusted YAML value

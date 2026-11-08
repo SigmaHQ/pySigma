@@ -547,14 +547,14 @@ profile = ["gprof2dot (>=2022.7.29)"]
 
 [[package]]
 name = "diskcache-community"
-version = "5.8.1"
+version = "5.8.3"
 description = "Disk Cache -- Disk and file backed persistent cache."
 optional = false
-python-versions = ">=3.9"
+python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "diskcache_community-5.8.1-py3-none-any.whl", hash = "sha256:4c18c3fec2451154f768764f0f3e97fdddfb2bb4fcff8754fc28fcc88ca1b2ea"},
-    {file = "diskcache_community-5.8.1.tar.gz", hash = "sha256:b780ed4b8381487c53cc778599f745784391c4c7af23c528ece049e008be6197"},
+    {file = "diskcache_community-5.8.3-py3-none-any.whl", hash = "sha256:e84f351a7431939aebc256da243d017cb59c7bcf0aab83e4905c4dd848e48390"},
+    {file = "diskcache_community-5.8.3.tar.gz", hash = "sha256:17fcfe01714deb554e62fcb745dcae58f80e04bec101107537208590466738b7"},
 ]
 
 [[package]]
@@ -1925,4 +1925,4 @@ python-discovery = ">=1.6.1"
 [metadata]
 lock-version = "2.1"
 python-versions = "^3.11"
-content-hash = "c086036538a7da6662d05db3bce09835d86f94b83f68159eaf3c2cca04d23c45"
+content-hash = "b55d4f410be082d3f0498997423a1e58730c686a60f7e7fa0aed2de4988c6e87"

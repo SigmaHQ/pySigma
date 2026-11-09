@@ -943,17 +943,12 @@ filter:
     assert result == ['EventID=4625 and not User startswith "adm_" and not User startswith "srv_"']
 
 
-# ---------------------------------------------------------------------------
-# Tests for filter condition rewriting of identifiers that the condition grammar accepts but
-# that don't start with a letter, and for case-sensitive keyword handling.
-# ---------------------------------------------------------------------------
-
-
 @pytest.mark.parametrize(
     "identifier",
     [
         "_filter",
         "__filter",
+        "-filter",
         "_filter_admin",
         "2nd_filter",
         "1filter",

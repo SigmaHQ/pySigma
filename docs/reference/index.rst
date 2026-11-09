@@ -17,4 +17,5 @@ Complete reference documentation for all pySigma modules, classes, and functions
    types
    modifiers
    correlations
+   matching
    exceptions

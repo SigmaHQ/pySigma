@@ -1,5 +1,6 @@
 import pytest
 import os
+from copy import deepcopy
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaTransformationError
 from sigma.policy import SigmaPolicy
 from sigma.policy.regex_engine import RE2RegexEngine
@@ -116,6 +117,46 @@ def test_nested_finalizer_no_finalizers():
         SigmaConfigurationError, match="Nested finalizer requires a 'finalizers' key."
     ):
         NestedFinalizer.from_dict({})
+
+
+@pytest.mark.parametrize("recursive", [False, True])
+def test_nested_finalizer_from_dict_preserves_configuration(recursive):
+    finalizer = {"type": "concat", "separator": "|"}
+    if recursive:
+        finalizer = {"type": "nested", "finalizers": [finalizer]}
+    config = {"finalizers": [finalizer]}
+    original = deepcopy(config)
+
+    for _ in range(2):
+        nested = NestedFinalizer.from_dict(config)
+        assert nested.apply(["first query", "second query"]) == "first query|second query"
+
+    assert config == original
+
+
+@pytest.mark.parametrize("nested", [False, True])
+def test_finalizer_rejected_policy_overrides_preserve_configuration(nested):
+    from sigma.processing.pipeline import ProcessingPipeline
+
+    finalizer = {
+        "type": "template",
+        "template": "{{ queries }}",
+        "vars": "tests/files/template_vars.py",
+        "allow_template_vars": True,
+        "allow_external_sources": True,
+        "restrict_template_path": False,
+        "policy": {"allow_template_vars": True},
+    }
+    if nested:
+        finalizer = {"type": "nested", "finalizers": [finalizer]}
+    config = {"finalizers": [finalizer]}
+    original = deepcopy(config)
+
+    for _ in range(2):
+        with pytest.raises(SigmaSecurityError, match="disabled by default for security reasons"):
+            ProcessingPipeline.from_dict(config)
+
+    assert config == original
 
 
 def test_nested_finalizer_no_type():

@@ -1,4 +1,5 @@
 import copy
+import re
 import uuid
 from pathlib import Path
 from typing import Callable
@@ -940,6 +941,141 @@ filter:
     rule_collection.apply_filters([sigma_filter_1, sigma_filter_2])
     result = test_backend.convert(rule_collection)
     assert result == ['EventID=4625 and not User startswith "adm_" and not User startswith "srv_"']
+
+
+@pytest.mark.parametrize(
+    "identifier",
+    [
+        "_filter",
+        "__filter",
+        "-filter",
+        "_filter_admin",
+        "2nd_filter",
+        "1filter",
+        "filter-admin",
+    ],
+)
+def test_filter_condition_identifier_not_starting_with_letter(test_backend, identifier):
+    """Filter detection identifiers may start with '_' or a digit, like in rule conditions."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with identifier {identifier}
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  {identifier}:
+      User|startswith: 'adm_'
+  condition: not {identifier}
+""")
+    rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
+    rule_collection.apply_filters([sigma_filter])
+    result = test_backend.convert(rule_collection)
+    assert result == ['EventID=4625 and not User startswith "adm_"']
+
+
+def test_filter_condition_identifier_not_starting_with_letter_rewritten_completely():
+    """The whole identifier is prefixed, the leading '_' isn't left in front of the prefix."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with underscore identifier
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  _filter:
+      User|startswith: 'adm_'
+  2nd_filter:
+      User|startswith: 'srv_'
+  condition: not _filter and not 2nd_filter
+""")
+    rule = SigmaCollection.from_yaml(_RULE_YAML).rules[0]
+    sigma_filter.apply_on_rule(rule)
+
+    m = re.fullmatch(
+        r"\(selection\) and \(not (_filt_[a-z]{10})__filter and not (_filt_[a-z]{10})_2nd_filter\)",
+        rule.detection.condition[0],
+    )
+    assert m is not None, rule.detection.condition[0]
+    prefix = m.group(1)
+    assert m.group(2) == prefix
+    assert set(rule.detection.detections.keys()) == {
+        "selection",
+        prefix + "__filter",
+        prefix + "_2nd_filter",
+    }
+
+
+def test_filter_condition_wildcard_identifier_starting_with_underscore(test_backend):
+    """Identifier patterns starting with '_' are rewritten like other patterns."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with underscore wildcard
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  _filter_admin:
+      User|startswith: 'adm_'
+  _filter_service:
+      User|startswith: 'srv_'
+  condition: not 1 of _filter_*
+""")
+    rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
+    rule_collection.apply_filters([sigma_filter])
+    result = test_backend.convert(rule_collection)
+    assert result == ['EventID=4625 and not (User in ("adm_*", "srv_*"))']
+
+
+def test_filter_condition_wildcard_identifier_with_dash(test_backend):
+    """Identifier patterns may contain '-' like identifiers and are rewritten as one token."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with dashed wildcard
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  -filter-admin:
+      User|startswith: 'adm_'
+  -filter-service:
+      User|startswith: 'srv_'
+  condition: not 1 of -filter-*
+""")
+    rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
+    rule_collection.apply_filters([sigma_filter])
+    result = test_backend.convert(rule_collection)
+    assert result == ['EventID=4625 and not (User in ("adm_*", "srv_*"))']
+
+
+@pytest.mark.parametrize("identifier", ["Any", "All", "Of", "Or", "AND", "NOT"])
+def test_filter_condition_keywords_case_sensitive(test_backend, identifier):
+    """Condition keywords are case-sensitive in the condition grammar, so identifiers that only
+    differ in case from a keyword must be rewritten like any other identifier."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with identifier {identifier}
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  {identifier}:
+      User|startswith: 'adm_'
+  condition: not {identifier}
+""")
+    rule_collection = SigmaCollection.from_yaml(_RULE_YAML)
+    rule_collection.apply_filters([sigma_filter])
+    result = test_backend.convert(rule_collection)
+    assert result == ['EventID=4625 and not User startswith "adm_"']
+
+
+def test_filter_condition_quantifier_keyword_one_not_prefixed():
+    """The quantifier '1' is matched as a token now and must still be left unchanged."""
+    sigma_filter = SigmaFilter.from_yaml(f"""
+title: Filter with 1 of
+{_FILTER_LOGSOURCE}
+filter:
+{_FILTER_RULES}
+  filter_admin:
+      User|startswith: 'adm_'
+  condition: not 1 of filter_*
+""")
+    rule = SigmaCollection.from_yaml(_RULE_YAML).rules[0]
+    sigma_filter.apply_on_rule(rule)
+    assert re.fullmatch(
+        r"\(selection\) and \(not 1 of _filt_[a-z]{10}_filter_\*\)",
+        rule.detection.condition[0],
+    ), rule.detection.condition[0]
 
 
 def test_sigmafilter_collect_errors():

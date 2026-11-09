@@ -5,7 +5,7 @@ import random
 import re
 import string
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING, Any, ClassVar
 
 from typing import Self
 
@@ -239,8 +239,16 @@ class SigmaFilter(SigmaRuleBase):
 
         return True
 
-    # Keywords that must not be prefixed when rewriting filter conditions
+    # Keywords that must not be prefixed when rewriting filter conditions. They are compared
+    # case-sensitively, like in the condition grammar in sigma.conditions, where e.g. "NOT" is
+    # an ordinary identifier and not the negation operator.
     _CONDITION_KEYWORDS: frozenset[str] = frozenset({"not", "and", "or", "all", "any", "of", "1"})
+
+    # A single condition token: a detection identifier or an identifier pattern. Mirrors the
+    # character sets of ``identifier`` (alphanumerics, ``_`` and ``-``) and ``identifier_pattern``
+    # (the same characters plus ``*``) in sigma.conditions. Identifiers may start with any of
+    # these characters, e.g. ``_filter`` or ``2nd_filter``.
+    _CONDITION_TOKEN: ClassVar[re.Pattern[str]] = re.compile(r"[a-zA-Z0-9_*-]+")
 
     def apply_on_rule(
         self: Self, rule: SigmaRule | SigmaCorrelationRule
@@ -266,16 +274,17 @@ class SigmaFilter(SigmaRuleBase):
         #   - suffix wildcards:   "selection_*"  -> "PREFIX_selection_*"
         #   - prefix wildcards:   "*_allow"      -> "PREFIX_*_allow"
         #   - the "them" keyword: "1 of them"    -> "1 of PREFIX_*"
+        #   - leading "_"/digits: "_filter"      -> "PREFIX__filter"
         # Sigma keywords (not, and, or, all, any, of, 1) are left unchanged.
         #
-        # The regex matches a single Sigma condition token: an optional leading `*`
-        # (wildcard prefix) or a letter, followed by alphanumerics, `*`, `_`, or `-`.
-        # Wildcards are only valid at the start or end of a Sigma identifier pattern
-        # but this regex accepts any occurrence; the Sigma condition parser is
-        # responsible for rejecting syntactically invalid patterns at parse time.
+        # Each token is a maximal run of the characters allowed in Sigma identifiers and
+        # identifier patterns (see _CONDITION_TOKEN). Wildcards are only valid at the start or
+        # end of a Sigma identifier pattern but the regex accepts any occurrence; the Sigma
+        # condition parser is responsible for rejecting syntactically invalid patterns at parse
+        # time.
         def _replace_token(m: re.Match[str]) -> str:
             token = m.group(0)
-            if token.lower() in self._CONDITION_KEYWORDS:
+            if token in self._CONDITION_KEYWORDS:
                 return token
             if token == "them":
                 # "them" means all detections; replace with a pattern that matches all
@@ -283,11 +292,7 @@ class SigmaFilter(SigmaRuleBase):
                 return prefix + "_*"
             return prefix + "_" + token
 
-        filter_condition = re.sub(
-            r"[a-zA-Z*][a-zA-Z0-9*_-]*",
-            _replace_token,
-            self.filter.condition[0],
-        )
+        filter_condition = self._CONDITION_TOKEN.sub(_replace_token, self.filter.condition[0])
 
         for i, condition_str in enumerate(rule.detection.condition):
             rule.detection.condition[i] = f"({condition_str}) and " + f"({filter_condition})"

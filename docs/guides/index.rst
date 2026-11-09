@@ -12,3 +12,4 @@ These guides provide step-by-step instructions for common tasks with pySigma.
    processing_pipelines
    rule_validation
    plugin_system
+   matching

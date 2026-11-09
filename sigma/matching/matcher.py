@@ -6,7 +6,7 @@ from typing import Any, Iterable
 from typing_extensions import Self
 
 from sigma.collection import SigmaCollection
-from sigma.correlations import SigmaCorrelationRule
+from sigma.correlations import SigmaCorrelationRule, SigmaExtendedCorrelationCondition
 from sigma.matching.compiler import MatchCompiler
 from sigma.matching.correlation_matcher import SigmaCorrelationRuleMatcher
 from sigma.matching.event import Event, EventLogSource
@@ -68,6 +68,9 @@ class SigmaMatcher:
                 if rule.rules:
                     for ref in rule.rules:
                         self._correlation_map[ref.reference].append(cm)
+                elif isinstance(rule.condition, SigmaExtendedCorrelationCondition):
+                    for name in rule.condition.get_referenced_rules():
+                        self._correlation_map[name].append(cm)
 
     def match(self, event: Event) -> list[SigmaMatch]:
         """Match a single event against all relevant rules. Returns list of matches."""

@@ -5,10 +5,16 @@ from statistics import median
 from typing import Any
 
 from sigma.correlations import (
+    CorrelationConditionAND,
+    CorrelationConditionItem,
+    CorrelationConditionNOT,
+    CorrelationConditionOR,
     SigmaCorrelationCondition,
     SigmaCorrelationConditionOperator,
     SigmaCorrelationRule,
     SigmaCorrelationType,
+    SigmaExtendedCorrelationCondition,
+    SigmaRuleReference,
 )
 from sigma.matching.event import Event
 from sigma.matching.match import SigmaMatch
@@ -35,6 +41,9 @@ class SigmaCorrelationRuleMatcher:
         if rule.rules:
             for ref in rule.rules:
                 self._rule_names.add(ref.reference)
+        elif isinstance(rule.condition, SigmaExtendedCorrelationCondition):
+            for name in rule.condition.get_referenced_rules():
+                self._rule_names.add(name)
 
     def receive_match(self, match: SigmaMatch, source_rule_name: str) -> list[SigmaMatch]:
         """Process an incoming match from a base rule and return correlation matches if any."""
@@ -188,6 +197,56 @@ class SigmaCorrelationRuleMatcher:
             ]
         return []
 
+    def _eval_extended_expr(
+        self, node: CorrelationConditionItem | SigmaRuleReference, fired_rules: set[str]
+    ) -> bool:
+        """Recursively evaluate a boolean extended correlation condition expression."""
+        if isinstance(node, SigmaRuleReference):
+            return node.reference in fired_rules
+        elif isinstance(node, CorrelationConditionAND):
+            return all(self._eval_extended_expr(arg, fired_rules) for arg in node.args)
+        elif isinstance(node, CorrelationConditionOR):
+            return any(self._eval_extended_expr(arg, fired_rules) for arg in node.args)
+        elif isinstance(node, CorrelationConditionNOT):
+            return not self._eval_extended_expr(node.args[0], fired_rules)
+        return False
+
+    def _eval_ordered_extended_expr(
+        self,
+        node: CorrelationConditionItem | SigmaRuleReference,
+        rule_first_fire: dict[str, Any],
+    ) -> tuple[bool, Any]:
+        """Evaluate a boolean expression with ordering constraints.
+
+        Returns (satisfied, last_timestamp) where last_timestamp is the timestamp of the
+        last positively matched rule in the sub-expression (None for negated sub-expressions).
+        For AND, each successive operand's first-fire timestamp must be >= previous operand's.
+        """
+        if isinstance(node, SigmaRuleReference):
+            ts = rule_first_fire.get(node.reference)
+            return ts is not None, ts
+        elif isinstance(node, CorrelationConditionAND):
+            last_ts: Any = None
+            for arg in node.args:
+                ok, ts = self._eval_ordered_extended_expr(arg, rule_first_fire)
+                if not ok:
+                    return False, None
+                if last_ts is not None and ts is not None and ts < last_ts:
+                    return False, None
+                if ts is not None:
+                    last_ts = ts
+            return True, last_ts
+        elif isinstance(node, CorrelationConditionOR):
+            for arg in node.args:
+                ok, ts = self._eval_ordered_extended_expr(arg, rule_first_fire)
+                if ok:
+                    return True, ts
+            return False, None
+        elif isinstance(node, CorrelationConditionNOT):
+            ok, _ = self._eval_ordered_extended_expr(node.args[0], rule_first_fire)
+            return not ok, None
+        return False, None
+
     def _eval_temporal(
         self,
         matches: list[SigmaMatch],
@@ -195,6 +254,20 @@ class SigmaCorrelationRuleMatcher:
         now: Any,
     ) -> list[SigmaMatch]:
         """All referenced rules must fire within the time window."""
+        if isinstance(self.rule.condition, SigmaExtendedCorrelationCondition):
+            fired_rules: set[str] = {
+                name for m in matches if (name := getattr(m.rule, "name", None))
+            }
+            if self._eval_extended_expr(self.rule.condition.parsed, fired_rules):
+                return [
+                    SigmaMatch(
+                        rule=self.rule,
+                        events=self._collect_events(matches),
+                        timestamp=now,
+                        group_values=self._make_group_values(group_key),
+                    )
+                ]
+            return []
         matched_rules: set[str] = set()
         for m in matches:
             if hasattr(m.rule, "name") and m.rule.name:
@@ -217,6 +290,23 @@ class SigmaCorrelationRuleMatcher:
         now: Any,
     ) -> list[SigmaMatch]:
         """All referenced rules must fire in order within the time window."""
+        if isinstance(self.rule.condition, SigmaExtendedCorrelationCondition):
+            rule_first_fire: dict[str, Any] = {}
+            for m in sorted(matches, key=lambda x: x.timestamp):
+                name = getattr(m.rule, "name", None)
+                if name and name not in rule_first_fire:
+                    rule_first_fire[name] = m.timestamp
+            ok, _ = self._eval_ordered_extended_expr(self.rule.condition.parsed, rule_first_fire)
+            if ok:
+                return [
+                    SigmaMatch(
+                        rule=self.rule,
+                        events=self._collect_events(matches),
+                        timestamp=now,
+                        group_values=self._make_group_values(group_key),
+                    )
+                ]
+            return []
         if not self.rule.rules:
             return []
         expected_order = [ref.reference for ref in self.rule.rules]

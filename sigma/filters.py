@@ -21,6 +21,15 @@ if TYPE_CHECKING:
 
 @dataclass
 class SigmaGlobalFilter(SigmaDetections):
+    """
+    The ``filter`` section of a Sigma filter: the detections and the condition of the filter and
+    the references to the rules it applies to.
+
+    :param rules: Rules the filter applies to. Either the string ``"any"`` to apply the filter to
+        all rules matching the log source of the filter, or a list of references to rule IDs or
+        names.
+    """
+
     rules: list[SigmaRuleReference] | str = field(default_factory=list)
 
     @classmethod
@@ -30,6 +39,20 @@ class SigmaGlobalFilter(SigmaDetections):
         source: SigmaRuleLocation | None = None,
         policy: "SigmaPolicy | None" = None,
     ) -> Self:
+        """
+        Parse the ``filter`` section of a Sigma filter.
+
+        The ``rules`` field is required. It can be ``any`` (case-insensitive), a single rule ID or
+        name or a list of rule IDs or names. An empty list is treated like ``any``. All other keys
+        except ``condition`` are parsed as detection definitions.
+
+        :param detections: Content of the ``filter`` section.
+        :param source: Location of the filter, used in error messages.
+        :param policy: Policy used to parse the detections.
+        :raises SigmaFilterConditionError: if the condition is missing or isn't a single string.
+        :raises SigmaFilterRuleReferenceError: if the ``rules`` field is missing or invalid.
+        :return: Parsed filter section.
+        """
         try:
             if isinstance(detections["condition"], str):
                 condition = [detections["condition"]]
@@ -86,6 +109,7 @@ class SigmaGlobalFilter(SigmaDetections):
         )
 
     def to_dict(self: Self) -> dict[str, Any]:
+        """Convert the filter section into a dict, with rule references as plain strings."""
         d = super().to_dict()
         d.update(
             {
@@ -118,7 +142,18 @@ class EmptySigmaGlobalFilter(SigmaGlobalFilter):
 @dataclass
 class SigmaFilter(SigmaRuleBase):
     """
-    SigmaFilter class is used to represent a Sigma filter object.
+    A Sigma filter: a separate document that adds a condition to existing rules to tune them for
+    an environment without changing the rules themselves, e.g. to exclude known-benign activity.
+
+    A filter applies to a rule if the log source of the filter contains the log source of the rule
+    and the rule is referenced in the ``rules`` field of the filter section (or ``rules`` is
+    ``any``). Correlation rules aren't modified, but the rules they refer to are filtered like any
+    other rule. See :meth:`apply_on_rule` for how a filter is merged into a rule.
+
+    :param logsource: Log source the filter applies to. It may be less specific than the log
+        sources of the rules it applies to.
+    :param filter: Parsed ``filter`` section with the filter detections, condition and rule
+        references.
     """
 
     logsource: SigmaLogSource = field(default_factory=SigmaLogSource)
@@ -136,6 +171,15 @@ class SigmaFilter(SigmaRuleBase):
     ) -> Self:
         """
         Converts from a dictionary object to a SigmaFilter object.
+
+        :param sigma_filter: Parsed YAML content of the filter.
+        :param collect_errors: Collect errors in the ``errors`` attribute instead of raising the
+            first one.
+        :param source: Location of the filter, used in error messages.
+        :param policy: Policy used to parse the filter.
+        :raises SigmaLogsourceError: if the log source is missing or invalid.
+        :raises SigmaFilterError: if the ``filter`` section is missing or isn't a map.
+        :return: Parsed filter.
         """
         kwargs, errors = super().from_dict_common_params(
             sigma_filter, collect_errors, source, policy=policy
@@ -208,6 +252,7 @@ class SigmaFilter(SigmaRuleBase):
         return d
 
     def _should_apply_on_rule(self: Self, rule: SigmaRule | SigmaCorrelationRule) -> bool:
+        """Check if the filter applies to the given rule (see class documentation)."""
         from sigma.collection import SigmaCollection
 
         # Don't apply filters to correlation rules
@@ -253,6 +298,18 @@ class SigmaFilter(SigmaRuleBase):
     def apply_on_rule(
         self: Self, rule: SigmaRule | SigmaCorrelationRule
     ) -> SigmaRule | SigmaCorrelationRule:
+        """
+        Apply the filter on a rule if it applies to it.
+
+        The filter detections are copied into the rule under names with a random prefix, so they
+        can't collide with the detections of the rule, and each condition of the rule is replaced
+        with ``(<rule condition>) and (<filter condition>)``. The filter condition is rewritten
+        to the prefixed names. It can therefore only refer to detections of the filter, and
+        ``them`` refers to all filter detections.
+
+        :param rule: Rule the filter is applied to. It is modified in place.
+        :return: The given rule, with the filter applied if it applies to the rule.
+        """
         if not self._should_apply_on_rule(rule) or isinstance(rule, SigmaCorrelationRule):
             return rule
 

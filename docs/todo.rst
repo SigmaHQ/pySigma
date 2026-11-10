@@ -11,8 +11,6 @@ Guides
 
 * **Correlation Rules Guide**: A dedicated guide explaining how to write and use correlation
   rules (event_count, value_count, temporal_ordered, triggered types) with detailed examples.
-* **Filters Guide**: Explain how to use Sigma filters (``SigmaFilter``) to globally modify
-  rules in a collection.
 
 Reference Documentation
 ^^^^^^^^^^^^^^^^^^^^^^^
@@ -41,7 +39,6 @@ Docstring Improvements
 * **sigma/modifiers.py**: Many modifier classes have no docstrings.
 * **sigma/correlations.py**: Correlation-related classes need more detailed documentation
   of their behavior and usage.
-* **sigma/filters.py**: Filter classes need comprehensive docstrings.
 
 Examples and Tutorials
 ^^^^^^^^^^^^^^^^^^^^^^

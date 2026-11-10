@@ -446,16 +446,24 @@ def test_validator_tautological_value_contains_collapsed_backslash():
     assert validator.validate(rule) == [TautologicalValueIssue([rule], detection_item)]
 
 
-def test_validator_tautological_value_contains_empty():
+@pytest.mark.parametrize(
+    "detection",
+    [
+        "field|contains: ''",
+        "field|startswith: ''",
+        "field|endswith: ''",
+    ],
+)
+def test_validator_tautological_value_empty(detection):
     validator = TautologicalValueValidator()
-    rule = SigmaRule.from_yaml("""
+    rule = SigmaRule.from_yaml(f"""
     title: Test
     status: test
     logsource:
         category: test
     detection:
         sel:
-            field|contains: ''
+            {detection}
         condition: sel
     """)
     detection_item = rule.detection.detections["sel"].detection_items[0]
@@ -466,13 +474,10 @@ def test_validator_tautological_value_contains_empty():
     "detection",
     [
         "field|contains: '\\\\'",
-        "field|startswith: '\\\\'",
-        "field|endswith: '\\\\'",
-        "field|startswith: '/'",
-        "field|endswith: '/'",
+        "field|contains: '/'",
     ],
 )
-def test_validator_tautological_value_single_separator(detection):
+def test_validator_tautological_value_contains_single_separator(detection):
     validator = TautologicalValueValidator()
     rule = SigmaRule.from_yaml(f"""
     title: Test
@@ -496,6 +501,12 @@ def test_validator_tautological_value_single_separator(detection):
         "field|contains: '*\\\\'",
         "field|startswith: 'C:\\\\'",
         "field|endswith: '.exe'",
+        # A lone separator is only tautological with contains. startswith/endswith anchor the
+        # match at one end of the value and remain selective.
+        "field|startswith: '\\\\'",
+        "field|endswith: '\\\\'",
+        "field|startswith: '/'",
+        "field|endswith: '/'",
         "field: '\\\\'",
         "field|all|contains:\n                - '\\\\'\n                - 'foo'",
     ],

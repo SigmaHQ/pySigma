@@ -186,8 +186,8 @@ class EscapedWildcardValidator(SigmaStringValueValidator):
 @dataclass
 class TautologicalValueIssue(SigmaValidationIssue):
     description: ClassVar[str] = (
-        "String with contains, startswith or endswith modifier is empty or reduces to a single "
-        "path separator, which matches (almost) every value"
+        "String with contains, startswith or endswith modifier is empty or, with the contains "
+        "modifier, reduces to a single path separator, which matches (almost) every value"
     )
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
     detection_item: SigmaDetectionItem
@@ -195,13 +195,17 @@ class TautologicalValueIssue(SigmaValidationIssue):
 
 class TautologicalValueValidator(SigmaDetectionItemValidator):
     """
-    Check for strings that match (almost) every value of a field because they are empty or
-    reduce to a single path separator.
+    Check for strings that match (almost) every value of a field because they are empty or,
+    with the ``contains`` modifier, reduce to a single path separator.
 
     Sigma string parsing collapses escape sequences, e.g. two backslashes in a YAML rule denote
     a single literal backslash. A ``contains`` modifier with such a value matches every value
     containing a backslash, which for path-like fields is every value. The same problem occurs
     with an empty value, which matches everything regardless of the modifier.
+
+    A lone separator is not reported for ``startswith`` and ``endswith``: these modifiers only
+    anchor the match at the beginning or end of the value (e.g. ``startswith: '\\'`` matches
+    values starting with a backslash), so the value remains selective.
 
     Detection items with the ``all`` modifier are not reported: all values have to match, so a
     value that matches (almost) everything does not turn the whole detection item into a
@@ -230,6 +234,9 @@ class TautologicalValueValidator(SigmaDetectionItemValidator):
             if detection_item.original_value is not None
             else detection_item.value
         )
+        # A lone separator only makes the match (almost) universal with contains. With
+        # startswith and endswith it merely anchors the value at one end.
+        single_separator_is_tautological = SigmaContainsModifier in detection_item.modifiers
         for value in values:
             # Values containing wildcards or placeholders are not plain strings and are
             # covered by other validators.
@@ -237,7 +244,11 @@ class TautologicalValueValidator(SigmaDetectionItemValidator):
                 continue
 
             literal = "".join(cast(list[str], value.s))
-            if literal == "" or (len(literal) == 1 and literal in self.separators):
+            if literal == "" or (
+                single_separator_is_tautological
+                and len(literal) == 1
+                and literal in self.separators
+            ):
                 return [TautologicalValueIssue([self.rule], detection_item)]
 
         return []

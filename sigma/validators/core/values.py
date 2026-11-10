@@ -1,6 +1,7 @@
 from dataclasses import dataclass
-from typing import ClassVar
+from typing import ClassVar, cast
 from sigma.modifiers import (
+    SigmaAllModifier,
     SigmaContainsModifier,
     SigmaEndswithModifier,
     SigmaStartswithModifier,
@@ -180,3 +181,63 @@ class EscapedWildcardValidator(SigmaStringValueValidator):
             return [EscapedWildcardIssue([self.rule], value)]
         else:
             return []
+
+
+@dataclass
+class TautologicalValueIssue(SigmaValidationIssue):
+    description: ClassVar[str] = (
+        "String with contains, startswith or endswith modifier is empty or reduces to a single "
+        "path separator, which matches (almost) every value"
+    )
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.MEDIUM
+    detection_item: SigmaDetectionItem
+
+
+class TautologicalValueValidator(SigmaDetectionItemValidator):
+    """
+    Check for strings that match (almost) every value of a field because they are empty or
+    reduce to a single path separator.
+
+    Sigma string parsing collapses escape sequences, e.g. two backslashes in a YAML rule denote
+    a single literal backslash. A ``contains`` modifier with such a value matches every value
+    containing a backslash, which for path-like fields is every value. The same problem occurs
+    with an empty value, which matches everything regardless of the modifier.
+
+    Detection items with the ``all`` modifier are not reported: all values have to match, so a
+    value that matches (almost) everything does not turn the whole detection item into a
+    tautology.
+    """
+
+    separators = ("\\", "/")
+    tautological_modifiers = (
+        SigmaContainsModifier,
+        SigmaStartswithModifier,
+        SigmaEndswithModifier,
+    )
+
+    def validate_detection_item(
+        self, detection_item: SigmaDetectionItem
+    ) -> list[SigmaValidationIssue]:
+        if SigmaAllModifier in detection_item.modifiers or not any(
+            modifier in self.tautological_modifiers for modifier in detection_item.modifiers
+        ):
+            return []
+
+        # The modifiers add wildcards around the values, therefore the values stored in
+        # original_value are inspected whenever possible.
+        values = (
+            detection_item.original_value
+            if detection_item.original_value is not None
+            else detection_item.value
+        )
+        for value in values:
+            # Values containing wildcards or placeholders are not plain strings and are
+            # covered by other validators.
+            if not isinstance(value, SigmaString) or any(not isinstance(c, str) for c in value.s):
+                continue
+
+            literal = "".join(cast(list[str], value.s))
+            if literal == "" or (len(literal) == 1 and literal in self.separators):
+                return [TautologicalValueIssue([self.rule], detection_item)]
+
+        return []

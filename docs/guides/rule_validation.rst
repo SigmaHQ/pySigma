@@ -270,6 +270,9 @@ Check detection values for potential issues.
    * - ``EscapedWildcardValidator``
      - ``escaped_wildcard``
      - Detects escaped wildcards (``\*`` or ``\?``) in rule logic.
+   * - ``TautologicalValueValidator``
+     - ``tautological_value``
+     - Detects values that are empty or reduce to a single path separator and therefore match (almost) every value.
 
 Log Source Validators (``sigma.validators.core.logsources``)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

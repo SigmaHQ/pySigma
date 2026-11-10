@@ -200,7 +200,7 @@ class SigmaCollection:
                         )
                         parsed_rules.append(parsed_correlation_rule)
                         errors.extend(parsed_correlation_rule.errors)  # Propagate errors from rule
-                    elif "filter" in rule:  # correlation rule - no global rule merge
+                    elif "filter" in rule:  # filter - no global rule merge
                         parsed_filter_rule = SigmaFilter.from_dict(
                             rule,
                             collect_errors,

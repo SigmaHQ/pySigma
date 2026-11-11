@@ -180,6 +180,15 @@ class SigmaCollection:
             ):  # Included rules are already parsed, skip collection action processing
                 parsed_rules.append(rule)
                 rule.source = source
+            elif not isinstance(rule, dict):  # e.g. a bare string or a list as YAML document
+                not_a_mapping = SigmaCollectionError(
+                    f"Sigma collection document { i } is not a mapping but { type(rule).__name__ }",
+                    source=source,
+                )
+                if collect_errors:
+                    errors.append(not_a_mapping)
+                else:
+                    raise not_a_mapping
             else:
                 try:  # reject alias bombs before global/repeat merging walks the document
                     check_alias_expansion(rule, SigmaCollectionError, source)

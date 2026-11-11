@@ -51,6 +51,29 @@ detection:
     assert collection.errors == []
 
 
+@pytest.mark.parametrize("document", ["just a string", "- a\n- b", "42"])
+def test_from_yaml_non_mapping_document(document):
+    with pytest.raises(SigmaCollectionError, match="document 1 is not a mapping"):
+        SigmaCollection.from_yaml(document)
+
+
+def test_from_yaml_non_mapping_document_collect_errors():
+    rule = """
+title: Test
+logsource:
+    category: test
+detection:
+    test:
+        field: value
+    condition: test
+"""
+    collection = SigmaCollection.from_yaml(rule + "---\n- a\n- b\n", collect_errors=True)
+    assert len(collection) == 1
+    assert len(collection.errors) == 1
+    assert isinstance(collection.errors[0], SigmaCollectionError)
+    assert "document 2 is not a mapping" in str(collection.errors[0])
+
+
 def test_merge():
     rules = [
         {

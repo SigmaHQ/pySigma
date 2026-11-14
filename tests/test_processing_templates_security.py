@@ -39,6 +39,42 @@ def nested_command_template(marker: str) -> str:
     )
 
 
+def indirect_context_call_postprocessing_template(marker: str) -> str:
+    """Context.call gadget in a postprocessing template (GHSA bypass).
+
+    Traverses pipeline → postprocessing_items[0].transformation.j2template to reach
+    a Jinja Template, calls new_context() to obtain a Context, then uses Context.call
+    to invoke a blocked pySigma classmethod without triggering the direct is_safe_callable
+    check on that classmethod.
+    """
+    marker_escaped = str(marker).replace("\\", "\\\\")
+    payload = (
+        "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
+    )
+    return (
+        "{% set j2t = pipeline.postprocessing_items[0].transformation.j2template %}"
+        "{% set ctx = j2t.new_context() %}"
+        '{{ ctx.call(pipeline.from_yaml, "' + payload + '", allow_external_sources=true) }}'
+    )
+
+
+def indirect_context_call_finalizer_template(marker: str) -> str:
+    """Context.call gadget in a finalizer template (GHSA bypass).
+
+    Same gadget as the postprocessing variant but reaches j2template via
+    pipeline.finalizers[0].j2template instead.
+    """
+    marker_escaped = str(marker).replace("\\", "\\\\")
+    payload = (
+        "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
+    )
+    return (
+        "{% set j2t = pipeline.finalizers[0].j2template %}"
+        "{% set ctx = j2t.new_context() %}"
+        '{{ ctx.call(pipeline.from_yaml, "' + payload + '", allow_external_sources=true) }}'
+    )
+
+
 @pytest.mark.parametrize("section", ["finalizers", "postprocessing"])
 def test_template_pipeline_classmethod_call_blocked(tmp_path, rule_collection, section):
     marker = tmp_path / "pwned"
@@ -53,6 +89,46 @@ def test_template_pipeline_classmethod_call_blocked(tmp_path, rule_collection, s
         }
     )
     with pytest.raises(SecurityError, match="not safely callable"):
+        convert(pipeline, rule_collection)
+    assert not marker.exists()
+
+
+def test_indirect_context_call_postprocessing_blocked(tmp_path, rule_collection):
+    """Regression: Context.call gadget must not bypass is_safe_callable in postprocessing."""
+    marker = tmp_path / "pwned"
+    pipeline = ProcessingPipeline.from_dict(
+        {
+            "postprocessing": [
+                {
+                    "type": "template",
+                    "template": indirect_context_call_postprocessing_template(
+                        str(marker).replace("\\", "\\\\")
+                    ),
+                }
+            ]
+        }
+    )
+    with pytest.raises(SecurityError):
+        convert(pipeline, rule_collection)
+    assert not marker.exists()
+
+
+def test_indirect_context_call_finalizer_blocked(tmp_path, rule_collection):
+    """Regression: Context.call gadget must not bypass is_safe_callable in finalizers."""
+    marker = tmp_path / "pwned"
+    pipeline = ProcessingPipeline.from_dict(
+        {
+            "finalizers": [
+                {
+                    "type": "template",
+                    "template": indirect_context_call_finalizer_template(
+                        str(marker).replace("\\", "\\\\")
+                    ),
+                }
+            ]
+        }
+    )
+    with pytest.raises(SecurityError):
         convert(pipeline, rule_collection)
     assert not marker.exists()
 

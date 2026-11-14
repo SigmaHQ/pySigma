@@ -55,9 +55,13 @@ MOCK_D3FEND_DATA = {
 
 
 @pytest.fixture(autouse=True)
-def mock_mitre_data(monkeypatch):
+def mock_mitre_data(monkeypatch, tmp_path):
     """Mock MITRE ATT&CK and D3FEND data to avoid network calls in tests."""
     from sigma.data import mitre_d3fend
+
+    # Redirect caches to tmp_path so tests don't touch the user's real cache directory.
+    mitre_attack.set_cache_dir(str(tmp_path / "mitre_attack"))
+    mitre_d3fend.set_cache_dir(str(tmp_path / "mitre_d3fend"))
 
     # Mock the _get_cached_data functions to return our mock data
     def mock_attack_cached_data():

@@ -3,12 +3,15 @@ from uuid import UUID
 import pytest
 from sigma.rule import SigmaRule
 from sigma.collection import SigmaCollection
+from sigma.validation import SigmaValidator
+from sigma.validators.core import validators
 
 from sigma.validators.core.metadata import (
     IdentifierExistenceValidator,
     IdentifierExistenceIssue,
     IdentifierUniquenessValidator,
     IdentifierCollisionIssue,
+    DuplicateNameIssue,
     DuplicateTitleIssue,
     DuplicateTitleValidator,
     DuplicateReferencesIssue,
@@ -88,6 +91,34 @@ def test_validator_identifier_uniqueness(rules_with_id_collision):
             rules_with_id_collision, UUID("32532a0b-e56c-47c9-bcbb-3d88bd670c37")
         )
     ]
+
+
+def test_validator_duplicate_name():
+    detection = {
+        "logsource": {"category": "test"},
+        "detection": {"sel": {"field": "value"}, "condition": "sel"},
+    }
+    collection = SigmaCollection.from_dicts(
+        [
+            {**detection, "title": "Source", "name": "source"},
+            {**detection, "title": "First", "name": "shared"},
+            {**detection, "title": "Unnamed"},
+            {**detection, "title": "Also unnamed"},
+            {
+                "title": "Second",
+                "name": "shared",
+                "correlation": {
+                    "type": "event_count",
+                    "rules": ["source"],
+                    "timespan": "5m",
+                    "condition": {"gte": 3},
+                },
+            },
+        ]
+    )
+    validator = SigmaValidator.from_dict({"validators": ["duplicate_name"]}, validators)
+    expected = [rule for rule in collection if rule.name == "shared"]
+    assert validator.validate_rules(iter(collection)) == [DuplicateNameIssue(expected, "shared")]
 
 
 def test_validator_duplicate_title():

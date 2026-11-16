@@ -70,6 +70,34 @@ class IdentifierUniquenessValidator(SigmaRuleValidator):
 
 
 @dataclass
+class DuplicateNameIssue(SigmaValidationIssue):
+    """A name used for rule references appears more than once."""
+
+    description: ClassVar[str] = "Rule name used by multiple rules"
+    severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH
+    name: str
+
+
+class DuplicateNameValidator(SigmaRuleValidator):
+    """Check that names used to reference rules are unique within a collection."""
+
+    def __init__(self) -> None:
+        self.names: dict[str, list[SigmaRule | SigmaCorrelationRule]] = defaultdict(list)
+
+    def validate(self, rule: SigmaRule | SigmaCorrelationRule) -> list[SigmaValidationIssue]:
+        """Collect rules by their optional name."""
+        if rule.name is not None:
+            self.names[rule.name].append(rule)
+        return []
+
+    def finalize(self) -> list[SigmaValidationIssue]:
+        """Report each ambiguous name with the rules that define it."""
+        return [
+            DuplicateNameIssue(rules, name) for name, rules in self.names.items() if len(rules) > 1
+        ]
+
+
+@dataclass
 class DuplicateTitleIssue(SigmaValidationIssue):
     description: ClassVar[str] = "Rule title used by multiple rules"
     severity: ClassVar[SigmaValidationIssueSeverity] = SigmaValidationIssueSeverity.HIGH

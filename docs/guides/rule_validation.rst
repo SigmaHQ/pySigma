@@ -140,6 +140,9 @@ Check rule metadata fields for correctness and completeness.
    * - ``DuplicateTitleValidator``
      - ``duplicate_title``
      - Detects duplicate rule titles in a collection.
+   * - ``DuplicateNameValidator``
+     - ``duplicate_name``
+     - Reports rules that share a name, making references by that name ambiguous.
    * - ``DuplicateReferencesValidator``
      - ``duplicate_references``
      - Detects duplicate references within a rule.

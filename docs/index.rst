@@ -14,6 +14,7 @@ comprehensive testing.
    :caption: Contents
 
    introduction
+   architecture
    getting_started
    guides/index
    reference/index

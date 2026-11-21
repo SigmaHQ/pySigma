@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1220 970" width="1220" height="970" role="img" aria-labelledby="dgtitle">
+      <style>
+        svg { --bg:#ffffff; --surface:#ffffff; --fg:#1b2230; --muted:#5b6577; --line:#c9cfda; --band:#eceff4;
+          --model:#2f5fb3; --proc:#b26b12; --exec:#18806f; --ext:#7a4bb0;
+          --model-soft:#e7eefb; --proc-soft:#fbf0e1; --exec-soft:#e2f3ef; --ext-soft:#f1eafa; }
+        @media (prefers-color-scheme: dark) { svg { --bg:#12161d; --surface:#1a2029; --fg:#e4e8ef; --muted:#98a2b3; --line:#3a4453; --band:#171c24;
+          --model:#7da6f0; --proc:#e6a552; --exec:#4fc2ad; --ext:#b493e6;
+          --model-soft:#1d2a40; --proc-soft:#33281a; --exec-soft:#17302b; --ext-soft:#2a2238; } }
+        .bg { fill: var(--bg); }
+        .band { fill: var(--band); }
+        .bandlabel { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; letter-spacing: .08em; fill: var(--muted); font-weight: 500; }
+        .box { fill: var(--surface); stroke-width: 1.5; }
+        .box.m { stroke: var(--model); } .box.p { stroke: var(--proc); } .box.x { stroke: var(--exec); } .box.e { stroke: var(--ext); }
+        .input { fill: none; stroke: var(--muted); stroke-width: 1.2; stroke-dasharray: 5 4; }
+        .chip.m { fill: var(--model-soft); } .chip.p { fill: var(--proc-soft); } .chip.x { fill: var(--exec-soft); } .chip.e { fill: var(--ext-soft); }
+        .t { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 14px; font-weight: 600; fill: var(--fg); }
+        .path { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 11px; fill: var(--muted); }
+        .c { font-family: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace; font-size: 11.5px; fill: var(--fg); }
+        .s { font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; font-size: 12px; fill: var(--muted); }
+        .sb { font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; font-size: 12.5px; fill: var(--fg); }
+        .lbl { font-family: "IBM Plex Sans", "Helvetica Neue", Arial, sans-serif; font-size: 12px; fill: var(--muted); }
+        .arrow { stroke: var(--muted); stroke-width: 1.4; fill: none; }
+        .arrow.dash { stroke: var(--ext); stroke-dasharray: 5 4; }
+        .ah { fill: var(--muted); } .ah.e { fill: var(--ext); }
+        .foot { fill: none; stroke: var(--line); stroke-width: 1; }
+      </style>
+      <title id="dgtitle">pySigma architecture layers: rule model, processing, execution, extension</title>
+      <defs>
+        <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah" d="M0,0 L10,5 L0,10 z"/></marker>
+        <marker id="ahe" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path class="ah e" d="M0,0 L10,5 L0,10 z"/></marker>
+      </defs>
+      <rect class="bg" x="0" y="0" width="1220" height="970"/>
+
+      <!-- ============ Band 1: rule model ============ -->
+      <rect class="band" x="40" y="16" width="1160" height="236" rx="8"/>
+      <text class="bandlabel" x="56" y="38">1 · RULE MODEL</text>
+
+      <rect class="input" x="56" y="66" width="140" height="156" rx="8"/>
+      <text class="t" x="70" y="92">Sigma-YAML</text>
+      <text class="s" x="70" y="114">files / strings</text>
+      <text class="sb" x="70" y="146">• Rules</text>
+      <text class="sb" x="70" y="168">• Correlations</text>
+      <text class="sb" x="70" y="190">• Filters</text>
+
+      <rect class="box m" x="226" y="52" width="270" height="184" rx="8"/>
+      <text class="t" x="242" y="76">SigmaCollection</text>
+      <text class="path" x="242" y="93">collection.py</text>
+      <rect class="chip m" x="242" y="106" width="238" height="28" rx="5"/>
+      <text class="c" x="252" y="124">SigmaRule</text><text class="path" x="470" y="124" text-anchor="end">rule/rule.py</text>
+      <rect class="chip m" x="242" y="140" width="238" height="28" rx="5"/>
+      <text class="c" x="252" y="158">SigmaCorrelationRule</text>
+      <rect class="chip m" x="242" y="174" width="238" height="28" rx="5"/>
+      <text class="c" x="252" y="192">SigmaFilter</text><text class="path" x="470" y="192" text-anchor="end">filters.py</text>
+      <text class="s" x="242" y="224">common base: SigmaRuleBase</text>
+
+      <rect class="box m" x="526" y="52" width="330" height="184" rx="8"/>
+      <text class="t" x="542" y="76">Detection &amp; Condition</text>
+      <text class="path" x="542" y="93">rule/ · conditions.py</text>
+      <rect class="chip m" x="542" y="106" width="298" height="28" rx="5"/>
+      <text class="c" x="552" y="124">SigmaLogSource</text><text class="path" x="830" y="124" text-anchor="end">category/product/service</text>
+      <rect class="chip m" x="542" y="140" width="298" height="28" rx="5"/>
+      <text class="c" x="552" y="158">SigmaDetections › Detection › Item</text>
+      <rect class="chip m" x="542" y="174" width="298" height="28" rx="5"/>
+      <text class="c" x="552" y="192">SigmaCondition</text><text class="path" x="830" y="192" text-anchor="end">AND / OR / NOT / Selector</text>
+      <text class="s" x="542" y="224">Condition is parsed into a tree</text>
+
+      <rect class="box m" x="886" y="52" width="298" height="184" rx="8"/>
+      <text class="t" x="902" y="76">Values &amp; Modifiers</text>
+      <text class="path" x="902" y="93">modifiers.py · types.py</text>
+      <rect class="chip m" x="902" y="106" width="266" height="28" rx="5"/>
+      <text class="c" x="912" y="124">|contains |re |cidr |base64offset</text>
+      <rect class="chip m" x="902" y="140" width="266" height="28" rx="5"/>
+      <text class="c" x="912" y="158">SigmaString · SigmaNumber</text>
+      <rect class="chip m" x="902" y="174" width="266" height="28" rx="5"/>
+      <text class="c" x="912" y="192">SigmaRegularExpression · CIDR</text>
+      <text class="s" x="902" y="224">Modifiers turn raw values into Sigma types</text>
+
+      <path class="arrow" d="M196,144 H224" marker-end="url(#ah)"/>
+      <path class="arrow" d="M496,144 H524" marker-end="url(#ah)"/>
+      <path class="arrow" d="M856,144 H884" marker-end="url(#ah)"/>
+
+      <!-- ============ Band 2: processing ============ -->
+      <rect class="band" x="40" y="300" width="1160" height="190" rx="8"/>
+      <text class="bandlabel" x="56" y="322">2 · PROCESSING</text>
+
+      <rect class="input" x="56" y="340" width="140" height="130" rx="8"/>
+      <text class="t" x="70" y="366">Pipelines</text>
+      <text class="s" x="70" y="384">sources</text>
+      <text class="sb" x="70" y="408">• YAML file</text>
+      <text class="sb" x="70" y="428">• Plugin ID</text>
+      <text class="sb" x="70" y="448">• Python code</text>
+
+      <rect class="box p" x="226" y="336" width="270" height="134" rx="8"/>
+      <text class="t" x="242" y="360">ProcessingPipelineResolver</text>
+      <text class="path" x="242" y="377">processing/resolver.py</text>
+      <text class="sb" x="242" y="406">sorts pipelines by priority</text>
+      <text class="sb" x="242" y="428">and joins them with +</text>
+      <text class="s" x="242" y="454">→ one merged pipeline</text>
+
+      <rect class="box p" x="526" y="336" width="470" height="134" rx="8"/>
+      <text class="t" x="542" y="360">ProcessingPipeline</text>
+      <text class="path" x="542" y="377">processing/pipeline.py</text>
+      <rect class="chip p" x="542" y="390" width="136" height="54" rx="5"/>
+      <text class="c" x="552" y="411">ProcessingItem</text>
+      <text class="s" x="552" y="431">transformation + cond.</text>
+      <rect class="chip p" x="690" y="390" width="136" height="54" rx="5"/>
+      <text class="c" x="700" y="411">Postprocessing</text>
+      <text class="s" x="700" y="431">per generated query</text>
+      <rect class="chip p" x="838" y="390" width="142" height="54" rx="5"/>
+      <text class="c" x="848" y="411">Finalizer</text>
+      <text class="s" x="848" y="431">on the whole output</text>
+      <text class="path" x="542" y="460">transformations/ · conditions/ · postprocessing.py · finalization.py</text>
+
+      <rect class="box p" x="1026" y="336" width="158" height="134" rx="8"/>
+      <text class="t" x="1040" y="360">SigmaPolicy</text>
+      <text class="path" x="1040" y="377">policy/</text>
+      <text class="sb" x="1040" y="404">RE2 / Python regex</text>
+      <text class="sb" x="1040" y="424">template variables</text>
+      <text class="sb" x="1040" y="444">external sources</text>
+      <text class="s" x="1040" y="463">default: SafePolicy</text>
+
+      <path class="arrow" d="M196,403 H224" marker-end="url(#ah)"/>
+      <path class="arrow" d="M496,403 H524" marker-end="url(#ah)"/>
+      <path class="arrow" d="M1026,403 H998" marker-end="url(#ah)"/>
+
+      <!-- ============ Band 3: execution ============ -->
+      <rect class="band" x="40" y="540" width="1160" height="220" rx="8"/>
+      <text class="bandlabel" x="56" y="562">3 · EXECUTION</text>
+
+      <rect class="box x" x="56" y="578" width="520" height="164" rx="8"/>
+      <text class="t" x="72" y="602">Backend</text>
+      <text class="path" x="140" y="602">conversion/base.py · state.py · deferred.py</text>
+      <text class="sb" x="72" y="626">convert(SigmaCollection) → queries in the target format</text>
+      <rect class="chip x" x="72" y="640" width="160" height="28" rx="5"/>
+      <text class="c" x="82" y="658">TextQueryBackend</text>
+      <rect class="chip x" x="240" y="640" width="140" height="28" rx="5"/>
+      <text class="c" x="250" y="658">ConversionState</text>
+      <rect class="chip x" x="388" y="640" width="172" height="28" rx="5"/>
+      <text class="c" x="398" y="658">DeferredQueryExpr.</text>
+      <text class="sb" x="72" y="696">Backend plugins subclass TextQueryBackend and define</text>
+      <text class="sb" x="72" y="714">tokens, operators and correlation templates as class attributes.</text>
+      <text class="s" x="72" y="734">reference implementation: sigma/backends/test</text>
+
+      <rect class="box x" x="606" y="578" width="330" height="164" rx="8"/>
+      <text class="t" x="622" y="602">SigmaMatcher</text>
+      <text class="path" x="730" y="602">matching/</text>
+      <text class="sb" x="622" y="626">Event → SigmaMatch, no query language</text>
+      <rect class="chip x" x="622" y="640" width="140" height="28" rx="5"/>
+      <text class="c" x="632" y="658">MatchCompiler</text>
+      <rect class="chip x" x="770" y="640" width="150" height="28" rx="5"/>
+      <text class="c" x="780" y="658">SigmaRuleMatcher</text>
+      <rect class="chip x" x="622" y="674" width="298" height="28" rx="5"/>
+      <text class="c" x="632" y="692">SigmaCorrelationRuleMatcher</text>
+      <text class="s" x="622" y="722">dispatch by log source, time-window state</text>
+      <text class="s" x="622" y="736">for correlations (SlidingWindowState)</text>
+
+      <rect class="box x" x="966" y="578" width="218" height="164" rx="8"/>
+      <text class="t" x="982" y="602">SigmaValidator</text>
+      <text class="path" x="982" y="619">validation.py · validators/</text>
+      <text class="sb" x="982" y="646">checks for metadata,</text>
+      <text class="sb" x="982" y="664">tags, values, modifiers</text>
+      <text class="sb" x="982" y="682">from validators/core</text>
+      <text class="s" x="982" y="708">MITRE ATT&amp;CK / D3FEND</text>
+      <text class="s" x="982" y="724">from sigma/data</text>
+
+      <!-- ============ Band 4: extension ============ -->
+      <rect class="band" x="40" y="790" width="1160" height="110" rx="8"/>
+      <text class="bandlabel" x="56" y="812">4 · EXTENSION</text>
+
+      <rect class="box e" x="56" y="822" width="1128" height="64" rx="8"/>
+      <text class="t" x="72" y="846">InstalledSigmaPlugins · SigmaPluginDirectory</text>
+      <text class="path" x="466" y="846">plugins.py</text>
+      <text class="sb" x="72" y="870">autodiscover() loads the namespace packages sigma.backends.*, sigma.pipelines.*, sigma.validators.* · the plugin directory installs packages like pySigma-backend-splunk from PyPI</text>
+
+      <path class="arrow dash" d="M300,822 V744" marker-end="url(#ahe)"/>
+      <text class="lbl" x="310" y="782">Backends</text>
+      <path class="arrow dash" d="M1075,822 V744" marker-end="url(#ahe)"/>
+      <text class="lbl" x="1085" y="782">Validators</text>
+      <path class="arrow dash" d="M56,856 H24 V420 H54" marker-end="url(#ahe)"/>
+      <text class="lbl" x="15" y="640" transform="rotate(-90 15 640)" text-anchor="middle">Pipelines</text>
+
+      <!-- Band 1 → 2 -->
+      <path class="arrow" d="M690,236 V334" marker-end="url(#ah)"/>
+      <text class="lbl" x="702" y="282">pipeline.apply(rule): rewrites fields, values</text>
+      <text class="lbl" x="702" y="298">and log source on the rule object itself</text>
+
+      <!-- Band 2 → 3 -->
+      <path class="arrow" d="M550,470 V574" marker-end="url(#ah)"/>
+      <text class="lbl" x="372" y="514" text-anchor="end">backend, user and output format</text>
+      <text class="lbl" x="372" y="530" text-anchor="end">pipelines are added together</text>
+      <path class="arrow" d="M376,522 H540" stroke-dasharray="2 3"/>
+      <path class="arrow" d="M760,470 V574" marker-end="url(#ah)"/>
+      <text class="lbl" x="772" y="526">apply(rule) before compiling</text>
+
+      <!-- cross-cutting -->
+      <rect class="foot" x="40" y="918" width="1160" height="38" rx="8"/>
+      <text class="bandlabel" x="56" y="942">CROSS-CUTTING</text>
+      <text class="sb" x="170" y="942">exceptions.py: SigmaError hierarchy with SigmaRuleLocation · all layers report errors uniformly with a reference to the rule</text>
+    </svg>

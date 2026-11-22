@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 from ipaddress import ip_address, ip_network
-from typing import Any, Callable
+from typing import TYPE_CHECKING, Any, Callable
 
 from sigma.conditions import (
     ConditionAND,
@@ -30,12 +30,31 @@ from sigma.types import (
     SpecialChars,
 )
 
+if TYPE_CHECKING:
+    from sigma.policy import SigmaPolicy
+    from sigma.policy.regex_engine import RegexEngine
+
 # Type for compiled matcher callable: (data_dict, raw_log_or_none) -> bool
 CompiledMatcher = Callable[[dict[str, Any], str | None], bool]
 
 
 class MatchCompiler:
-    """Compiles Sigma rule detection logic into optimized Python callables."""
+    """Compiles Sigma rule detection logic into optimized Python callables.
+
+    All regular expressions (``|re`` values and wildcard strings) are compiled with the
+    regex engine of the given :class:`~sigma.policy.SigmaPolicy`. If no policy is passed,
+    the global default policy (``sigma.policy.default_policy``, by default the DoS-safe
+    RE2-backed ``SafePolicy``) is used.
+    """
+
+    def __init__(self, policy: "SigmaPolicy | None" = None) -> None:
+        import sigma.policy as _policy
+
+        self.policy: "SigmaPolicy" = policy or _policy.default_policy
+
+    @property
+    def _engine(self) -> "RegexEngine":
+        return self.policy.regex_engine
 
     def compile_rule(self, rule: SigmaRule) -> CompiledMatcher:
         """Compile a SigmaRule's conditions into a single callable matcher."""
@@ -137,7 +156,7 @@ class MatchCompiler:
             flags = 0
             for flag in value.flags:
                 flags |= value.sigma_to_python_flags[flag]
-            closures[var_name] = re.compile(str(value.regexp), flags)
+            closures[var_name] = self._engine.compile(str(value.regexp), flags)
             return f"({var_name}.search(str(data.get({field_name!r}, ''))) is not None)"
 
         elif isinstance(value, SigmaNumber):
@@ -175,7 +194,7 @@ class MatchCompiler:
             regex_str = self._sigma_string_to_regex(value)
             flags = 0 if case_sensitive else re.IGNORECASE
             var_name = f"_pat_{len(closures)}"
-            closures[var_name] = re.compile(regex_str, flags)
+            closures[var_name] = self._engine.compile(regex_str, flags)
             return f"({var_name}.search(str(data.get({field_name!r}, ''))) is not None)"
 
     def _sigma_string_to_regex(self, value: SigmaString) -> str:
@@ -207,14 +226,14 @@ class MatchCompiler:
                 # For keywords, remove anchors - search anywhere
                 regex_str = regex_str.lstrip("^").rstrip("$")
                 var_name = f"_kw_{len(closures)}"
-                closures[var_name] = re.compile(regex_str, re.IGNORECASE)
+                closures[var_name] = self._engine.compile(regex_str, re.IGNORECASE)
                 return f"({var_name}.search(raw or '') is not None)"
         elif isinstance(value, SigmaRegularExpression):
             var_name = f"_kw_{len(closures)}"
             flags = 0
             for flag in value.flags:
                 flags |= value.sigma_to_python_flags[flag]
-            closures[var_name] = re.compile(str(value.regexp), flags)
+            closures[var_name] = self._engine.compile(str(value.regexp), flags)
             return f"({var_name}.search(raw or '') is not None)"
         elif isinstance(value, SigmaExpansion):
             sub_parts = []

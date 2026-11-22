@@ -12,6 +12,7 @@ from typing import Any, Callable, Dict, Iterable, Mapping, Sequence, TYPE_CHECKI
 from jinja2.sandbox import SandboxedEnvironment, SandboxedFormatter
 from jinja2 import Environment, FileSystemLoader, StrictUndefined, TemplateNotFound
 from jinja2.exceptions import SecurityError, UndefinedError
+from jinja2.runtime import Context as _JinjaContext
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError
 
@@ -89,6 +90,14 @@ class SigmaSandboxedEnvironment(SandboxedEnvironment):
     def _is_trusted(self, obj: Any) -> bool:
         return any(obj is trusted for trusted in self._trusted_callables)
 
+    def is_safe_attribute(self, obj: Any, attr: str, value: Any) -> bool:
+        # Block access to j2template from templates: it exposes the underlying Jinja Template
+        # object and from there Context.call can be reached (see is_safe_callable below).
+        # Defense in depth - the Context.call block below is the primary barrier.
+        if attr == "j2template":
+            return False
+        return super().is_safe_attribute(obj, attr, value)
+
     def is_safe_callable(self, obj: Any) -> bool:
         if not super().is_safe_callable(obj):
             return False
@@ -99,6 +108,10 @@ class SigmaSandboxedEnvironment(SandboxedEnvironment):
         if isinstance(obj, _METHOD_TYPES):
             owner = getattr(obj, "__self__", None)
             if isinstance(owner, (type, types.ModuleType)):  # classmethods, module functions
+                return False
+            # Context.call invokes callables without going through is_safe_callable - block it
+            # to prevent the indirect-call gadget from escaping the sandbox.
+            if isinstance(owner, _JinjaContext) and getattr(obj, "__name__", None) == "call":
                 return False
             return (
                 type(owner) in _SAFE_METHOD_OWNER_TYPES

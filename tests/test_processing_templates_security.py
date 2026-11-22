@@ -48,9 +48,7 @@ def indirect_context_call_postprocessing_template(marker: str) -> str:
     check on that classmethod.
     """
     marker_escaped = str(marker).replace("\\", "\\\\")
-    payload = (
-        "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
-    )
+    payload = "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
     return (
         "{% set j2t = pipeline.postprocessing_items[0].transformation.j2template %}"
         "{% set ctx = j2t.new_context() %}"
@@ -65,9 +63,7 @@ def indirect_context_call_finalizer_template(marker: str) -> str:
     pipeline.finalizers[0].j2template instead.
     """
     marker_escaped = str(marker).replace("\\", "\\\\")
-    payload = (
-        "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
-    )
+    payload = "transformations: [{type: command_placeholders, cmd: 'touch " + marker_escaped + "'}]"
     return (
         "{% set j2t = pipeline.finalizers[0].j2template %}"
         "{% set ctx = j2t.new_context() %}"

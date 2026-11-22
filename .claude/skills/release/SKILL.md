@@ -12,6 +12,8 @@ Automates the full release lifecycle for SigmaHQ/pySigma.
 
 - `gh` CLI must be installed and authenticated (`gh auth status`)
 - Working directory must be the pySigma repository root
+- A git remote pointing to `SigmaHQ/pySigma` (called `<remote>` below; often `origin` or `github`).
+  Determine it with `git remote -v` before starting.
 - Local `main` branch must be up to date with remote
 - No uncommitted changes
 
@@ -22,24 +24,24 @@ Follow these steps **sequentially**. Each step requires user confirmation before
 ### Step 1: Pre-flight Checks
 
 1. Run `git status` to confirm clean working tree and correct branch (`main`).
-2. Run `git fetch github` then `git status` to confirm local main is up to date.
+2. Run `git fetch <remote>` then `git status` to confirm local main is up to date.
 3. Run `gh auth status` to confirm GitHub CLI is authenticated.
 4. If any check fails, inform the user and stop.
 
 ### Step 2: Determine Current Version and Last Release
 
 1. Read the current version from `pyproject.toml` (the `version` field under `[project]`).
-2. Use `mcp_github_get_latest_release` (owner: `SigmaHQ`, repo: `pySigma`) to get the latest release tag and its publication date.
+2. Get the latest release tag and its publication date with `gh release view --repo SigmaHQ/pySigma --json tagName,publishedAt` (or the GitHub MCP tool `get_latest_release`, if available).
 3. Store the latest release tag (e.g., `v1.3.0`) and date for later steps.
 
 ### Step 3: Analyze Changes Since Last Release
 
 1. Run `git log <last_release_tag>..HEAD --oneline` to get all commits since the last release.
-2. Use `mcp_github_search_pull_requests` to find merged PRs since the last release date:
-   - query: `merged:>=<YYYY-MM-DD> base:main`
-   - owner: `SigmaHQ`, repo: `pySigma`
-   - sort: `created`, order: `asc`
-   - Paginate if needed to get all results.
+2. Find the PRs merged since the last release date:
+   ```
+   gh pr list --repo SigmaHQ/pySigma --state merged --base main --search "merged:>=<YYYY-MM-DD>" --limit 200 --json number,title,body,labels
+   ```
+   The GitHub MCP pull request search tool with the query `repo:SigmaHQ/pySigma is:pr merged:>=<YYYY-MM-DD> base:main` works as well. Paginate if needed to get all results.
 3. Classify each change using the [version classification guide](./references/version-classification.md).
 4. Determine the highest applicable bump level:
    - Any **major** change → major bump
@@ -67,15 +69,15 @@ Ask the user to **confirm** the proposed version or **override** with a differen
 3. Commit the version bump:
    ```
    git add pyproject.toml
-   git commit -m "Bump version to <new_version>"
+   git commit -m "Release <new_version>"
    ```
 4. **Ask the user for confirmation** before pushing.
-5. Push the commit: `git push github main`.
+5. Push the commit: `git push <remote> main`.
 
 ### Step 6: Create and Push Version Tag
 
 1. Create an annotated tag: `git tag -a v<new_version> -m "Release v<new_version>"`.
-2. Push the tag: `git push github v<new_version>`.
+2. Push the tag: `git push <remote> v<new_version>`.
 3. Inform the user: "Tag `v<new_version>` pushed. This triggers the test PyPI deployment via GitHub Actions."
 
 ### Step 7: Wait for Test PyPI Deployment
@@ -154,10 +156,10 @@ Present the draft to the user and let them **review and amend** the release note
 ## Error Recovery
 
 - **Version bump pushed but tag failed**: Create and push the tag manually.
-- **Test PyPI failed**: Fix the issue, delete the tag (`git push --delete github v<new_version> && git tag -d v<new_version>`), amend or re-commit, and restart from Step 6.
+- **Test PyPI failed**: Fix the issue, delete the tag (`git push --delete <remote> v<new_version> && git tag -d v<new_version>`), amend or re-commit, and restart from Step 6.
 - **Release creation failed**: Retry `gh release create` or create manually at `https://github.com/SigmaHQ/pySigma/releases/new`.
 
 ## Reference
 
 - [Version Classification Guide](./references/version-classification.md) — Rules for determining version bump level.
-- [Release workflow](.github/workflows/release.yml) — GitHub Actions workflow that publishes to PyPI.
+- [Release workflow](../../../.github/workflows/release.yml) — GitHub Actions workflow that publishes to PyPI.

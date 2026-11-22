@@ -12,6 +12,7 @@ from sigma.matching.correlation_matcher import SigmaCorrelationRuleMatcher
 from sigma.matching.event import Event, EventLogSource
 from sigma.matching.match import SigmaMatch
 from sigma.matching.rule_matcher import SigmaRuleMatcher
+from sigma.policy import SigmaPolicy
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.rule.logsource import SigmaLogSource
 from sigma.rule.rule import SigmaRule
@@ -31,8 +32,12 @@ class SigmaMatcher:
         max_workers: int | None = None,
         max_events_per_match: int | None = 100,
         max_correlation_state: int | None = None,
+        policy: SigmaPolicy | None = None,
     ) -> None:
-        self._compiler = MatchCompiler()
+        # Policy resolution: explicit policy > pipeline policy > global default policy.
+        if policy is None and pipeline is not None:
+            policy = pipeline.policy
+        self._compiler = MatchCompiler(policy=policy)
 
         # Apply pipeline if provided
         if pipeline is not None:

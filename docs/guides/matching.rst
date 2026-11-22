@@ -134,6 +134,28 @@ before matching:
 
     matches = matcher.match(event)
 
+Regular Expressions and Security Policy
+---------------------------------------
+
+All regular expressions used during matching (``|re`` values as well as wildcard strings) are
+compiled with the regex engine of the active :class:`~sigma.policy.SigmaPolicy`. The policy is
+resolved in this order: the ``policy`` argument of :class:`~sigma.matching.SigmaMatcher`, the
+policy attached to the ``pipeline``, then the global default policy. By default this is
+``SafePolicy``, which uses the linear-time RE2 engine. This protects matching workers against
+catastrophic backtracking caused by untrusted rules.
+
+RE2 does not support backreferences or lookaround assertions. Rules using these constructs
+raise an error when the matcher is constructed under ``SafePolicy``. Only for trusted rule sets,
+the Python ``re`` engine can be selected explicitly:
+
+.. code-block:: python
+
+    from sigma.policy.profiles import TrustedPolicy
+
+    matcher = SigmaMatcher(collection, policy=TrustedPolicy)
+
+See :doc:`sigma_policy` for details.
+
 Bulk Matching
 -------------
 

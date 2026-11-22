@@ -1443,3 +1443,116 @@ detection:
         assert len(self._match(yaml_str, {"field": "test\ndata"})) == 1  # dot matches newline
         assert len(self._match(yaml_str, {"field": "testXdata"})) == 1
         assert len(self._match(yaml_str, {"field": "no match"})) == 0
+
+
+def _make_event(data: dict, raw: str | None = None) -> Event:
+    return Event(
+        timestamp=datetime.now(tz=timezone.utc),
+        logsource=EventLogSource(category="test", product="test"),
+        data=data,
+        raw=raw,
+    )
+
+
+class TestMatchingPolicy:
+    """The matcher must compile rule regexes with the active SigmaPolicy's regex engine."""
+
+    REDOS_RULE = """
+title: ReDoS via untrusted rule
+name: redos
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        CommandLine|re: '(a+)+$'
+    condition: selection
+"""
+
+    WILDCARD_RULE = """
+title: Wildcards
+name: wildcards
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        CommandLine: '*foo?bar*'
+    keywords:
+        - '*baz*'
+        - '|re': 'q+x'
+    condition: selection or keywords
+"""
+
+    def test_default_policy_uses_re2(self):
+        from sigma.matching.compiler import MatchCompiler
+        from sigma.policy import default_policy
+        from sigma.policy.profiles import SafePolicy
+
+        assert MatchCompiler().policy is default_policy is SafePolicy
+        matcher = SigmaMatcher(SigmaCollection.from_yaml(self.REDOS_RULE))
+        assert matcher._compiler.policy is SafePolicy
+
+    def test_redos_bounded_with_default_policy(self):
+        import time
+
+        matcher = SigmaMatcher(SigmaCollection.from_yaml(self.REDOS_RULE))
+        start = time.perf_counter()
+        result = matcher.match(_make_event({"CommandLine": "a" * 64 + "!"}))
+        assert time.perf_counter() - start < 1.0
+        assert result == []
+        assert len(matcher.match(_make_event({"CommandLine": "aaaa"}))) == 1
+
+    def test_wildcards_and_keywords_with_re2(self):
+        matcher = SigmaMatcher(SigmaCollection.from_yaml(self.WILDCARD_RULE))
+        assert len(matcher.match(_make_event({"CommandLine": "xxFOO-BARyy"}))) == 1
+        assert len(matcher.match(_make_event({"CommandLine": "foobar"}))) == 0
+        assert len(matcher.match(_make_event({"x": "1"}, raw="some BAZ line"))) == 1
+        assert len(matcher.match(_make_event({"x": "1"}, raw="aqqqx"))) == 1
+        assert len(matcher.match(_make_event({"x": "1"}, raw="nothing"))) == 0
+
+    def test_explicit_policy_is_used(self):
+        from sigma.policy.profiles import TrustedPolicy
+
+        matcher = SigmaMatcher(SigmaCollection.from_yaml(self.REDOS_RULE), policy=TrustedPolicy)
+        assert matcher._compiler.policy is TrustedPolicy
+
+    def test_pipeline_policy_is_used(self):
+        from sigma.policy.profiles import TrustedPolicy
+        from sigma.processing.pipeline import ProcessingPipeline
+
+        pipeline = ProcessingPipeline(policy=TrustedPolicy)
+        matcher = SigmaMatcher(SigmaCollection.from_yaml(self.REDOS_RULE), pipeline=pipeline)
+        assert matcher._compiler.policy is TrustedPolicy
+
+    def test_explicit_policy_overrides_pipeline_policy(self):
+        from sigma.policy.profiles import SafePolicy, TrustedPolicy
+        from sigma.processing.pipeline import ProcessingPipeline
+
+        pipeline = ProcessingPipeline(policy=TrustedPolicy)
+        matcher = SigmaMatcher(
+            SigmaCollection.from_yaml(self.REDOS_RULE), pipeline=pipeline, policy=SafePolicy
+        )
+        assert matcher._compiler.policy is SafePolicy
+
+    def test_custom_engine_receives_all_patterns(self):
+        from sigma.matching.compiler import MatchCompiler
+        from sigma.policy import SigmaPolicy
+        from sigma.policy.regex_engine import PythonRegexEngine
+
+        class RecordingEngine(PythonRegexEngine):
+            def __init__(self):
+                self.patterns = []
+
+            def compile(self, pattern, flags=0):
+                self.patterns.append(pattern)
+                return super().compile(pattern, flags)
+
+        engine = RecordingEngine()
+        compiler = MatchCompiler(policy=SigmaPolicy(regex_engine=engine))
+        compiler.compile_rule(SigmaCollection.from_yaml(self.WILDCARD_RULE).rules[0])
+        compiler.compile_rule(SigmaCollection.from_yaml(self.REDOS_RULE).rules[0])
+        assert len(engine.patterns) == 4
+        assert "(a+)+$" in engine.patterns

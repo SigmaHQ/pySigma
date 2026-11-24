@@ -96,7 +96,19 @@ class SigmaSandboxedEnvironment(SandboxedEnvironment):
         # Defense in depth - the Context.call block below is the primary barrier.
         if attr == "j2template":
             return False
-        return super().is_safe_attribute(obj, attr, value)
+        if not super().is_safe_attribute(obj, attr, value):
+            return False
+        # A callable that may not be called directly (a bound method of a live rule/pipeline
+        # object, a constructor of an arbitrary class, ...) must not even be obtainable as a
+        # *value*: the standard sandbox only checks is_safe_callable for calls that Jinja itself
+        # makes, so an unchecked callable can be smuggled into a stdlib function that invokes it
+        # internally, e.g. ``[x].sort(key=rule.source.path.write_text)``. Gating attribute access
+        # through the same allow-list as is_safe_callable removes that gadget class while still
+        # permitting methods of plain data types (``rule.title.upper``), Jinja helpers and
+        # callables from an opted-in vars file.
+        if callable(value) and not self.is_safe_callable(value):
+            return False
+        return True
 
     def is_safe_callable(self, obj: Any) -> bool:
         if not super().is_safe_callable(obj):

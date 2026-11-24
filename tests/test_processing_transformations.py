@@ -551,6 +551,93 @@ def test_field_mapping_none_to_field_disables_to_dict(dummy_pipeline):
         rule.to_dict()
 
 
+def _field_mapping_to_dict_roundtrip(selection, mapping):
+    """Return the selection of the rule after mapping and to_dict(), and the queries of the
+    original rule converted with the mapping and of the rule re-parsed from to_dict()."""
+    rule_dict = {
+        "title": "Test",
+        "logsource": {"category": "test"},
+        "detection": {"selection": selection, "condition": "selection"},
+    }
+    pipeline = ProcessingPipeline([ProcessingItem(FieldMappingTransformation(mapping))])
+    expected = TextQueryTestBackend(pipeline).convert(
+        SigmaCollection([SigmaRule.from_dict(rule_dict)])
+    )
+    rule = SigmaRule.from_dict(rule_dict)
+    ProcessingPipeline([ProcessingItem(FieldMappingTransformation(mapping))]).apply(rule)
+    result = rule.to_dict()
+    roundtrip = TextQueryTestBackend().convert(SigmaCollection([SigmaRule.from_dict(result)]))
+    return result["detection"]["selection"], expected, roundtrip
+
+
+def test_field_mapping_one_to_many_to_dict_keeps_or():
+    """A field mapped to multiple fields is OR-linked; to_dict() must not turn that into AND."""
+    selection, expected, roundtrip = _field_mapping_to_dict_roundtrip(
+        {"CommandLine|contains": "whoami"},
+        {"CommandLine": ["process.command_line", "process.args"]},
+    )
+    assert selection == [
+        {"process.command_line|contains": "*whoami*"},
+        {"process.args|contains": "*whoami*"},
+    ]
+    assert roundtrip == expected
+
+
+def test_field_mapping_one_to_many_in_list_selection_to_dict_keeps_or():
+    selection, expected, roundtrip = _field_mapping_to_dict_roundtrip(
+        [{"CommandLine|contains": "whoami"}, {"User": "admin"}],
+        {"CommandLine": ["process.command_line", "process.args"]},
+    )
+    assert selection == [
+        {"process.command_line|contains": "*whoami*"},
+        {"process.args|contains": "*whoami*"},
+        {"User": "admin"},
+    ]
+    assert roundtrip == expected
+
+
+@pytest.mark.parametrize(
+    "selection",
+    [
+        # (CommandLine1 OR CommandLine2) AND (Image1 OR Image2)
+        {"CommandLine|contains": "whoami", "Image|endswith": "\\cmd.exe"},
+        # (CommandLine1 OR CommandLine2) AND User
+        {"CommandLine|contains": "whoami", "User": "admin"},
+    ],
+)
+def test_field_mapping_one_to_many_and_linked_to_dict_raises(selection):
+    """An AND of an OR-linked group with other items can't be expressed in a Sigma selection.
+    to_dict() must raise instead of returning a rule with a different meaning."""
+    with pytest.raises(SigmaValueError, match="Can't convert detection into plain value"):
+        _field_mapping_to_dict_roundtrip(
+            selection,
+            {"CommandLine": ["cmd1", "cmd2"], "Image": ["img1", "img2"]},
+        )
+
+
+def test_hashes_transformation_to_dict_keeps_or(hashes_transformation):
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {
+                    "Hashes": [
+                        "SHA1=5F1CBC3D99558307BC1250D084FA968521482025",
+                        "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                    ]
+                },
+                "condition": "selection",
+            },
+        }
+    )
+    hashes_transformation.apply(rule)
+    assert rule.to_dict()["detection"]["selection"] == [
+        {"FileSHA1": "5F1CBC3D99558307BC1250D084FA968521482025"},
+        {"FileMD5": "987B65CD9B9F4E9A1AFD8F8B48CF64A7"},
+    ]
+
+
 def test_field_mapping_none_preserves_existing_wildcards(dummy_pipeline):
     """Test that mapping None to field doesn't duplicate existing wildcards."""
     rule = SigmaRule.from_dict(

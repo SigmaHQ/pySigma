@@ -84,7 +84,9 @@ def test_template_pipeline_classmethod_call_blocked(tmp_path, rule_collection, s
             ]
         }
     )
-    with pytest.raises(SecurityError, match="not safely callable"):
+    # The call is blocked either at the call site (is_safe_callable) or, with the attribute-access
+    # hardening, already when the live-object method is obtained as a value (is_safe_attribute).
+    with pytest.raises(SecurityError, match="unsafe|not safely callable"):
         convert(pipeline, rule_collection)
     assert not marker.exists()
 
@@ -143,6 +145,23 @@ def test_template_live_object_methods_blocked(rule_collection, template):
         {"postprocessing": [{"type": "template", "template": template}]}
     )
     with pytest.raises(SecurityError):
+        convert(pipeline, rule_collection)
+
+
+@pytest.mark.parametrize("section", ["postprocessing", "finalizers"])
+def test_template_callable_smuggled_into_stdlib_sort_blocked(rule_collection, section):
+    """A bound method of a live object must not be obtainable as a value and smuggled into a
+    stdlib callable that invokes it without consulting is_safe_callable.
+
+    ``list.sort(key=...)`` calls its key argument internally (in C), bypassing the direct-call
+    check. Combined with attribute traversal to a live-object method (e.g. a pathlib.Path's
+    ``write_text`` reached via ``rule.source.path``), this is an arbitrary file write / RCE. The
+    attribute-access hardening blocks obtaining the bound method as a value in the first place.
+    """
+    # pipeline is a live object in both the postprocessing and the finalizer context.
+    template = "{{ ['x'].sort(key=pipeline.resolve_policy) }}"
+    pipeline = ProcessingPipeline.from_dict({section: [{"type": "template", "template": template}]})
+    with pytest.raises(SecurityError, match="unsafe"):
         convert(pipeline, rule_collection)
 
 
@@ -252,7 +271,9 @@ def test_simple_template_globals_traversal_blocked(rule_collection, monkeypatch)
         "postprocessing:\n  - type: simple_template\n"
         '    template: "{pipeline.set_pipeline.__globals__[os].environ[PS_SECRET]}"\n'
     )
-    with pytest.raises(SigmaSecurityError, match="__globals__"):
+    # Blocked either at __globals__ access or, with the attribute-access hardening, already when
+    # the bound method 'set_pipeline' of the live pipeline object is obtained as a value.
+    with pytest.raises(SigmaSecurityError, match="unsafe|__globals__"):
         convert(pipeline, rule_collection)
 
 

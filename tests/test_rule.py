@@ -1087,6 +1087,71 @@ def test_sigmadetection_list_of_sigmadetection_to_plain():
     ).to_plain() == [{"field1": "value1"}, {"field2": "value2"}]
 
 
+def test_sigmadetection_or_linked_items_to_plain():
+    # Created by processing, e.g. by mapping one field to multiple fields. Merging the items into
+    # a dict would turn the OR into an AND.
+    assert SigmaDetection(
+        detection_items=[
+            SigmaDetectionItem("field1", [], [SigmaString("value")]),
+            SigmaDetectionItem("field2", [], [SigmaString("value")]),
+        ],
+        item_linking=ConditionOR,
+    ).to_plain() == [{"field1": "value"}, {"field2": "value"}]
+
+
+def test_sigmadetection_or_linked_single_item_to_plain():
+    assert SigmaDetection(
+        detection_items=[SigmaDetectionItem("field", [], [SigmaString("value")])],
+        item_linking=ConditionOR,
+    ).to_plain() == {"field": "value"}
+
+
+def test_sigmadetection_or_linked_items_nested_to_plain():
+    # An OR-linked sub-detection is inserted into the surrounding list instead of nesting lists.
+    assert SigmaDetection(
+        detection_items=[
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("value")]),
+                    SigmaDetectionItem("field2", [], [SigmaString("value")]),
+                ],
+                item_linking=ConditionOR,
+            ),
+            SigmaDetection([SigmaDetectionItem("field3", [], [SigmaString("other")])]),
+        ]
+    ).to_plain() == [{"field1": "value"}, {"field2": "value"}, {"field3": "other"}]
+
+
+def test_sigmadetection_single_and_linked_sub_detection_to_plain():
+    assert SigmaDetection(
+        detection_items=[
+            SigmaDetection(
+                [
+                    SigmaDetectionItem("field1", [], [SigmaString("value")]),
+                    SigmaDetectionItem("field2", [], [SigmaString("value")]),
+                ],
+                item_linking=ConditionOR,
+            ),
+        ],
+        item_linking=ConditionAND,
+    ).to_plain() == [{"field1": "value"}, {"field2": "value"}]
+
+
+def test_sigmadetection_and_linked_sub_detections_to_plain():
+    # A list means OR, so several AND-linked sub-detections have no plain representation.
+    with pytest.raises(
+        sigma_exceptions.SigmaValueError, match="links several sub-detections with AND.*test.yml"
+    ):
+        SigmaDetection(
+            detection_items=[
+                SigmaDetection([SigmaDetectionItem("field1", [], [SigmaString("value1")])]),
+                SigmaDetection([SigmaDetectionItem("field2", [], [SigmaString("value2")])]),
+            ],
+            item_linking=ConditionAND,
+            source=sigma_exceptions.SigmaRuleLocation("test.yml"),
+        ).to_plain()
+
+
 ### SigmaRule tests ###
 
 

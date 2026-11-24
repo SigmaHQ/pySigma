@@ -360,7 +360,14 @@ class SigmaDetection(ParentChainMixin):
     def to_plain(
         self: Self,
     ) -> SigmaDetectionPlainTypes:
-        """Returns a dictionary or list representation of the detection."""
+        """
+        Returns a dictionary or list representation of the detection.
+
+        AND-linked detection items become a dictionary, OR-linked ones a list. Detections created
+        by processing may contain structures without a representation in a Sigma rule, for example
+        several AND-linked sub-detections. For these a SigmaValueError is raised instead of
+        returning a representation with a different meaning.
+        """
         self_detection_item_types = {
             type(detection_item) for detection_item in self.detection_items
         }
@@ -383,6 +390,26 @@ class SigmaDetection(ParentChainMixin):
         if self_detection_item_types == {
             SigmaDetection
         }:  # if the items are SigmaDetections, they originate from a list and therefore must not be merged.
+            if self.item_linking is ConditionAND and len(detection_items) > 1:
+                # A list means OR in Sigma, so AND-linked sub-detections can't be returned as one.
+                # Parsed rules don't contain such detections, but processing can create them, e.g. a
+                # field mapping of several fields of one selection to multiple fields each.
+                raise sigma_exceptions.SigmaValueError(
+                    "Can't convert detection into plain value because it links several sub-detections with AND, which can't be expressed in a Sigma rule.",
+                    source=self.source,
+                )
+            # A sub-detection converted into a list stands for OR-linked alternatives. They are
+            # inserted into this list instead of nesting lists, which Sigma rules don't use.
+            flattened: list[Any] = []
+            for detection_item_converted in detection_items:
+                if isinstance(detection_item_converted, list):
+                    flattened.extend(detection_item_converted)
+                else:
+                    flattened.append(detection_item_converted)
+            return flattened
+        elif self.item_linking is ConditionOR and len(detection_items) > 1:
+            # OR-linked detection items, e.g. created by a field mapping of one field to multiple
+            # fields. Merging them into a dict would turn the OR into an AND, while a list keeps it.
             return detection_items
         else:  # SigmaDetectionItems must be merged into a dict, where they originally were created from.
             detection_items_types = {  # create set of types for decision what has to be returned

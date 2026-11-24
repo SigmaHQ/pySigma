@@ -1,9 +1,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
-from typing import Any, Iterable
-
-from typing_extensions import Self
+from typing import Any, Iterable, Self
 
 from sigma.collection import SigmaCollection
 from sigma.correlations import SigmaCorrelationRule, SigmaExtendedCorrelationCondition

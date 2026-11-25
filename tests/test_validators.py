@@ -18,6 +18,8 @@ from sigma.validators.core.values import (
     WildcardsInsteadOfModifiersValidator,
     EscapedWildcardIssue,
     EscapedWildcardValidator,
+    TautologicalValueIssue,
+    TautologicalValueValidator,
 )
 from .test_correlations import correlation_rule
 
@@ -423,4 +425,107 @@ def test_validator_escaped_wildcard_valid():
 
 def test_validator_escaped_wildcard_correlation_rule(correlation_rule):
     validator = EscapedWildcardValidator()
+    assert validator.validate(correlation_rule) == []
+
+
+def test_validator_tautological_value_contains_collapsed_backslash():
+    validator = TautologicalValueValidator()
+    rule = SigmaRule.from_yaml("""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            field|contains:
+                - '\\Users\\'
+                - '\\\\'
+        condition: sel
+    """)
+    detection_item = rule.detection.detections["sel"].detection_items[0]
+    assert validator.validate(rule) == [TautologicalValueIssue([rule], detection_item)]
+
+
+@pytest.mark.parametrize(
+    "detection",
+    [
+        "field|contains: ''",
+        "field|startswith: ''",
+        "field|endswith: ''",
+    ],
+)
+def test_validator_tautological_value_empty(detection):
+    validator = TautologicalValueValidator()
+    rule = SigmaRule.from_yaml(f"""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            {detection}
+        condition: sel
+    """)
+    detection_item = rule.detection.detections["sel"].detection_items[0]
+    assert validator.validate(rule) == [TautologicalValueIssue([rule], detection_item)]
+
+
+@pytest.mark.parametrize(
+    "detection",
+    [
+        "field|contains: '\\\\'",
+        "field|contains: '/'",
+    ],
+)
+def test_validator_tautological_value_contains_single_separator(detection):
+    validator = TautologicalValueValidator()
+    rule = SigmaRule.from_yaml(f"""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            {detection}
+        condition: sel
+    """)
+    detection_item = rule.detection.detections["sel"].detection_items[0]
+    assert validator.validate(rule) == [TautologicalValueIssue([rule], detection_item)]
+
+
+@pytest.mark.parametrize(
+    "detection",
+    [
+        "field|contains: '\\\\Users\\\\'",
+        "field|contains: '\\\\\\\\server\\\\share'",
+        "field|contains: '*\\\\'",
+        "field|startswith: 'C:\\\\'",
+        "field|endswith: '.exe'",
+        # A lone separator is only tautological with contains. startswith/endswith anchor the
+        # match at one end of the value and remain selective.
+        "field|startswith: '\\\\'",
+        "field|endswith: '\\\\'",
+        "field|startswith: '/'",
+        "field|endswith: '/'",
+        "field: '\\\\'",
+        "field|all|contains:\n                - '\\\\'\n                - 'foo'",
+    ],
+)
+def test_validator_tautological_value_valid(detection):
+    validator = TautologicalValueValidator()
+    rule = SigmaRule.from_yaml(f"""
+    title: Test
+    status: test
+    logsource:
+        category: test
+    detection:
+        sel:
+            {detection}
+        condition: sel
+    """)
+    assert validator.validate(rule) == []
+
+
+def test_validator_tautological_value_correlation_rule(correlation_rule):
+    validator = TautologicalValueValidator()
     assert validator.validate(correlation_rule) == []

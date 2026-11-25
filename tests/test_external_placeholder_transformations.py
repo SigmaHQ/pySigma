@@ -12,6 +12,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 import yaml
 
+from sigma.backends.test import TextQueryTestBackend
+from sigma.collection import SigmaCollection
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
 from sigma.processing.pipeline import ProcessingPipeline
 from sigma.processing.transformations.external import (
@@ -24,7 +26,7 @@ from sigma.processing.transformations.external import (
 from sigma.rule.rule import SigmaRule
 from sigma.types import SigmaString
 from sigma.policy import SigmaPolicy
-from sigma.policy.regex_engine import RE2RegexEngine
+from sigma.policy.regex_engine import PythonRegexEngine, RE2RegexEngine
 
 FILES_DIR = Path(__file__).parent / "files"
 PLAINTEXT_FILE = str(FILES_DIR / "placeholder_values.txt")
@@ -260,6 +262,191 @@ class TestExternalValueSourceParsers:
             FilePlaceholderTransformation(
                 path=PLAINTEXT_FILE, policy=_ALLOW_EXTERNAL_POLICY, format="xml"
             )
+
+
+class TestCSVRowFilters:
+    @pytest.mark.parametrize("column", ["indicator", 0])
+    def test_filters_metadata_before_extracting_column(self, column):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column=column,
+            csv_filters={"actor": "APT-example", "kind": "^domain$"},
+        )
+        data = (
+            "indicator,actor,kind\n"
+            "one.example,related to APT-example,domain\n"
+            "two.example,other,domain\n"
+            "192.0.2.1,APT-example,ip\n"
+        )
+        assert t._parse_data(data) == ["one.example"]
+
+    def test_combines_row_filters_with_existing_value_filter(self):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            policy=_ALLOW_EXTERNAL_POLICY,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "^APT-example$"},
+            filter=r"\.example$",
+        )
+        data = "indicator,actor\none.example,APT-example\n192.0.2.1,APT-example\n"
+        with patch.object(t, "_fetch_data", return_value=data):
+            assert t._get_values() == ["one.example"]
+
+    def test_matches_parsed_quoted_cells(self):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"context": "^actor, example\nsecond line$"},
+        )
+        data = 'indicator,context\n"value,quoted","actor, example\nsecond line"\n'
+        assert t._parse_data(data) == ["value,quoted"]
+
+    def test_missing_cells_do_not_match_empty_pattern(self):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "^$"},
+        )
+        assert t._parse_data("indicator,actor\nempty.example,\nmissing.example\n") == [
+            "empty.example"
+        ]
+
+    @pytest.mark.parametrize("column", ["indicator", 1, -1])
+    def test_skips_rows_missing_output_column(self, column):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column=column,
+            csv_filters={"actor": "APT-example"},
+        )
+        data = "actor,indicator\nAPT-example,one.example\nAPT-example\n"
+        expected = ["one.example", "APT-example"] if column == -1 else ["one.example"]
+        assert t._parse_data(data) == expected
+
+    @pytest.mark.parametrize("data", ["", "indicator,actor\n", "indicator,actor\nx,other\n"])
+    def test_empty_result(self, data):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "APT-example"},
+        )
+        assert t._parse_data(data) == []
+
+    @pytest.mark.parametrize("data", ["indicator,kind\n", "indicator,kind\nx,domain\n"])
+    def test_missing_filter_column_raises(self, data):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "APT-example"},
+        )
+        with pytest.raises(SigmaConfigurationError, match="CSV column 'actor' not found"):
+            t._parse_data(data)
+
+    def test_missing_output_column_raises_before_filtering(self):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "APT-example"},
+        )
+        with pytest.raises(SigmaConfigurationError, match="CSV column 'indicator' not found"):
+            t._parse_data("actor\nother\n")
+
+    @pytest.mark.parametrize(
+        "kwargs", [{"format": "plaintext"}, {"format": "csv", "csv_has_header": False}]
+    )
+    def test_incompatible_configuration_raises_at_init(self, kwargs):
+        with pytest.raises(SigmaConfigurationError, match="csv_filters.*csv.*header"):
+            FilePlaceholderTransformation(
+                path=CSV_FILE, csv_column=0, csv_filters={"actor": "APT-example"}, **kwargs
+            )
+
+    @pytest.mark.parametrize("filters", [["actor"], {"actor": 7}, {0: "APT-example"}])
+    def test_invalid_mapping_raises_at_init(self, filters):
+        with pytest.raises(SigmaConfigurationError, match="csv_filters.*mapping.*strings"):
+            FilePlaceholderTransformation(
+                path=CSV_FILE, format="csv", csv_column=0, csv_filters=filters
+            )
+
+    def test_invalid_regex_raises_at_init(self):
+        with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'csv_filters'.*actor"):
+            FilePlaceholderTransformation(
+                path=CSV_FILE,
+                format="csv",
+                csv_column=0,
+                csv_filters={"actor": "[unclosed"},
+            )
+
+    def test_uses_policy_regex_engine(self):
+        kwargs = dict(path=CSV_FILE, format="csv", csv_column=0, csv_filters={"actor": "(?=APT)"})
+        with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'csv_filters'"):
+            FilePlaceholderTransformation(**kwargs, policy=_ALLOW_EXTERNAL_POLICY)
+        t = FilePlaceholderTransformation(
+            **kwargs, policy=SigmaPolicy(regex_engine=PythonRegexEngine())
+        )
+        assert t._parse_data("indicator,actor\none.example,APT-example\n") == ["one.example"]
+
+    def test_empty_mapping_keeps_existing_csv_behavior(self):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE, format="csv", csv_column=0, csv_has_header=False, csv_filters={}
+        )
+        assert t._parse_data("one.example,APT-example\n") == ["one.example"]
+
+    @pytest.mark.parametrize("cached", [False, True])
+    def test_row_filters_follow_attached_pipeline_regex_engine(self, cached):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            policy=_ALLOW_EXTERNAL_POLICY,
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": r"^\w+$"},
+        )
+        data = "indicator,actor\none.example,caf\u00e9\n"
+        with patch.object(t, "_fetch_data", return_value=data) as fetch:
+            if cached:
+                assert t._get_values() == []  # RE2's word character class is ASCII-only.
+            t.set_pipeline(ProcessingPipeline(policy=SigmaPolicy(regex_engine=PythonRegexEngine())))
+            assert t._get_values() == ["one.example"]
+            assert t._get_values() == ["one.example"]
+            assert fetch.call_count == (2 if cached else 1)
+
+    @pytest.mark.parametrize("cached", [False, True])
+    def test_attached_pipeline_rejects_unsupported_row_filter_before_fetch(self, cached):
+        t = FilePlaceholderTransformation(
+            path=CSV_FILE,
+            policy=SigmaPolicy(regex_engine=PythonRegexEngine(), allow_external_sources=True),
+            format="csv",
+            csv_column="indicator",
+            csv_filters={"actor": "(?=APT)"},
+        )
+        with patch.object(
+            t, "_fetch_data", return_value="indicator,actor\nx,APT-example\n"
+        ) as fetch:
+            if cached:
+                assert t._get_values() == ["x"]
+            t.set_pipeline(ProcessingPipeline(policy=_ALLOW_EXTERNAL_POLICY))
+            with pytest.raises(SigmaConfigurationError, match="Invalid regex in 'csv_filters'"):
+                t._get_values()
+            assert fetch.call_count == (1 if cached else 0)
+
+    @pytest.mark.parametrize(
+        ("cls", "source_attr", "source"),
+        [
+            (FilePlaceholderTransformation, "path", CSV_FILE),
+            (HTTPPlaceholderTransformation, "url", "https://example.invalid/feed.csv"),
+            (CommandPlaceholderTransformation, "cmd", ["unused"]),
+        ],
+    )
+    def test_existing_positional_source_argument_is_unchanged(self, cls, source_attr, source):
+        t = cls(None, None, "csv", None, 0, True, None, _ALLOW_EXTERNAL_POLICY, source)
+        assert getattr(t, source_attr) == source
+        assert t._parse_data("indicator,actor\none.example,APT-example\n") == ["one.example"]
 
 
 class TestSecurityFlag:
@@ -676,6 +863,38 @@ transformations:
         )
         rule = SigmaRule.from_yaml(self._rule_yaml())
         pipeline.apply(rule)
+
+    @pytest.mark.parametrize("allow_external", [False, True])
+    def test_http_csv_row_filters_in_yaml_pipeline(self, allow_external):
+        pipeline = ProcessingPipeline.from_yaml(
+            """
+transformations:
+  - type: http_placeholders
+    url: https://example.invalid/feed.csv
+    format: csv
+    csv_column: indicator
+    csv_filters:
+      actor: '^APT-example$'
+      kind: '^domain$'
+""",
+            policy=_ALLOW_EXTERNAL_POLICY if allow_external else None,
+        )
+        rule = SigmaRule.from_yaml(self._rule_yaml())
+        data = (
+            b"indicator,actor,kind\n"
+            b"one.example,APT-example,domain\n"
+            b"two.example,other,domain\n"
+            b"192.0.2.1,APT-example,ip\n"
+        )
+        backend = TextQueryTestBackend(processing_pipeline=pipeline)
+        with patch("requests.request", return_value=_streaming_response(data)) as request:
+            if allow_external:
+                assert backend.convert(SigmaCollection([rule])) == ['field="one.example"']
+                request.assert_called_once()
+            else:
+                with pytest.raises(SigmaSecurityError):
+                    backend.convert(SigmaCollection([rule]))
+                request.assert_not_called()
 
     def test_allow_external_sources_stripped_from_yaml(self):
         """allow_external_sources in pipeline YAML must not be accepted as a top-level key."""

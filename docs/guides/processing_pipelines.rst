@@ -764,6 +764,57 @@ To create a custom transformation, subclass the appropriate base class:
            # Return transformed value, or None to keep original
            return val + "_modified"
 
+Filtering External CSV Rows
+---------------------------
+
+The ``file_placeholders``, ``http_placeholders``, and ``command_placeholders``
+transformations can select CSV rows by metadata columns before extracting
+``csv_column``. Set ``csv_filters`` to a mapping of header names to regular
+expressions. Each expression must match its corresponding cell using regex search;
+all configured column filters must match a row. Anchors such as ``^`` and ``$``
+restrict a pattern to the entire cell. Patterns use the regex engine selected by
+:doc:`sigma_policy`.
+
+For example, consider this synthetic threat-intelligence feed:
+
+.. code-block:: text
+
+   indicator,actor,kind
+   one.example,APT-example,domain
+   two.example,other,domain
+   192.0.2.1,APT-example,ip
+
+This pipeline selects ``one.example`` as the replacement for ``%myvar%``:
+
+.. code-block:: yaml
+
+   transformations:
+     - type: http_placeholders
+       include: [myvar]
+       url: https://example.invalid/feed.csv
+       format: csv
+       csv_column: indicator
+       csv_filters:
+         actor: '^APT-example$'
+         kind: '^domain$'
+
+External-source access still requires an explicit policy with
+``allow_external_sources=True`` or ``PYSIGMA_ALLOW_EXTERNAL_SOURCES=1``;
+see :doc:`sigma_policy`. The example URL is illustrative, not a live feed.
+
+``csv_filters`` requires ``format: csv`` and ``csv_has_header: true`` (the default).
+``csv_column`` can still be a header name or a zero-based integer index. Missing
+configured header names and invalid regexes raise ``SigmaConfigurationError``.
+Rows missing a required cell are skipped; an explicitly empty cell can match
+``^$``. An empty source, a header-only source, or no matching rows yields no
+replacement values. An omitted or empty ``csv_filters`` mapping keeps the existing
+CSV parsing behavior.
+
+The existing ``filter`` option remains an extracted-value filter for every format.
+It does not search other CSV columns. When both options are set, ``csv_filters``
+selects rows first, then ``filter`` is applied to the values extracted from
+``csv_column``.
+
 Pipeline Variables
 ------------------
 

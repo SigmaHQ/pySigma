@@ -25,7 +25,7 @@ from typing import Any, Iterable
 import yaml
 
 from sigma.exceptions import SigmaConfigurationError, SigmaSecurityError, SigmaValueError
-from sigma.policy.regex_engine import RegexPattern
+from sigma.policy.regex_engine import RegexEngine, RegexPattern
 from sigma.processing.transformations.placeholder import BasePlaceholderTransformation
 from sigma.rule.base import check_alias_expansion
 from sigma.types import Placeholder, SigmaString
@@ -62,6 +62,10 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     Values that do not match are silently dropped.  An invalid regex pattern raises
     :class:`~sigma.exceptions.SigmaConfigurationError` at pipeline-load time.
 
+    For CSV data with a header, *csv_filters* maps column names to regexes that
+    must all match their respective cells before *csv_column* is extracted.
+    These row filters use the policy's regex engine and can be combined with *filter*.
+
     **Security**: external-source transformations are disabled by default.
     Enable them by setting ``allow_external_sources=True`` in the
     :class:`~sigma.policy.SigmaPolicy` used for the pipeline or by setting the environment
@@ -72,11 +76,18 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     filter: str | None = None
     csv_column: str | int | None = None
     csv_has_header: bool = True
+    csv_filters: dict[str, str] | None = field(default=None, kw_only=True)
     jq_expression: str | None = None
     policy: "SigmaPolicy | None" = None
 
     _values_cache: list[str] | None = field(init=False, default=None, repr=False, compare=False)
     _filter_pattern: RegexPattern | None = field(
+        init=False, default=None, repr=False, compare=False
+    )
+    _csv_filter_patterns: dict[str, RegexPattern] = field(
+        init=False, default_factory=dict, repr=False, compare=False
+    )
+    _csv_filter_engine: RegexEngine | None = field(
         init=False, default=None, repr=False, compare=False
     )
 
@@ -92,7 +103,39 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                 self._filter_pattern = engine.compile(self.filter)
             except engine.error as e:
                 raise SigmaConfigurationError(f"Invalid regex in 'filter': {e}") from e
+        if self.csv_filters is not None and (
+            not isinstance(self.csv_filters, dict)
+            or not all(
+                isinstance(column, str) and isinstance(pattern, str)
+                for column, pattern in self.csv_filters.items()
+            )
+        ):
+            raise SigmaConfigurationError("'csv_filters' must be a mapping of strings to strings")
+        if self.csv_filters:
+            if self.format != "csv" or not self.csv_has_header:
+                raise SigmaConfigurationError(
+                    "'csv_filters' requires format='csv' and a header row (csv_has_header=True)"
+                )
+            self._compile_csv_filters()
         super().__post_init__()
+
+    def _compile_csv_filters(self) -> None:
+        if not self.csv_filters:
+            return
+        engine = self.resolve_regex_engine()
+        if self._csv_filter_engine is engine:
+            return
+        patterns: dict[str, RegexPattern] = {}
+        for column, pattern in self.csv_filters.items():
+            try:
+                patterns[column] = engine.compile(pattern)
+            except engine.error as e:
+                raise SigmaConfigurationError(
+                    f"Invalid regex in 'csv_filters' for column '{column}': {e}"
+                ) from e
+        self._csv_filter_patterns = patterns
+        self._csv_filter_engine = engine
+        self._values_cache = None
 
     def _external_sources_allowed(self) -> bool:
         """Return *True* if external data sources are permitted."""
@@ -116,6 +159,7 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
         Raises :class:`~sigma.exceptions.SigmaSecurityError` when external
         data sources are not enabled.
         """
+        self._compile_csv_filters()
         if self._values_cache is not None:
             return self._values_cache
 
@@ -156,6 +200,9 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
     def _parse_csv(self, data: str) -> list[str]:
         if self.csv_column is None:
             raise SigmaConfigurationError("'csv_column' must be specified when format is 'csv'")
+        if self._csv_filter_patterns:
+            self._compile_csv_filters()
+            return self._parse_filtered_csv(data, self.csv_column)
 
         values: list[str] = []
 
@@ -182,6 +229,29 @@ class ExternalSourceBaseTransformation(BasePlaceholderTransformation):
                 if col_idx < len(csv_row):
                     values.append(csv_row[col_idx])
 
+        return values
+
+    def _parse_filtered_csv(self, data: str, column: str | int) -> list[str]:
+        rows = csv.reader(io.StringIO(data))
+        header = next(rows, None)
+        if header is None:
+            return []
+        column_indexes = {name: index for index, name in enumerate(header)}
+        try:
+            filters = [
+                (column_indexes[name], pattern)
+                for name, pattern in self._csv_filter_patterns.items()
+            ]
+            output_index = column_indexes[column] if isinstance(column, str) else column
+        except KeyError as e:
+            raise SigmaConfigurationError(f"CSV column '{e.args[0]}' not found in data") from e
+
+        values: list[str] = []
+        for row in rows:
+            if -len(row) <= output_index < len(row) and all(
+                index < len(row) and pattern.search(row[index]) for index, pattern in filters
+            ):
+                values.append(row[output_index])
         return values
 
     def _parse_json(self, data: str) -> list[str]:
@@ -257,6 +327,8 @@ class FilePlaceholderTransformation(ExternalSourceBaseTransformation):
         Column name (str) or 0-based index (int) for CSV format.
     csv_has_header : bool
         Whether the first CSV row is a header (default ``True``).
+    csv_filters : dict[str, str], optional
+        Header names mapped to regexes; all must match before extracting the value.
     jq_expression : str, optional
         Path expression for JSON/YAML formats (e.g. ``.items[]``).
     include : list, optional
@@ -314,6 +386,8 @@ class HTTPPlaceholderTransformation(ExternalSourceBaseTransformation):
         Column name (str) or 0-based index (int) for CSV format.
     csv_has_header : bool
         Whether the first CSV row is a header (default ``True``).
+    csv_filters : dict[str, str], optional
+        Header names mapped to regexes; all must match before extracting the value.
     jq_expression : str, optional
         Path expression for JSON/YAML formats.
     include : list, optional
@@ -389,6 +463,8 @@ class CommandPlaceholderTransformation(ExternalSourceBaseTransformation):
         Column name (str) or 0-based index (int) for CSV format.
     csv_has_header : bool
         Whether the first CSV row is a header (default ``True``).
+    csv_filters : dict[str, str], optional
+        Header names mapped to regexes; all must match before extracting the value.
     jq_expression : str, optional
         Path expression for JSON/YAML formats.
     include : list, optional

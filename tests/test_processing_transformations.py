@@ -3251,6 +3251,117 @@ def test_hashes_transformation_star_prefix_algo():
     ]
 
 
+@pytest.mark.parametrize(
+    "selection,expected_detection",
+    [
+        (
+            {
+                "Hashes|neq": [
+                    "SHA1=5F1CBC3D99558307BC1250D084FA968521482025",
+                    "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                ]
+            },
+            {
+                "sel": {
+                    "FileSHA1|neq": "5F1CBC3D99558307BC1250D084FA968521482025",
+                    "FileMD5|neq": "987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                },
+                "condition": "sel",
+            },
+        ),
+        (
+            {
+                "Hashes|contains|all": [
+                    "SHA1=5F1CBC3D99558307BC1250D084FA968521482025",
+                    "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                ]
+            },
+            {
+                "sel": {
+                    "FileSHA1": "5F1CBC3D99558307BC1250D084FA968521482025",
+                    "FileMD5": "987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                },
+                "condition": "sel",
+            },
+        ),
+        (
+            {
+                "Hashes|neq|all": [
+                    "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                    "MD5=A87B65CD9B9F4E9A1AFD8F8B48CF64A8",
+                    "SHA1=5F1CBC3D99558307BC1250D084FA968521482025",
+                ]
+            },
+            {
+                "sel1": {
+                    "FileMD5|neq|all": [
+                        "987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                        "A87B65CD9B9F4E9A1AFD8F8B48CF64A8",
+                    ]
+                },
+                "sel2": {"FileSHA1|neq|all": "5F1CBC3D99558307BC1250D084FA968521482025"},
+                "condition": "sel1 or sel2",
+            },
+        ),
+        (
+            {"Hashes|cased": "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"},
+            {
+                "sel": {"FileMD5|cased": "987B65CD9B9F4E9A1AFD8F8B48CF64A7"},
+                "condition": "sel",
+            },
+        ),
+        (
+            {"Hashes|contains": "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7"},
+            {
+                "sel": {"FileMD5": "987B65CD9B9F4E9A1AFD8F8B48CF64A7"},
+                "condition": "sel",
+            },
+        ),
+    ],
+)
+def test_hashes_transformation_keeps_modifiers(
+    hashes_transformation, selection, expected_detection
+):
+    def rule(detection):
+        return SigmaCollection(
+            [
+                SigmaRule.from_dict(
+                    {"title": "Test", "logsource": {"category": "test"}, "detection": detection}
+                )
+            ]
+        )
+
+    pipeline = ProcessingPipeline([ProcessingItem(hashes_transformation)])
+    assert TextQueryTestBackend(pipeline).convert(
+        rule({"sel": selection, "condition": "sel"})
+    ) == TextQueryTestBackend().convert(rule(expected_detection))
+
+
+def test_hashes_transformation_to_dict_keeps_neq(hashes_transformation):
+    rule = SigmaRule.from_dict(
+        {
+            "title": "Test",
+            "logsource": {"category": "test"},
+            "detection": {
+                "selection": {
+                    "Hashes|neq": [
+                        "SHA1=5F1CBC3D99558307BC1250D084FA968521482025",
+                        "MD5=987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+                    ]
+                },
+                "condition": "selection",
+            },
+        }
+    )
+    hashes_transformation.apply(rule)
+    assert rule.to_dict()["detection"]["selection"] == [
+        {
+            "FileSHA1|neq": "5F1CBC3D99558307BC1250D084FA968521482025",
+            "FileMD5|neq": "987B65CD9B9F4E9A1AFD8F8B48CF64A7",
+        }
+    ]
+
+
 def test_case_transformation_lower(dummy_pipeline):
     detection_item = SigmaDetectionItem("field", [], [SigmaString("AbC")])
     transformation = CaseTransformation(method="lower")

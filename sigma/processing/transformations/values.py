@@ -18,6 +18,12 @@ from sigma.processing.transformations.base import (
     ValueTransformation,
 )
 from sigma.rule import SigmaDetection, SigmaDetectionItem
+from sigma.modifiers import (
+    SigmaAllModifier,
+    SigmaCaseSensitiveModifier,
+    SigmaModifier,
+    SigmaNegateModifier,
+)
 from sigma.exceptions import (
     SigmaRegularExpressionError,
     SigmaValueError,
@@ -58,6 +64,11 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         field_to_parse (list[str]): List of field names to parse for hash values. Defaults to ["Hashes", "Hash"].
         hash_lengths (dict[int, str]): Mapping of hash lengths to their corresponding algorithms.
 
+    The new detection items keep the ``all``, ``neq`` and ``cased`` modifiers of the original item
+    and are linked so that they match the same events as the original item: with OR by default,
+    with AND if the original item has either ``all`` or ``neq``, and with OR again if it has both.
+    Other modifiers, like ``contains``, are dropped because the new fields contain only the hash.
+
     Example:
         Input:
             Hashes:
@@ -73,6 +84,11 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
     drop_algo_prefix: bool = False
     field_to_parse: list[str] = field(default_factory=lambda: ["Hashes", "Hash"])
     hash_lengths: ClassVar[dict[int, str]] = {32: "MD5", 40: "SHA1", 64: "SHA256", 128: "SHA512"}
+    carried_modifiers: ClassVar[tuple[type[SigmaModifier[Any, Any]], ...]] = (
+        SigmaAllModifier,
+        SigmaNegateModifier,
+        SigmaCaseSensitiveModifier,
+    )
 
     def apply_detection_item(
         self, detection_item: SigmaDetectionItem
@@ -107,7 +123,7 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
                     f"No valid hash algorithm found in Hashes field. Please use one of the following: {', '.join(self.valid_hash_algos)}"
                 )
 
-            return self._create_new_detection_items(algo_dict)
+            return self._create_new_detection_items(algo_dict, detection_item)
         else:
             return None
 
@@ -176,27 +192,39 @@ class HashesFieldsDetectionItemTransformation(DetectionItemTransformation):
         """
         return f"{self.field_prefix}{'' if self.drop_algo_prefix else hash_algo}"
 
-    def _create_new_detection_items(self, algo_dict: dict[str, list[str]]) -> SigmaDetection:
+    def _create_new_detection_items(
+        self, algo_dict: dict[str, list[str]], detection_item: SigmaDetectionItem
+    ) -> SigmaDetection:
         """
         Creates new detection items based on the parsed hash values.
 
         Args:
             algo_dict (dict[str, list[str]]): A dictionary mapping field names to lists of hash values.
+            detection_item (SigmaDetectionItem): The original detection item whose modifiers are carried over.
 
         Returns:
             SigmaDetection: A new SigmaDetection object containing the created detection items.
         """
+        modifiers = [m for m in detection_item.modifiers if m in self.carried_modifiers]
+        # Negating "any of the hashes matches" means "none of them matches", and with all, "every
+        # hash matches" is required. Both together are "not every hash matches", which is again an
+        # OR of the negated items.
+        item_linking: type[ConditionAND | ConditionOR] = (
+            ConditionAND
+            if (SigmaAllModifier in modifiers) != (SigmaNegateModifier in modifiers)
+            else ConditionOR
+        )
         return SigmaDetection(
             detection_items=[
                 SigmaDetectionItem(
                     field=k if k != "keyword" else None,
-                    modifiers=[],
+                    modifiers=list(modifiers),
                     value=[SigmaString(x) for x in v],
                 )
                 for k, v in algo_dict.items()
                 if k
             ],
-            item_linking=ConditionOR,
+            item_linking=item_linking,
         )
 
 

@@ -106,7 +106,8 @@ class MatchCompiler:
 
         elif isinstance(value, SigmaBool):
             bool_val = bool(value)
-            return f"(data.get({field_name!r}) is {bool_val})"
+            closures["_bool_equals"] = _bool_equals
+            return f"_bool_equals(data.get({field_name!r}), {bool_val})"
 
         elif isinstance(value, SigmaExists):
             if value.exists:
@@ -128,15 +129,11 @@ class MatchCompiler:
 
         elif isinstance(value, SigmaCompareExpression):
             num_val = value.number.number
-            op_map = {
-                CompareOperators.LT: "<",
-                CompareOperators.LTE: "<=",
-                CompareOperators.GT: ">",
-                CompareOperators.GTE: ">=",
-                CompareOperators.NEQ: "!=",
-            }
-            op_str = op_map[value.op]
-            return f"(data.get({field_name!r}, 0) {op_str} {num_val!r})"
+            if value.op == CompareOperators.NEQ:
+                closures["_number_equals"] = _number_equals
+                return f"(not _number_equals(data.get({field_name!r}), {num_val!r}))"
+            closures["_compare_number"] = _compare_number
+            return f"_compare_number(data.get({field_name!r}), {value.op.name!r}, {num_val!r})"
 
         elif isinstance(value, SigmaCIDRExpression):
             var_name = f"_cidr_{len(closures)}"
@@ -161,7 +158,8 @@ class MatchCompiler:
 
         elif isinstance(value, SigmaNumber):
             num = value.number
-            return f"(data.get({field_name!r}) == {num!r})"
+            closures["_number_equals"] = _number_equals
+            return f"_number_equals(data.get({field_name!r}), {num!r})"
 
         elif isinstance(value, SigmaCasedString):
             # Case-sensitive matching
@@ -242,6 +240,57 @@ class MatchCompiler:
             return "(" + " or ".join(sub_parts) + ")"
         else:
             return "False"
+
+
+def _as_number(value: Any) -> int | float | None:
+    """Return the numeric value of an event field, or None if it is not a number.
+
+    Events parsed from XML or text, like Windows event logs, carry numbers as strings, so numeric
+    strings are converted. Booleans are not treated as numbers.
+    """
+    if isinstance(value, bool):
+        return None
+    if isinstance(value, (int, float)):
+        return value
+    if isinstance(value, str):
+        try:
+            return int(value)
+        except ValueError:
+            pass
+        try:
+            return float(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _number_equals(value: Any, number: int | float) -> bool:
+    """Check if an event value equals a Sigma number."""
+    event_number = _as_number(value)
+    return event_number is not None and event_number == number
+
+
+_compare_operators: dict[str, Callable[[int | float, int | float], bool]] = {
+    CompareOperators.LT.name: lambda a, b: a < b,
+    CompareOperators.LTE.name: lambda a, b: a <= b,
+    CompareOperators.GT.name: lambda a, b: a > b,
+    CompareOperators.GTE.name: lambda a, b: a >= b,
+}
+
+
+def _compare_number(value: Any, op: str, number: int | float) -> bool:
+    """Compare an event value against a Sigma number. Missing or non-numeric values never match."""
+    event_number = _as_number(value)
+    return event_number is not None and _compare_operators[op](event_number, number)
+
+
+def _bool_equals(value: Any, expected: bool) -> bool:
+    """Check if an event value equals a Sigma boolean, accepting "true" and "false" strings."""
+    if isinstance(value, bool):
+        return value is expected
+    if isinstance(value, str):
+        return value.strip().lower() == ("true" if expected else "false")
+    return False
 
 
 def _try_cidr(value: Any, network: Any) -> bool:

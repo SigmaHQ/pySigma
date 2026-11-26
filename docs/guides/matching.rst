@@ -72,6 +72,12 @@ An :class:`~sigma.matching.Event` carries three required fields:
   ``product``, and ``service`` fields that mirror the Sigma rule ``logsource`` block.
 * ``data`` — a flat ``dict[str, Any]`` containing the parsed event fields.
 
+Field values do not have to be typed. Events parsed from XML or text, like Windows event logs,
+usually carry every value as a string, so numeric values in rules (``EventID: 4688``) and the
+``|lt``, ``|lte``, ``|gt`` and ``|gte`` modifiers also match numeric strings like ``"4688"``, and
+boolean values match the strings ``"true"`` and ``"false"``. Numeric comparisons never match a
+missing or non-numeric field.
+
 An optional ``raw`` string can be supplied when keyword (field-less) detection items need to
 search the raw log text:
 

@@ -6,6 +6,7 @@ import pytest
 
 from sigma.collection import SigmaCollection
 from sigma.matching import Event, EventLogSource, SigmaMatch, SigmaMatcher
+from sigma.types import CompareOperators, SigmaCompareExpression, SigmaNumber
 
 
 @pytest.fixture
@@ -202,6 +203,64 @@ detection:
         assert len(self._match(yaml_str, {"field": True})) == 1
         assert len(self._match(yaml_str, {"field": False})) == 0
 
+    def test_number_string_value(self):
+        # Events parsed from XML or text (e.g. Windows event logs) carry numbers as strings.
+        yaml_str = """
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: 42
+    condition: selection
+"""
+        assert len(self._match(yaml_str, {"field": "42"})) == 1
+        assert len(self._match(yaml_str, {"field": 42.0})) == 1
+        assert len(self._match(yaml_str, {"field": "43"})) == 0
+        assert len(self._match(yaml_str, {"field": "42abc"})) == 0
+        assert len(self._match(yaml_str, {"field": True})) == 0
+        assert len(self._match(yaml_str, {"other": 42})) == 0
+
+    def test_boolean_string_value(self):
+        yaml_str = """
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: true
+    condition: selection
+"""
+        assert len(self._match(yaml_str, {"field": "true"})) == 1
+        assert len(self._match(yaml_str, {"field": "True"})) == 1
+        assert len(self._match(yaml_str, {"field": "false"})) == 0
+        assert len(self._match(yaml_str, {"field": 1})) == 0
+        assert len(self._match(yaml_str, {"other": True})) == 0
+
+    def test_boolean_false_string_value(self):
+        yaml_str = """
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: false
+    condition: selection
+"""
+        assert len(self._match(yaml_str, {"field": False})) == 1
+        assert len(self._match(yaml_str, {"field": "false"})) == 1
+        assert len(self._match(yaml_str, {"field": "true"})) == 0
+        assert len(self._match(yaml_str, {"other": False})) == 0
+
     def test_regex(self):
         yaml_str = """
 title: Test
@@ -249,6 +308,75 @@ detection:
 """
         assert len(self._match(yaml_str, {"field": 15})) == 1
         assert len(self._match(yaml_str, {"field": 5})) == 0
+
+    def test_compare_string_value(self):
+        yaml_str = """
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field|gt: 10
+    condition: selection
+"""
+        assert len(self._match(yaml_str, {"field": "15"})) == 1
+        assert len(self._match(yaml_str, {"field": "10.5"})) == 1
+        assert len(self._match(yaml_str, {"field": "5"})) == 0
+        # Non-numeric values do not match and do not raise
+        assert len(self._match(yaml_str, {"field": "abc"})) == 0
+        assert len(self._match(yaml_str, {"field": None})) == 0
+        assert len(self._match(yaml_str, {"field": True})) == 0
+
+    def test_compare_missing_field(self):
+        yaml_str = """
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field|lt: 10
+    condition: selection
+"""
+        assert len(self._match(yaml_str, {"other": 1})) == 0
+        assert len(self._match(yaml_str, {"field": "5"})) == 1
+
+    def test_compare_neq(self):
+        # The neq modifier negates the detection item, so a NEQ compare expression only comes
+        # from code. It must be the exact negation of number equality.
+        collection = SigmaCollection.from_yaml("""
+title: Test
+name: test
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: 10
+    condition: selection
+""")
+        detection_item = collection.rules[0].detection.detections["selection"].detection_items[0]
+        detection_item.value = [SigmaCompareExpression(SigmaNumber(10), CompareOperators.NEQ)]
+        with SigmaMatcher(collection) as matcher:
+
+            def matches(data: dict) -> bool:
+                event = Event(
+                    timestamp=datetime.now(tz=timezone.utc),
+                    logsource=EventLogSource(category="test", product="test"),
+                    data=data,
+                )
+                return len(matcher.match(event)) == 1
+
+            assert matches({"field": 5})
+            assert matches({"field": "abc"})
+            assert not matches({"field": 10})
+            assert not matches({"field": "10"})
 
     def test_condition_and(self):
         yaml_str = """

@@ -552,6 +552,134 @@ correlation:
             )
             assert not any(m.rule.name == "ordered_corr" for m in matches)
 
+    def test_event_count_rule_referenced_by_id(self):
+        # The base rule has no name, so the correlation can only reference it by its id.
+        yaml_str = """
+title: Base Rule
+id: 0e95725d-7320-415d-80f7-004da920fc11
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: "trigger"
+    condition: selection
+---
+title: Correlation
+name: correlation_rule
+status: test
+correlation:
+    type: event_count
+    rules:
+        - 0e95725d-7320-415d-80f7-004da920fc11
+    group-by:
+        - src_ip
+    timespan: 5m
+    condition:
+        gte: 3
+"""
+        collection = SigmaCollection.from_yaml(yaml_str)
+        now = datetime.now(tz=timezone.utc)
+        ls = EventLogSource(category="test", product="test")
+        event = Event(timestamp=now, logsource=ls, data={"field": "trigger", "src_ip": "1.2.3.4"})
+        with SigmaMatcher(collection) as matcher:
+            for _ in range(2):
+                assert not any(m.rule.name == "correlation_rule" for m in matcher.match(event))
+            assert any(m.rule.name == "correlation_rule" for m in matcher.match(event))
+
+    def test_temporal_ordered_rules_referenced_by_id_and_name(self):
+        yaml_str = """
+title: Login Rule
+id: 9f1c3a52-4b7e-4d0a-8c61-2f5e8d9b7a10
+name: login_rule
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        event: "login"
+    condition: selection
+---
+title: Access Rule
+name: access_rule
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        event: "access"
+    condition: selection
+---
+title: Ordered Temporal Correlation
+name: ordered_corr
+status: test
+correlation:
+    type: temporal_ordered
+    rules:
+        - 9f1c3a52-4b7e-4d0a-8c61-2f5e8d9b7a10
+        - access_rule
+    group-by:
+        - user
+    timespan: 5m
+"""
+        collection = SigmaCollection.from_yaml(yaml_str)
+        t1 = datetime.now(tz=timezone.utc)
+        t2 = t1 + timedelta(seconds=30)
+        ls = EventLogSource(category="test", product="test")
+
+        with SigmaMatcher(collection) as matcher:
+            matcher.match(
+                Event(timestamp=t1, logsource=ls, data={"event": "login", "user": "alice"})
+            )
+            matches = matcher.match(
+                Event(timestamp=t2, logsource=ls, data={"event": "access", "user": "alice"})
+            )
+            assert any(m.rule.name == "ordered_corr" for m in matches)
+
+        with SigmaMatcher(collection) as matcher:
+            matcher.match(
+                Event(timestamp=t1, logsource=ls, data={"event": "access", "user": "bob"})
+            )
+            matches = matcher.match(
+                Event(timestamp=t2, logsource=ls, data={"event": "login", "user": "bob"})
+            )
+            assert not any(m.rule.name == "ordered_corr" for m in matches)
+
+    def test_unresolved_rule_references_match_by_name(self):
+        yaml_str = """
+title: Base Rule
+name: base_rule
+status: test
+logsource:
+    category: test
+    product: test
+detection:
+    selection:
+        field: "trigger"
+    condition: selection
+---
+title: Correlation
+name: correlation_rule
+status: test
+correlation:
+    type: event_count
+    rules:
+        - base_rule
+    timespan: 5m
+    condition:
+        gte: 2
+"""
+        collection = SigmaCollection.from_yaml(yaml_str, resolve_references=False)
+        now = datetime.now(tz=timezone.utc)
+        ls = EventLogSource(category="test", product="test")
+        event = Event(timestamp=now, logsource=ls, data={"field": "trigger"})
+        with SigmaMatcher(collection) as matcher:
+            assert not any(m.rule.name == "correlation_rule" for m in matcher.match(event))
+            assert any(m.rule.name == "correlation_rule" for m in matcher.match(event))
+
     def test_value_sum(self):
         yaml_str = """
 title: Base Rule

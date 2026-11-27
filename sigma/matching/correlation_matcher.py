@@ -19,6 +19,7 @@ from sigma.correlations import (
 from sigma.matching.event import Event
 from sigma.matching.match import SigmaMatch
 from sigma.matching.state import SlidingWindowState
+from sigma.rule.base import SigmaRuleBase
 
 
 class SigmaCorrelationRuleMatcher:
@@ -44,6 +45,23 @@ class SigmaCorrelationRuleMatcher:
         elif isinstance(rule.condition, SigmaExtendedCorrelationCondition):
             for name in rule.condition.get_referenced_rules():
                 self._rule_names.add(name)
+        # A reference can be a rule name or a rule id, so incoming matches are identified by the
+        # rule object the reference resolved to. Rules are unhashable dataclasses, hence id().
+        self._references: dict[int, str] = {}
+        for ref in rule.referenced_rules:
+            referenced_rule = getattr(ref, "rule", None)
+            if referenced_rule is not None:
+                self._references[id(referenced_rule)] = ref.reference
+
+    def reference_of(self, rule: SigmaRuleBase) -> str | None:
+        """Return the reference this correlation uses for the given rule, or None if it does not
+        reference it. Falls back to the rule name if references were not resolved."""
+        reference = self._references.get(id(rule))
+        if reference is None:
+            name = getattr(rule, "name", None)
+            if name in self._rule_names:
+                reference = name
+        return reference
 
     def receive_match(self, match: SigmaMatch, source_rule_name: str) -> list[SigmaMatch]:
         """Process an incoming match from a base rule and return correlation matches if any."""
@@ -256,7 +274,7 @@ class SigmaCorrelationRuleMatcher:
         """All referenced rules must fire within the time window."""
         if isinstance(self.rule.condition, SigmaExtendedCorrelationCondition):
             fired_rules: set[str] = {
-                name for m in matches if (name := getattr(m.rule, "name", None))
+                reference for m in matches if (reference := self.reference_of(m.rule))
             }
             if self._eval_extended_expr(self.rule.condition.parsed, fired_rules):
                 return [
@@ -270,8 +288,9 @@ class SigmaCorrelationRuleMatcher:
             return []
         matched_rules: set[str] = set()
         for m in matches:
-            if hasattr(m.rule, "name") and m.rule.name:
-                matched_rules.add(m.rule.name)
+            reference = self.reference_of(m.rule)
+            if reference is not None:
+                matched_rules.add(reference)
         if self._rule_names and self._rule_names.issubset(matched_rules):
             return [
                 SigmaMatch(
@@ -293,9 +312,9 @@ class SigmaCorrelationRuleMatcher:
         if isinstance(self.rule.condition, SigmaExtendedCorrelationCondition):
             rule_first_fire: dict[str, Any] = {}
             for m in sorted(matches, key=lambda x: x.timestamp):
-                name = getattr(m.rule, "name", None)
-                if name and name not in rule_first_fire:
-                    rule_first_fire[name] = m.timestamp
+                reference = self.reference_of(m.rule)
+                if reference is not None and reference not in rule_first_fire:
+                    rule_first_fire[reference] = m.timestamp
             ok, _ = self._eval_ordered_extended_expr(self.rule.condition.parsed, rule_first_fire)
             if ok:
                 return [
@@ -313,7 +332,7 @@ class SigmaCorrelationRuleMatcher:
         # Find first occurrence of each in order
         seen_idx = 0
         for m in sorted(matches, key=lambda x: x.timestamp):
-            if hasattr(m.rule, "name") and m.rule.name == expected_order[seen_idx]:
+            if self.reference_of(m.rule) == expected_order[seen_idx]:
                 seen_idx += 1
                 if seen_idx >= len(expected_order):
                     return [

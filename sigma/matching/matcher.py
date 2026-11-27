@@ -6,7 +6,7 @@ from typing import Any, Iterable
 from typing_extensions import Self
 
 from sigma.collection import SigmaCollection
-from sigma.correlations import SigmaCorrelationRule, SigmaExtendedCorrelationCondition
+from sigma.correlations import SigmaCorrelationRule
 from sigma.matching.compiler import MatchCompiler
 from sigma.matching.correlation_matcher import SigmaCorrelationRuleMatcher
 from sigma.matching.event import Event, EventLogSource
@@ -49,8 +49,9 @@ class SigmaMatcher:
             defaultdict(list)
         )
         self._all_rule_matchers: list[SigmaRuleMatcher] = []
-        # Map rule name -> list of correlation matchers that reference it
-        self._correlation_map: dict[str, list[SigmaCorrelationRuleMatcher]] = defaultdict(list)
+        # Map id() of a referenced rule -> list of correlation matchers that reference it. Keyed by
+        # rule identity because correlations can reference rules by name or by id.
+        self._correlation_map: dict[int, list[SigmaCorrelationRuleMatcher]] = defaultdict(list)
         self._correlation_matchers: list[SigmaCorrelationRuleMatcher] = []
 
         for rule in collection.rules:
@@ -70,12 +71,11 @@ class SigmaMatcher:
                     max_events_per_match=max_events_per_match,
                 )
                 self._correlation_matchers.append(cm)
-                if rule.rules:
-                    for ref in rule.rules:
-                        self._correlation_map[ref.reference].append(cm)
-                elif isinstance(rule.condition, SigmaExtendedCorrelationCondition):
-                    for name in rule.condition.get_referenced_rules():
-                        self._correlation_map[name].append(cm)
+
+        for rule in collection.rules:
+            for cm in self._correlation_matchers:
+                if cm.reference_of(rule) is not None:
+                    self._correlation_map[id(rule)].append(cm)
 
     def match(self, event: Event) -> list[SigmaMatch]:
         """Match a single event against all relevant rules. Returns list of matches."""
@@ -90,10 +90,10 @@ class SigmaMatcher:
         # Route matches to correlation matchers
         correlation_matches: list[SigmaMatch] = []
         for m in matches:
-            rule_name = getattr(m.rule, "name", None)
-            if rule_name and rule_name in self._correlation_map:
-                for cm in self._correlation_map[rule_name]:
-                    correlation_matches.extend(cm.receive_match(m, rule_name))
+            for cm in self._correlation_map.get(id(m.rule), []):
+                reference = cm.reference_of(m.rule)
+                if reference is not None:
+                    correlation_matches.extend(cm.receive_match(m, reference))
 
         matches.extend(correlation_matches)
         return matches

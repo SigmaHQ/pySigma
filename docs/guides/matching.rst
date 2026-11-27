@@ -219,7 +219,8 @@ Correlation Rules
 
 Correlation rules are handled transparently. When a base rule fires, the resulting
 :class:`~sigma.matching.SigmaMatch` is forwarded internally to any
-:class:`~sigma.matching.SigmaCorrelationRuleMatcher` that references that base rule by name.
+:class:`~sigma.matching.SigmaCorrelationRuleMatcher` that references that base rule, by name
+or by id.
 The correlation matcher maintains a sliding time window and emits a new
 :class:`~sigma.matching.SigmaMatch` whenever its condition is satisfied.
 

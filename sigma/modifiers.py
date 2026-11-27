@@ -691,6 +691,7 @@ modifier_mapping: dict[str, Type[SigmaModifier[Any, Any]]] = {
     "re": SigmaRegularExpressionModifier,
     "utf16": SigmaUTF16Modifier,
     "utf16be": SigmaUTF16BEModifier,
+    "utf16le": SigmaWideModifier,
     "s": SigmaRegularExpressionDotAllFlagModifier,
     "startswith": SigmaStartswithModifier,
     "week": SigmaTimestampWeekModifier,

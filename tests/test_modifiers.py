@@ -286,6 +286,54 @@ def test_wide_noascii(dummy_detection_item):
         )
 
 
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+@pytest.mark.parametrize("value", ["", "foobar", "*foobar*"])
+def test_utf16le_registered_modifier(modifier, value):
+    item = SigmaDetectionItem.from_mapping(f"field|{modifier}", value)
+    assert item.modifiers == [SigmaWideModifier]
+    assert item.value == SigmaDetectionItem.from_mapping("field|wide", value).value
+
+
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+def test_utf16le_base64(modifier):
+    assert SigmaDetectionItem.from_mapping(f"field|{modifier}|base64", "foobar").value == [
+        SigmaString(b64encode("foobar".encode("utf-16le")).decode())
+    ]
+
+
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+def test_utf16le_base64offset(modifier):
+    variants = SigmaDetectionItem.from_mapping(f"field|{modifier}|base64offset", "foobar").value
+    assert variants == [
+        SigmaExpansion(
+            [
+                SigmaString("ZgBvAG8AYgBhAHIA"),
+                SigmaString("YAbwBvAGIAYQByA"),
+                SigmaString("mAG8AbwBiAGEAcg"),
+            ]
+        )
+    ]
+    data = "foobar".encode("utf-16le")
+    for offset, variant in enumerate(variants[0].values):
+        assert str(variant) in b64encode(offset * b"x" + data + b"yyy").decode()
+
+
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+def test_utf16le_validation(modifier):
+    with pytest.raises(SigmaTypeError, match="incompatible.*type"):
+        SigmaDetectionItem.from_mapping(f"field|{modifier}", 123)
+    with pytest.raises(SigmaValueError, match="ascii strings"):
+        SigmaDetectionItem.from_mapping(f"field|{modifier}", "foob\u00e4r")
+
+
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+def test_utf16le_serialization_keeps_wide(modifier):
+    item = SigmaDetectionItem.from_mapping(f"field|{modifier}|base64", "foobar")
+    plain = item.to_plain()
+    assert plain == {"field|wide|base64": "foobar"}
+    assert SigmaDetectionItem.from_mapping(*next(iter(plain.items()))).value == item.value
+
+
 def test_utf16be(dummy_detection_item):
     assert SigmaUTF16BEModifier(dummy_detection_item, []).apply(SigmaString("*foobar*")) == [
         SigmaString("*\x00f\x00o\x00o\x00b\x00a\x00r*")

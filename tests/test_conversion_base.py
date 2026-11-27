@@ -166,6 +166,28 @@ def test_convert_value_str(test_backend):
                 """)) == ['mappedA="value" and \'field A\'="value"']
 
 
+@pytest.mark.parametrize("modifier", ["utf16le", "wide"])
+@pytest.mark.parametrize("encoding", ["base64", "base64offset"])
+def test_convert_utf16le_modifier(test_backend, modifier, encoding):
+    rule = """
+        title: UTF-16LE command
+        logsource:
+            category: process_creation
+            product: windows
+        detection:
+            sel:
+                CommandLine|{modifier}|{encoding}|contains: ping
+            condition: sel
+    """
+    converted = test_backend.convert(
+        SigmaCollection.from_yaml(rule.format(modifier=modifier, encoding=encoding))
+    )
+    assert converted == test_backend.convert(
+        SigmaCollection.from_yaml(rule.format(modifier="wide", encoding=encoding))
+    )
+    assert converted
+
+
 def test_convert_value_str_cased(test_backend):
     assert test_backend.convert(SigmaCollection.from_yaml("""
                     title: Test

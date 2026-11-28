@@ -35,6 +35,8 @@ windows_logsource_mapping = {  # Mapping between Sigma log source services and W
     "printservice-operational": "Microsoft-Windows-PrintService/Operational",
     "codeintegrity-operational": "Microsoft-Windows-CodeIntegrity/Operational",
     "smbclient-security": "Microsoft-Windows-SmbClient/Security",
+    "smbclient-connectivity": "Microsoft-Windows-SmbClient/Connectivity",
+    "smbserver-connectivity": "Microsoft-Windows-SMBServer/Connectivity",
     "firewall-as": "Microsoft-Windows-Windows Firewall With Advanced Security/Firewall",
     "bits-client": "Microsoft-Windows-Bits-Client/Operational",
     "windefend": "Microsoft-Windows-Windows Defender/Operational",

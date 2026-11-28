@@ -225,5 +225,17 @@ detection:
     ]
 
 
+# Services used by SigmaHQ rules that have no row in the Sigma specification taxonomy appendix.
+@pytest.mark.parametrize(
+    ("service", "channel"),
+    [
+        ("smbclient-connectivity", "Microsoft-Windows-SmbClient/Connectivity"),
+        ("smbserver-connectivity", "Microsoft-Windows-SMBServer/Connectivity"),
+    ],
+)
+def test_windows_logsource_mapping_smb_connectivity_services(service, channel):
+    assert windows_logsource_mapping[service] == channel
+
+
 def test_logsource_category():
     assert logsource_category("test") == LogsourceCondition(category="test")
